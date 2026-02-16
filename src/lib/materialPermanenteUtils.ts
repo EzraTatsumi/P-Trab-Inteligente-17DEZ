@@ -1,44 +1,34 @@
-import { formatCurrency, formatNumber, formatCodug, formatPregao } from "./formatUtils";
+import { formatCurrency, formatCodug, formatPregao } from "./formatUtils";
 
 /**
- * Gera a memória de cálculo para registros de Material Permanente.
- * @param registro O registro de material permanente vindo do banco.
- * @param context Contexto opcional com dados da OM e operação.
- * @returns Uma string formatada com o detalhamento dos itens.
+ * Gera a memória de cálculo detalhada para um item de Material Permanente.
  */
-export const generateMaterialPermanenteMemoriaCalculo = (registro: any, context?: any): string => {
-    if (registro.detalhamento_customizado && registro.detalhamento_customizado.trim().length > 0) {
-        return registro.detalhamento_customizado;
-    }
+export const generateMaterialPermanenteMemoriaCalculo = (registro: any, options?: { itemEspecifico?: any }) => {
+    const item = options?.itemEspecifico;
+    if (!item) return "";
 
-    const items = registro.detalhes_planejamento?.items || [];
-    if (items.length === 0) return "Nenhum item detalhado.";
-
-    const org = registro.organizacao || context?.organizacao || 'OM não especificada';
-    let memoria = `Aquisição de Material Permanente para ${org}:\n\n`;
-
-    items.forEach((item: any, index: number) => {
-        const totalItem = (item.valor_unitario || 0) * (item.quantidade || 0);
-        memoria += `${index + 1}. ${item.descricao_reduzida || item.descricao_item}\n`;
-        memoria += `   - CATMAT: ${item.codigo_catmat || 'N/A'}\n`;
-        memoria += `   - Pregão: ${formatPregao(item.numero_pregao)} | UASG: ${formatCodug(item.uasg)}\n`;
-        memoria += `   - Qtd: ${formatNumber(item.quantidade, 0)} | Unit: ${formatCurrency(item.valor_unitario)} | Total: ${formatCurrency(totalItem)}\n\n`;
-    });
-
-    memoria += `Valor Total do Registro: ${formatCurrency(registro.valor_total || 0)}`;
+    const descricaoSubitem = registro.descricao_subitem || registro.nome_subitem || "Material Permanente";
+    const organizacao = registro.organizacao;
+    const local = registro.local_om || "Quartel-General";
+    const justificativa = registro.detalhamento_customizado || "";
     
-    return memoria;
-};
+    const nomeItem = item.descricao_reduzida || item.descricao_item;
+    const valorUnitario = item.valor_unitario || 0;
+    const quantidade = item.quantidade || 1;
+    const valorTotal = valorUnitario * quantidade;
+    const pregao = item.numero_pregao || "N/A";
+    const uasg = item.uasg || "N/A";
 
-/**
- * Calcula os totais agregados para uma lista de registros de Material Permanente.
- * @param registros Lista de registros vindos do banco.
- * @returns Objeto com totais de valor geral e ND 52.
- */
-export const calculateMaterialPermanenteTotals = (registros: any[]) => {
-    return registros.reduce((acc, r) => {
-        acc.totalGeral += Number(r.valor_total || 0);
-        acc.totalND52 += Number(r.valor_nd_52 || 0);
-        return acc;
-    }, { totalGeral: 0, totalND52: 0 });
+    let memoria = `44.90.52 - Aquisição de ${descricaoSubitem} para atender as necessidades do ${organizacao}, no ${local}, a fim de garantir as capacidades operacionais e administrativas. ${justificativa}\n\n`;
+    
+    memoria += `Cálculo:\n`;
+    memoria += `- ${nomeItem}: ${formatCurrency(valorUnitario)}/ unid.\n\n`;
+    
+    memoria += `Fórmula: Qtd do item x Valor do item.\n`;
+    memoria += `- ${quantidade} ${nomeItem} x ${formatCurrency(valorUnitario)}/unid = ${formatCurrency(valorTotal)}.\n\n`;
+    
+    memoria += `Total: ${formatCurrency(valorTotal)}.\n`;
+    memoria += `(Pregão ${formatPregao(pregao)} - UASG ${formatCodug(uasg)}).`;
+
+    return memoria;
 };

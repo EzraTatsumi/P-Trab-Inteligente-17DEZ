@@ -25,6 +25,7 @@ const PTrabMaterialPermanenteReport: React.FC<PTrabMaterialPermanenteReportProps
   const contentRef = useRef<HTMLDivElement>(null);
   const diasOperacao = useMemo(() => calculateDays(ptrabData.periodo_inicio, ptrabData.periodo_fim), [ptrabData]);
 
+  // Consolidação de itens para a tabela: Uma linha por item
   const rows = useMemo(() => {
     const allRows: any[] = [];
     registrosMaterialPermanente.forEach(reg => {
@@ -32,10 +33,10 @@ const PTrabMaterialPermanenteReport: React.FC<PTrabMaterialPermanenteReportProps
       items.forEach((item: any) => {
         allRows.push({
           itemNome: item.descricao_reduzida || item.descricao_item,
-          organizacao: reg.organizacao,
-          ug: reg.ug,
+          omDestino: reg.om_detentora || reg.organizacao,
+          ugDestino: reg.ug_detentora || reg.ug,
           valor: item.valor_unitario * (item.quantidade || 1),
-          memoria: reg.detalhamento_customizado || generateMaterialPermanenteMemoriaCalculo(reg, { itemEspecifico: item })
+          memoria: generateMaterialPermanenteMemoriaCalculo(reg, { itemEspecifico: item })
         });
       });
     });
@@ -77,8 +78,8 @@ const PTrabMaterialPermanenteReport: React.FC<PTrabMaterialPermanenteReportProps
     const centerStyle = { horizontal: 'center' as const, vertical: 'middle' as const, wrapText: true };
     const border = { top: { style: 'thin' as const }, left: { style: 'thin' as const }, bottom: { style: 'thin' as const }, right: { style: 'thin' as const } };
     const headerFill = { type: 'pattern' as const, pattern: 'solid' as const, fgColor: { argb: 'FFD9D9D9' } };
-    const ndFill = { type: 'pattern' as const, pattern: 'solid' as const, fgColor: { argb: 'FFE2EFDA' } }; // Verde claro da imagem
-    const valueFill = { type: 'pattern' as const, pattern: 'solid' as const, fgColor: { argb: 'FFB4C7E7' } };
+    const ndFill = { type: 'pattern' as const, pattern: 'solid' as const, fgColor: { argb: 'FFE2EFDA' } };
+    const valueFill = { type: 'pattern' as const, pattern: 'solid' as const, fgColor: { argb: 'FFE2EFDA' } }; // Verde claro para os valores também
 
     let curr = 1;
     const addTitle = (text: string, bold = true, underline = false) => {
@@ -110,25 +111,20 @@ const PTrabMaterialPermanenteReport: React.FC<PTrabMaterialPermanenteReportProps
     addInfo('4. AÇÕES REALIZADAS OU A REALIZAR:', ptrabData.acoes);
     addInfo('5. DESPESAS DE MATERIAL PERMANENTE REALIZADAS OU A REALIZAR:', '');
 
-    // Header Tabela (2 linhas)
     const h1 = worksheet.getRow(curr);
     const h2 = worksheet.getRow(curr + 1);
     
-    // Linha 1 do Header
     h1.getCell('A').value = 'DESPESAS';
     worksheet.mergeCells(`A${curr}:A${curr+1}`);
     h1.getCell('B').value = 'OM (UGE)';
-    h1.getCell('C').value = ''; // Espaço vazio acima das NDs
     worksheet.mergeCells(`C${curr}:D${curr}`);
     h1.getCell('E').value = 'DETALHAMENTO / MEMÓRIA DE CÁLCULO';
 
-    // Linha 2 do Header
     h2.getCell('B').value = 'CODUG';
     h2.getCell('C').value = '44.90.52';
     h2.getCell('D').value = 'GND 4';
     h2.getCell('E').value = '(DISCRIMINAR EFETIVOS, QUANTIDADES, VALORES UNITÁRIOS E TOTAIS)\nOBSERVAR A DIRETRIZ DE CUSTEIO LOGÍSTICO DO COLOG';
 
-    // Estilização do Header
     ['A', 'B', 'C', 'D', 'E'].forEach(c => {
       const cell1 = h1.getCell(c);
       const cell2 = h2.getCell(c);
@@ -140,7 +136,6 @@ const PTrabMaterialPermanenteReport: React.FC<PTrabMaterialPermanenteReportProps
       });
     });
 
-    // Cores específicas para NDs
     h2.getCell('C').fill = ndFill;
     h2.getCell('D').fill = ndFill;
     h2.getCell('E').font = { size: 7, bold: false };
@@ -151,7 +146,7 @@ const PTrabMaterialPermanenteReport: React.FC<PTrabMaterialPermanenteReportProps
     rows.forEach(r => {
       const row = worksheet.getRow(curr);
       row.getCell('A').value = r.itemNome.toUpperCase();
-      row.getCell('B').value = `${r.organizacao}\n(${formatCodug(r.ug)})`;
+      row.getCell('B').value = `${r.omDestino}\n(${formatCodug(r.ugDestino)})`;
       row.getCell('C').value = r.valor;
       row.getCell('D').value = r.valor;
       row.getCell('E').value = r.memoria;
@@ -250,10 +245,10 @@ const PTrabMaterialPermanenteReport: React.FC<PTrabMaterialPermanenteReportProps
             {rows.map((r, i) => (
               <tr key={i}>
                 <td className="border border-black p-1 font-bold">{r.itemNome.toUpperCase()}</td>
-                <td className="border border-black p-1 text-center">{r.organizacao}<br/>({formatCodug(r.ug)})</td>
-                <td className="border border-black p-1 text-center bg-[#B4C7E7]">{formatCurrency(r.valor)}</td>
-                <td className="border border-black p-1 text-center bg-[#B4C7E7]">{formatCurrency(r.valor)}</td>
-                <td className="border border-black p-1 whitespace-pre-wrap text-[7pt]">{r.memoria}</td>
+                <td className="border border-black p-1 text-center">{r.omDestino}<br/>({formatCodug(r.ugDestino)})</td>
+                <td className="border border-black p-1 text-center bg-[#E2EFDA]">{formatCurrency(r.valor)}</td>
+                <td className="border border-black p-1 text-center bg-[#E2EFDA]">{formatCurrency(r.valor)}</td>
+                <td className="border border-black p-1 whitespace-pre-wrap text-[7pt] text-left align-top">{r.memoria}</td>
               </tr>
             ))}
             <tr className="bg-[#D9D9D9] font-bold">
