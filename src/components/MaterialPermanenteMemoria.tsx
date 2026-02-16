@@ -1,19 +1,22 @@
 "use client";
 
 import React from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
-import { Pencil, Save, X, RotateCcw, FileText, Calculator } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Loader2, Pencil, RefreshCw, XCircle, Check, Package } from "lucide-react";
+import { formatCodug } from "@/lib/formatUtils";
 import { generateMaterialPermanenteMemoria } from "@/lib/materialPermanenteUtils";
 import { Badge } from "@/components/ui/badge";
+import { cn } from "@/lib/utils";
 
 interface MaterialPermanenteMemoriaProps {
     registro: any;
     isPTrabEditable: boolean;
+    isSaving?: boolean;
     editingMemoriaId: string | null;
     memoriaEdit: string;
-    setMemoriaEdit: (val: string) => void;
+    setMemoriaEdit: (value: string) => void;
     onStartEdit: (id: string, text: string) => void;
     onCancelEdit: () => void;
     onSave: (id: string) => Promise<void>;
@@ -23,6 +26,7 @@ interface MaterialPermanenteMemoriaProps {
 const MaterialPermanenteMemoria: React.FC<MaterialPermanenteMemoriaProps> = ({
     registro,
     isPTrabEditable,
+    isSaving = false,
     editingMemoriaId,
     memoriaEdit,
     setMemoriaEdit,
@@ -34,83 +38,95 @@ const MaterialPermanenteMemoria: React.FC<MaterialPermanenteMemoriaProps> = ({
     const isEditing = editingMemoriaId === registro.id;
     const item = registro.detalhes_planejamento?.item_unico || registro.detalhes_planejamento?.itens_selecionados?.[0];
     
-    const defaultMemoria = generateMaterialPermanenteMemoria(registro, item);
-    const currentMemoria = registro.detalhamento_customizado || defaultMemoria;
+    const memoriaAutomatica = generateMaterialPermanenteMemoria(registro, item);
+    const memoriaDisplay = registro.detalhamento_customizado || memoriaAutomatica;
+    const hasCustomMemoria = !!registro.detalhamento_customizado;
 
     return (
-        <Card className="border shadow-sm overflow-hidden bg-background">
-            <CardHeader className="py-3 px-4 bg-muted/20 border-b flex flex-row items-center justify-between space-y-0">
-                <div className="flex items-center gap-3">
-                    <div className="bg-primary/10 p-2 rounded-full">
-                        <Calculator className="h-4 w-4 text-primary" />
-                    </div>
-                    <div className="flex flex-col">
-                        <CardTitle className="text-sm font-bold text-foreground">
-                            {item?.descricao_reduzida || item?.descricao_item || "Material Permanente"}
-                        </CardTitle>
-                        <div className="flex items-center gap-2 mt-1">
-                            <Badge variant="secondary" className="text-[10px] h-4 px-1.5 uppercase font-bold">
-                                {registro.fase_atividade}
-                            </Badge>
-                            <span className="text-[10px] text-muted-foreground font-medium">
-                                {registro.organizacao}
-                            </span>
+        <div className="space-y-4 border p-4 rounded-lg bg-muted/30">
+            <div className="flex items-start justify-between gap-4 mb-2">
+                <div className="flex flex-col flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                        <div className="bg-primary/10 p-1.5 rounded-md">
+                            <Package className="h-4 w-4 text-primary" />
                         </div>
-                    </div>
-                </div>
-                {isPTrabEditable && (
-                    <div className="flex gap-2">
-                        {!isEditing ? (
-                            <>
-                                <Button 
-                                    variant="outline" 
-                                    size="sm" 
-                                    className="h-8 px-3 text-xs font-semibold border-primary/20 hover:bg-primary/5" 
-                                    onClick={() => onStartEdit(registro.id, currentMemoria)}
-                                >
-                                    <Pencil className="h-3.5 w-3.5 mr-1.5" /> Editar Memória
-                                </Button>
-                                {registro.detalhamento_customizado && (
-                                    <Button 
-                                        variant="ghost" 
-                                        size="sm" 
-                                        className="h-8 px-3 text-xs font-semibold text-orange-600 hover:bg-orange-50" 
-                                        onClick={() => onRestore(registro.id)}
-                                    >
-                                        <RotateCcw className="h-3.5 w-3.5 mr-1.5" /> Restaurar
-                                    </Button>
-                                )}
-                            </>
-                        ) : (
-                            <>
-                                <Button 
-                                    variant="default" 
-                                    size="sm" 
-                                    className="h-8 px-3 text-xs font-semibold bg-green-600 hover:bg-green-700" 
-                                    onClick={() => onSave(registro.id)}
-                                >
-                                    <Save className="h-3.5 w-3.5 mr-1.5" /> Salvar Alterações
-                                </Button>
-                                <Button 
-                                    variant="ghost" 
-                                    size="sm" 
-                                    className="h-8 px-3 text-xs font-semibold text-destructive hover:bg-destructive/5" 
-                                    onClick={onCancelEdit}
-                                >
-                                    <X className="h-3.5 w-3.5 mr-1.5" /> Cancelar
-                                </Button>
-                            </>
+                        <h4 className="text-base font-semibold text-foreground">
+                            {registro.organizacao} (UG: {formatCodug(registro.ug)})
+                        </h4>
+                        <Badge variant="secondary" className="text-[10px] bg-blue-100 text-blue-800 border-blue-200 hover:bg-blue-100 uppercase font-bold">
+                            {item?.descricao_reduzida || item?.descricao_item || "Material Permanente"}
+                        </Badge>
+                        <Badge variant="outline" className="text-[10px] uppercase font-bold">
+                            {registro.fase_atividade}
+                        </Badge>
+                        {hasCustomMemoria && !isEditing && (
+                            <Badge variant="outline" className="text-[10px] bg-orange-50 text-orange-700 border-orange-200 uppercase font-bold">
+                                Editada manualmente
+                            </Badge>
                         )}
                     </div>
-                )}
-            </CardHeader>
-            <CardContent className="p-5">
+                </div>
+                
+                <div className="flex items-center justify-end gap-2 shrink-0">
+                    {!isEditing ? (
+                        <>
+                            <Button 
+                                type="button" 
+                                size="sm" 
+                                variant="outline" 
+                                onClick={() => onStartEdit(registro.id, memoriaDisplay)} 
+                                disabled={isSaving || !isPTrabEditable} 
+                                className="h-8 gap-2 text-xs font-semibold border-primary/20 hover:bg-primary/5"
+                            >
+                                <Pencil className="h-3.5 w-3.5" /> Editar Memória
+                            </Button>
+                            {hasCustomMemoria && (
+                                <Button 
+                                    type="button" 
+                                    size="sm" 
+                                    variant="ghost" 
+                                    onClick={() => onRestore(registro.id)} 
+                                    disabled={isSaving || !isPTrabEditable} 
+                                    className="h-8 gap-2 text-xs font-semibold text-orange-600 hover:bg-orange-50"
+                                >
+                                    <RefreshCw className="h-3.5 w-3.5" /> Restaurar Automática
+                                </Button>
+                            )}
+                        </>
+                    ) : (
+                        <>
+                            <Button 
+                                type="button" 
+                                size="sm" 
+                                variant="default" 
+                                onClick={() => onSave(registro.id)} 
+                                disabled={isSaving} 
+                                className="h-8 gap-2 text-xs font-semibold bg-green-600 hover:bg-green-700"
+                            >
+                                {isSaving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />} Salvar
+                            </Button>
+                            <Button 
+                                type="button" 
+                                size="sm" 
+                                variant="outline" 
+                                onClick={onCancelEdit} 
+                                disabled={isSaving} 
+                                className="h-8 gap-2 text-xs font-semibold text-destructive hover:bg-destructive/5"
+                            >
+                                <XCircle className="h-3.5 w-3.5" /> Cancelar
+                            </Button>
+                        </>
+                    )}
+                </div>
+            </div>
+            
+            <Card className="p-5 bg-background rounded-lg border shadow-sm">
                 {isEditing ? (
                     <div className="space-y-2">
                         <Textarea 
                             value={memoriaEdit} 
                             onChange={(e) => setMemoriaEdit(e.target.value)} 
-                            className="min-h-[150px] text-sm leading-relaxed focus-visible:ring-primary resize-none"
+                            className="min-h-[200px] font-mono text-sm leading-relaxed focus-visible:ring-primary resize-none" 
                             placeholder="Digite aqui a memória de cálculo detalhada..."
                         />
                         <p className="text-[10px] text-muted-foreground italic">
@@ -120,13 +136,13 @@ const MaterialPermanenteMemoria: React.FC<MaterialPermanenteMemoriaProps> = ({
                 ) : (
                     <div className="relative">
                         <div className="absolute -left-2 top-0 bottom-0 w-1 bg-primary/10 rounded-full" />
-                        <p className="text-sm leading-relaxed text-foreground/80 whitespace-pre-wrap pl-4 font-medium italic">
-                            {currentMemoria}
-                        </p>
+                        <pre className="text-sm font-medium italic whitespace-pre-wrap text-foreground/80 pl-4 leading-relaxed">
+                            {memoriaDisplay}
+                        </pre>
                     </div>
                 )}
-            </CardContent>
-        </Card>
+            </Card>
+        </div>
     );
 };
 
