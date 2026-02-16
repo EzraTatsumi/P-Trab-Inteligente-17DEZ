@@ -8,7 +8,7 @@ import { toast } from "sonner";
 import { ArrowLeft, Save, Loader2, Info, Download, RefreshCw } from "lucide-react";
 import { useSession } from "@/components/SessionContextProvider";
 import { cn } from "@/lib/utils";
-import { formatNumber } from "@/lib/formatUtils";
+import { formatNumber, formatCodug } from "@/lib/formatUtils";
 import { PTrabImporter, DorGroup } from "@/components/PTrabImporter";
 
 // Componente auxiliar para Inputs que parecem texto do documento
@@ -149,21 +149,29 @@ const DOREditor = () => {
     const finalItems: any[] = [];
 
     groups.forEach(group => {
-      const ugeAggregated: Record<string, number> = {};
+      const ugeAggregated: Record<string, { name: string, code: string, total: number }> = {};
       
       group.items.forEach(typeItem => {
         typeItem.originalRecords.forEach(record => {
-          const ugeLabel = `${record.organizacao} (${record.ug})`;
-          ugeAggregated[ugeLabel] = (ugeAggregated[ugeLabel] || 0) + Number(record.valor_total);
+          const key = `${record.organizacao}-${record.ug}`;
+          if (!ugeAggregated[key]) {
+            ugeAggregated[key] = { 
+              name: record.organizacao, 
+              code: record.ug, 
+              total: 0 
+            };
+          }
+          ugeAggregated[key].total += Number(record.valor_total);
         });
       });
 
-      Object.entries(ugeAggregated).forEach(([uge, valor]) => {
+      Object.values(ugeAggregated).forEach((data) => {
         finalItems.push({
-          uge,
+          uge_name: data.name,
+          uge_code: data.code,
           gnd: selectedGnd,
           descricao: group.name,
-          valor_num: valor
+          valor_num: data.total
         });
       });
     });
@@ -477,7 +485,12 @@ const DOREditor = () => {
                   {dorItems.length > 0 ? (
                     dorItems.map((item, idx) => (
                       <div key={idx} className={cn("grid grid-cols-[1fr_60px_140px_1fr] text-[10pt] text-center", idx !== dorItems.length - 1 && "border-b border-black")}>
-                        <div className="border-r border-black py-0 px-1 text-left leading-tight flex items-center">{item.uge}</div>
+                        <div className="border-r border-black py-0 px-1 text-left leading-tight flex flex-col justify-center">
+                          <span>{item.uge_name || item.uge}</span>
+                          {item.uge_code && (
+                            <span className="text-[9pt] font-normal">{formatCodug(item.uge_code)}</span>
+                          )}
+                        </div>
                         <div className="border-r border-black py-0 px-1 flex items-center justify-center">{item.gnd}</div>
                         <div className="border-r border-black py-0 px-1 flex items-center justify-end">{formatNumber(item.valor_num)}</div>
                         <div className="py-0 px-1 text-left leading-tight uppercase flex items-center">{item.descricao}</div>
@@ -578,7 +591,7 @@ const DOREditor = () => {
 4. O bem e/ou serviço requisitado estará de acordo com a “Descrição” da Ação Orçamentária adotada pelo MD e com a “Caracterização” do respectivo PO do Cadastro de Ações do Sistema Integrado de Planejamento e Orçamento (SIOP).
 5. Os saldos não aplicados serão restituídos ao EMCFA com tempestividade.
 6. Serão observados os potenciais riscos nas aquisições de bens e serviços da Mensagem SIAFI nº 2021/0612168, de 17 de novembro de 2021, item 1.
-7. Considerando que não há uma definição exata da missão a ser executada, atividades logísticas que serão demandadas, eixos que serão utilizados pelos elementos apoiados (terrestres, fluviais e/ou aéreos), locais de instalações de bases e o efetivo de órgãos a serem apoiados, os valores poderão variar para mais ou para menos, exigindo a retificação do DOR, documentações e/ou planos complementares.`}
+7. Considerando que não há uma definição exata da missão a ser executada, atividades logísticas que serão demandadas, eixos que serão utilizados pelos elements apoiados (terrestres, fluviais e/ou aéreos), locais de instalações de bases e o efetivo de órgãos a serem apoiados, os valores poderão variar para mais ou para menos, exigindo a retificação do DOR, documentações e/ou planos complementares.`}
                   style={bodyStyle}
                 />
               </div>
