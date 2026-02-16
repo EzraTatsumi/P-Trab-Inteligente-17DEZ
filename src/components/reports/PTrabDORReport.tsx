@@ -249,14 +249,14 @@ const PTrabDORReport: React.FC<PTrabDORReportProps> = ({ ptrabData, dorData, sel
             </tr>
             {dorData.itens_dor?.map((item: any, idx: number) => (
               <tr key={idx} style={{ fontSize: '10pt', textAlign: 'center' }}>
-                <td style={{ ...cellStyle, verticalAlign: 'middle', textAlign: 'center', lineHeight: '1.2' }}>
+                <td style={{ ...cellStyle, width: '130px', verticalAlign: 'middle', textAlign: 'center', lineHeight: '1.2' }}>
                   <div style={{ fontWeight: 'normal' }}>{item.uge_name || item.uge || "N/I"}</div>
                   {(item.uge_code || item.ug) && (
                     <div style={{ fontSize: '9pt', fontWeight: 'normal' }}>({formatCodug(item.uge_code || item.ug)})</div>
                   )}
                 </td>
-                <td style={{ ...cellStyle, verticalAlign: 'middle' }}>{item.gnd}</td>
-                <td style={{ ...cellStyle, verticalAlign: 'middle', fontWeight: 'normal' }}>{formatNumber(item.valor_num)}</td>
+                <td style={{ ...cellStyle, width: '50px', verticalAlign: 'middle' }}>{item.gnd}</td>
+                <td style={{ ...cellStyle, width: '110px', verticalAlign: 'middle', fontWeight: 'normal' }}>{formatNumber(item.valor_num)}</td>
                 <td style={{ ...cellStyle, textAlign: 'center', textTransform: 'uppercase', verticalAlign: 'middle', lineHeight: '1.2' }}>{item.descricao}</td>
               </tr>
             ))}
