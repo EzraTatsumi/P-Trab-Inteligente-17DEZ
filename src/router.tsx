@@ -28,9 +28,10 @@ import PassagemForm from "./pages/PassagemForm";
 import HorasVooForm from "./pages/HorasVooForm";
 import ConcessionariaForm from "./pages/ConcessionariaForm";
 import MaterialConsumoForm from "./pages/MaterialConsumoForm";
-import MaterialPermanenteForm from "./pages/MaterialPermanenteForm"; // NOVO
+import MaterialPermanenteForm from "./pages/MaterialPermanenteForm";
 import ComplementoAlimentacaoForm from "./pages/ComplementoAlimentacaoForm";
 import ServicosTerceirosForm from "./pages/ServicosTerceirosForm";
+import DOREditor from "./pages/DOREditor";
 import NotFound from "./pages/NotFound";
 import ProtectedRoute from "./components/ProtectedRoute";
 
@@ -42,6 +43,7 @@ const routes: RouteObject[] = [
   { path: "/ptrab", element: <ProtectedRoute><PTrabManager /></ProtectedRoute> },
   { path: "/ptrab/form", element: <ProtectedRoute><PTrabForm /></ProtectedRoute> },
   { path: "/ptrab/print", element: <ProtectedRoute><PTrabReportManager /></ProtectedRoute> },
+  { path: "/ptrab/dor", element: <ProtectedRoute><DOREditor /></ProtectedRoute> },
   { path: "/ptrab/classe-i", element: <ProtectedRoute><ClasseIForm /></ProtectedRoute> },
   { path: "/ptrab/classe-ii", element: <ProtectedRoute><ClasseIIForm /></ProtectedRoute> },
   { path: "/ptrab/classe-v", element: <ProtectedRoute><ClasseVForm /></ProtectedRoute> },

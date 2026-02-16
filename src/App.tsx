@@ -8,14 +8,15 @@ import Login from "./pages/Login";
 import PTrabManager from "./pages/PTrabManager";
 import PTrabForm from "./pages/PTrabForm";
 import PTrabReportManager from "./pages/PTrabReportManager";
-import ProfileConfig from "./pages/ProfileConfig";
-import DiretrizesConfig from "./pages/DiretrizesConfig";
-import CustosOperacionaisConfig from "./pages/CustosOperacionaisConfig";
-import VisualizacaoConfig from "./pages/VisualizacaoConfig";
-import OMConfig from "./pages/OMConfig";
-import PTrabExportImport from "./pages/PTrabExportImport";
-import SharePTrab from "./pages/SharePTrab";
+import UserProfilePage from "./pages/UserProfilePage";
+import DiretrizesCusteioPage from "./pages/DiretrizesCusteioPage";
+import CustosOperacionaisPage from "./pages/CustosOperacionaisPage";
+import VisualizacaoConfigPage from "./pages/VisualizacaoConfigPage";
+import OmConfigPage from "./pages/OmConfigPage";
+import PTrabExportImportPage from "./pages/PTrabExportImportPage";
+import SharePage from "./pages/SharePage";
 import DOREditor from "./pages/DOREditor";
+import ProtectedRoute from "./components/ProtectedRoute";
 
 const queryClient = new QueryClient();
 
@@ -28,17 +29,17 @@ const App = () => (
           <Routes>
             <Route path="/" element={<Index />} />
             <Route path="/login" element={<Login />} />
-            <Route path="/ptrab" element={<PTrabManager />} />
-            <Route path="/ptrab/form" element={<PTrabForm />} />
-            <Route path="/ptrab/print" element={<PTrabReportManager />} />
-            <Route path="/ptrab/dor" element={<DOREditor />} />
-            <Route path="/config/profile" element={<ProfileConfig />} />
-            <Route path="/config/diretrizes" element={<DiretrizesConfig />} />
-            <Route path="/config/custos-operacionais" element={<CustosOperacionaisConfig />} />
-            <Route path="/config/visualizacao" element={<VisualizacaoConfig />} />
-            <Route path="/config/om" element={<OMConfig />} />
-            <Route path="/config/ptrab-export-import" element={<PTrabExportImport />} />
-            <Route path="/share-ptrab" element={<SharePTrab />} />
+            <Route path="/ptrab" element={<ProtectedRoute><PTrabManager /></ProtectedRoute>} />
+            <Route path="/ptrab/form" element={<ProtectedRoute><PTrabForm /></ProtectedRoute>} />
+            <Route path="/ptrab/print" element={<ProtectedRoute><PTrabReportManager /></ProtectedRoute>} />
+            <Route path="/ptrab/dor" element={<ProtectedRoute><DOREditor /></ProtectedRoute>} />
+            <Route path="/config/profile" element={<ProtectedRoute><UserProfilePage /></ProtectedRoute>} />
+            <Route path="/config/diretrizes" element={<ProtectedRoute><DiretrizesCusteioPage /></ProtectedRoute>} />
+            <Route path="/config/custos-operacionais" element={<ProtectedRoute><CustosOperacionaisPage /></ProtectedRoute>} />
+            <Route path="/config/visualizacao" element={<ProtectedRoute><VisualizacaoConfigPage /></ProtectedRoute>} />
+            <Route path="/config/om" element={<ProtectedRoute><OmConfigPage /></ProtectedRoute>} />
+            <Route path="/config/ptrab-export-import" element={<ProtectedRoute><PTrabExportImportPage /></ProtectedRoute>} />
+            <Route path="/share-ptrab" element={<SharePage />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </BrowserRouter>
