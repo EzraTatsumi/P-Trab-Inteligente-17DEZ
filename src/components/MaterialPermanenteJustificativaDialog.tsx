@@ -65,7 +65,7 @@ const MaterialPermanenteJustificativaDialog = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-6xl max-h-[95vh] h-[90vh] flex flex-col overflow-hidden">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <FileText className="h-5 w-5 text-primary" />
@@ -76,85 +76,87 @@ const MaterialPermanenteJustificativaDialog = ({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 py-4">
-          <div className="lg:col-span-7 space-y-6">
-            <div className="space-y-2">
-              <Label className="text-sm font-semibold">Grupo do Item (Ex: Mobiliário, Informática, etc)</Label>
-              <Input 
-                value={formData.grupo || ""} 
-                onChange={(e) => setFormData({ ...formData, grupo: e.target.value })}
-                placeholder="Informe o grupo do material"
-                className="h-10"
-              />
-            </div>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="flex-grow overflow-y-auto pr-2">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 py-4">
+            <div className="lg:col-span-7 space-y-6">
               <div className="space-y-2">
-                <Label className="text-sm font-semibold whitespace-nowrap">Propósito (Obj imediato?)</Label>
+                <Label className="text-sm font-semibold">Grupo do Item (Ex: Mobiliário, Informática, etc)</Label>
                 <Input 
-                  value={formData.proposito || ""} 
-                  onChange={(e) => setFormData({ ...formData, proposito: e.target.value })}
-                  placeholder="Ex: Atender demanda X"
+                  value={formData.grupo || ""} 
+                  onChange={(e) => setFormData({ ...formData, grupo: e.target.value })}
+                  placeholder="Informe o grupo do material"
                   className="h-10"
                 />
               </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-2">
+                  <Label className="text-sm font-semibold whitespace-nowrap">Propósito (Obj imediato?)</Label>
+                  <Input 
+                    value={formData.proposito || ""} 
+                    onChange={(e) => setFormData({ ...formData, proposito: e.target.value })}
+                    placeholder="Ex: Atender demanda X"
+                    className="h-10"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-sm font-semibold whitespace-nowrap">Destinação (Para quem?) Seç/OM</Label>
+                  <Input 
+                    value={formData.destinacao || ""} 
+                    onChange={(e) => setFormData({ ...formData, destinacao: e.target.value })}
+                    placeholder="Ex: 1ª Seção / OM"
+                    className="h-10"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-2">
+                  <Label className="text-sm font-semibold whitespace-nowrap">Local (Onde será empregado?)</Label>
+                  <Input 
+                    value={formData.local || ""} 
+                    onChange={(e) => setFormData({ ...formData, local: e.target.value })}
+                    placeholder="Ex: Campo de Instrução"
+                    className="h-10"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-sm font-semibold whitespace-nowrap">Finalidade (Para quê?) Obj Geral</Label>
+                  <Input 
+                    value={formData.finalidade || ""} 
+                    onChange={(e) => setFormData({ ...formData, finalidade: e.target.value })}
+                    placeholder="Ex: Apoio logístico"
+                    className="h-10"
+                  />
+                </div>
+              </div>
+
               <div className="space-y-2">
-                <Label className="text-sm font-semibold whitespace-nowrap">Destinação (Para quem?) Seç/OM</Label>
-                <Input 
-                  value={formData.destinacao || ""} 
-                  onChange={(e) => setFormData({ ...formData, destinacao: e.target.value })}
-                  placeholder="Ex: 1ª Seção / OM"
-                  className="h-10"
+                <Label className="text-sm font-semibold">Motivo (Porque?)</Label>
+                <Textarea 
+                  value={formData.motivo || ""} 
+                  onChange={(e) => setFormData({ ...formData, motivo: e.target.value })}
+                  placeholder="Descreva a necessidade técnica da aquisição..."
+                  className="min-h-[120px] resize-none"
                 />
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="space-y-2">
-                <Label className="text-sm font-semibold whitespace-nowrap">Local (Onde será empregado?)</Label>
-                <Input 
-                  value={formData.local || ""} 
-                  onChange={(e) => setFormData({ ...formData, local: e.target.value })}
-                  placeholder="Ex: Campo de Instrução"
-                  className="h-10"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label className="text-sm font-semibold whitespace-nowrap">Finalidade (Para quê?) Obj Geral</Label>
-                <Input 
-                  value={formData.finalidade || ""} 
-                  onChange={(e) => setFormData({ ...formData, finalidade: e.target.value })}
-                  placeholder="Ex: Apoio logístico"
-                  className="h-10"
-                />
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label className="text-sm font-semibold">Motivo (Porque?)</Label>
-              <Textarea 
-                value={formData.motivo || ""} 
-                onChange={(e) => setFormData({ ...formData, motivo: e.target.value })}
-                placeholder="Descreva a necessidade técnica da aquisição..."
-                className="min-h-[120px] resize-none"
-              />
-            </div>
-          </div>
-
-          <div className="lg:col-span-5">
-            <div className="bg-muted/40 p-6 rounded-xl border border-dashed h-full flex flex-col sticky top-0">
-              <div className="flex items-center gap-2 text-xs font-bold text-muted-foreground uppercase mb-6 tracking-wider">
-                <Eye className="h-4 w-4" />
-                Pré-visualização da Justificativa
-              </div>
-              <div className="flex-grow">
-                <p className="text-lg leading-relaxed italic text-foreground/90 font-serif">
-                  {generatedText}
-                </p>
-              </div>
-              <div className="mt-6 pt-6 border-t border-border/50">
-                <p className="text-[10px] text-muted-foreground uppercase font-bold">Dica:</p>
-                <p className="text-[11px] text-muted-foreground">O texto acima é gerado automaticamente com base nos campos preenchidos ao lado.</p>
+            <div className="lg:col-span-5">
+              <div className="bg-muted/40 p-6 rounded-xl border border-dashed h-full flex flex-col sticky top-0">
+                <div className="flex items-center gap-2 text-xs font-bold text-muted-foreground uppercase mb-6 tracking-wider">
+                  <Eye className="h-4 w-4" />
+                  Pré-visualização da Justificativa
+                </div>
+                <div className="flex-grow">
+                  <p className="text-lg leading-relaxed italic text-foreground/90 font-serif">
+                    {generatedText}
+                  </p>
+                </div>
+                <div className="mt-6 pt-6 border-t border-border/50">
+                  <p className="text-[10px] text-muted-foreground uppercase font-bold">Dica:</p>
+                  <p className="text-[11px] text-muted-foreground">O texto acima é gerado automaticamente com base nos campos preenchidos ao lado.</p>
+                </div>
               </div>
             </div>
           </div>

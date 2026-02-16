@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Table as TableIcon, Save, X, ClipboardPaste } from "lucide-react";
 import { ItemAquisicao } from "@/types/diretrizesMaterialConsumo";
 import { toast } from "sonner";
@@ -52,7 +52,6 @@ const MaterialPermanenteBulkJustificativaDialog = ({
   };
 
   const handlePaste = (e: React.ClipboardEvent, startItemId: string, startField: string) => {
-    // Se for uma colagem simples (sem tabulações ou quebras de linha), deixa o comportamento padrão do input
     const pasteData = e.clipboardData.getData('text');
     if (!pasteData.includes('\t') && !pasteData.includes('\n')) {
       return;
@@ -101,7 +100,7 @@ const MaterialPermanenteBulkJustificativaDialog = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-[95vw] w-full max-h-[90vh] overflow-hidden flex flex-col">
+      <DialogContent className="max-w-[98vw] w-full max-h-[98vh] h-[95vh] overflow-hidden flex flex-col">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <TableIcon className="h-5 w-5 text-primary" />
@@ -133,14 +132,24 @@ const MaterialPermanenteBulkJustificativaDialog = ({
                     {item.descricao_reduzida || item.descricao_item}
                   </TableCell>
                   {FIELDS.map((field) => (
-                    <TableCell key={field} className="p-0 border-r last:border-r-0">
-                      <Input 
-                        className="h-10 text-xs border-none focus-visible:ring-1 focus-visible:ring-primary rounded-none bg-transparent w-full"
+                    <TableCell key={field} className="p-0 border-r last:border-r-0 align-top">
+                      <Textarea 
+                        className="min-h-[40px] text-xs border-none focus-visible:ring-1 focus-visible:ring-primary rounded-none bg-transparent w-full resize-none overflow-hidden py-2 px-3"
                         value={item.justificativa?.[field] || ""}
-                        onChange={(e) => handleInputChange(item.id, field, e.target.value)}
-                        onFocus={() => setFocusedCell({ itemId: item.id, field })}
+                        onChange={(e) => {
+                          handleInputChange(item.id, field, e.target.value);
+                          // Auto-resize height
+                          e.target.style.height = 'auto';
+                          e.target.style.height = e.target.scrollHeight + 'px';
+                        }}
+                        onFocus={(e) => {
+                          setFocusedCell({ itemId: item.id, field });
+                          e.target.style.height = 'auto';
+                          e.target.style.height = e.target.scrollHeight + 'px';
+                        }}
                         onPaste={(e) => handlePaste(e, item.id, field)}
                         placeholder="..."
+                        rows={1}
                       />
                     </TableCell>
                   ))}
