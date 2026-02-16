@@ -355,23 +355,63 @@ const MaterialPermanenteForm = () => {
     };
 
     const handleEdit = (reg: any) => {
+        // 1. Definir IDs de controle
         setEditingId(reg.id);
         setActiveCompositionId(reg.id);
         
+        // 2. Popular dados da Seção 1
         const omFav = oms?.find(om => om.nome_om === reg.organizacao && om.codug_om === reg.ug);
-        setOmFavorecida({ nome: reg.organizacao, ug: reg.ug, id: omFav?.id || "" });
+        const omFavData = { nome: reg.organizacao, ug: reg.ug, id: omFav?.id || "" };
+        setOmFavorecida(omFavData);
         setFaseAtividade(reg.fase_atividade || "");
+        
+        // 3. Popular dados da Seção 2
         setEfetivo(reg.efetivo || 0);
         setDiasOperacao(reg.dias_operacao || 0);
         
         const omDest = oms?.find(om => om.nome_om === reg.om_detentora && om.codug_om === reg.ug_detentora);
-        setOmDestino({ nome: reg.om_detentora || "", ug: reg.ug_detentora || "", id: omDest?.id || "" });
+        const omDestData = { nome: reg.om_detentora || "", ug: reg.ug_detentora || "", id: omDest?.id || "" };
+        setOmDestino(omDestData);
 
         const details = reg.detalhes_planejamento;
-        setSelectedItems(details?.itens_selecionados || []);
+        const items = details?.itens_selecionados || [];
+        setSelectedItems(items);
         setHasEfetivo(details?.has_efetivo !== false);
 
-        handleAddToPending();
+        // 4. Construir e popular Seção 3 (Itens Adicionados) imediatamente
+        // Isso evita problemas com a atualização assíncrona do estado do React
+        const { totalGeral } = calculateMaterialPermanenteTotals(items);
+        
+        const newItem: PendingPermanenteItem = {
+            tempId: reg.id,
+            dbId: reg.id,
+            organizacao: reg.organizacao,
+            ug: reg.ug,
+            om_detentora: reg.om_detentora,
+            ug_detentora: reg.ug_detentora,
+            dias_operacao: reg.dias_operacao,
+            efetivo: reg.efetivo || 0,
+            fase_atividade: reg.fase_atividade,
+            categoria: reg.categoria,
+            detalhes_planejamento: details,
+            valor_total: totalGeral,
+            valor_nd_52: totalGeral,
+        };
+
+        setPendingItems([newItem]);
+
+        // 5. Sincronizar estado de "sujo" (dirty)
+        setLastStagedState({
+            omFavorecidaId: omFavData.id,
+            faseAtividade: reg.fase_atividade || "",
+            efetivo: reg.efetivo || 0,
+            hasEfetivo: details?.has_efetivo !== false,
+            diasOperacao: reg.dias_operacao,
+            omDestinoId: omDestData.id,
+            itemsKey: items.map((i: any) => `${i.id}-${i.quantidade}`).sort().join('|')
+        });
+
+        // 6. Scroll para o topo para iniciar a edição
         window.scrollTo({ top: 0, behavior: 'smooth' });
     };
 
