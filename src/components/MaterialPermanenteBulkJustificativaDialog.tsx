@@ -12,7 +12,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
-import { Table as TableIcon, Save, X, ClipboardPaste } from "lucide-react";
+import { Save, X, ClipboardPaste } from "lucide-react";
 import { ItemAquisicao } from "@/types/diretrizesMaterialConsumo";
 import { toast } from "sonner";
 
@@ -102,13 +102,12 @@ const MaterialPermanenteBulkJustificativaDialog = ({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-[95vw] w-full max-h-[90vh] overflow-hidden flex flex-col">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <TableIcon className="h-5 w-5 text-primary" />
+          <DialogTitle>
             Preenchimento Coletivo de Justificativas
           </DialogTitle>
           <DialogDescription className="flex items-center gap-2">
             <ClipboardPaste className="h-4 w-4 text-muted-foreground" />
-            Dica: Copie dados do Excel e cole em uma célula para preencher múltiplas linhas e colunas.
+            Copie e Cole os dados para preencher multiplas linhas e colunas.
           </DialogDescription>
         </DialogHeader>
 
