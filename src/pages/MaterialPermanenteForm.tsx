@@ -20,6 +20,7 @@ import {
     XCircle, 
     Pencil,
     ChevronDown,
+    ChevronUp,
     Calculator,
     Package,
     CheckCircle2,
@@ -54,6 +55,8 @@ import { Switch } from "@/components/ui/switch";
 import PageMetadata from "@/components/PageMetadata";
 import { useSession } from "@/components/SessionContextProvider";
 import MaterialPermanenteJustificativaDialog from "@/components/MaterialPermanenteJustificativaDialog";
+import { Collapsible, CollapsibleContent } from "@/components/ui/collapsible";
+import React from "react";
 
 interface PendingPermanenteItem {
     tempId: string;
@@ -113,6 +116,7 @@ const MaterialPermanenteForm = () => {
     // Estado para o diálogo de justificativa
     const [justificativaDialogOpen, setJustificativaDialogOpen] = useState(false);
     const [itemForJustificativa, setItemForJustificativa] = useState<ItemAquisicao | null>(null);
+    const [expandedJustifications, setExpandedJustifications] = useState<Record<string, boolean>>({});
 
     // --- DATA FETCHING ---
     const { data: ptrabData, isLoading: isLoadingPTrab } = useQuery<PTrabData>({
@@ -266,6 +270,7 @@ const MaterialPermanenteForm = () => {
         setFaseAtividade("");
         setEditingId(null);
         setActiveCompositionId(null);
+        setExpandedJustifications({});
     };
 
     const handleOmFavorecidaChange = (omData: any) => {
@@ -283,6 +288,17 @@ const MaterialPermanenteForm = () => {
 
         if (diasOperacao <= 0) {
             toast.warning("Informe o período da operação.");
+            return;
+        }
+
+        // Validação de justificativa obrigatória
+        const itemsWithoutJustification = selectedItems.filter(item => 
+            !item.justificativa || 
+            !Object.values(item.justificativa).some(v => v && v.toString().trim() !== "")
+        );
+
+        if (itemsWithoutJustification.length > 0) {
+            toast.error("Todos os itens devem possuir uma justificativa preenchida.");
             return;
         }
 
@@ -372,6 +388,10 @@ const MaterialPermanenteForm = () => {
         if (!itemForJustificativa) return;
         setSelectedItems(prev => prev.map(i => i.id === itemForJustificativa.id ? { ...i, justificativa: data } : i));
         toast.success("Justificativa salva para o item.");
+    };
+
+    const toggleJustification = (id: string) => {
+        setExpandedJustifications(prev => ({ ...prev, [id]: !prev[id] }));
     };
 
     if (isLoadingPTrab || isLoadingRegistros) return <div className="min-h-screen flex items-center justify-center"><Loader2 className="animate-spin" /></div>;
@@ -493,58 +513,94 @@ const MaterialPermanenteForm = () => {
                                                                 <TableHead>Descrição do Material</TableHead>
                                                                 <TableHead className="text-right w-[140px]">Valor Unitário</TableHead>
                                                                 <TableHead className="text-right w-[140px]">Total</TableHead>
-                                                                <TableHead className="w-[100px] text-center">Justificativa</TableHead>
+                                                                <TableHead className="w-[100px] text-center">Justificativa *</TableHead>
                                                                 <TableHead className="w-[100px] text-center">Ações</TableHead>
                                                             </TableRow>
                                                         </TableHeader>
                                                         <TableBody>
                                                             {selectedItems.map((item) => {
                                                                 const isJustified = !!(item.justificativa && Object.values(item.justificativa).some(v => v && v.toString().trim() !== ""));
+                                                                const isExpanded = expandedJustifications[item.id] || false;
                                                                 
                                                                 return (
-                                                                    <TableRow key={item.id}>
-                                                                        <TableCell>
-                                                                            <Input 
-                                                                                type="number" 
-                                                                                min={1} 
-                                                                                value={item.quantidade || ""} 
-                                                                                onChange={(e) => {
-                                                                                    const qty = parseInt(e.target.value) || 0;
-                                                                                    setSelectedItems(prev => prev.map(i => i.id === item.id ? { ...i, quantidade: qty } : i));
-                                                                                }} 
-                                                                                onWheel={(e) => e.currentTarget.blur()}
-                                                                                onKeyDown={(e) => (e.key === 'ArrowUp' || e.key === 'ArrowDown') && e.preventDefault()}
-                                                                                className="h-8 text-center [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" 
-                                                                            />
-                                                                        </TableCell>
-                                                                        <TableCell className="text-xs">
-                                                                            <p className="font-medium">{item.descricao_reduzida || item.descricao_item}</p>
-                                                                            <p className="text-muted-foreground text-[10px]">CATMAT: {item.codigo_catmat} | Pregão: {formatPregao(item.numero_pregao)}</p>
-                                                                        </TableCell>
-                                                                        <TableCell className="text-right text-xs text-muted-foreground">{formatCurrency(item.valor_unitario)}</TableCell>
-                                                                        <TableCell className="text-right text-sm font-bold">{formatCurrency((item.quantidade || 0) * item.valor_unitario)}</TableCell>
-                                                                        <TableCell className="text-center">
-                                                                            {isJustified ? (
-                                                                                <CheckCircle2 className="h-5 w-5 text-green-500 mx-auto" />
-                                                                            ) : (
-                                                                                <CircleX className="h-5 w-5 text-destructive mx-auto" />
-                                                                            )}
-                                                                        </TableCell>
-                                                                        <TableCell className="text-center">
-                                                                            <div className="flex items-center justify-center gap-1">
-                                                                                <Button 
-                                                                                    variant="ghost" 
-                                                                                    size="icon" 
-                                                                                    className={cn("h-7 w-7", isJustified ? "text-primary" : "text-muted-foreground")} 
-                                                                                    onClick={() => handleOpenJustificativa(item)}
-                                                                                    title="Justificativa da Aquisição"
-                                                                                >
-                                                                                    <FileText className="h-4 w-4" />
-                                                                                </Button>
-                                                                                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setSelectedItems(prev => prev.filter(i => i.id !== item.id))}><Trash2 className="h-4 w-4 text-destructive" /></Button>
-                                                                            </div>
-                                                                        </TableCell>
-                                                                    </TableRow>
+                                                                    <React.Fragment key={item.id}>
+                                                                        <TableRow>
+                                                                            <TableCell>
+                                                                                <Input 
+                                                                                    type="number" 
+                                                                                    min={1} 
+                                                                                    value={item.quantidade || ""} 
+                                                                                    onChange={(e) => {
+                                                                                        const qty = parseInt(e.target.value) || 0;
+                                                                                        setSelectedItems(prev => prev.map(i => i.id === item.id ? { ...i, quantidade: qty } : i));
+                                                                                    }} 
+                                                                                    onWheel={(e) => e.currentTarget.blur()}
+                                                                                    onKeyDown={(e) => (e.key === 'ArrowUp' || e.key === 'ArrowDown') && e.preventDefault()}
+                                                                                    className="h-8 text-center [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" 
+                                                                                />
+                                                                            </TableCell>
+                                                                            <TableCell className="text-xs">
+                                                                                <p className="font-medium">{item.descricao_reduzida || item.descricao_item}</p>
+                                                                                <p className="text-muted-foreground text-[10px]">CATMAT: {item.codigo_catmat} | Pregão: {formatPregao(item.numero_pregao)}</p>
+                                                                            </TableCell>
+                                                                            <TableCell className="text-right text-xs text-muted-foreground">{formatCurrency(item.valor_unitario)}</TableCell>
+                                                                            <TableCell className="text-right text-sm font-bold">{formatCurrency((item.quantidade || 0) * item.valor_unitario)}</TableCell>
+                                                                            <TableCell className="text-center">
+                                                                                <div className="flex flex-col items-center gap-1">
+                                                                                    {isJustified ? (
+                                                                                        <CheckCircle2 className="h-5 w-5 text-green-500 mx-auto" />
+                                                                                    ) : (
+                                                                                        <CircleX className="h-5 w-5 text-destructive mx-auto" />
+                                                                                    )}
+                                                                                    {isJustified && (
+                                                                                        <Button 
+                                                                                            variant="link" 
+                                                                                            size="sm" 
+                                                                                            className="h-auto p-0 text-[10px]"
+                                                                                            onClick={() => toggleJustification(item.id)}
+                                                                                        >
+                                                                                            {isExpanded ? "Ocultar" : "Ver Detalhes"}
+                                                                                        </Button>
+                                                                                    )}
+                                                                                </div>
+                                                                            </TableCell>
+                                                                            <TableCell className="text-center">
+                                                                                <div className="flex items-center justify-center gap-1">
+                                                                                    <Button 
+                                                                                        variant="ghost" 
+                                                                                        size="icon" 
+                                                                                        className={cn("h-7 w-7", isJustified ? "text-primary" : "text-muted-foreground")} 
+                                                                                        onClick={() => handleOpenJustificativa(item)}
+                                                                                        title="Justificativa da Aquisição"
+                                                                                    >
+                                                                                        <FileText className="h-4 w-4" />
+                                                                                    </Button>
+                                                                                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setSelectedItems(prev => prev.filter(i => i.id !== item.id))}><Trash2 className="h-4 w-4 text-destructive" /></Button>
+                                                                                </div>
+                                                                            </TableCell>
+                                                                        </TableRow>
+                                                                        {isJustified && (
+                                                                            <TableRow className="bg-muted/30">
+                                                                                <TableCell colSpan={6} className="p-0">
+                                                                                    <Collapsible open={isExpanded}>
+                                                                                        <CollapsibleContent className="p-3 space-y-2 text-[11px] border-t border-border/50 animate-in fade-in slide-in-from-top-1 duration-200">
+                                                                                            <div className="grid grid-cols-1 md:grid-cols-3 gap-x-4 gap-y-2">
+                                                                                                <div><span className="font-bold text-muted-foreground uppercase text-[9px]">Propósito:</span> <p>{item.justificativa?.proposito || 'N/A'}</p></div>
+                                                                                                <div><span className="font-bold text-muted-foreground uppercase text-[9px]">Destinação:</span> <p>{item.justificativa?.destinacao || 'N/A'}</p></div>
+                                                                                                <div><span className="font-bold text-muted-foreground uppercase text-[9px]">Local:</span> <p>{item.justificativa?.local || 'N/A'}</p></div>
+                                                                                                <div><span className="font-bold text-muted-foreground uppercase text-[9px]">Finalidade:</span> <p>{item.justificativa?.finalidade || 'N/A'}</p></div>
+                                                                                                <div><span className="font-bold text-muted-foreground uppercase text-[9px]">Período:</span> <p>{item.justificativa?.periodo || 'N/A'}</p></div>
+                                                                                            </div>
+                                                                                            <div className="pt-1 border-t border-border/30">
+                                                                                                <span className="font-bold text-muted-foreground uppercase text-[9px]">Motivo:</span>
+                                                                                                <p className="mt-0.5 italic">{item.justificativa?.motivo || 'N/A'}</p>
+                                                                                            </div>
+                                                                                        </CollapsibleContent>
+                                                                                    </Collapsible>
+                                                                                </TableCell>
+                                                                            </TableRow>
+                                                                        )}
+                                                                    </React.Fragment>
                                                                 );
                                                             })}
                                                         </TableBody>
