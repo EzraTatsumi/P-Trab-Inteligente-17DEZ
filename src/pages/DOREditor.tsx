@@ -325,7 +325,7 @@ const DOREditor = () => {
               <img 
                 src="/logo_md.png" 
                 alt="Ministério da Defesa" 
-                className="max-h-16 w-auto object-contain"
+                className="max-h-24 w-auto object-contain"
                 onError={(e: any) => {
                   e.target.src = "https://upload.wikimedia.org/wikipedia/commons/thumb/b/bf/Coat_of_arms_of_Brazil.svg/100px-Coat_of_arms_of_Brazil.svg.png";
                 }}
@@ -580,7 +580,7 @@ const DOREditor = () => {
               <div className="p-1 px-2">
                 <DocumentTextArea 
                   value={formData.consequencia}
-                  onChange={(e: any) => setFormData({...formData, consequencia: e.target.value})}
+                  onChange={(e: any) => setFormData({...formData, comsequencia: e.target.value})}
                   placeholder="- Possível inviabilidade de atuação da tropa nas atividades/tarefas/ações na Operação (COP 30) por ausência de suporte logístico."
                   style={bodyStyle}
                 />
