@@ -25,6 +25,13 @@ const PTrabMaterialPermanenteReport: React.FC<PTrabMaterialPermanenteReportProps
   const contentRef = useRef<HTMLDivElement>(null);
   const diasOperacao = useMemo(() => calculateDays(ptrabData.periodo_inicio, ptrabData.periodo_fim), [ptrabData]);
 
+  // Função auxiliar para concordância de gênero da OM
+  const getOmPrefix = (name: string) => {
+    const n = name.toUpperCase();
+    if (n.startsWith('CIA') || n.startsWith('COMPANHIA') || n.startsWith('BASE') || n.startsWith('REGIAO') || n.startsWith('BRIGADA') || n.startsWith('BDA')) return 'DA';
+    return 'DO';
+  };
+
   // Agrupamento de dados por OM/UG para subtotais
   const groupedData = useMemo(() => {
     const groups: { om: string, ug: string, items: any[], subtotal: number }[] = [];
@@ -90,8 +97,7 @@ const PTrabMaterialPermanenteReport: React.FC<PTrabMaterialPermanenteReportProps
     const rightStyle = { horizontal: 'right' as const, vertical: 'middle' as const, wrapText: true };
     const border = { top: { style: 'thin' as const }, left: { style: 'thin' as const }, bottom: { style: 'thin' as const }, right: { style: 'thin' as const } };
     const headerFill = { type: 'pattern' as const, pattern: 'solid' as const, fgColor: { argb: 'FFD9D9D9' } };
-    const darkGrayFill = { type: 'pattern' as const, pattern: 'solid' as const, fgColor: { argb: 'FFA6A6A6' } };
-    const blueFill = { type: 'pattern' as const, pattern: 'solid' as const, fgColor: { argb: 'FFBDD7EE' } };
+    const blueFill = { type: 'pattern' as const, pattern: 'solid' as const, fgColor: { argb: 'FF6D9EEB' } };
     const valueFill = { type: 'pattern' as const, pattern: 'solid' as const, fgColor: { argb: 'FFE2EFDA' } };
 
     let curr = 1;
@@ -189,7 +195,7 @@ const PTrabMaterialPermanenteReport: React.FC<PTrabMaterialPermanenteReportProps
         const cell = sRow.getCell(c);
         cell.border = border;
         cell.font = { bold: true, size: 8 };
-        if (c === 'A' || c === 'B' || c === 'E') cell.fill = darkGrayFill;
+        if (c === 'A' || c === 'B' || c === 'E') cell.fill = headerFill;
         if (c === 'C' || c === 'D') {
           cell.fill = blueFill;
           cell.numFmt = 'R$ #,##0.00';
@@ -200,18 +206,18 @@ const PTrabMaterialPermanenteReport: React.FC<PTrabMaterialPermanenteReportProps
       });
       curr++;
 
-      // Linha 2: VALOR TOTAL do [OM]
+      // Linha 2: VALOR DO/DA [OM]
       const vRow = worksheet.getRow(curr);
-      vRow.getCell('A').value = `VALOR TOTAL do ${group.om}`;
-      worksheet.mergeCells(`A${curr}:B${curr}`);
-      vRow.getCell('C').value = group.subtotal;
+      vRow.getCell('A').value = `VALOR ${getOmPrefix(group.om)} ${group.om}`;
+      worksheet.mergeCells(`A${curr}:C${curr}`);
+      vRow.getCell('D').value = group.subtotal;
       
       ['A', 'B', 'C', 'D', 'E'].forEach(c => {
         const cell = vRow.getCell(c);
         cell.border = border;
         cell.font = { bold: true, size: 8 };
-        if (c === 'A' || c === 'B' || c === 'D' || c === 'E') cell.fill = darkGrayFill;
-        if (c === 'C') {
+        if (c === 'A' || c === 'B' || c === 'C' || c === 'E') cell.fill = headerFill;
+        if (c === 'D') {
           cell.numFmt = 'R$ #,##0.00';
           cell.alignment = centerStyle;
         } else {
@@ -230,15 +236,15 @@ const PTrabMaterialPermanenteReport: React.FC<PTrabMaterialPermanenteReportProps
 
     const tRow = worksheet.getRow(curr);
     tRow.getCell('A').value = 'VALOR TOTAL';
-    worksheet.mergeCells(`A${curr}:B${curr}`);
-    tRow.getCell('C').value = totalGeral;
+    worksheet.mergeCells(`A${curr}:C${curr}`);
+    tRow.getCell('D').value = totalGeral;
     
     ['A', 'B', 'C', 'D', 'E'].forEach(c => {
       const cell = tRow.getCell(c);
       cell.border = border;
       cell.font = { bold: true, size: 10 };
-      if (c === 'A' || c === 'B' || c === 'D' || c === 'E') cell.fill = darkGrayFill;
-      if (c === 'C') {
+      if (c === 'A' || c === 'B' || c === 'C' || c === 'E') cell.fill = headerFill;
+      if (c === 'D') {
         cell.numFmt = 'R$ #,##0.00';
         cell.alignment = centerStyle;
       } else {
@@ -248,18 +254,18 @@ const PTrabMaterialPermanenteReport: React.FC<PTrabMaterialPermanenteReportProps
     curr++;
 
     const gndRow = worksheet.getRow(curr);
-    gndRow.getCell('C').value = 'GND - 4';
-    gndRow.getCell('C').alignment = centerStyle;
-    gndRow.getCell('C').border = border;
-    gndRow.getCell('C').font = { size: 8 };
+    gndRow.getCell('D').value = 'GND - 4';
+    gndRow.getCell('D').alignment = centerStyle;
+    gndRow.getCell('D').border = border;
+    gndRow.getCell('D').font = { size: 8 };
     curr++;
 
     const valRow = worksheet.getRow(curr);
-    valRow.getCell('C').value = totalGeral;
-    valRow.getCell('C').numFmt = 'R$ #,##0.00';
-    valRow.getCell('C').alignment = centerStyle;
-    valRow.getCell('C').border = border;
-    valRow.getCell('C').font = { bold: true, size: 9 };
+    valRow.getCell('D').value = totalGeral;
+    valRow.getCell('D').numFmt = 'R$ #,##0.00';
+    valRow.getCell('D').alignment = centerStyle;
+    valRow.getCell('D').border = border;
+    valRow.getCell('D').font = { bold: true, size: 9 };
 
     const buffer = await workbook.xlsx.writeBuffer();
     const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
@@ -327,17 +333,16 @@ const PTrabMaterialPermanenteReport: React.FC<PTrabMaterialPermanenteReportProps
                 ))}
                 {/* Linha 1: SOMA POR ND E GP DE DESPESA */}
                 <tr className="font-bold">
-                  <td colSpan={2} className="border border-black p-1 text-right bg-[#A6A6A6]">SOMA POR ND E GP DE DESPESA</td>
-                  <td className="border border-black p-1 text-center bg-[#BDD7EE]">{formatCurrency(group.subtotal)}</td>
-                  <td className="border border-black p-1 text-center bg-[#BDD7EE]">{formatCurrency(group.subtotal)}</td>
-                  <td className="border border-black p-1 bg-[#A6A6A6]"></td>
+                  <td colSpan={2} className="border border-black p-1 text-right bg-[#D9D9D9]">SOMA POR ND E GP DE DESPESA</td>
+                  <td className="border border-black p-1 text-center bg-[#6D9EEB]">{formatCurrency(group.subtotal)}</td>
+                  <td className="border border-black p-1 text-center bg-[#6D9EEB]">{formatCurrency(group.subtotal)}</td>
+                  <td className="border border-black p-1 bg-[#D9D9D9]"></td>
                 </tr>
-                {/* Linha 2: VALOR TOTAL do [OM] */}
+                {/* Linha 2: VALOR DO/DA [OM] */}
                 <tr className="font-bold">
-                  <td colSpan={2} className="border border-black p-1 text-right bg-[#A6A6A6]">VALOR TOTAL do {group.om}</td>
+                  <td colSpan={3} className="border border-black p-1 text-right bg-[#D9D9D9]">VALOR {getOmPrefix(group.om)} {group.om}</td>
                   <td className="border border-black p-1 text-center bg-white">{formatCurrency(group.subtotal)}</td>
-                  <td className="border border-black p-1 bg-[#A6A6A6]"></td>
-                  <td className="border border-black p-1 bg-[#A6A6A6]"></td>
+                  <td className="border border-black p-1 bg-[#D9D9D9]"></td>
                 </tr>
                 {/* Linha em branco para separar OMs */}
                 {gIdx < groupedData.length - 1 && (
@@ -355,20 +360,19 @@ const PTrabMaterialPermanenteReport: React.FC<PTrabMaterialPermanenteReportProps
 
             {/* Bloco de Total Geral Final */}
             <tr className="font-bold">
-              <td colSpan={2} className="border border-black p-1 text-right bg-[#A6A6A6]">VALOR TOTAL</td>
+              <td colSpan={3} className="border border-black p-1 text-right bg-[#D9D9D9]">VALOR TOTAL</td>
               <td className="border border-black p-1 text-center bg-white">{formatCurrency(totalGeral)}</td>
-              <td className="border border-black p-1 bg-[#A6A6A6]"></td>
-              <td className="border border-black p-1 bg-[#A6A6A6]"></td>
+              <td className="border border-black p-1 bg-[#D9D9D9]"></td>
             </tr>
             <tr>
-              <td colSpan={2} className="border-0"></td>
+              <td colSpan={3} className="border-0"></td>
               <td className="border border-black p-1 text-center text-[7pt]">GND - 4</td>
-              <td colSpan={2} className="border-0"></td>
+              <td className="border border-black p-1 border-0"></td>
             </tr>
             <tr>
-              <td colSpan={2} className="border-0"></td>
+              <td colSpan={3} className="border-0"></td>
               <td className="border border-black p-1 text-center font-bold">{formatCurrency(totalGeral)}</td>
-              <td colSpan={2} className="border-0"></td>
+              <td className="border border-black p-1 border-0"></td>
             </tr>
           </tbody>
         </table>
