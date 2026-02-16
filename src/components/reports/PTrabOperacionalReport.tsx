@@ -370,12 +370,12 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
         const cat = servico.categoria;
         
         if (cat === 'transporte-coletivo') {
-            return 'LOCAÇÃO DE VEÍCULOS (Transporte Coletivo)';
+            return 'LOCAÇÃO DE VEÍCULOS\n(Transporte Coletivo)';
         }
         
         if (cat === 'locacao-veiculos') {
             const groupName = servico.group_name || details?.group_name || 'Geral';
-            return `LOCAÇÃO DE VEÍCULOS (${toTitleCase(groupName)})`;
+            return `LOCAÇÃO DE VEÍCULOS\n(${toTitleCase(groupName)})`;
         }
         
         if (cat === 'outros' && details?.nome_servico_outros) {
