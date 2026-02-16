@@ -143,7 +143,7 @@ const MaterialPermanenteForm = () => {
         enabled: !!user?.id
     });
 
-    // Lógica de ano: Prioriza o ano padrão do perfil (2026) conforme solicitado
+    // Lógica de ano
     const selectedYear = useMemo(() => {
         if (profile?.default_logistica_year) return profile.default_logistica_year;
         if (profile?.default_operacional_year) return profile.default_operacional_year;
@@ -185,6 +185,11 @@ const MaterialPermanenteForm = () => {
         }, {} as Record<string, ConsolidatedPermanenteRecord>);
 
         return Object.values(groups).sort((a, b) => a.organizacao.localeCompare(b.organizacao));
+    }, [registros]);
+
+    const sortedRegistrosForMemoria = useMemo(() => {
+        if (!registros) return [];
+        return [...registros].sort((a, b) => a.organizacao.localeCompare(b.organizacao));
     }, [registros]);
 
     // --- CÁLCULOS ---
@@ -704,42 +709,72 @@ const MaterialPermanenteForm = () => {
                                 </section>
                             )}
 
-                            {/* SEÇÃO 4: REGISTROS SALVOS */}
-                            {consolidatedRegistros.length > 0 && (
+                            {/* SEÇÃO 4: REGISTROS SALVOS (CONSOLIDADO) */}
+                            {consolidatedRegistros && consolidatedRegistros.length > 0 && (
                                 <section className="space-y-4 border-b pb-6">
-                                    <h3 className="text-xl font-bold flex items-center gap-2"><Sparkles className="h-5 w-5 text-accent" /> OMs Cadastradas ({consolidatedRegistros.length})</h3>
+                                    <h3 className="text-xl font-bold flex items-center gap-2">
+                                        <Sparkles className="h-5 w-5 text-accent" />
+                                        OMs Cadastradas ({consolidatedRegistros.length})
+                                    </h3>
                                     {consolidatedRegistros.map((group) => (
                                         <Card key={group.groupKey} className="p-4 bg-primary/5 border-primary/20">
                                             <div className="flex items-center justify-between mb-3 border-b pb-2">
-                                                <h3 className="font-bold text-lg text-primary">{group.organizacao} (UG: {formatCodug(group.ug)})</h3>
+                                                <h3 className="font-bold text-lg text-primary flex items-center gap-2">
+                                                    {group.organizacao} (UG: {formatCodug(group.ug)})
+                                                </h3>
                                                 <span className="font-extrabold text-xl text-primary">{formatCurrency(group.totalGeral)}</span>
                                             </div>
                                             <div className="space-y-3">
-                                                {group.records.map((reg) => (
-                                                    <Card key={reg.id} className="p-3 bg-background border">
-                                                        <div className="flex items-center justify-between">
-                                                            <div>
-                                                                <h4 className="font-semibold text-base flex items-center gap-2">Material Permanente <Badge variant="outline">{reg.fase_atividade}</Badge></h4>
-                                                                <p className="text-xs text-muted-foreground">Período: {reg.dias_operacao} dias | Valor ND 52: {formatCurrency(Number(reg.valor_nd_52))}</p>
+                                                {group.records.map((reg) => {
+                                                    const isDifferentOm = reg.om_detentora?.trim() !== reg.organizacao?.trim();
+                                                    const totalQty = reg.detalhes_planejamento?.itens_selecionados?.reduce((acc: number, i: any) => acc + (i.quantidade || 0), 0) || 0;
+
+                                                    return (
+                                                        <Card key={reg.id} className="p-3 bg-background border">
+                                                            <div className="flex items-center justify-between">
+                                                                <div className="flex flex-col">
+                                                                    <h4 className="font-semibold text-base text-foreground flex items-center gap-2">
+                                                                        Aquisição de Material Permanente
+                                                                        <Badge variant="outline" className="text-xs font-semibold">{reg.fase_atividade}</Badge>
+                                                                    </h4>
+                                                                    <p className="text-xs text-muted-foreground">
+                                                                        Período: {reg.dias_operacao} {reg.dias_operacao === 1 ? 'dia' : 'dias'} | Qtd: {totalQty} un
+                                                                    </p>
+                                                                </div>
+                                                                <div className="flex items-center gap-2">
+                                                                    <span className="font-extrabold text-xl text-foreground">{formatCurrency(Number(reg.valor_total))}</span>
+                                                                    <div className="flex gap-1 shrink-0">
+                                                                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleEdit(reg)} disabled={!isPTrabEditable || pendingItems.length > 0}><Pencil className="h-4 w-4" /></Button>
+                                                                        <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:bg-destructive/10" onClick={() => { setRecordToDelete(reg); setShowDeleteDialog(true); }} disabled={!isPTrabEditable}><Trash2 className="h-4 w-4" /></Button>
+                                                                    </div>
+                                                                </div>
                                                             </div>
-                                                            <div className="flex gap-1">
-                                                                <Button variant="ghost" size="icon" onClick={() => handleEdit(reg)} disabled={!isPTrabEditable || pendingItems.length > 0}><Pencil className="h-4 w-4" /></Button>
-                                                                <Button variant="ghost" size="icon" className="text-destructive" onClick={() => { setRecordToDelete(reg); setShowDeleteDialog(true); }} disabled={!isPTrabEditable}><Trash2 className="h-4 w-4" /></Button>
+                                                            <div className="pt-2 border-t mt-2">
+                                                                <div className="flex justify-between text-xs">
+                                                                    <span className="text-muted-foreground">OM Destino Recurso:</span>
+                                                                    <span className={cn("font-medium", isDifferentOm && "text-red-600")}>{reg.om_detentora} ({formatCodug(reg.ug_detentora || '')})</span>
+                                                                </div>
+                                                                {Number(reg.valor_nd_52) > 0 && (
+                                                                    <div className="flex justify-between text-xs">
+                                                                        <span className="text-muted-foreground">ND 44.90.52:</span>
+                                                                        <span className="text-green-600 font-medium">{formatCurrency(Number(reg.valor_nd_52))}</span>
+                                                                    </div>
+                                                                )}
                                                             </div>
-                                                        </div>
-                                                    </Card>
-                                                ))}
+                                                        </Card>
+                                                    );
+                                                })}
                                             </div>
                                         </Card>
                                     ))}
                                 </section>
                             )}
 
-                            {/* SEÇÃO 5: MEMÓRIAS */}
-                            {registros && registros.length > 0 && (
+                            {/* SEÇÃO 5: MEMÓRIAS DE CÁLCULO */}
+                            {sortedRegistrosForMemoria && sortedRegistrosForMemoria.length > 0 && (
                                 <section className="space-y-4 mt-8">
                                     <h3 className="text-xl font-bold flex items-center gap-2">📋 Memórias de Cálculos Detalhadas</h3>
-                                    {registros.map(reg => (
+                                    {sortedRegistrosForMemoria.map(reg => (
                                         <MaterialPermanenteMemoria 
                                             key={`mem-${reg.id}`}
                                             registro={reg}
