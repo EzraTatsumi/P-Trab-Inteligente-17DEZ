@@ -1,90 +1,264 @@
-import React from 'react';
-import { PTrabData, MaterialPermanenteRegistro } from '@/pages/PTrabReportManager';
-import { formatCurrency, formatNumber, calculateDays, formatDate } from '@/lib/formatUtils';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import React, { useState, useCallback, useRef, useMemo } from "react";
+import jsPDF from 'jspdf';
+import html2canvas from 'html2canvas';
+import ExcelJS from 'exceljs';
+import { useToast } from "@/hooks/use-toast";
+import { formatCurrency, formatNumber, formatDateDDMMMAA, formatCodug, formatDate, calculateDays } from "@/lib/formatUtils";
+import { FileSpreadsheet, Printer, Download, HardHat, Loader2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { PTrabData, MaterialPermanenteRegistro } from "@/pages/PTrabReportManager";
+import { generateMaterialPermanenteMemoriaCalculo } from "@/lib/materialPermanenteUtils";
 
 interface PTrabMaterialPermanenteReportProps {
-    ptrabData: PTrabData;
-    registrosMaterialPermanente: MaterialPermanenteRegistro[];
-    fileSuffix: string;
+  ptrabData: PTrabData;
+  registrosMaterialPermanente: MaterialPermanenteRegistro[];
+  fileSuffix: string;
 }
 
 const PTrabMaterialPermanenteReport: React.FC<PTrabMaterialPermanenteReportProps> = ({
-    ptrabData,
-    registrosMaterialPermanente,
+  ptrabData,
+  registrosMaterialPermanente,
+  fileSuffix,
 }) => {
-    const totalGeral = registrosMaterialPermanente.reduce((acc, r) => acc + (r.valor_total || 0), 0);
+  const { toast } = useToast();
+  const contentRef = useRef<HTMLDivElement>(null);
+  const diasOperacao = useMemo(() => calculateDays(ptrabData.periodo_inicio, ptrabData.periodo_fim), [ptrabData]);
 
-    return (
-        <div className="bg-white p-8 text-black font-serif max-w-[21cm] mx-auto shadow-sm print:shadow-none print:p-0">
-            {/* Cabeçalho com espaçamento reduzido */}
-            <div className="text-center uppercase font-bold text-[12pt] leading-tight space-y-0.5 mb-8">
-                <p>MINISTÉRIO DA DEFESA</p>
-                <p>EXÉRCITO BRASILEIRO</p>
-                <p>{ptrabData.comando_militar_area}</p>
-                <p>{ptrabData.nome_om_extenso || ptrabData.nome_om}</p>
-                
-                {/* Linhas de título ajustadas */}
-                <div className="pt-4 space-y-1">
-                    <p className="text-[11pt]">
-                        PLANO DE TRABALHO LOGÍSTICO DE SOLICITAÇÃO DE RECURSOS ORÇAMENTÁRIOS E FINANCEIROS OPERAÇÃO {ptrabData.nome_operacao}
-                    </p>
-                    <p className="text-[11pt] underline underline-offset-4">
-                        PLANO DE TRABALHO DE MATERIAL PERMANENTE
-                    </p>
-                </div>
-            </div>
+  // Consolidação de itens para a tabela
+  const rows = useMemo(() => {
+    const allRows: any[] = [];
+    registrosMaterialPermanente.forEach(reg => {
+      const items = (reg.detalhes_planejamento as any)?.items || [];
+      items.forEach((item: any) => {
+        allRows.push({
+          itemNome: item.descricao_reduzida || item.descricao_item,
+          organizacao: reg.organizacao,
+          ug: reg.ug,
+          valor: item.valor_unitario * (item.quantidade || 1),
+          memoria: reg.detalhamento_customizado || generateMaterialPermanenteMemoriaCalculo(reg, { itemEspecifico: item })
+        });
+      });
+    });
+    return allRows;
+  }, [registrosMaterialPermanente]);
 
-            {/* Dados da Operação */}
-            <div className="space-y-2 mb-6 text-[11pt]">
-                <p><strong>1. NOME DA OPERAÇÃO:</strong> {ptrabData.nome_operacao}</p>
-                <p>
-                    <strong>2. PERÍODO:</strong> de {formatDate(ptrabData.periodo_inicio)} a {formatDate(ptrabData.periodo_fim)} - 
-                    Nr Dias: {calculateDays(ptrabData.periodo_inicio, ptrabData.periodo_fim)}
-                </p>
-                <p><strong>3. EFETIVO EMPREGADO:</strong> {ptrabData.efetivo_empregado}</p>
-                <p><strong>4. AÇÕES REALIZADAS OU A REALIZAR:</strong> {ptrabData.acoes}</p>
-                <p><strong>5. DESPESAS DE MATERIAL PERMANENTE REALIZADAS OU A REALIZAR:</strong></p>
-            </div>
+  const totalGeral = useMemo(() => rows.reduce((acc, row) => acc + row.valor, 0), [rows]);
 
-            {/* Tabela de Registros */}
-            <div className="border rounded-md overflow-hidden mb-8">
-                <Table>
-                    <TableHeader>
-                        <TableRow className="bg-muted/20 hover:bg-muted/20 border-b-2 border-black">
-                            <TableHead className="text-black font-bold text-center border-r">OM / UG</TableHead>
-                            <TableHead className="text-black font-bold text-center border-r">Categoria</TableHead>
-                            <TableHead className="text-black font-bold text-center border-r">Fase</TableHead>
-                            <TableHead className="text-black font-bold text-right">Valor Total (ND 52)</TableHead>
-                        </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                        {registrosMaterialPermanente.map((reg) => (
-                            <TableRow key={reg.id} className="border-b border-black/20 hover:bg-transparent">
-                                <TableCell className="text-center border-r py-2">
-                                    <div className="font-bold">{reg.organizacao}</div>
-                                    <div className="text-xs text-muted-foreground">{reg.ug}</div>
-                                </TableCell>
-                                <TableCell className="text-center border-r py-2">{reg.categoria}</TableCell>
-                                <TableCell className="text-center border-r py-2">{reg.fase_atividade || '-'}</TableCell>
-                                <TableCell className="text-right font-bold py-2">{formatCurrency(reg.valor_total || 0)}</TableCell>
-                            </TableRow>
-                        ))}
-                        <TableRow className="bg-muted/10 hover:bg-muted/10 font-bold border-t-2 border-black">
-                            <TableCell colSpan={3} className="text-right uppercase py-3">Total Geral Material Permanente:</TableCell>
-                            <TableCell className="text-right text-lg py-3">{formatCurrency(totalGeral)}</TableCell>
-                        </TableRow>
-                    </TableBody>
-                </Table>
-            </div>
+  const generateFileName = (reportType: 'PDF' | 'Excel') => {
+    const dataAtz = formatDateDDMMMAA(ptrabData.updated_at);
+    const numeroPTrab = ptrabData.numero_ptrab.replace(/\//g, '-');
+    return `P Trab Nr ${numeroPTrab} - ${ptrabData.nome_operacao} - ${fileSuffix}.${reportType === 'PDF' ? 'pdf' : 'xlsx'}`;
+  };
 
-            {/* Assinatura */}
-            <div className="mt-16 text-center space-y-1 max-w-[300px] mx-auto border-t border-black pt-2">
-                <p className="font-bold uppercase">{ptrabData.nome_cmt_om}</p>
-                <p className="text-sm">Comandante da OM</p>
-            </div>
+  const exportPDF = useCallback(() => {
+    if (!contentRef.current) return;
+    const pdfToast = toast({ title: "Gerando PDF...", description: "Aguarde enquanto o relatório é processado." });
+    
+    html2canvas(contentRef.current, { scale: 3, useCORS: true }).then((canvas) => {
+      const imgData = canvas.toDataURL('image/jpeg', 1.0);
+      const pdf = new jsPDF('l', 'mm', 'a4');
+      const pdfWidth = 297;
+      const pdfHeight = 210;
+      const margin = 5;
+      const imgWidth = pdfWidth - 2 * margin;
+      const imgHeight = (canvas.height * imgWidth) / canvas.width;
+      
+      pdf.addImage(imgData, 'JPEG', margin, margin, imgWidth, imgHeight);
+      pdf.save(generateFileName('PDF'));
+      pdfToast.dismiss();
+      toast({ title: "PDF Exportado!" });
+    });
+  }, [ptrabData, fileSuffix, toast]);
+
+  const exportExcel = useCallback(async () => {
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet('Material Permanente');
+    
+    // Configurações de Estilo
+    const centerStyle = { horizontal: 'center' as const, vertical: 'middle' as const, wrapText: true };
+    const border = { top: { style: 'thin' as const }, left: { style: 'thin' as const }, bottom: { style: 'thin' as const }, right: { style: 'thin' as const } };
+    const headerFill = { type: 'pattern' as const, pattern: 'solid' as const, fgColor: { argb: 'FFD9D9D9' } };
+    const valueFill = { type: 'pattern' as const, pattern: 'solid' as const, fgColor: { argb: 'FFB4C7E7' } };
+
+    let curr = 1;
+    const addTitle = (text: string, bold = true, underline = false) => {
+      const row = worksheet.getRow(curr);
+      row.getCell(1).value = text;
+      row.getCell(1).font = { name: 'Arial', size: 11, bold, underline };
+      row.getCell(1).alignment = centerStyle;
+      worksheet.mergeCells(`A${curr}:E${curr}`);
+      curr++;
+    };
+
+    addTitle('MINISTÉRIO DA DEFESA');
+    addTitle('EXÉRCITO BRASILEIRO');
+    addTitle(ptrabData.comando_militar_area.toUpperCase());
+    addTitle((ptrabData.nome_om_extenso || ptrabData.nome_om).toUpperCase());
+    addTitle(`PLANO DE TRABALHO LOGÍSTICO DE SOLICITAÇÃO DE RECURSOS ORÇAMENTÁRIOS E FINANCEIROS OPERAÇÃO ${ptrabData.nome_operacao.toUpperCase()}`);
+    addTitle('PLANO DE TRABALHO DE MATERIAL PERMANENTE', true, true);
+    curr++;
+
+    // Info
+    const addInfo = (label: string, val: string) => {
+      const row = worksheet.getRow(curr);
+      row.getCell(1).value = { richText: [{ text: label, font: { bold: true, size: 9 } }, { text: ` ${val}`, font: { size: 9 } }] };
+      worksheet.mergeCells(`A${curr}:E${curr}`);
+      curr++;
+    };
+    addInfo('1. NOME DA OPERAÇÃO:', ptrabData.nome_operacao);
+    addInfo('2. PERÍODO:', `de ${formatDate(ptrabData.periodo_inicio)} a ${formatDate(ptrabData.periodo_fim)} - Nr Dias: ${diasOperacao}`);
+    addInfo('3. EFETIVO EMPREGADO:', ptrabData.efetivo_empregado);
+    addInfo('4. AÇÕES REALIZADAS OU A REALIZAR:', ptrabData.acoes);
+    addInfo('5. DESPESAS DE MATERIAL PERMANENTE REALIZADAS OU A REALIZAR:', '');
+
+    // Header Tabela
+    const h1 = worksheet.getRow(curr);
+    const h2 = worksheet.getRow(curr + 1);
+    const cols = ['A', 'B', 'C', 'D', 'E'];
+    
+    h1.getCell('A').value = 'DESPESAS';
+    h1.getCell('B').value = 'OM (UGE)\nCODUG';
+    h1.getCell('C').value = '44.90.52';
+    h1.getCell('D').value = 'GND 4';
+    h1.getCell('E').value = 'DETALHAMENTO / MEMÓRIA DE CÁLCULO';
+
+    cols.forEach(c => {
+      h1.getCell(c).fill = headerFill;
+      h1.getCell(c).border = border;
+      h1.getCell(c).alignment = centerStyle;
+      h1.getCell(c).font = { bold: true, size: 9 };
+    });
+
+    worksheet.columns = [{ width: 25 }, { width: 20 }, { width: 15 }, { width: 15 }, { width: 60 }];
+    curr++;
+
+    // Dados
+    rows.forEach(r => {
+      const row = worksheet.getRow(curr);
+      row.getCell('A').value = r.itemNome.toUpperCase();
+      row.getCell('B').value = `${r.organizacao}\n(${formatCodug(r.ug)})`;
+      row.getCell('C').value = r.valor;
+      row.getCell('D').value = r.valor;
+      row.getCell('E').value = r.memoria;
+
+      ['C', 'D'].forEach(c => {
+        row.getCell(c).numFmt = 'R$ #,##0.00';
+        row.getCell(c).fill = valueFill;
+      });
+
+      cols.forEach(c => {
+        row.getCell(c).border = border;
+        row.getCell(c).alignment = c === 'E' ? { vertical: 'top', wrapText: true } : centerStyle;
+        row.getCell(c).font = { size: 8 };
+      });
+      curr++;
+    });
+
+    // Totais
+    const tRow = worksheet.getRow(curr);
+    tRow.getCell('A').value = 'SOMA POR ND E GP DE DESPESA';
+    worksheet.mergeCells(`A${curr}:B${curr}`);
+    tRow.getCell('C').value = totalGeral;
+    tRow.getCell('D').value = totalGeral;
+    ['A', 'B', 'C', 'D', 'E'].forEach(c => {
+      tRow.getCell(c).fill = headerFill;
+      tRow.getCell(c).border = border;
+      tRow.getCell(c).font = { bold: true, size: 9 };
+      if (c === 'C' || c === 'D') tRow.getCell(c).numFmt = 'R$ #,##0.00';
+    });
+    curr++;
+
+    const fRow = worksheet.getRow(curr);
+    fRow.getCell('A').value = 'VALOR TOTAL';
+    worksheet.mergeCells(`A${curr}:B${curr}`);
+    fRow.getCell('C').value = totalGeral;
+    worksheet.mergeCells(`C${curr}:D${curr}`);
+    ['A', 'B', 'C', 'D', 'E'].forEach(c => {
+      fRow.getCell(c).fill = headerFill;
+      fRow.getCell(c).border = border;
+      fRow.getCell(c).font = { bold: true, size: 10 };
+      if (c === 'C') fRow.getCell(c).numFmt = 'R$ #,##0.00';
+    });
+
+    const buffer = await workbook.xlsx.writeBuffer();
+    const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = generateFileName('Excel'); a.click();
+    toast({ title: "Excel Exportado!" });
+  }, [ptrabData, rows, totalGeral, diasOperacao, fileSuffix, toast]);
+
+  return (
+    <div className="space-y-4">
+      <div className="flex justify-end gap-2 print:hidden">
+        <Button onClick={exportPDF} variant="outline"><Download className="mr-2 h-4 w-4" />PDF</Button>
+        <Button onClick={exportExcel} variant="outline"><FileSpreadsheet className="mr-2 h-4 w-4" />Excel</Button>
+        <Button onClick={() => window.print()} variant="default"><Printer className="mr-2 h-4 w-4" />Imprimir</Button>
+      </div>
+
+      <div ref={contentRef} className="bg-white shadow-xl print:shadow-none" style={{ padding: '0.5cm', minHeight: '29.7cm' }}>
+        <div className="text-center uppercase font-bold text-[11pt] leading-tight space-y-0.5 mb-6">
+          <p>Ministério da Defesa</p>
+          <p>Exército Brasileiro</p>
+          <p>{ptrabData.comando_militar_area}</p>
+          <p>{ptrabData.nome_om_extenso || ptrabData.nome_om}</p>
+          <p className="mt-4">PLANO DE TRABALHO LOGÍSTICO DE SOLICITAÇÃO DE RECURSOS ORÇAMENTÁRIOS E FINANCEIROS OPERAÇÃO {ptrabData.nome_operacao}</p>
+          <p className="underline underline-offset-4">PLANO DE TRABALHO DE MATERIAL PERMANENTE</p>
         </div>
-    );
+
+        <div className="text-[10pt] space-y-1 mb-4">
+          <p><strong>1. NOME DA OPERAÇÃO:</strong> {ptrabData.nome_operacao}</p>
+          <p><strong>2. PERÍODO:</strong> de {formatDate(ptrabData.periodo_inicio)} a {formatDate(ptrabData.periodo_fim)} - Nr Dias: {diasOperacao}</p>
+          <p><strong>3. EFETIVO EMPREGADO:</strong> {ptrabData.efetivo_empregado}</p>
+          <p><strong>4. AÇÕES REALIZADAS OU A REALIZAR:</strong> {ptrabData.acoes}</p>
+          <p><strong>5. DESPESAS DE MATERIAL PERMANENTE REALIZADAS OU A REALIZAR:</strong></p>
+        </div>
+
+        <table className="w-full border-collapse border border-black text-[8pt]">
+          <thead>
+            <tr className="bg-[#D9D9D9] font-bold text-center">
+              <th className="border border-black p-1 w-[20%]">DESPESAS</th>
+              <th className="border border-black p-1 w-[15%]">OM (UGE)<br/>CODUG</th>
+              <th className="border border-black p-1 w-[12%]">44.90.52</th>
+              <th className="border border-black p-1 w-[12%]">GND 4</th>
+              <th className="border border-black p-1">DETALHAMENTO / MEMÓRIA DE CÁLCULO</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((r, i) => (
+              <tr key={i}>
+                <td className="border border-black p-1 font-bold">{r.itemNome.toUpperCase()}</td>
+                <td className="border border-black p-1 text-center">{r.organizacao}<br/>({formatCodug(r.ug)})</td>
+                <td className="border border-black p-1 text-center bg-[#B4C7E7]">{formatCurrency(r.valor)}</td>
+                <td className="border border-black p-1 text-center bg-[#B4C7E7]">{formatCurrency(r.valor)}</td>
+                <td className="border border-black p-1 whitespace-pre-wrap text-[7pt]">{r.memoria}</td>
+              </tr>
+            ))}
+            <tr className="bg-[#D9D9D9] font-bold">
+              <td colSpan={2} className="border border-black p-1 text-right">SOMA POR ND E GP DE DESPESA</td>
+              <td className="border border-black p-1 text-center">{formatCurrency(totalGeral)}</td>
+              <td className="border border-black p-1 text-center">{formatCurrency(totalGeral)}</td>
+              <td className="border border-black p-1"></td>
+            </tr>
+            <tr className="bg-[#D9D9D9] font-bold">
+              <td colSpan={2} className="border border-black p-1 text-right">VALOR TOTAL</td>
+              <td colSpan={2} className="border border-black p-1 text-center">{formatCurrency(totalGeral)}</td>
+              <td className="border border-black p-1"></td>
+            </tr>
+          </tbody>
+        </table>
+
+        <div className="mt-12 text-center">
+          <p className="text-[10pt]">{ptrabData.local_om || 'Local'}, {new Date().toLocaleDateString('pt-BR', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
+          <div className="mt-16 inline-block border-t border-black pt-1 px-8">
+            <p className="text-[10pt] font-bold uppercase">{ptrabData.nome_cmt_om}</p>
+            <p className="text-[9pt]">Comandante da {ptrabData.nome_om_extenso || ptrabData.nome_om}</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
 };
 
 export default PTrabMaterialPermanenteReport;
