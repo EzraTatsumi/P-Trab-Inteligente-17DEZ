@@ -4,13 +4,39 @@ import React, { useState, useEffect, useCallback } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
-import { ArrowLeft, Save, Printer, Loader2, FileText, Info } from "lucide-react";
-import { Card } from "@/components/ui/card";
+import { ArrowLeft, Save, Printer, Loader2, Info } from "lucide-react";
 import { useSession } from "@/components/SessionContextProvider";
 import { cn } from "@/lib/utils";
+
+// Componente auxiliar para Inputs que parecem texto do documento
+const DocumentInput = ({ value, onChange, placeholder, className, readOnly = false }: any) => (
+  <input
+    type="text"
+    value={value || ""}
+    onChange={onChange}
+    placeholder={placeholder}
+    readOnly={readOnly}
+    className={cn(
+      "w-full bg-transparent border-none p-1 focus:ring-1 focus:ring-primary/30 focus:bg-yellow-50/50 outline-none text-black placeholder:text-gray-300 font-normal transition-colors",
+      className
+    )}
+  />
+);
+
+// Componente auxiliar para Textareas que se integram ao layout
+const DocumentTextArea = ({ value, onChange, placeholder, className, rows = 3 }: any) => (
+  <textarea
+    value={value || ""}
+    onChange={onChange}
+    placeholder={placeholder}
+    rows={rows}
+    className={cn(
+      "w-full bg-transparent border-none p-1 focus:ring-1 focus:ring-primary/30 focus:bg-yellow-50/50 outline-none resize-none text-black placeholder:text-gray-300 font-normal text-justify transition-colors",
+      className
+    )}
+  />
+);
 
 const DOREditor = () => {
   const navigate = useNavigate();
@@ -39,7 +65,6 @@ const DOREditor = () => {
     if (!ptrabId) return;
     setLoading(true);
     try {
-      // Carregar dados do P Trab
       const { data: ptrabData, error: ptrabError } = await supabase
         .from("p_trab")
         .select("*")
@@ -49,8 +74,7 @@ const DOREditor = () => {
       if (ptrabError) throw ptrabError;
       setPtrab(ptrabData);
 
-      // Carregar dados existentes do DOR
-      const { data: dorData, error: dorError } = await supabase
+      const { data: dorData } = await supabase
         .from("dor_registros")
         .select("*")
         .eq("p_trab_id", ptrabId)
@@ -70,11 +94,11 @@ const DOREditor = () => {
           observacoes: dorData.observacoes || ""
         });
       } else {
-        // Pre-fill com dados do P Trab se for novo
         setFormData(prev => ({
           ...prev,
           evento: ptrabData.nome_operacao,
-          finalidade: ptrabData.acoes || ""
+          finalidade: ptrabData.acoes || "",
+          numero_dor: `${new Date().getFullYear()}`
         }));
       }
     } catch (error: any) {
@@ -110,189 +134,234 @@ const DOREditor = () => {
     }
   };
 
+  const handlePrint = () => {
+    window.print();
+  };
+
   if (loading) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-screen">
+      <div className="flex flex-col items-center justify-center min-h-screen bg-slate-100">
         <Loader2 className="h-8 w-8 animate-spin text-primary mb-4" />
         <p className="text-muted-foreground">Carregando esqueleto do documento...</p>
       </div>
     );
   }
 
-  const currentYear = new Date().getFullYear();
+  const dataAtual = new Date().toLocaleDateString('pt-BR', { day: 'numeric', month: 'long', year: 'numeric' });
 
   return (
-    <div className="min-h-screen bg-slate-100 p-4 md:p-8 pb-20">
-      <div className="max-w-5xl mx-auto mb-6 flex justify-between items-center sticky top-4 z-10 bg-slate-100/80 backdrop-blur-sm p-2 rounded-lg border shadow-sm">
-        <div className="flex items-center gap-4">
-          <Button variant="ghost" size="sm" onClick={() => navigate("/ptrab")}>
-            <ArrowLeft className="h-4 w-4 mr-2" /> Voltar
-          </Button>
-          <h1 className="text-lg font-bold hidden md:block">Editor de DOR</h1>
-        </div>
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" onClick={() => toast.info("Impressão do DOR em desenvolvimento")}>
-            <Printer className="h-4 w-4 mr-2" /> Imprimir
-          </Button>
-          <Button size="sm" onClick={handleSave} disabled={saving}>
-            {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
-            Salvar Documento
-          </Button>
+    <div className="min-h-screen bg-slate-200 py-8 px-4 print:p-0 print:bg-white font-serif">
+      {/* Barra de Ferramentas Flutuante */}
+      <div className="fixed top-4 right-4 z-50 flex gap-2 print:hidden bg-white/90 backdrop-blur p-2 rounded-lg shadow-xl border border-slate-200">
+        <Button variant="outline" size="sm" onClick={() => navigate(-1)}>
+          <ArrowLeft className="h-4 w-4 mr-2" /> Voltar
+        </Button>
+        <Button variant="outline" size="sm" onClick={handlePrint}>
+          <Printer className="h-4 w-4 mr-2" /> Imprimir / PDF
+        </Button>
+        <Button size="sm" onClick={handleSave} disabled={saving}>
+          {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
+          Salvar Alterações
+        </Button>
+      </div>
+
+      {/* A FOLHA A4 */}
+      <div className="max-w-[210mm] mx-auto bg-white shadow-2xl print:shadow-none min-h-[297mm] relative text-black print:w-full">
+        
+        <div className="p-[20mm]">
+          
+          {/* CABEÇALHO OFICIAL */}
+          <div className="text-center font-bold mb-8 space-y-0.5">
+            <div className="flex justify-center mb-4">
+               <img 
+                 src="https://upload.wikimedia.org/wikipedia/commons/thumb/b/bf/Coat_of_arms_of_Brazil.svg/100px-Coat_of_arms_of_Brazil.svg.png" 
+                 alt="Brasão da República" 
+                 className="h-[70px] w-auto"
+               />
+            </div>
+            <p className="uppercase text-[11pt]">Ministério da Defesa</p>
+            <p className="uppercase text-[11pt]">Exército Brasileiro</p>
+            <p className="uppercase text-[11pt]">{ptrab?.comando_militar_area}</p>
+            <p className="uppercase text-[11pt]">{ptrab?.nome_om_extenso || ptrab?.nome_om}</p>
+          </div>
+
+          {/* TÍTULO E NÚMERO */}
+          <div className="flex justify-between items-end mb-6 border-b-2 border-black pb-2">
+            <h1 className="font-bold text-[13pt] uppercase">Documento de Oficialização da Requisição - DOR</h1>
+            <div className="flex items-center gap-1">
+              <span className="font-bold text-[12pt]">Nº</span>
+              <DocumentInput 
+                value={formData.numero_dor}
+                onChange={(e: any) => setFormData({...formData, numero_dor: e.target.value})}
+                placeholder="000/2025"
+                className="w-28 text-right font-bold text-[13pt]"
+              />
+            </div>
+          </div>
+
+          {/* ESTRUTURA TABULAR DO DOR */}
+          <div className="border border-black text-[10pt]">
+            
+            {/* SEÇÃO 1: DADOS DO REQUISITANTE */}
+            <div className="bg-slate-100 border-b border-black p-1.5 font-bold text-center uppercase text-[9pt]">
+              1. Dados do Órgão Requisitante
+            </div>
+            
+            <div className="grid grid-cols-2 border-b border-black">
+              <div className="p-2 border-r border-black">
+                <span className="block text-[8pt] font-bold uppercase text-slate-500 mb-1">Órgão / OM:</span>
+                <div className="font-bold uppercase">{ptrab?.nome_om}</div>
+                <div className="text-[9pt]">UG: {ptrab?.codug_om}</div>
+              </div>
+              <div className="p-2">
+                <span className="block text-[8pt] font-bold uppercase text-slate-500 mb-1">Responsável pela Demanda (OD):</span>
+                <div className="font-bold uppercase">{ptrab?.nome_cmt_om || "Não informado"}</div>
+                <div className="text-[9pt]">Ordenador de Despesas</div>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 border-b border-black">
+              <div className="p-2 border-r border-black flex items-center gap-2">
+                <span className="text-[8pt] font-bold uppercase text-slate-500 shrink-0">E-mail:</span>
+                <DocumentInput 
+                  value={formData.email}
+                  onChange={(e: any) => setFormData({...formData, email: e.target.value})}
+                  placeholder="exemplo@eb.mil.br"
+                  className="text-[10pt]"
+                />
+              </div>
+              <div className="p-2 flex items-center gap-2">
+                <span className="text-[8pt] font-bold uppercase text-slate-500 shrink-0">Telefone:</span>
+                <DocumentInput 
+                  value={formData.telefone}
+                  onChange={(e: any) => setFormData({...formData, telefone: e.target.value})}
+                  placeholder="(00) 0000-0000"
+                  className="text-[10pt]"
+                />
+              </div>
+            </div>
+
+            {/* SEÇÃO 2: DADOS ORÇAMENTÁRIOS */}
+            <div className="bg-slate-100 border-b border-black p-1.5 font-bold text-center uppercase text-[9pt]">
+              2. Dados Orçamentários
+            </div>
+            <div className="grid grid-cols-2 border-b border-black">
+              <div className="p-2 border-r border-black flex items-center gap-2">
+                <span className="text-[8pt] font-bold uppercase text-slate-500 shrink-0">Ação Orçamentária (AO):</span>
+                <DocumentInput 
+                  value={formData.acao_orcamentaria}
+                  onChange={(e: any) => setFormData({...formData, acao_orcamentaria: e.target.value})}
+                  className="font-mono"
+                />
+              </div>
+              <div className="p-2 flex items-center gap-2">
+                <span className="text-[8pt] font-bold uppercase text-slate-500 shrink-0">Plano Orçamentário (PO):</span>
+                <DocumentInput 
+                  value={formData.plano_orcamentario}
+                  onChange={(e: any) => setFormData({...formData, plano_orcamentario: e.target.value})}
+                  className="font-mono"
+                />
+              </div>
+            </div>
+
+            {/* SEÇÃO 3: OBJETO */}
+            <div className="bg-slate-100 border-b border-black p-1.5 font-bold text-center uppercase text-[9pt]">
+              3. Objeto da Requisição
+            </div>
+            <div className="border-b border-black p-2">
+              <span className="block text-[8pt] font-bold uppercase text-slate-500 mb-1">Evento / Operação / Atividade:</span>
+              <DocumentTextArea 
+                value={formData.evento}
+                onChange={(e: any) => setFormData({...formData, evento: e.target.value})}
+                placeholder="Descreva o evento ou operação..."
+                rows={2}
+                className="font-bold uppercase"
+              />
+            </div>
+
+            {/* SEÇÃO 4: ITENS */}
+            <div className="bg-slate-100 border-b border-black p-1.5 font-bold text-center uppercase text-[9pt]">
+              4. Descrição dos Itens (Bens e/ou Serviços)
+            </div>
+            <div className="p-6 text-center border-b border-black bg-slate-50 text-slate-400 italic text-[9pt]">
+              <div className="flex flex-col items-center gap-2">
+                <Info className="h-5 w-5" />
+                <p>A tabela detalhada de itens e valores será consolidada automaticamente no relatório final do P-Trab.</p>
+                <p className="text-[8pt]">Consulte o P-Trab Nr {ptrab?.numero_ptrab} para o detalhamento completo.</p>
+              </div>
+            </div>
+
+            {/* SEÇÃO 5: JUSTIFICATIVAS */}
+            <div className="bg-slate-100 border-b border-black p-1.5 font-bold text-center uppercase text-[9pt]">
+              5. Justificativas da Contratação / Requisição
+            </div>
+            
+            <div className="border-b border-black p-2">
+              <span className="block text-[8pt] font-bold uppercase text-slate-500 mb-1">5.1. Finalidade:</span>
+              <DocumentTextArea 
+                value={formData.finalidade}
+                onChange={(e: any) => setFormData({...formData, finalidade: e.target.value})}
+                placeholder="Descreva a finalidade desta requisição..."
+                rows={3}
+              />
+            </div>
+
+            <div className="border-b border-black p-2">
+              <span className="block text-[8pt] font-bold uppercase text-slate-500 mb-1">5.2. Motivação / Justificativa:</span>
+              <DocumentTextArea 
+                value={formData.motivacao}
+                onChange={(e: any) => setFormData({...formData, motivacao: e.target.value})}
+                placeholder="Justifique a necessidade técnica e operacional..."
+                rows={4}
+              />
+            </div>
+
+            <div className="border-b border-black p-2">
+              <span className="block text-[8pt] font-bold uppercase text-slate-500 mb-1">5.3. Consequência do Não Atendimento:</span>
+              <DocumentTextArea 
+                value={formData.consequencia}
+                onChange={(e: any) => setFormData({...formData, consequencia: e.target.value})}
+                placeholder="Descreva os riscos e prejuízos caso a requisição não seja atendida..."
+                rows={3}
+              />
+            </div>
+
+            {/* SEÇÃO 6: OBSERVAÇÕES */}
+             <div className="bg-slate-100 border-b border-black p-1.5 font-bold text-center uppercase text-[9pt]">
+              6. Observações Gerais
+            </div>
+            <div className="p-2">
+              <DocumentTextArea 
+                value={formData.observacoes}
+                onChange={(e: any) => setFormData({...formData, observacoes: e.target.value})}
+                placeholder="Informações adicionais relevantes..."
+                rows={2}
+              />
+            </div>
+
+          </div>
+
+          {/* RODAPÉ E ASSINATURAS */}
+          <div className="mt-16 flex flex-col items-center">
+            <div className="text-center mb-12 w-full">
+              <p className="text-[11pt]">{ptrab?.local_om || "Local não informado"}, {dataAtual}.</p>
+            </div>
+
+            <div className="w-2/3 border-t border-black mt-10"></div>
+            <div className="text-center mt-2">
+              <p className="font-bold uppercase text-[11pt]">{ptrab?.nome_cmt_om || "NOME DO ORDENADOR DE DESPESAS"}</p>
+              <p className="text-[10pt] uppercase">Ordenador de Despesas da {ptrab?.nome_om}</p>
+            </div>
+          </div>
+
         </div>
       </div>
 
-      {/* Esqueleto do Documento */}
-      <Card className="max-w-[210mm] mx-auto bg-white shadow-2xl p-[1.5cm] min-h-[297mm] font-serif text-[#1a1a1a]">
-        {/* Cabeçalho Oficial */}
-        <div className="text-center mb-8 space-y-1 uppercase font-bold text-[11pt]">
-          <p>Ministério da Defesa</p>
-          <p>Exército Brasileiro</p>
-          <p>{ptrab?.comando_militar_area}</p>
-          <p>{ptrab?.nome_om_extenso || ptrab?.nome_om}</p>
-        </div>
-
-        {/* Título do Documento */}
-        <div className="text-center mb-10">
-          <h2 className="text-[14pt] font-bold underline decoration-2 underline-offset-4">
-            DOCUMENTO OFICIAL DA REQUISIÇÃO (DOR)
-          </h2>
-          <div className="flex justify-center items-center gap-2 mt-2 font-bold">
-            <span>Nr</span>
-            <Input 
-              value={formData.numero_dor}
-              onChange={(e) => setFormData({...formData, numero_dor: e.target.value})}
-              className="w-16 h-8 text-center border-b-2 border-t-0 border-x-0 rounded-none focus-visible:ring-0 font-bold p-0"
-              placeholder="00"
-            />
-            <span>- {currentYear}</span>
-          </div>
-        </div>
-
-        {/* Seção 1: Identificação */}
-        <div className="space-y-4 mb-8">
-          <div className="grid grid-cols-[180px_1fr] items-start gap-2">
-            <span className="font-bold">1. OPERAÇÃO:</span>
-            <span className="border-b border-dotted border-slate-400 pb-1">{ptrab?.nome_operacao}</span>
-          </div>
-          <div className="grid grid-cols-[180px_1fr] items-start gap-2">
-            <span className="font-bold">2. OM REQUISITANTE:</span>
-            <span className="border-b border-dotted border-slate-400 pb-1">{ptrab?.nome_om} ({ptrab?.codug_om})</span>
-          </div>
-          <div className="grid grid-cols-[180px_1fr] items-center gap-2">
-            <span className="font-bold">3. CONTATO:</span>
-            <div className="flex gap-4">
-              <div className="flex items-center gap-2 flex-1">
-                <span className="text-sm text-slate-500 italic">E-mail:</span>
-                <Input 
-                  value={formData.email}
-                  onChange={(e) => setFormData({...formData, email: e.target.value})}
-                  className="h-7 border-b border-t-0 border-x-0 rounded-none focus-visible:ring-0 p-0 text-sm"
-                  placeholder="exemplo@eb.mil.br"
-                />
-              </div>
-              <div className="flex items-center gap-2 w-40">
-                <span className="text-sm text-slate-500 italic">Tel:</span>
-                <Input 
-                  value={formData.telefone}
-                  onChange={(e) => setFormData({...formData, telefone: e.target.value})}
-                  className="h-7 border-b border-t-0 border-x-0 rounded-none focus-visible:ring-0 p-0 text-sm"
-                  placeholder="(00) 0000-0000"
-                />
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Seção 2: Classificação Orçamentária */}
-        <div className="mb-8">
-          <h3 className="font-bold mb-3">4. CLASSIFICAÇÃO ORÇAMENTÁRIA:</h3>
-          <div className="grid grid-cols-2 gap-8 pl-4">
-            <div className="flex items-center gap-3">
-              <span className="text-sm font-semibold">Ação Orçamentária:</span>
-              <Input 
-                value={formData.acao_orcamentaria}
-                onChange={(e) => setFormData({...formData, acao_orcamentaria: e.target.value})}
-                className="w-24 h-8 border border-slate-300 rounded px-2 text-center font-mono"
-              />
-            </div>
-            <div className="flex items-center gap-3">
-              <span className="text-sm font-semibold">Plano Orçamentário (PO):</span>
-              <Input 
-                value={formData.plano_orcamentario}
-                onChange={(e) => setFormData({...formData, plano_orcamentario: e.target.value})}
-                className="w-24 h-8 border border-slate-300 rounded px-2 text-center font-mono"
-              />
-            </div>
-          </div>
-        </div>
-
-        {/* Seção 3: Justificativa e Detalhamento */}
-        <div className="space-y-6 mb-8">
-          <div className="space-y-2">
-            <h3 className="font-bold">5. EVENTO / ATIVIDADE:</h3>
-            <Textarea 
-              value={formData.evento}
-              onChange={(e) => setFormData({...formData, evento: e.target.value})}
-              className="min-h-[60px] border-slate-200 focus-visible:ring-primary resize-none"
-              placeholder="Descreva o evento ou atividade principal..."
-            />
-          </div>
-
-          <div className="space-y-2">
-            <h3 className="font-bold">6. FINALIDADE:</h3>
-            <Textarea 
-              value={formData.finalidade}
-              onChange={(e) => setFormData({...formData, finalidade: e.target.value})}
-              className="min-h-[80px] border-slate-200 focus-visible:ring-primary"
-              placeholder="Qual o objetivo desta requisição?"
-            />
-          </div>
-
-          <div className="space-y-2">
-            <h3 className="font-bold">7. MOTIVAÇÃO / JUSTIFICATIVA:</h3>
-            <Textarea 
-              value={formData.motivacao}
-              onChange={(e) => setFormData({...formData, motivacao: e.target.value})}
-              className="min-h-[100px] border-slate-200 focus-visible:ring-primary"
-              placeholder="Por que este recurso é necessário agora?"
-            />
-          </div>
-
-          <div className="space-y-2">
-            <h3 className="font-bold">8. CONSEQUÊNCIA DO NÃO ATENDIMENTO:</h3>
-            <Textarea 
-              value={formData.consequencia}
-              onChange={(e) => setFormData({...formData, consequencia: e.target.value})}
-              className="min-h-[80px] border-slate-200 focus-visible:ring-primary"
-              placeholder="O que acontece se o recurso não for liberado?"
-            />
-          </div>
-        </div>
-
-        {/* Seção 4: Observações */}
-        <div className="space-y-2 mb-12">
-          <h3 className="font-bold italic">9. OBSERVAÇÕES ADICIONAIS:</h3>
-          <Textarea 
-            value={formData.observacoes}
-            onChange={(e) => setFormData({...formData, observacoes: e.target.value})}
-            className="min-h-[60px] border-slate-200 focus-visible:ring-primary"
-            placeholder="Informações complementares..."
-          />
-        </div>
-
-        {/* Assinatura */}
-        <div className="mt-20 text-center space-y-1">
-          <div className="w-64 h-px bg-slate-400 mx-auto mb-2"></div>
-          <p className="font-bold uppercase text-[10pt]">{ptrab?.nome_cmt_om || 'Comandante da OM'}</p>
-          <p className="text-[9pt]">Ordenador de Despesas da {ptrab?.nome_om}</p>
-        </div>
-      </Card>
-
       {/* Dica Flutuante */}
-      <div className="fixed bottom-6 right-6 max-w-xs bg-primary text-primary-foreground p-3 rounded-lg shadow-lg flex gap-3 items-start animate-in fade-in slide-in-from-bottom-4">
+      <div className="fixed bottom-6 right-6 max-w-xs bg-primary text-primary-foreground p-3 rounded-lg shadow-lg flex gap-3 items-start animate-in fade-in slide-in-from-bottom-4 print:hidden">
         <Info className="h-5 w-5 shrink-0 mt-0.5" />
         <p className="text-xs leading-relaxed">
-          Este editor simula o layout oficial do DOR. Os campos em destaque são editáveis e serão salvos no banco de dados vinculado ao P Trab Nr {ptrab?.numero_ptrab}.
+          Este editor permite preencher o DOR diretamente no layout oficial. Clique nos campos para editar. As alterações são vinculadas ao P-Trab Nr {ptrab?.numero_ptrab}.
         </p>
       </div>
     </div>
