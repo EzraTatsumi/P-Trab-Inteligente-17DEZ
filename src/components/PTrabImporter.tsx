@@ -315,7 +315,7 @@ export function PTrabImporter({ isOpen, onClose, ptrabId, onImportConcluded }: P
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-[95vw] w-[1200px] h-[90vh] flex flex-col p-0 gap-0 bg-slate-50 overflow-hidden">
+      <DialogContent className="max-w-[98vw] w-[1400px] h-[90vh] flex flex-col p-0 gap-0 bg-slate-50 overflow-hidden">
         <DialogHeader className="p-6 border-b bg-white shrink-0">
           <div className="flex justify-between items-start">
             <div>
@@ -400,12 +400,12 @@ export function PTrabImporter({ isOpen, onClose, ptrabId, onImportConcluded }: P
                         draggedItem?.id === item.id && "opacity-50 border-dashed border-primary bg-primary/5"
                       )}
                     >
-                      <div className="flex justify-between items-start gap-2">
-                        <div className="flex items-center gap-2 overflow-hidden">
-                          <GripVertical className="h-3.5 w-3.5 text-slate-300 shrink-0" />
-                          <p className="text-[11px] font-bold text-slate-700 truncate leading-tight uppercase">{item.descricao}</p>
+                      <div className="flex justify-between items-start gap-3">
+                        <div className="flex items-start gap-2 flex-1 overflow-hidden">
+                          <GripVertical className="h-3.5 w-3.5 text-slate-300 shrink-0 mt-0.5" />
+                          <p className="text-[11px] font-bold text-slate-700 leading-tight uppercase break-words">{item.descricao}</p>
                         </div>
-                        <span className="font-bold text-xs text-slate-900 whitespace-nowrap">{formatCurrency(item.valor)}</span>
+                        <span className="font-bold text-xs text-slate-900 whitespace-nowrap shrink-0">{formatCurrency(item.valor)}</span>
                       </div>
                       <div className="flex items-center gap-1.5 mt-1 ml-5">
                         <Layers className="h-3 w-3 text-slate-400" />
@@ -481,8 +481,8 @@ export function PTrabImporter({ isOpen, onClose, ptrabId, onImportConcluded }: P
                         ) : (
                           group.items.map(item => (
                             <div key={item.id} className="flex justify-between items-center p-2 bg-slate-50/80 rounded border border-slate-100 text-[10px] group/item">
-                              <div className="flex flex-col overflow-hidden pr-2">
-                                <span className="truncate font-bold text-slate-700 uppercase" title={item.descricao}>{item.descricao}</span>
+                              <div className="flex flex-col flex-1 overflow-hidden pr-2">
+                                <span className="font-bold text-slate-700 uppercase break-words" title={item.descricao}>{item.descricao}</span>
                                 <span className="text-[8px] text-slate-400 truncate">
                                   {item.gnd === 4 ? item.uge : `${item.originalRecords.length} registros`}
                                 </span>
