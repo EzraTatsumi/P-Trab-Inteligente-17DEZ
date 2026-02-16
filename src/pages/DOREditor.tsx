@@ -493,7 +493,7 @@ const DOREditor = () => {
                         </div>
                         <div className="border-r border-black py-0 px-1 flex items-center justify-center">{item.gnd}</div>
                         <div className="border-r border-black py-0 px-1 flex items-center justify-center">{formatNumber(item.valor_num)}</div>
-                        <div className="py-0 px-1 text-left leading-tight uppercase flex items-center">{item.descricao}</div>
+                        <div className="py-0 px-1 text-center leading-tight uppercase flex items-center justify-center">{item.descricao}</div>
                       </div>
                     ))
                   ) : (
