@@ -54,8 +54,9 @@ const DOREditor = () => {
     numero_dor: "",
     email: "",
     telefone: "",
-    acao_orcamentaria: "2000",
-    plano_orcamentario: "0000",
+    acao_orcamentaria: "A cargo do MD.",
+    plano_orcamentario: "A cargo do MD.",
+    anexos: "----",
     evento: "",
     finalidade: "",
     motivacao: "",
@@ -87,8 +88,9 @@ const DOREditor = () => {
           numero_dor: dorData.numero_dor || "",
           email: dorData.email || "",
           telefone: dorData.telefone || "",
-          acao_orcamentaria: dorData.acao_orcamentaria || "2000",
-          plano_orcamentario: dorData.plano_orcamentario || "0000",
+          acao_orcamentaria: dorData.acao_orcamentaria || "A cargo do MD.",
+          plano_orcamentario: dorData.plano_orcamentario || "A cargo do MD.",
+          anexos: (dorData as any).anexos || "----",
           evento: dorData.evento || "",
           finalidade: dorData.finalidade || "",
           motivacao: dorData.motivacao || "",
@@ -221,175 +223,196 @@ const DOREditor = () => {
           </div>
 
           {/* ESTRUTURA TABULAR DO DOR - CALIBRI 12PT */}
-          <div className="border border-black" style={bodyStyle}>
+          <div style={bodyStyle}>
             
             {/* SEÇÃO 1: DADOS DO REQUISITANTE */}
-            <div 
-              className="border-b border-black p-0.5 font-bold text-center uppercase"
-              style={headerTitleStyle}
-            >
-              DADOS DO ÓRGÃO REQUISITANTE
-            </div>
-            
-            <div className="border-b border-black py-0 px-2 font-bold">
-              Órgão:
-            </div>
-            <div className="border-b border-black py-0 px-2">
-              {ptrab?.nome_om_extenso || ptrab?.nome_om}
-            </div>
-            
-            <div className="grid grid-cols-2 border-b border-black">
-              <div className="py-0 px-2 border-r border-black font-bold">
-                Responsável pela Demanda:
+            <div className="border border-black mb-4">
+              <div 
+                className="border-b border-black p-0.5 font-bold text-center uppercase"
+                style={headerTitleStyle}
+              >
+                DADOS DO ÓRGÃO REQUISITANTE
               </div>
-              <div className="py-0 px-2"></div>
-            </div>
-            
-            <div className="border-b border-black py-0 px-2">
-              {ptrab?.nome_cmt_om || "Não informado"}
+              
+              <div className="border-b border-black py-0 px-2 font-bold">
+                Órgão:
+              </div>
+              <div className="border-b border-black py-0 px-2">
+                {ptrab?.nome_om_extenso || ptrab?.nome_om}
+              </div>
+              
+              <div className="grid grid-cols-2 border-b border-black">
+                <div className="py-0 px-2 border-r border-black font-bold">
+                  Responsável pela Demanda:
+                </div>
+                <div className="py-0 px-2"></div>
+              </div>
+              
+              <div className="border-b border-black py-0 px-2">
+                {ptrab?.nome_cmt_om || "Não informado"}
+              </div>
+
+              <div className="grid grid-cols-2">
+                <div className="py-0 px-2 border-r border-black flex items-center gap-1">
+                  <span className="font-bold whitespace-nowrap">E-mail:</span>
+                  <DocumentInput 
+                    value={formData.email}
+                    onChange={(e: any) => setFormData({...formData, email: e.target.value})}
+                    placeholder="exemplo@eb.mil.br"
+                    className="w-full"
+                    style={bodyStyle}
+                  />
+                </div>
+                <div className="py-0 px-2 flex items-center gap-1">
+                  <span className="font-bold whitespace-nowrap">Telefone:</span>
+                  <DocumentInput 
+                    value={formData.telefone}
+                    onChange={(e: any) => setFormData({...formData, telefone: e.target.value})}
+                    placeholder="(00) 0000-0000"
+                    className="w-full"
+                    style={bodyStyle}
+                  />
+                </div>
+              </div>
             </div>
 
-            <div className="grid grid-cols-2 border-b border-black">
-              <div className="py-0 px-2 border-r border-black flex items-center gap-1">
-                <span className="font-bold whitespace-nowrap">E-mail:</span>
-                <DocumentInput 
-                  value={formData.email}
-                  onChange={(e: any) => setFormData({...formData, email: e.target.value})}
-                  placeholder="exemplo@eb.mil.br"
-                  className="w-full"
-                  style={bodyStyle}
-                />
+            {/* SEÇÃO: ANEXOS */}
+            <div className="border border-black mb-4">
+              <div 
+                className="border-b border-black p-0.5 font-bold text-center uppercase"
+                style={headerTitleStyle}
+              >
+                Anexos
               </div>
-              <div className="py-0 px-2 flex items-center gap-1">
-                <span className="font-bold whitespace-nowrap">Telefone:</span>
+              <div className="py-0 px-2 text-center">
                 <DocumentInput 
-                  value={formData.telefone}
-                  onChange={(e: any) => setFormData({...formData, telefone: e.target.value})}
-                  placeholder="(00) 0000-0000"
-                  className="w-full"
+                  value={formData.anexos}
+                  onChange={(e: any) => setFormData({...formData, anexos: e.target.value})}
+                  className="w-full text-center"
                   style={bodyStyle}
                 />
               </div>
             </div>
 
             {/* SEÇÃO 2: DADOS ORÇAMENTÁRIOS */}
-            <div 
-              className="border-b border-black p-0.5 font-bold text-center uppercase"
-              style={headerTitleStyle}
-            >
-              2. Dados Orçamentários
-            </div>
-            <div className="grid grid-cols-2 border-b border-black">
-              <div className="py-0 px-2 border-r border-black flex items-center gap-2">
-                <span className="font-bold uppercase shrink-0">Ação Orçamentária (AO):</span>
+            <div className="border border-black mb-4">
+              <div className="border-b border-black py-0 px-2 flex items-center gap-2" style={headerTitleStyle}>
+                <span className="font-bold shrink-0">Ação Orçamentária (AO):</span>
                 <DocumentInput 
                   value={formData.acao_orcamentaria}
                   onChange={(e: any) => setFormData({...formData, acao_orcamentaria: e.target.value})}
-                  className="w-full"
+                  className="w-full font-bold"
                   style={bodyStyle}
                 />
               </div>
               <div className="py-0 px-2 flex items-center gap-2">
-                <span className="font-bold uppercase shrink-0">Plano Orçamentário (PO):</span>
+                <span className="font-bold shrink-0">Plano Orçamentário (PO):</span>
                 <DocumentInput 
                   value={formData.plano_orcamentario}
                   onChange={(e: any) => setFormData({...formData, plano_orcamentario: e.target.value})}
-                  className="w-full"
+                  className="w-full font-bold"
                   style={bodyStyle}
                 />
               </div>
             </div>
 
             {/* SEÇÃO 3: OBJETO */}
-            <div 
-              className="border-b border-black p-0.5 font-bold text-center uppercase"
-              style={headerTitleStyle}
-            >
-              3. Objeto da Requisição
-            </div>
-            <div className="border-b border-black p-1 px-2">
-              <span className="block font-bold uppercase mb-0.5">Evento / Operação / Atividade:</span>
-              <DocumentTextArea 
-                value={formData.evento}
-                onChange={(e: any) => setFormData({...formData, evento: e.target.value})}
-                placeholder="Descreva o evento ou operação..."
-                rows={2}
-                className="font-bold uppercase"
-                style={bodyStyle}
-              />
+            <div className="border border-black mb-4">
+              <div 
+                className="border-b border-black p-0.5 font-bold text-center uppercase"
+                style={headerTitleStyle}
+              >
+                OBJETO DE REQUISIÇÃO
+              </div>
+              <div className="p-1 px-2">
+                <DocumentTextArea 
+                  value={formData.evento}
+                  onChange={(e: any) => setFormData({...formData, evento: e.target.value})}
+                  placeholder="Descreva o evento ou operação..."
+                  rows={2}
+                  className="font-bold uppercase"
+                  style={bodyStyle}
+                />
+              </div>
             </div>
 
             {/* SEÇÃO 4: ITENS */}
-            <div 
-              className="border-b border-black p-0.5 font-bold text-center uppercase"
-              style={headerTitleStyle}
-            >
-              4. Descrição dos Itens (Bens e/ou Serviços)
-            </div>
-            <div className="p-2 text-center border-b border-black bg-slate-50 text-slate-500 italic">
-              <div className="flex flex-col items-center gap-0.5">
-                <Info className="h-3.5 w-3.5" />
-                <p className="text-[11pt]">A tabela detalhada de itens e valores será consolidada automaticamente no relatório final do P-Trab.</p>
-                <p className="text-[10pt]">Consulte o P-Trab Nr {ptrab?.numero_ptrab} para o detalhamento completo.</p>
+            <div className="border border-black mb-4">
+              <div 
+                className="border-b border-black p-0.5 font-bold text-center uppercase"
+                style={headerTitleStyle}
+              >
+                4. Descrição dos Itens (Bens e/ou Serviços)
+              </div>
+              <div className="p-2 text-center bg-slate-50 text-slate-500 italic">
+                <div className="flex flex-col items-center gap-0.5">
+                  <Info className="h-3.5 w-3.5" />
+                  <p className="text-[11pt]">A tabela detalhada de itens e valores será consolidada automaticamente no relatório final do P-Trab.</p>
+                  <p className="text-[10pt]">Consulte o P-Trab Nr {ptrab?.numero_ptrab} para o detalhamento completo.</p>
+                </div>
               </div>
             </div>
 
             {/* SEÇÃO 5: JUSTIFICATIVAS */}
-            <div 
-              className="border-b border-black p-0.5 font-bold text-center uppercase"
-              style={headerTitleStyle}
-            >
-              5. Justificativas da Contratação / Requisição
-            </div>
-            
-            <div className="border-b border-black p-1 px-2">
-              <span className="block font-bold uppercase mb-0.5">5.1. Finalidade:</span>
-              <DocumentTextArea 
-                value={formData.finalidade}
-                onChange={(e: any) => setFormData({...formData, finalidade: e.target.value})}
-                placeholder="Descreva a finalidade desta requisição..."
-                rows={2}
-                style={bodyStyle}
-              />
-            </div>
+            <div className="border border-black mb-4">
+              <div 
+                className="border-b border-black p-0.5 font-bold text-center uppercase"
+                style={headerTitleStyle}
+              >
+                5. Justificativas da Contratação / Requisição
+              </div>
+              
+              <div className="border-b border-black p-1 px-2">
+                <span className="block font-bold uppercase mb-0.5">5.1. Finalidade:</span>
+                <DocumentTextArea 
+                  value={formData.finalidade}
+                  onChange={(e: any) => setFormData({...formData, finalidade: e.target.value})}
+                  placeholder="Descreva a finalidade desta requisição..."
+                  rows={2}
+                  style={bodyStyle}
+                />
+              </div>
 
-            <div className="border-b border-black p-1 px-2">
-              <span className="block font-bold uppercase mb-0.5">5.2. Motivação / Justificativa:</span>
-              <DocumentTextArea 
-                value={formData.motivacao}
-                onChange={(e: any) => setFormData({...formData, motivacao: e.target.value})}
-                placeholder="Justifique a necessidade técnica e operacional..."
-                rows={3}
-                style={bodyStyle}
-              />
-            </div>
+              <div className="border-b border-black p-1 px-2">
+                <span className="block font-bold uppercase mb-0.5">5.2. Motivação / Justificativa:</span>
+                <DocumentTextArea 
+                  value={formData.motivacao}
+                  onChange={(e: any) => setFormData({...formData, motivacao: e.target.value})}
+                  placeholder="Justifique a necessidade técnica e operacional..."
+                  rows={3}
+                  style={bodyStyle}
+                />
+              </div>
 
-            <div className="border-b border-black p-1 px-2">
-              <span className="block font-bold uppercase mb-0.5">5.3. Consequência do Não Atendimento:</span>
-              <DocumentTextArea 
-                value={formData.consequencia}
-                onChange={(e: any) => setFormData({...formData, consequencia: e.target.value})}
-                placeholder="Descreva os riscos e prejuízos caso a requisição não seja atendida..."
-                rows={2}
-                style={bodyStyle}
-              />
+              <div className="p-1 px-2">
+                <span className="block font-bold uppercase mb-0.5">5.3. Consequência do Não Atendimento:</span>
+                <DocumentTextArea 
+                  value={formData.consequencia}
+                  onChange={(e: any) => setFormData({...formData, consequencia: e.target.value})}
+                  placeholder="Descreva os riscos e prejuízos caso a requisição não seja atendida..."
+                  rows={2}
+                  style={bodyStyle}
+                />
+              </div>
             </div>
 
             {/* SEÇÃO 6: OBSERVAÇÕES */}
-             <div 
-              className="border-b border-black p-0.5 font-bold text-center uppercase"
-              style={headerTitleStyle}
-            >
-              6. Observações Gerais
-            </div>
-            <div className="p-1 px-2">
-              <DocumentTextArea 
-                value={formData.observacoes}
-                onChange={(e: any) => setFormData({...formData, observacoes: e.target.value})}
-                placeholder="Informações adicionais relevantes..."
-                rows={2}
-                style={bodyStyle}
-              />
+            <div className="border border-black mb-4">
+               <div 
+                className="border-b border-black p-0.5 font-bold text-center uppercase"
+                style={headerTitleStyle}
+              >
+                6. Observações Gerais
+              </div>
+              <div className="p-1 px-2">
+                <DocumentTextArea 
+                  value={formData.observacoes}
+                  onChange={(e: any) => setFormData({...formData, observacoes: e.target.value})}
+                  placeholder="Informações adicionais relevantes..."
+                  rows={2}
+                  style={bodyStyle}
+                />
+              </div>
             </div>
 
           </div>
