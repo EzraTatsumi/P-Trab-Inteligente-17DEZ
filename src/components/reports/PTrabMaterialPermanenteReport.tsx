@@ -25,26 +25,36 @@ const PTrabMaterialPermanenteReport: React.FC<PTrabMaterialPermanenteReportProps
   const contentRef = useRef<HTMLDivElement>(null);
   const diasOperacao = useMemo(() => calculateDays(ptrabData.periodo_inicio, ptrabData.periodo_fim), [ptrabData]);
 
-  // Consolidação de itens para a tabela: Uma linha por item
-  const rows = useMemo(() => {
-    const allRows: any[] = [];
+  // Agrupamento de dados por OM/UG para subtotais
+  const groupedData = useMemo(() => {
+    const groups: { om: string, ug: string, items: any[], subtotal: number }[] = [];
+    
     registrosMaterialPermanente.forEach(reg => {
-      // CORREÇÃO: A chave correta no seu banco é 'itens_selecionados'
+      const om = reg.om_detentora || reg.organizacao;
+      const ug = reg.ug_detentora || reg.ug;
+      
+      let group = groups.find(g => g.om === om && g.ug === ug);
+      if (!group) {
+        group = { om, ug, items: [], subtotal: 0 };
+        groups.push(group);
+      }
+      
       const items = (reg.detalhes_planejamento as any)?.itens_selecionados || [];
       items.forEach((item: any) => {
-        allRows.push({
+        const valor = Number(item.valor_unitario || 0) * Number(item.quantidade || 1);
+        group!.items.push({
           itemNome: item.descricao_reduzida || item.descricao_item,
-          omDestino: reg.om_detentora || reg.organizacao,
-          ugDestino: reg.ug_detentora || reg.ug,
-          valor: Number(item.valor_unitario || 0) * Number(item.quantidade || 1),
+          valor,
           memoria: generateMaterialPermanenteMemoriaCalculo(reg, { itemEspecifico: item })
         });
+        group!.subtotal += valor;
       });
     });
-    return allRows;
+    
+    return groups;
   }, [registrosMaterialPermanente]);
 
-  const totalGeral = useMemo(() => rows.reduce((acc, row) => acc + row.valor, 0), [rows]);
+  const totalGeral = useMemo(() => groupedData.reduce((acc, g) => acc + g.subtotal, 0), [groupedData]);
 
   const generateFileName = (reportType: 'PDF' | 'Excel') => {
     const dataAtz = formatDateDDMMMAA(ptrabData.updated_at);
@@ -79,7 +89,7 @@ const PTrabMaterialPermanenteReport: React.FC<PTrabMaterialPermanenteReportProps
     const centerStyle = { horizontal: 'center' as const, vertical: 'middle' as const, wrapText: true };
     const border = { top: { style: 'thin' as const }, left: { style: 'thin' as const }, bottom: { style: 'thin' as const }, right: { style: 'thin' as const } };
     const headerFill = { type: 'pattern' as const, pattern: 'solid' as const, fgColor: { argb: 'FFD9D9D9' } };
-    const ndFill = { type: 'pattern' as const, pattern: 'solid' as const, fgColor: { argb: 'FFE2EFDA' } };
+    const subtotalFill = { type: 'pattern' as const, pattern: 'solid' as const, fgColor: { argb: 'FFF2F2F2' } };
     const valueFill = { type: 'pattern' as const, pattern: 'solid' as const, fgColor: { argb: 'FFE2EFDA' } };
 
     let curr = 1;
@@ -137,33 +147,56 @@ const PTrabMaterialPermanenteReport: React.FC<PTrabMaterialPermanenteReportProps
       });
     });
 
-    h2.getCell('C').fill = ndFill;
-    h2.getCell('D').fill = ndFill;
+    h2.getCell('C').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE2EFDA' } };
+    h2.getCell('D').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE2EFDA' } };
     h2.getCell('E').font = { size: 7, bold: false };
 
     worksheet.columns = [{ width: 25 }, { width: 20 }, { width: 15 }, { width: 15 }, { width: 60 }];
     curr += 2;
 
-    rows.forEach(r => {
-      const row = worksheet.getRow(curr);
-      row.getCell('A').value = r.itemNome.toUpperCase();
-      row.getCell('B').value = `${r.omDestino}\n(${formatCodug(r.ugDestino)})`;
-      row.getCell('C').value = r.valor;
-      row.getCell('D').value = r.valor;
-      row.getCell('E').value = r.memoria;
+    groupedData.forEach((group, gIdx) => {
+      group.items.forEach(item => {
+        const row = worksheet.getRow(curr);
+        row.getCell('A').value = item.itemNome.toUpperCase();
+        row.getCell('B').value = `${group.om}\n(${formatCodug(group.ug)})`;
+        row.getCell('C').value = item.valor;
+        row.getCell('D').value = item.valor;
+        row.getCell('E').value = item.memoria;
 
-      ['C', 'D'].forEach(c => {
-        row.getCell(c).numFmt = 'R$ #,##0.00';
-        row.getCell(c).fill = valueFill;
+        ['C', 'D'].forEach(c => {
+          row.getCell(c).numFmt = 'R$ #,##0.00';
+          row.getCell(c).fill = valueFill;
+        });
+
+        ['A', 'B', 'C', 'D', 'E'].forEach(c => {
+          row.getCell(c).border = border;
+          row.getCell(c).alignment = c === 'E' ? { vertical: 'top', wrapText: true } : centerStyle;
+          row.getCell(c).font = { size: 8 };
+        });
+        curr++;
       });
 
+      // Subtotal da OM
+      const sRow = worksheet.getRow(curr);
+      sRow.getCell('A').value = `SUBTOTAL ${group.om}`;
+      worksheet.mergeCells(`A${curr}:B${curr}`);
+      sRow.getCell('C').value = group.subtotal;
+      sRow.getCell('D').value = group.subtotal;
       ['A', 'B', 'C', 'D', 'E'].forEach(c => {
-        row.getCell(c).border = border;
-        row.getCell(c).alignment = c === 'E' ? { vertical: 'top', wrapText: true } : centerStyle;
-        row.getCell(c).font = { size: 8 };
+        sRow.getCell(c).fill = subtotalFill;
+        sRow.getCell(c).border = border;
+        sRow.getCell(c).font = { bold: true, size: 8 };
+        if (c === 'C' || c === 'D') sRow.getCell(c).numFmt = 'R$ #,##0.00';
       });
       curr++;
+
+      // Linha em branco entre OMs
+      if (gIdx < groupedData.length - 1) {
+        curr++;
+      }
     });
+
+    curr++; // Espaço antes do total final
 
     const tRow = worksheet.getRow(curr);
     tRow.getCell('A').value = 'SOMA POR ND E GP DE DESPESA';
@@ -196,7 +229,7 @@ const PTrabMaterialPermanenteReport: React.FC<PTrabMaterialPermanenteReportProps
     const a = document.createElement('a');
     a.href = url; a.download = generateFileName('Excel'); a.click();
     toast({ title: "Excel Exportado!" });
-  }, [ptrabData, rows, totalGeral, diasOperacao, fileSuffix, toast]);
+  }, [ptrabData, groupedData, totalGeral, diasOperacao, fileSuffix, toast]);
 
   return (
     <div className="space-y-4">
@@ -243,15 +276,38 @@ const PTrabMaterialPermanenteReport: React.FC<PTrabMaterialPermanenteReportProps
             </tr>
           </thead>
           <tbody>
-            {rows.map((r, i) => (
-              <tr key={i}>
-                <td className="border border-black p-1 font-bold">{r.itemNome.toUpperCase()}</td>
-                <td className="border border-black p-1 text-center">{r.omDestino}<br/>({formatCodug(r.ugDestino)})</td>
-                <td className="border border-black p-1 text-center bg-[#E2EFDA]">{formatCurrency(r.valor)}</td>
-                <td className="border border-black p-1 text-center bg-[#E2EFDA]">{formatCurrency(r.valor)}</td>
-                <td className="border border-black p-1 whitespace-pre-wrap text-[7pt] text-left align-top">{r.memoria}</td>
-              </tr>
+            {groupedData.map((group, gIdx) => (
+              <React.Fragment key={gIdx}>
+                {group.items.map((item, iIdx) => (
+                  <tr key={`${gIdx}-${iIdx}`}>
+                    <td className="border border-black p-1">{item.itemNome.toUpperCase()}</td>
+                    <td className="border border-black p-1 text-center">{group.om}<br/>({formatCodug(group.ug)})</td>
+                    <td className="border border-black p-1 text-center bg-[#E2EFDA]">{formatCurrency(item.valor)}</td>
+                    <td className="border border-black p-1 text-center bg-[#E2EFDA]">{formatCurrency(item.valor)}</td>
+                    <td className="border border-black p-1 whitespace-pre-wrap text-[7pt] text-left align-top">{item.memoria}</td>
+                  </tr>
+                ))}
+                {/* Subtotal da OM */}
+                <tr className="bg-[#F2F2F2] font-bold">
+                  <td colSpan={2} className="border border-black p-1 text-right">SUBTOTAL {group.om}</td>
+                  <td className="border border-black p-1 text-center">{formatCurrency(group.subtotal)}</td>
+                  <td className="border border-black p-1 text-center">{formatCurrency(group.subtotal)}</td>
+                  <td className="border border-black p-1"></td>
+                </tr>
+                {/* Linha em branco para separar OMs */}
+                {gIdx < groupedData.length - 1 && (
+                  <tr className="h-4">
+                    <td colSpan={5} className="border-0"></td>
+                  </tr>
+                )}
+              </React.Fragment>
             ))}
+            
+            {/* Espaço antes do total final */}
+            <tr className="h-4">
+              <td colSpan={5} className="border-0"></td>
+            </tr>
+
             <tr className="bg-[#D9D9D9] font-bold">
               <td colSpan={2} className="border border-black p-1 text-right">SOMA POR ND E GP DE DESPESA</td>
               <td className="border border-black p-1 text-center">{formatCurrency(totalGeral)}</td>
@@ -268,7 +324,7 @@ const PTrabMaterialPermanenteReport: React.FC<PTrabMaterialPermanenteReportProps
 
         <div className="mt-8 text-center">
           <p className="text-[10pt]">{ptrabData.local_om || 'Local'}, {new Date().toLocaleDateString('pt-BR', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
-          <div className="mt-12 inline-block border-t border-black pt-1 px-8">
+          <div className="mt-12 inline-block pt-1 px-8">
             <p className="text-[10pt] font-bold uppercase">{ptrabData.nome_cmt_om}</p>
             <p className="text-[9pt]">Comandante da {ptrabData.nome_om_extenso || ptrabData.nome_om}</p>
           </div>
