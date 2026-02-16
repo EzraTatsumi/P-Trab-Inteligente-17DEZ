@@ -90,7 +90,7 @@ export function PTrabImporter({ isOpen, onClose, ptrabId, onImportConcluded }: P
         
         if (table.descField) selectFields.push(table.descField);
         
-        if (table.name === 'servicos_terceiros_registros') {
+        if (table.name === 'servicos_terceiros_registros' || table.name === 'material_permanente_registros') {
           selectFields.push('detalhes_planejamento');
         }
 
@@ -100,6 +100,7 @@ export function PTrabImporter({ isOpen, onClose, ptrabId, onImportConcluded }: P
 
         if (!error && data) {
           data.forEach((row: any) => {
+            // Lógica especial para Classe I
             if (table.isClasseI) {
               const qs = Number(row.total_qs || 0);
               const qr = Number(row.total_qr || 0);
@@ -123,6 +124,29 @@ export function PTrabImporter({ isOpen, onClose, ptrabId, onImportConcluded }: P
                 aggregatedMap[key].valor += qr;
                 aggregatedMap[key].originalRecords.push({ ...row, valor_total: qr, tipo_rancho: 'QR' });
               }
+              return;
+            }
+
+            // Lógica especial para Material Permanente: expandir itens do JSON
+            if (table.name === 'material_permanente_registros' && row.detalhes_planejamento?.itens_selecionados) {
+              row.detalhes_planejamento.itens_selecionados.forEach((subItem: any) => {
+                const valorItem = Number(subItem.quantidade || 0) * Number(subItem.valor_unitario || 0);
+                if (valorItem <= 0) return;
+
+                const descItem = subItem.descricao_reduzida || subItem.descricao_item || "Item Permanente";
+                const keyItem = `${table.name}-${row.id}-${subItem.id}`;
+
+                aggregatedMap[keyItem] = {
+                  id: keyItem,
+                  descricao: descItem,
+                  valor: valorItem,
+                  gnd: 4,
+                  natureza: table.nature,
+                  uge: `${row.organizacao} (${row.ug})`,
+                  tableName: table.name,
+                  originalRecords: [{ ...row, valor_total: valorItem, subItem_id: subItem.id }]
+                };
+              });
               return;
             }
 
@@ -157,7 +181,6 @@ export function PTrabImporter({ isOpen, onClose, ptrabId, onImportConcluded }: P
             }
 
             aggregatedMap[key].valor += valor;
-            // Normaliza o campo de valor para valor_total para facilitar o uso posterior no DOR
             aggregatedMap[key].originalRecords.push({ ...row, valor_total: valor });
           });
         }
