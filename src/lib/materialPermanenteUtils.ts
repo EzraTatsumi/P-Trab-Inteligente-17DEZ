@@ -29,3 +29,16 @@ export const generateMaterialPermanenteMemoriaCalculo = (registro: any, context?
     
     return memoria;
 };
+
+/**
+ * Calcula os totais agregados para uma lista de registros de Material Permanente.
+ * @param registros Lista de registros vindos do banco.
+ * @returns Objeto com totais de valor geral e ND 52.
+ */
+export const calculateMaterialPermanenteTotals = (registros: any[]) => {
+    return registros.reduce((acc, r) => {
+        acc.totalGeral += Number(r.valor_total || 0);
+        acc.totalND52 += Number(r.valor_nd_52 || 0);
+        return acc;
+    }, { totalGeral: 0, totalND52: 0 });
+};
