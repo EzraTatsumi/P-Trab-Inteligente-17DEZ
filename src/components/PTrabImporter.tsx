@@ -67,9 +67,8 @@ export function PTrabImporter({ isOpen, onClose, ptrabId, onImportConcluded }: P
           name: 'verba_operacional_registros', 
           gnd: 3, 
           nature: 'Operacional', 
-          descField: 'objeto_aquisicao', 
+          descField: 'detalhamento', 
           label: 'Verba Operacional / Suprimento', 
-          valueField: 'valor_total_solicitado', 
           hasDetalhamento: true,
           isVerbaOp: true 
         },
@@ -93,16 +92,13 @@ export function PTrabImporter({ isOpen, onClose, ptrabId, onImportConcluded }: P
 
         if (table.isClasseI) {
           selectFields.push('total_qs', 'total_qr', 'categoria');
+        } else if (table.isVerbaOp) {
+          selectFields.push('valor_nd_30', 'valor_nd_39', 'detalhamento');
         } else {
           selectFields.push(table.valueField || 'valor_total');
         }
         
-        if (table.descField) selectFields.push(table.descField);
-        
-        // Campos extras para Verba Operacional
-        if (table.isVerbaOp) {
-          selectFields.push('objeto_contratacao');
-        }
+        if (table.descField && !table.isVerbaOp) selectFields.push(table.descField);
         
         if (table.name === 'servicos_terceiros_registros' || table.name === 'material_permanente_registros') {
           selectFields.push('detalhes_planejamento');
@@ -141,6 +137,32 @@ export function PTrabImporter({ isOpen, onClose, ptrabId, onImportConcluded }: P
               return;
             }
 
+            // Lógica especial para Verba Operacional / Suprimento de Fundos
+            if (table.isVerbaOp) {
+              const valor = Number(row.valor_nd_30 || 0) + Number(row.valor_nd_39 || 0);
+              if (valor <= 0) return;
+
+              const descValue = (row.detalhamento || table.label).toUpperCase();
+              const key = `${table.name}-${descValue}`;
+
+              if (!aggregatedMap[key]) {
+                aggregatedMap[key] = {
+                  id: key,
+                  descricao: descValue,
+                  valor: 0,
+                  gnd: 3,
+                  natureza: table.nature,
+                  uge: "Múltiplas OMs",
+                  tableName: table.name,
+                  originalRecords: []
+                };
+              }
+
+              aggregatedMap[key].valor += valor;
+              aggregatedMap[key].originalRecords.push({ ...row, valor_total: valor });
+              return;
+            }
+
             // Lógica especial para Material Permanente
             if (table.name === 'material_permanente_registros' && row.detalhes_planejamento?.itens_selecionados) {
               row.detalhes_planejamento.itens_selecionados.forEach((subItem: any) => {
@@ -152,7 +174,7 @@ export function PTrabImporter({ isOpen, onClose, ptrabId, onImportConcluded }: P
 
                 aggregatedMap[keyItem] = {
                   id: keyItem,
-                  descricao: descItem,
+                  descricao: descItem.toUpperCase(),
                   valor: valorItem,
                   gnd: 4,
                   natureza: table.nature,
@@ -167,14 +189,7 @@ export function PTrabImporter({ isOpen, onClose, ptrabId, onImportConcluded }: P
             const valor = Number(row[table.valueField || 'valor_total'] || 0);
             if (valor <= 0) return;
 
-            let descValue = table.label;
-            
-            if (table.isVerbaOp) {
-              // Prioriza objeto_aquisicao, depois objeto_contratacao, depois o label genérico
-              descValue = row.objeto_aquisicao || row.objeto_contratacao || table.label;
-            } else if (table.descField) {
-              descValue = row[table.descField] || table.label;
-            }
+            let descValue = table.descField ? (row[table.descField] || table.label) : table.label;
             
             if (table.name === 'servicos_terceiros_registros' && row.detalhes_planejamento?.nome_servico_outros) {
               descValue = row.detalhes_planejamento.nome_servico_outros;
@@ -191,7 +206,7 @@ export function PTrabImporter({ isOpen, onClose, ptrabId, onImportConcluded }: P
             if (!aggregatedMap[key]) {
               aggregatedMap[key] = {
                 id: key,
-                descricao: descValue,
+                descricao: descValue.toUpperCase(),
                 valor: 0,
                 gnd: table.gnd,
                 natureza: table.nature,
