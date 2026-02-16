@@ -149,8 +149,8 @@ const PTrabDORReport: React.FC<PTrabDORReportProps> = ({ ptrabData, dorData, sel
               <td style={headerCellStyle}>DADOS DO ÓRGÃO REQUISITANTE</td>
             </tr>
             <tr>
-              <td style={{ ...cellStyle, borderBottom: 'none' }}>
-                <span style={labelStyle}>Órgão:</span>
+              <td style={{ ...cellStyle, borderBottom: 'none', fontWeight: 'bold' }}>
+                Órgão:
               </td>
             </tr>
             <tr>
@@ -163,8 +163,8 @@ const PTrabDORReport: React.FC<PTrabDORReportProps> = ({ ptrabData, dorData, sel
                 <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                   <tbody>
                     <tr>
-                      <td style={{ ...cellStyle, width: '50%', borderLeft: 'none', borderBottom: 'none' }}>
-                        <span style={labelStyle}>Responsável pela Demanda:</span>
+                      <td style={{ ...cellStyle, width: '50%', borderLeft: 'none', borderBottom: 'none', fontWeight: 'bold' }}>
+                        Responsável pela Demanda:
                       </td>
                       <td style={{ ...cellStyle, width: '50%', borderRight: 'none', borderBottom: 'none' }}></td>
                     </tr>
@@ -184,11 +184,11 @@ const PTrabDORReport: React.FC<PTrabDORReportProps> = ({ ptrabData, dorData, sel
                   <tbody>
                     <tr>
                       <td style={{ ...cellStyle, width: '50%', borderLeft: 'none', borderBottom: 'none' }}>
-                        <span style={{ ...labelStyle, display: 'inline' }}>E-mail: </span>
+                        <span style={{ fontWeight: 'bold', display: 'inline' }}>E-mail: </span>
                         <span style={{ fontWeight: 'normal' }}>{dorData.email}</span>
                       </td>
                       <td style={{ ...cellStyle, width: '50%', borderRight: 'none', borderBottom: 'none' }}>
-                        <span style={{ ...labelStyle, display: 'inline' }}>Telefone: </span>
+                        <span style={{ fontWeight: 'bold', display: 'inline' }}>Telefone: </span>
                         <span style={{ fontWeight: 'normal' }}>{dorData.telefone}</span>
                       </td>
                     </tr>
@@ -220,7 +220,7 @@ const PTrabDORReport: React.FC<PTrabDORReportProps> = ({ ptrabData, dorData, sel
             </tr>
             <tr>
               <td style={cellStyle}>
-                <span style={{ ...labelStyle, display: 'inline' }}>Plano Orçamentário (PO): </span>
+                <span style={{ fontWeight: 'bold', display: 'inline' }}>Plano Orçamentário (PO): </span>
                 <span style={{ fontWeight: 'normal' }}>{dorData.plano_orcamentario}</span>
               </td>
             </tr>
@@ -234,7 +234,7 @@ const PTrabDORReport: React.FC<PTrabDORReportProps> = ({ ptrabData, dorData, sel
             </tr>
             <tr>
               <td colSpan={4} style={cellStyle}>
-                <span style={{ ...labelStyle, display: 'inline' }}>Evento: </span>
+                <span style={{ fontWeight: 'bold', display: 'inline' }}>Evento: </span>
                 <span style={{ fontWeight: 'normal' }}>{dorData.evento}</span>
               </td>
             </tr>
@@ -255,8 +255,8 @@ const PTrabDORReport: React.FC<PTrabDORReportProps> = ({ ptrabData, dorData, sel
                     <div style={{ fontSize: '9pt', fontWeight: 'normal' }}>({formatCodug(item.uge_code || item.ug)})</div>
                   )}
                 </td>
-                <td style={{ ...cellStyle, width: '50px', verticalAlign: 'middle' }}>{item.gnd}</td>
-                <td style={{ ...cellStyle, width: '110px', verticalAlign: 'middle', fontWeight: 'normal' }}>{formatNumber(item.valor_num)}</td>
+                <td style={{ ...cellStyle, width: '50px', verticalAlign: 'middle', textAlign: 'center' }}>{item.gnd}</td>
+                <td style={{ ...cellStyle, width: '110px', verticalAlign: 'middle', textAlign: 'center', fontWeight: 'normal' }}>{formatNumber(item.valor_num)}</td>
                 <td style={{ ...cellStyle, textAlign: 'center', textTransform: 'uppercase', verticalAlign: 'middle', lineHeight: '1.2' }}>{item.descricao}</td>
               </tr>
             ))}
