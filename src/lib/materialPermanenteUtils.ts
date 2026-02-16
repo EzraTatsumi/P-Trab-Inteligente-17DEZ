@@ -1,4 +1,4 @@
-import { formatCurrency, formatPregao } from "./formatUtils";
+import { formatCurrency, formatPregao, formatCodug } from "./formatUtils";
 
 export const calculateMaterialPermanenteTotals = (items: any[]) => {
     const totalGeral = items.reduce((acc, item) => acc + ((item.quantidade || 0) * (item.valor_unitario || 0)), 0);
@@ -8,7 +8,7 @@ export const calculateMaterialPermanenteTotals = (items: any[]) => {
 export const generateMaterialPermanenteMemoria = (registro: any, item: any) => {
     if (!item) return "";
 
-    // Extração da justificativa (mesma lógica do Form)
+    // Extração da justificativa
     const { grupo, proposito, destinacao, local, finalidade, motivo } = item.justificativa || {};
     const diasStr = `${registro.dias_operacao} ${registro.dias_operacao === 1 ? 'dia' : 'dias'}`;
     const fase = registro.fase_atividade || '[Fase]';
@@ -19,8 +19,11 @@ export const generateMaterialPermanenteMemoria = (registro: any, item: any) => {
     const quantidade = Number(item.quantidade || 0);
     const valorTotal = valorUnitario * quantidade;
     const nomeItem = item.descricao_reduzida || item.descricao_item || "Item";
+    
+    // Formatação de Pregão e UASG
     const pregao = formatPregao(item.numero_pregao);
-    const uasg = item.codigo_uasg || registro.ug_detentora || registro.ug || "N/A";
+    const uasgRaw = item.codigo_uasg || registro.ug_detentora || registro.ug || "";
+    const uasg = uasgRaw ? formatCodug(uasgRaw) : "N/A";
 
     return `44.90.52 - ${justificativa}
 
