@@ -741,6 +741,8 @@ const MaterialPermanenteForm = () => {
                 onOpenChange={setJustificativaDialogOpen}
                 itemName={itemForJustificativa?.descricao_reduzida || itemForJustificativa?.descricao_item || ""}
                 data={itemForJustificativa?.justificativa || {}}
+                diasOperacao={diasOperacao}
+                faseAtividade={faseAtividade}
                 onSave={handleSaveJustificativa}
             />
 

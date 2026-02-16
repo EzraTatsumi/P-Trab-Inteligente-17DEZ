@@ -13,7 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
-import { FileText, Save } from "lucide-react";
+import { FileText, Save, Eye } from "lucide-react";
 
 interface JustificativaData {
   grupo?: string;
@@ -29,6 +29,8 @@ interface MaterialPermanenteJustificativaDialogProps {
   onOpenChange: (open: boolean) => void;
   itemName: string;
   data: JustificativaData;
+  diasOperacao: number;
+  faseAtividade: string;
   onSave: (data: JustificativaData) => void;
 }
 
@@ -37,6 +39,8 @@ const MaterialPermanenteJustificativaDialog = ({
   onOpenChange,
   itemName,
   data,
+  diasOperacao,
+  faseAtividade,
   onSave
 }: MaterialPermanenteJustificativaDialogProps) => {
   const [formData, setFormData] = React.useState<JustificativaData>(data);
@@ -52,9 +56,16 @@ const MaterialPermanenteJustificativaDialog = ({
     onOpenChange(false);
   };
 
+  const generatedText = React.useMemo(() => {
+    const { grupo, proposito, destinacao, local, finalidade, motivo } = formData;
+    const diasStr = `${diasOperacao} ${diasOperacao === 1 ? 'dia' : 'dias'}`;
+    
+    return `Aquisição de ${grupo || '[Grupo]'} para atender ${proposito || '[Propósito]'} ${destinacao || '[Destinação]'}, ${local || '[Local]'}, a fim de ${finalidade || '[Finalidade]'}, durante ${diasStr} de ${faseAtividade || '[Fase]'}. Justifica-se essa aquisição ${motivo || '[Motivo]'}.`;
+  }, [formData, diasOperacao, faseAtividade]);
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <FileText className="h-5 w-5 text-primary" />
@@ -117,7 +128,17 @@ const MaterialPermanenteJustificativaDialog = ({
           </div>
         </div>
 
-        <DialogFooter className="flex justify-end gap-2">
+        <div className="bg-muted/50 p-4 rounded-lg border border-dashed space-y-2">
+          <div className="flex items-center gap-2 text-xs font-bold text-muted-foreground uppercase">
+            <Eye className="h-3 w-3" />
+            Pré-visualização da Justificativa
+          </div>
+          <p className="text-sm leading-relaxed italic text-foreground/80">
+            {generatedText}
+          </p>
+        </div>
+
+        <DialogFooter className="flex justify-end gap-2 mt-4">
           <Button onClick={handleSave} className="gap-2">
             <Save className="h-4 w-4" />
             Salvar Justificativa
