@@ -1608,27 +1608,32 @@ const PTrabReportManager = () => {
         );
       case 'dor':
         const selectedDor = registrosDOR.find(d => d.id === selectedDorId) || registrosDOR[0];
-        return (
-          <div className="space-y-6">
-            {registrosDOR.length > 1 && (
-              <div className="flex items-center gap-3 bg-muted/50 p-4 rounded-lg border border-border print:hidden">
-                <span className="text-sm font-bold">Selecionar Documento:</span>
-                <Select value={selectedDorId || ''} onValueChange={setSelectedDorId}>
-                  <SelectTrigger className="w-[300px] bg-white">
-                    <SelectValue placeholder="Escolha o DOR" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {registrosDOR.map(dor => (
-                      <SelectItem key={dor.id} value={dor.id}>
-                        DOR Nr {dor.numero_dor || 'S/N'} - {new Date(dor.created_at).toLocaleDateString()}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
-            <PTrabDORReport ptrabData={ptrabData} dorData={selectedDor} />
+        
+        // Seletor de Documento para ser passado como prop
+        const dorSelector = registrosDOR.length > 1 ? (
+          <div className="flex items-center gap-3">
+            <span className="text-sm font-bold whitespace-nowrap">Selecionar Documento:</span>
+            <Select value={selectedDorId || ''} onValueChange={setSelectedDorId}>
+              <SelectTrigger className="w-[300px] bg-white">
+                <SelectValue placeholder="Escolha o DOR" />
+              </SelectTrigger>
+              <SelectContent>
+                {registrosDOR.map(dor => (
+                  <SelectItem key={dor.id} value={dor.id}>
+                    DOR Nr {dor.numero_dor || 'S/N'} - {new Date(dor.created_at).toLocaleDateString()}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
+        ) : null;
+
+        return (
+          <PTrabDORReport 
+            ptrabData={ptrabData} 
+            dorData={selectedDor} 
+            selector={dorSelector}
+          />
         );
       default:
         return null;

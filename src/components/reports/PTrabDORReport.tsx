@@ -2,18 +2,20 @@
 
 import React, { useRef } from 'react';
 import { Button } from "@/components/ui/button";
-import { Printer, Download } from "lucide-react";
+import { Printer, Download, FileSpreadsheet } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatNumber, formatCodug } from "@/lib/formatUtils";
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
+import { toast } from "sonner";
 
 interface PTrabDORReportProps {
   ptrabData: any;
   dorData: any;
+  selector?: React.ReactNode; // Prop para receber o seletor de documentos
 }
 
-const PTrabDORReport: React.FC<PTrabDORReportProps> = ({ ptrabData, dorData }) => {
+const PTrabDORReport: React.FC<PTrabDORReportProps> = ({ ptrabData, dorData, selector }) => {
   const reportRef = useRef<HTMLDivElement>(null);
 
   const handlePrint = () => {
@@ -39,6 +41,10 @@ const PTrabDORReport: React.FC<PTrabDORReportProps> = ({ ptrabData, dorData }) =
     pdf.save(`DOR_${dorData.numero_dor || 'SN'}_${ptrabData.nome_om}.pdf`);
   };
 
+  const handleExportExcel = () => {
+    toast.info("A exportação para Excel do DOR está em desenvolvimento.");
+  };
+
   const dataAtual = new Date().toLocaleDateString('pt-BR', { day: 'numeric', month: 'long', year: 'numeric' });
   const anoAtual = new Date().getFullYear();
 
@@ -47,13 +53,26 @@ const PTrabDORReport: React.FC<PTrabDORReportProps> = ({ ptrabData, dorData }) =
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-end gap-2 print:hidden">
-        <Button variant="outline" size="sm" onClick={handlePrint}>
-          <Printer className="h-4 w-4 mr-2" /> Imprimir
-        </Button>
-        <Button variant="outline" size="sm" onClick={handleExportPDF}>
-          <Download className="h-4 w-4 mr-2" /> Exportar PDF
-        </Button>
+      {/* Barra de Ações Padronizada */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-muted/30 p-4 rounded-xl border border-border print:hidden">
+        <div className="flex items-center gap-3">
+          {selector}
+        </div>
+        
+        <div className="flex items-center gap-2">
+          <Button onClick={handleExportPDF} variant="outline">
+            <Download className="mr-2 h-4 w-4" />
+            Exportar PDF
+          </Button>
+          <Button onClick={handleExportExcel} variant="outline">
+            <FileSpreadsheet className="mr-2 h-4 w-4" />
+            Exportar Excel
+          </Button>
+          <Button onClick={handlePrint} variant="default">
+            <Printer className="mr-2 h-4 w-4" />
+            Imprimir
+          </Button>
+        </div>
       </div>
 
       <div 
