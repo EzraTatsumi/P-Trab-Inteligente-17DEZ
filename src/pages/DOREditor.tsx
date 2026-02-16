@@ -5,7 +5,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { ArrowLeft, Save, Printer, Loader2, Info, RefreshCw } from "lucide-react";
+import { ArrowLeft, Save, Printer, Loader2, Info, Download } from "lucide-react";
 import { useSession } from "@/components/SessionContextProvider";
 import { cn } from "@/lib/utils";
 import { formatNumber } from "@/lib/formatUtils";
@@ -27,7 +27,14 @@ const DocumentInput = ({ value, onChange, placeholder, className, readOnly = fal
 );
 
 // Componente auxiliar para Textareas que se integram ao layout e auto-ajustam a altura
-const DocumentTextArea = ({ value, onChange, placeholder, className, rows = 1, style }: any) => {
+const DocumentTextArea = ({ 
+  value, 
+  onChange, 
+  placeholder = "Msg Op nº 196 - CCOp/CMN, de 15 ABR 24.", 
+  className, 
+  rows = 1, 
+  style 
+}: any) => {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   // Ajusta a altura automaticamente baseada no scrollHeight
@@ -434,7 +441,7 @@ const DOREditor = () => {
                     onClick={consolidateItems}
                     className="print:hidden border-primary text-primary hover:bg-primary/5 font-sans"
                   >
-                    <RefreshCw className="h-4 w-4 mr-2" /> Importar Dados do P Trab
+                    <Download className="h-4 w-4 mr-2" /> Importar Dados do P Trab
                   </Button>
                 </div>
               ) : (
@@ -476,7 +483,6 @@ const DOREditor = () => {
                 <DocumentTextArea 
                   value={formData.finalidade}
                   onChange={(e: any) => setFormData({...formData, finalidade: e.target.value})}
-                  placeholder="Descreva a finalidade desta requisição..."
                   style={bodyStyle}
                 />
               </div>
@@ -494,7 +500,6 @@ const DOREditor = () => {
                 <DocumentTextArea 
                   value={formData.motivacao}
                   onChange={(e: any) => setFormData({...formData, motivacao: e.target.value})}
-                  placeholder="Justifique a necessidade técnica e operacional..."
                   style={bodyStyle}
                 />
               </div>
@@ -512,7 +517,6 @@ const DOREditor = () => {
                 <DocumentTextArea 
                   value={formData.consequencia}
                   onChange={(e: any) => setFormData({...formData, consequencia: e.target.value})}
-                  placeholder="Descreva os riscos e prejuízos caso a requisição não seja atendida..."
                   style={bodyStyle}
                 />
               </div>
@@ -530,7 +534,6 @@ const DOREditor = () => {
                 <DocumentTextArea 
                   value={formData.observacoes}
                   onChange={(e: any) => setFormData({...formData, observacoes: e.target.value})}
-                  placeholder="Informações adicionais relevantes..."
                   style={bodyStyle}
                 />
               </div>
