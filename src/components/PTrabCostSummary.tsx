@@ -205,7 +205,7 @@ const initializeOmTotals = (omName: string, ug: string): OmTotals => ({
     passagens: { total: 0, totalQuantidade: 0, totalTrechos: 0 },
     concessionaria: { total: 0, totalAgua: 0, totalEnergia: 0, totalRegistros: 0 },
     horasVoo: { total: 0, totalND30: 0, totalND39: 0, quantidadeHV: 0, groupedHV: {} },
-    materialConsumo: { total: 0, totalND30: number, totalND39: number, groupedCategories: {} },
+    materialConsumo: { total: 0, totalND30: 0, totalND39: 0, groupedCategories: {} },
     complementoAlimentacao: { total: 0, totalND30: 0, totalND39: 0, groupedCategories: {} },
     servicosTerceiros: { total: 0, totalND33: 0, totalND39: 0, groupedCategories: {} },
     materialPermanente: { total: 0, totalND52: 0, groupedCategories: {} },
