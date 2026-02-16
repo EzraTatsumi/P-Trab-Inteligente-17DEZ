@@ -103,7 +103,7 @@ const DOREditor = () => {
       setPtrab(ptrabData);
 
       const { data: dorData } = await supabase
-        .from("dor_registros")
+        .from("dor_registros" as any)
         .select("*")
         .eq("p_trab_id", ptrabId)
         .maybeSingle();
@@ -122,6 +122,11 @@ const DOREditor = () => {
           consequencia: dorData.consequencia || "",
           observacoes: dorData.observacoes || ""
         });
+        
+        if (dorData.itens_dor && Array.isArray(dorData.itens_dor) && dorData.itens_dor.length > 0) {
+          setDorItems(dorData.itens_dor);
+          setShowItemsTable(true);
+        }
       } else {
         const opName = ptrabData.nome_operacao || "";
         const formattedOp = opName.toLowerCase().startsWith("operação") ? opName : `Operação ${opName}`;
@@ -141,12 +146,9 @@ const DOREditor = () => {
   }, [ptrabId]);
 
   const handleImportConcluded = (groups: DorGroup[], selectedGnd: number) => {
-    // Transforma os grupos criados pelo usuário em linhas da tabela do DOR
-    // Expandindo os tipos de custo de volta para registros por UGE
     const finalItems: any[] = [];
 
     groups.forEach(group => {
-      // Para cada grupo do DOR, consolidamos os valores por UGE
       const ugeAggregated: Record<string, number> = {};
       
       group.items.forEach(typeItem => {
@@ -156,7 +158,6 @@ const DOREditor = () => {
         });
       });
 
-      // Cria uma linha para cada UGE dentro deste grupo do DOR
       Object.entries(ugeAggregated).forEach(([uge, valor]) => {
         finalItems.push({
           uge,
@@ -181,11 +182,12 @@ const DOREditor = () => {
     setSaving(true);
     try {
       const { error } = await supabase
-        .from("dor_registros")
+        .from("dor_registros" as any)
         .upsert({
           p_trab_id: ptrabId,
           user_id: user.id,
           ...formData,
+          itens_dor: dorItems, // Salvando os itens importados
           updated_at: new Date().toISOString()
         }, { onConflict: 'p_trab_id' });
 
@@ -223,7 +225,6 @@ const DOREditor = () => {
   const dataAtual = new Date().toLocaleDateString('pt-BR', { day: 'numeric', month: 'long', year: 'numeric' });
   const anoAtual = new Date().getFullYear();
 
-  // Estilo base para o corpo do documento (Calibri 12pt)
   const bodyStyle = { fontFamily: 'Calibri, sans-serif', fontSize: '12pt', color: 'black', lineHeight: '1.2' };
   const headerTitleStyle = { backgroundColor: '#BFBFBF' };
 
@@ -244,7 +245,6 @@ const DOREditor = () => {
             display: block !important;
             z-index: 1;
           }
-          /* Bloqueador para esconder o cabeçalho de continuação na página 1 */
           .first-page-header-cover {
             position: absolute;
             top: -25mm;
@@ -261,7 +261,6 @@ const DOREditor = () => {
         }
       `}</style>
 
-      {/* Barra de Ferramentas Flutuante */}
       <div className="fixed top-4 right-4 z-50 flex gap-2 print:hidden bg-white/90 backdrop-blur p-2 rounded-lg shadow-xl border border-slate-200">
         <Button variant="outline" size="sm" onClick={() => navigate(-1)}>
           <ArrowLeft className="h-4 w-4 mr-2" /> Voltar
@@ -275,7 +274,6 @@ const DOREditor = () => {
         </Button>
       </div>
 
-      {/* Cabeçalho de Continuação (Fixo para Print) */}
       <div className="continuation-header hidden pointer-events-none">
         <div className="flex items-end w-full text-[10pt] font-normal italic text-black">
           <span className="whitespace-nowrap">
@@ -286,15 +284,12 @@ const DOREditor = () => {
         </div>
       </div>
 
-      {/* A FOLHA A4 */}
       <div className="max-w-[210mm] mx-auto bg-white shadow-2xl print:shadow-none min-h-[297mm] relative text-black print:w-full">
         
-        {/* Bloqueador do cabeçalho na página 1 */}
         <div className="first-page-header-cover hidden"></div>
 
         <div className="p-[20mm]">
           
-          {/* CABEÇALHO OFICIAL PADRONIZADO (3 COLUNAS) - MANTIDO 11PT */}
           <div className="border border-black grid grid-cols-[180px_1fr_200px] items-stretch mb-4">
             <div className="border-r border-black p-1 flex items-center justify-center text-center overflow-hidden">
               <img 
@@ -337,10 +332,8 @@ const DOREditor = () => {
             </div>
           </div>
 
-          {/* ESTRUTURA TABULAR DO DOR - CALIBRI 12PT */}
           <div style={bodyStyle}>
             
-            {/* SEÇÃO 1: DADOS DO REQUISITANTE */}
             <div className="border border-black mb-4">
               <div 
                 className="border-b border-black p-0.5 font-bold text-center uppercase"
@@ -391,7 +384,6 @@ const DOREditor = () => {
               </div>
             </div>
 
-            {/* SEÇÃO: ANEXOS */}
             <div className="border border-black mb-4">
               <div 
                 className="border-b border-black p-0.5 font-bold text-center uppercase"
@@ -409,7 +401,6 @@ const DOREditor = () => {
               </div>
             </div>
 
-            {/* SEÇÃO 2: DADOS ORÇAMENTÁRIOS */}
             <div className="border border-black mb-4">
               <div className="border-b border-black py-0 px-2 flex items-center gap-2" style={headerTitleStyle}>
                 <span className="font-bold shrink-0">Ação Orçamentária (AO):</span>
@@ -431,7 +422,6 @@ const DOREditor = () => {
               </div>
             </div>
 
-            {/* SEÇÃO 3: OBJETO E ITENS */}
             <div className="border border-black mb-4">
               <div 
                 className="border-b border-black p-0.5 font-bold text-center uppercase"
@@ -512,7 +502,6 @@ const DOREditor = () => {
               )}
             </div>
 
-            {/* SEÇÃO 4: FINALIDADE */}
             <div className="border border-black mb-4">
               <div 
                 className="border-b border-black p-0.5 font-bold text-center uppercase relative group"
@@ -537,7 +526,6 @@ const DOREditor = () => {
               </div>
             </div>
 
-            {/* SEÇÃO 5: MOTIVAÇÃO */}
             <div className="border border-black mb-4">
               <div 
                 className="border-b border-black p-0.5 font-bold text-center uppercase"
@@ -555,7 +543,6 @@ const DOREditor = () => {
               </div>
             </div>
 
-            {/* SEÇÃO 6: CONSEQUÊNCIA DO NÃO ATENDIMENTO */}
             <div className="border border-black mb-4">
               <div 
                 className="border-b border-black p-0.5 font-bold text-center uppercase"
@@ -573,7 +560,6 @@ const DOREditor = () => {
               </div>
             </div>
 
-            {/* SEÇÃO 7: OBSERVAÇÕES */}
             <div className="border border-black mb-4">
                <div 
                 className="border-b border-black p-0.5 font-bold text-center uppercase"
@@ -599,7 +585,6 @@ const DOREditor = () => {
 
           </div>
 
-          {/* RODAPÉ E ASSINATURAS - FORMATO TABULAR CONFORME IMAGEM */}
           <div className="mt-4 border border-black p-1 flex flex-col items-center min-h-[150px] justify-between" style={bodyStyle}>
             <div className="text-center w-full pt-1">
               <p>{ptrab?.local_om || "Local não informado"}, {dataAtual}.</p>
@@ -614,7 +599,6 @@ const DOREditor = () => {
         </div>
       </div>
 
-      {/* Janela de Importação Avançada */}
       {ptrabId && (
         <PTrabImporter 
           isOpen={isImporterOpen}
@@ -624,7 +608,6 @@ const DOREditor = () => {
         />
       )}
 
-      {/* Dica Flutuante */}
       <div className="fixed bottom-6 right-6 max-w-xs bg-primary text-primary-foreground p-3 rounded-lg shadow-lg flex gap-3 items-start animate-in fade-in slide-in-from-bottom-4 print:hidden">
         <Info className="h-5 w-5 shrink-0 mt-0.5" />
         <p className="text-xs leading-relaxed">
