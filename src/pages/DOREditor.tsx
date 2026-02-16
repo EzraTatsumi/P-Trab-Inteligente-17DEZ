@@ -30,7 +30,7 @@ const DocumentInput = ({ value, onChange, placeholder, className, readOnly = fal
 const DocumentTextArea = ({ 
   value, 
   onChange, 
-  placeholder = "Msg Op nº 196 - CCOp/CMN, de 15 ABR 24.", 
+  placeholder = "- Possível inviabilidade de atuação da tropa nas atividades/tarefas/ações na Operação (COP 30) por ausência de suporte logístico.", 
   className, 
   rows = 1, 
   style 
@@ -483,6 +483,7 @@ const DOREditor = () => {
                 <DocumentTextArea 
                   value={formData.finalidade}
                   onChange={(e: any) => setFormData({...formData, finalidade: e.target.value})}
+                  placeholder="Msg Op nº 196 - CCOp/CMN, de 15 ABR 24."
                   style={bodyStyle}
                 />
               </div>
@@ -500,6 +501,7 @@ const DOREditor = () => {
                 <DocumentTextArea 
                   value={formData.motivacao}
                   onChange={(e: any) => setFormData({...formData, motivacao: e.target.value})}
+                  placeholder="Msg Op nº 196 - CCOp/CMN, de 15 ABR 24."
                   style={bodyStyle}
                 />
               </div>
