@@ -161,11 +161,11 @@ const MaterialPermanenteJustificativaDialog = ({
         </div>
 
         <DialogFooter className="flex justify-end gap-3 mt-6 pt-6 border-t">
-          <Button variant="outline" onClick={() => onOpenChange(false)} className="px-6">Cancelar</Button>
           <Button onClick={handleSave} className="gap-2 px-8">
             <Save className="h-4 w-4" />
             Salvar Justificativa
           </Button>
+          <Button variant="outline" onClick={() => onOpenChange(false)} className="px-6">Cancelar</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

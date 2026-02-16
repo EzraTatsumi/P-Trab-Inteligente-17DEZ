@@ -25,7 +25,8 @@ import {
     Package,
     CheckCircle2,
     Circle,
-    CircleX
+    CircleX,
+    Table as TableIcon
 } from "lucide-react";
 import { useMilitaryOrganizations } from "@/hooks/useMilitaryOrganizations";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -55,6 +56,7 @@ import { Switch } from "@/components/ui/switch";
 import PageMetadata from "@/components/PageMetadata";
 import { useSession } from "@/components/SessionContextProvider";
 import MaterialPermanenteJustificativaDialog from "@/components/MaterialPermanenteJustificativaDialog";
+import MaterialPermanenteBulkJustificativaDialog from "@/components/MaterialPermanenteBulkJustificativaDialog";
 import { Collapsible, CollapsibleContent } from "@/components/ui/collapsible";
 import React from "react";
 
@@ -101,6 +103,7 @@ const MaterialPermanenteForm = () => {
 
     const [selectedItems, setSelectedItems] = useState<ItemAquisicao[]>([]);
     const [isSelectorOpen, setIsSelectorOpen] = useState(false);
+    const [isBulkJustificativaOpen, setIsBulkJustificativaOpen] = useState(false);
     
     const [pendingItems, setPendingItems] = useState<PendingPermanenteItem[]>([]);
     const [lastStagedState, setLastStagedState] = useState<any>(null);
@@ -390,6 +393,11 @@ const MaterialPermanenteForm = () => {
         toast.success("Justificativa salva para o item.");
     };
 
+    const handleSaveBulkJustificativas = (updatedItems: ItemAquisicao[]) => {
+        setSelectedItems(updatedItems);
+        toast.success("Justificativas atualizadas em massa.");
+    };
+
     const toggleJustification = (id: string) => {
         setExpandedJustifications(prev => ({ ...prev, [id]: !prev[id] }));
     };
@@ -507,7 +515,19 @@ const MaterialPermanenteForm = () => {
                                         <Card className="rounded-lg p-4 bg-background">
                                             <div className="flex justify-between items-center mb-4">
                                                 <h4 className="text-base font-semibold flex items-center gap-2">Itens de Material Permanente</h4>
-                                                <Button type="button" variant="outline" size="sm" onClick={() => setIsSelectorOpen(true)} disabled={!isPTrabEditable}><Plus className="mr-2 h-4 w-4" /> Importar da Diretriz</Button>
+                                                <div className="flex items-center gap-2">
+                                                    <Button 
+                                                        type="button" 
+                                                        variant="outline" 
+                                                        size="sm" 
+                                                        onClick={() => setIsBulkJustificativaOpen(true)} 
+                                                        disabled={!isPTrabEditable || selectedItems.length === 0}
+                                                        className="border-primary text-primary hover:bg-primary/10"
+                                                    >
+                                                        <TableIcon className="mr-2 h-4 w-4" /> Preenchimento Coletivo
+                                                    </Button>
+                                                    <Button type="button" variant="outline" size="sm" onClick={() => setIsSelectorOpen(true)} disabled={!isPTrabEditable}><Plus className="mr-2 h-4 w-4" /> Importar da Diretriz</Button>
+                                                </div>
                                             </div>
 
                                             {selectedItems.length > 0 ? (
@@ -589,19 +609,12 @@ const MaterialPermanenteForm = () => {
                                                                             <TableRow className="bg-muted/30">
                                                                                 <TableCell colSpan={6} className="p-0">
                                                                                     <Collapsible open={isExpanded}>
-                                                                                        <CollapsibleContent className="p-4 space-y-3 text-sm border-t border-border/50 animate-in fade-in slide-in-from-top-1 duration-200">
+                                                                                        <CollapsibleContent className="p-4 border-t border-border/50 animate-in fade-in slide-in-from-top-1 duration-200">
                                                                                             <div className="bg-background p-3 rounded border border-primary/20 shadow-sm">
                                                                                                 <span className="font-bold text-primary uppercase text-[10px] block mb-1">Justificativa Montada:</span>
-                                                                                                <p className="italic leading-relaxed text-foreground/90">
+                                                                                                <p className="italic leading-relaxed text-foreground/90 text-sm">
                                                                                                     {getJustificativaText(item, diasOperacao, faseAtividade)}
                                                                                                 </p>
-                                                                                            </div>
-                                                                                            <div className="grid grid-cols-1 md:grid-cols-3 gap-x-4 gap-y-2 pt-2">
-                                                                                                <div className="md:col-span-3"><span className="font-bold text-muted-foreground uppercase text-[9px]">Grupo:</span> <p className="text-xs">{item.justificativa?.grupo || 'N/A'}</p></div>
-                                                                                                <div><span className="font-bold text-muted-foreground uppercase text-[9px]">Propósito:</span> <p className="text-xs">{item.justificativa?.proposito || 'N/A'}</p></div>
-                                                                                                <div><span className="font-bold text-muted-foreground uppercase text-[9px]">Destinação:</span> <p className="text-xs">{item.justificativa?.destinacao || 'N/A'}</p></div>
-                                                                                                <div><span className="font-bold text-muted-foreground uppercase text-[9px]">Local:</span> <p className="text-xs">{item.justificativa?.local || 'N/A'}</p></div>
-                                                                                                <div><span className="font-bold text-muted-foreground uppercase text-[9px]">Finalidade:</span> <p className="text-xs">{item.justificativa?.finalidade || 'N/A'}</p></div>
                                                                                             </div>
                                                                                         </CollapsibleContent>
                                                                                     </Collapsible>
@@ -752,6 +765,13 @@ const MaterialPermanenteForm = () => {
                 diasOperacao={diasOperacao}
                 faseAtividade={faseAtividade}
                 onSave={handleSaveJustificativa}
+            />
+
+            <MaterialPermanenteBulkJustificativaDialog 
+                open={isBulkJustificativaOpen}
+                onOpenChange={setIsBulkJustificativaOpen}
+                items={selectedItems}
+                onSave={handleSaveBulkJustificativas}
             />
 
             <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
