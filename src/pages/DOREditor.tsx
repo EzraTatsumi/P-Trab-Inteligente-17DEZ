@@ -482,43 +482,49 @@ const DOREditor = () => {
               </div>
             </div>
 
-            {/* SEÇÃO 5: JUSTIFICATIVAS */}
+            {/* SEÇÃO 5: MOTIVAÇÃO */}
             <div className="border border-black mb-4">
               <div 
                 className="border-b border-black p-0.5 font-bold text-center uppercase"
                 style={headerTitleStyle}
               >
-                5. Justificativas da Contratação / Requisição
+                5. Motivação / Justificativa
               </div>
-              
-              <div className="border-b border-black p-1 px-2">
-                <span className="block font-bold uppercase mb-0.5">5.1. Motivação / Justificativa:</span>
+              <div className="p-1 px-2">
                 <DocumentTextArea 
                   value={formData.motivacao}
                   onChange={(e: any) => setFormData({...formData, motivacao: e.target.value})}
-                  placeholder="Justifique a necessidade técnica e operacional..."
-                  style={bodyStyle}
-                />
-              </div>
-
-              <div className="p-1 px-2">
-                <span className="block font-bold uppercase mb-0.5">5.2. Consequência do Não Atendimento:</span>
-                <DocumentTextArea 
-                  value={formData.consequencia}
-                  onChange={(e: any) => setFormData({...formData, consequencia: e.target.value})}
-                  placeholder="Descreva os riscos e prejuízos caso a requisição não seja atendida..."
+                  placeholder="Msg Op nº 196 - CCOp/CMN, de 15 ABR 24."
                   style={bodyStyle}
                 />
               </div>
             </div>
 
-            {/* SEÇÃO 6: OBSERVAÇÕES */}
+            {/* SEÇÃO 6: CONSEQUÊNCIA */}
+            <div className="border border-black mb-4">
+              <div 
+                className="border-b border-black p-0.5 font-bold text-center uppercase"
+                style={headerTitleStyle}
+              >
+                6. Consequência do Não Atendimento
+              </div>
+              <div className="p-1 px-2">
+                <DocumentTextArea 
+                  value={formData.consequencia}
+                  onChange={(e: any) => setFormData({...formData, consequencia: e.target.value})}
+                  placeholder="- Possível inviabilidade de atuação da tropa nas atividades/tarefas impostas, por ausência de suporte logístico; e&#10;- Redução da capacidade de planejamento e emprego de militares no contexto das ações para atuação na Op MARAJOARA (COP 30)."
+                  style={bodyStyle}
+                />
+              </div>
+            </div>
+
+            {/* SEÇÃO 7: OBSERVAÇÕES */}
             <div className="border border-black mb-4">
                <div 
                 className="border-b border-black p-0.5 font-bold text-center uppercase"
                 style={headerTitleStyle}
               >
-                6. Observações Gerais
+                7. Observações Gerais
               </div>
               <div className="p-1 px-2">
                 <DocumentTextArea 
