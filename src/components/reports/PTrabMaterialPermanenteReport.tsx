@@ -75,7 +75,6 @@ const PTrabMaterialPermanenteReport: React.FC<PTrabMaterialPermanenteReportProps
     const workbook = new ExcelJS.Workbook();
     const worksheet = workbook.addWorksheet('Material Permanente');
     
-    // Configurações de Estilo
     const centerStyle = { horizontal: 'center' as const, vertical: 'middle' as const, wrapText: true };
     const border = { top: { style: 'thin' as const }, left: { style: 'thin' as const }, bottom: { style: 'thin' as const }, right: { style: 'thin' as const } };
     const headerFill = { type: 'pattern' as const, pattern: 'solid' as const, fgColor: { argb: 'FFD9D9D9' } };
@@ -99,7 +98,6 @@ const PTrabMaterialPermanenteReport: React.FC<PTrabMaterialPermanenteReportProps
     addTitle('PLANO DE TRABALHO DE MATERIAL PERMANENTE', true, true);
     curr++;
 
-    // Info
     const addInfo = (label: string, val: string) => {
       const row = worksheet.getRow(curr);
       row.getCell(1).value = { richText: [{ text: label, font: { bold: true, size: 9 } }, { text: ` ${val}`, font: { size: 9 } }] };
@@ -112,9 +110,7 @@ const PTrabMaterialPermanenteReport: React.FC<PTrabMaterialPermanenteReportProps
     addInfo('4. AÇÕES REALIZADAS OU A REALIZAR:', ptrabData.acoes);
     addInfo('5. DESPESAS DE MATERIAL PERMANENTE REALIZADAS OU A REALIZAR:', '');
 
-    // Header Tabela
     const h1 = worksheet.getRow(curr);
-    const h2 = worksheet.getRow(curr + 1);
     const cols = ['A', 'B', 'C', 'D', 'E'];
     
     h1.getCell('A').value = 'DESPESAS';
@@ -133,7 +129,6 @@ const PTrabMaterialPermanenteReport: React.FC<PTrabMaterialPermanenteReportProps
     worksheet.columns = [{ width: 25 }, { width: 20 }, { width: 15 }, { width: 15 }, { width: 60 }];
     curr++;
 
-    // Dados
     rows.forEach(r => {
       const row = worksheet.getRow(curr);
       row.getCell('A').value = r.itemNome.toUpperCase();
@@ -155,7 +150,6 @@ const PTrabMaterialPermanenteReport: React.FC<PTrabMaterialPermanenteReportProps
       curr++;
     });
 
-    // Totais
     const tRow = worksheet.getRow(curr);
     tRow.getCell('A').value = 'SOMA POR ND E GP DE DESPESA';
     worksheet.mergeCells(`A${curr}:B${curr}`);
@@ -198,16 +192,16 @@ const PTrabMaterialPermanenteReport: React.FC<PTrabMaterialPermanenteReportProps
       </div>
 
       <div ref={contentRef} className="bg-white shadow-xl print:shadow-none" style={{ padding: '0.5cm', minHeight: '29.7cm' }}>
-        <div className="text-center uppercase font-bold text-[11pt] leading-tight space-y-0.5 mb-6">
+        <div className="text-center uppercase font-bold text-[11pt] leading-tight space-y-0.5 mb-4">
           <p>Ministério da Defesa</p>
           <p>Exército Brasileiro</p>
           <p>{ptrabData.comando_militar_area}</p>
           <p>{ptrabData.nome_om_extenso || ptrabData.nome_om}</p>
-          <p className="mt-4">PLANO DE TRABALHO LOGÍSTICO DE SOLICITAÇÃO DE RECURSOS ORÇAMENTÁRIOS E FINANCEIROS OPERAÇÃO {ptrabData.nome_operacao}</p>
-          <p className="underline underline-offset-4">PLANO DE TRABALHO DE MATERIAL PERMANENTE</p>
+          <p className="mt-2">PLANO DE TRABALHO LOGÍSTICO DE SOLICITAÇÃO DE RECURSOS ORÇAMENTÁRIOS E FINANCEIROS OPERAÇÃO {ptrabData.nome_operacao}</p>
+          <p className="underline underline-offset-2">PLANO DE TRABALHO DE MATERIAL PERMANENTE</p>
         </div>
 
-        <div className="text-[10pt] space-y-1 mb-4">
+        <div className="text-[10pt] space-y-0.5 mb-1 leading-tight">
           <p><strong>1. NOME DA OPERAÇÃO:</strong> {ptrabData.nome_operacao}</p>
           <p><strong>2. PERÍODO:</strong> de {formatDate(ptrabData.periodo_inicio)} a {formatDate(ptrabData.periodo_fim)} - Nr Dias: {diasOperacao}</p>
           <p><strong>3. EFETIVO EMPREGADO:</strong> {ptrabData.efetivo_empregado}</p>
@@ -249,9 +243,9 @@ const PTrabMaterialPermanenteReport: React.FC<PTrabMaterialPermanenteReportProps
           </tbody>
         </table>
 
-        <div className="mt-12 text-center">
+        <div className="mt-8 text-center">
           <p className="text-[10pt]">{ptrabData.local_om || 'Local'}, {new Date().toLocaleDateString('pt-BR', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
-          <div className="mt-16 inline-block border-t border-black pt-1 px-8">
+          <div className="mt-12 inline-block border-t border-black pt-1 px-8">
             <p className="text-[10pt] font-bold uppercase">{ptrabData.nome_cmt_om}</p>
             <p className="text-[9pt]">Comandante da {ptrabData.nome_om_extenso || ptrabData.nome_om}</p>
           </div>
