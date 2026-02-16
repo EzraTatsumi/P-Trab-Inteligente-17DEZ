@@ -12,8 +12,9 @@ import {
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
-import { Table as TableIcon, Save, X } from "lucide-react";
+import { Table as TableIcon, Save, X, ClipboardPaste } from "lucide-react";
 import { ItemAquisicao } from "@/types/diretrizesMaterialConsumo";
+import { toast } from "sonner";
 
 interface MaterialPermanenteBulkJustificativaDialogProps {
   open: boolean;
@@ -22,6 +23,8 @@ interface MaterialPermanenteBulkJustificativaDialogProps {
   onSave: (updatedItems: ItemAquisicao[]) => void;
 }
 
+const FIELDS = ['grupo', 'proposito', 'destinacao', 'local', 'finalidade', 'motivo'];
+
 const MaterialPermanenteBulkJustificativaDialog = ({
   open,
   onOpenChange,
@@ -29,10 +32,12 @@ const MaterialPermanenteBulkJustificativaDialog = ({
   onSave
 }: MaterialPermanenteBulkJustificativaDialogProps) => {
   const [localItems, setLocalItems] = React.useState<ItemAquisicao[]>([]);
+  const [focusedCell, setFocusedCell] = React.useState<{ itemId: string, field: string } | null>(null);
 
   React.useEffect(() => {
     if (open) {
       setLocalItems(JSON.parse(JSON.stringify(items)));
+      setFocusedCell(null);
     }
   }, [open, items]);
 
@@ -44,6 +49,49 @@ const MaterialPermanenteBulkJustificativaDialog = ({
       }
       return item;
     }));
+  };
+
+  const handlePaste = (e: React.ClipboardEvent, startItemId: string, startField: string) => {
+    // Se for uma colagem simples (sem tabulações ou quebras de linha), deixa o comportamento padrão do input
+    const pasteData = e.clipboardData.getData('text');
+    if (!pasteData.includes('\t') && !pasteData.includes('\n')) {
+      return;
+    }
+
+    e.preventDefault();
+    
+    const rows = pasteData.split(/\r?\n/).filter(row => row.length > 0 || row === "");
+    const startItemIdx = localItems.findIndex(item => item.id === startItemId);
+    const startFieldIdx = FIELDS.indexOf(startField);
+
+    if (startItemIdx === -1 || startFieldIdx === -1) return;
+
+    setLocalItems(prev => {
+      const newItems = [...prev];
+      
+      rows.forEach((rowText, rowOffset) => {
+        const targetItemIdx = startItemIdx + rowOffset;
+        if (targetItemIdx >= newItems.length) return;
+
+        const cols = rowText.split('\t');
+        cols.forEach((cellText, colOffset) => {
+          const targetFieldIdx = startFieldIdx + colOffset;
+          if (targetFieldIdx >= FIELDS.length) return;
+
+          const fieldName = FIELDS[targetFieldIdx];
+          const currentItem = { ...newItems[targetItemIdx] };
+          currentItem.justificativa = { 
+            ...(currentItem.justificativa || {}), 
+            [fieldName]: cellText.trim() 
+          };
+          newItems[targetItemIdx] = currentItem;
+        });
+      });
+      
+      return newItems;
+    });
+
+    toast.success("Dados colados com sucesso!");
   };
 
   const handleSave = () => {
@@ -59,72 +107,43 @@ const MaterialPermanenteBulkJustificativaDialog = ({
             <TableIcon className="h-5 w-5 text-primary" />
             Preenchimento Coletivo de Justificativas
           </DialogTitle>
-          <DialogDescription>
-            Edite as justificativas de todos os itens simultaneamente. Você pode copiar e colar dados diretamente nas células.
+          <DialogDescription className="flex items-center gap-2">
+            <ClipboardPaste className="h-4 w-4 text-muted-foreground" />
+            Dica: Copie dados do Excel e cole em uma célula para preencher múltiplas linhas e colunas.
           </DialogDescription>
         </DialogHeader>
 
-        <div className="flex-grow overflow-auto border rounded-md my-4">
+        <div className="flex-grow overflow-auto border rounded-md my-4 shadow-inner bg-muted/5">
           <Table>
             <TableHeader className="sticky top-0 bg-background z-10 shadow-sm">
               <TableRow>
-                <TableHead className="min-w-[200px] bg-muted/50">Item</TableHead>
-                <TableHead className="min-w-[150px]">Grupo</TableHead>
-                <TableHead className="min-w-[150px]">Propósito</TableHead>
-                <TableHead className="min-w-[150px]">Destinação</TableHead>
-                <TableHead className="min-w-[150px]">Local</TableHead>
-                <TableHead className="min-w-[150px]">Finalidade</TableHead>
-                <TableHead className="min-w-[250px]">Motivo</TableHead>
+                <TableHead className="min-w-[200px] bg-muted/50 border-r">Item</TableHead>
+                <TableHead className="min-w-[150px] text-center">Grupo</TableHead>
+                <TableHead className="min-w-[150px] text-center">Propósito</TableHead>
+                <TableHead className="min-w-[150px] text-center">Destinação</TableHead>
+                <TableHead className="min-w-[150px] text-center">Local</TableHead>
+                <TableHead className="min-w-[150px] text-center">Finalidade</TableHead>
+                <TableHead className="min-w-[300px] text-center">Motivo</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {localItems.map((item) => (
-                <TableRow key={item.id}>
-                  <TableCell className="font-medium text-xs bg-muted/20">
+                <TableRow key={item.id} className="hover:bg-primary/5 transition-colors">
+                  <TableCell className="font-medium text-xs bg-muted/20 border-r sticky left-0 z-10">
                     {item.descricao_reduzida || item.descricao_item}
                   </TableCell>
-                  <TableCell className="p-1">
-                    <Input 
-                      className="h-8 text-xs border-transparent focus:border-primary rounded-none"
-                      value={item.justificativa?.grupo || ""}
-                      onChange={(e) => handleInputChange(item.id, 'grupo', e.target.value)}
-                    />
-                  </TableCell>
-                  <TableCell className="p-1">
-                    <Input 
-                      className="h-8 text-xs border-transparent focus:border-primary rounded-none"
-                      value={item.justificativa?.proposito || ""}
-                      onChange={(e) => handleInputChange(item.id, 'proposito', e.target.value)}
-                    />
-                  </TableCell>
-                  <TableCell className="p-1">
-                    <Input 
-                      className="h-8 text-xs border-transparent focus:border-primary rounded-none"
-                      value={item.justificativa?.destinacao || ""}
-                      onChange={(e) => handleInputChange(item.id, 'destinacao', e.target.value)}
-                    />
-                  </TableCell>
-                  <TableCell className="p-1">
-                    <Input 
-                      className="h-8 text-xs border-transparent focus:border-primary rounded-none"
-                      value={item.justificativa?.local || ""}
-                      onChange={(e) => handleInputChange(item.id, 'local', e.target.value)}
-                    />
-                  </TableCell>
-                  <TableCell className="p-1">
-                    <Input 
-                      className="h-8 text-xs border-transparent focus:border-primary rounded-none"
-                      value={item.justificativa?.finalidade || ""}
-                      onChange={(e) => handleInputChange(item.id, 'finalidade', e.target.value)}
-                    />
-                  </TableCell>
-                  <TableCell className="p-1">
-                    <Input 
-                      className="h-8 text-xs border-transparent focus:border-primary rounded-none"
-                      value={item.justificativa?.motivo || ""}
-                      onChange={(e) => handleInputChange(item.id, 'motivo', e.target.value)}
-                    />
-                  </TableCell>
+                  {FIELDS.map((field) => (
+                    <TableCell key={field} className="p-0 border-r last:border-r-0">
+                      <Input 
+                        className="h-10 text-xs border-none focus-visible:ring-1 focus-visible:ring-primary rounded-none bg-transparent w-full"
+                        value={item.justificativa?.[field] || ""}
+                        onChange={(e) => handleInputChange(item.id, field, e.target.value)}
+                        onFocus={() => setFocusedCell({ itemId: item.id, field })}
+                        onPaste={(e) => handlePaste(e, item.id, field)}
+                        placeholder="..."
+                      />
+                    </TableCell>
+                  ))}
                 </TableRow>
               ))}
             </TableBody>
