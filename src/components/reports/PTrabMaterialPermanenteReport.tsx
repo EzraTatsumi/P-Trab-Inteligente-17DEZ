@@ -87,9 +87,11 @@ const PTrabMaterialPermanenteReport: React.FC<PTrabMaterialPermanenteReportProps
     const worksheet = workbook.addWorksheet('Material Permanente');
     
     const centerStyle = { horizontal: 'center' as const, vertical: 'middle' as const, wrapText: true };
+    const rightStyle = { horizontal: 'right' as const, vertical: 'middle' as const, wrapText: true };
     const border = { top: { style: 'thin' as const }, left: { style: 'thin' as const }, bottom: { style: 'thin' as const }, right: { style: 'thin' as const } };
     const headerFill = { type: 'pattern' as const, pattern: 'solid' as const, fgColor: { argb: 'FFD9D9D9' } };
-    const subtotalFill = { type: 'pattern' as const, pattern: 'solid' as const, fgColor: { argb: 'FFF2F2F2' } };
+    const darkGrayFill = { type: 'pattern' as const, pattern: 'solid' as const, fgColor: { argb: 'FFA6A6A6' } };
+    const blueFill = { type: 'pattern' as const, pattern: 'solid' as const, fgColor: { argb: 'FFBDD7EE' } };
     const valueFill = { type: 'pattern' as const, pattern: 'solid' as const, fgColor: { argb: 'FFE2EFDA' } };
 
     let curr = 1;
@@ -176,17 +178,45 @@ const PTrabMaterialPermanenteReport: React.FC<PTrabMaterialPermanenteReportProps
         curr++;
       });
 
-      // Subtotal da OM
+      // Linha 1: SOMA POR ND E GP DE DESPESA
       const sRow = worksheet.getRow(curr);
-      sRow.getCell('A').value = `SUBTOTAL ${group.om}`;
+      sRow.getCell('A').value = 'SOMA POR ND E GP DE DESPESA';
       worksheet.mergeCells(`A${curr}:B${curr}`);
       sRow.getCell('C').value = group.subtotal;
       sRow.getCell('D').value = group.subtotal;
+      
       ['A', 'B', 'C', 'D', 'E'].forEach(c => {
-        sRow.getCell(c).fill = subtotalFill;
-        sRow.getCell(c).border = border;
-        sRow.getCell(c).font = { bold: true, size: 8 };
-        if (c === 'C' || c === 'D') sRow.getCell(c).numFmt = 'R$ #,##0.00';
+        const cell = sRow.getCell(c);
+        cell.border = border;
+        cell.font = { bold: true, size: 8 };
+        if (c === 'A' || c === 'B' || c === 'E') cell.fill = darkGrayFill;
+        if (c === 'C' || c === 'D') {
+          cell.fill = blueFill;
+          cell.numFmt = 'R$ #,##0.00';
+          cell.alignment = centerStyle;
+        } else {
+          cell.alignment = rightStyle;
+        }
+      });
+      curr++;
+
+      // Linha 2: VALOR TOTAL do [OM]
+      const vRow = worksheet.getRow(curr);
+      vRow.getCell('A').value = `VALOR TOTAL do ${group.om}`;
+      worksheet.mergeCells(`A${curr}:B${curr}`);
+      vRow.getCell('C').value = group.subtotal;
+      
+      ['A', 'B', 'C', 'D', 'E'].forEach(c => {
+        const cell = vRow.getCell(c);
+        cell.border = border;
+        cell.font = { bold: true, size: 8 };
+        if (c === 'A' || c === 'B' || c === 'D' || c === 'E') cell.fill = darkGrayFill;
+        if (c === 'C') {
+          cell.numFmt = 'R$ #,##0.00';
+          cell.alignment = centerStyle;
+        } else {
+          cell.alignment = rightStyle;
+        }
       });
       curr++;
 
@@ -199,29 +229,37 @@ const PTrabMaterialPermanenteReport: React.FC<PTrabMaterialPermanenteReportProps
     curr++; // Espaço antes do total final
 
     const tRow = worksheet.getRow(curr);
-    tRow.getCell('A').value = 'SOMA POR ND E GP DE DESPESA';
+    tRow.getCell('A').value = 'VALOR TOTAL';
     worksheet.mergeCells(`A${curr}:B${curr}`);
     tRow.getCell('C').value = totalGeral;
-    tRow.getCell('D').value = totalGeral;
+    
     ['A', 'B', 'C', 'D', 'E'].forEach(c => {
-      tRow.getCell(c).fill = headerFill;
-      tRow.getCell(c).border = border;
-      tRow.getCell(c).font = { bold: true, size: 9 };
-      if (c === 'C' || c === 'D') tRow.getCell(c).numFmt = 'R$ #,##0.00';
+      const cell = tRow.getCell(c);
+      cell.border = border;
+      cell.font = { bold: true, size: 10 };
+      if (c === 'A' || c === 'B' || c === 'D' || c === 'E') cell.fill = darkGrayFill;
+      if (c === 'C') {
+        cell.numFmt = 'R$ #,##0.00';
+        cell.alignment = centerStyle;
+      } else {
+        cell.alignment = rightStyle;
+      }
     });
     curr++;
 
-    const fRow = worksheet.getRow(curr);
-    fRow.getCell('A').value = 'VALOR TOTAL';
-    worksheet.mergeCells(`A${curr}:B${curr}`);
-    fRow.getCell('C').value = totalGeral;
-    worksheet.mergeCells(`C${curr}:D${curr}`);
-    ['A', 'B', 'C', 'D', 'E'].forEach(c => {
-      fRow.getCell(c).fill = headerFill;
-      fRow.getCell(c).border = border;
-      fRow.getCell(c).font = { bold: true, size: 10 };
-      if (c === 'C') fRow.getCell(c).numFmt = 'R$ #,##0.00';
-    });
+    const gndRow = worksheet.getRow(curr);
+    gndRow.getCell('C').value = 'GND - 4';
+    gndRow.getCell('C').alignment = centerStyle;
+    gndRow.getCell('C').border = border;
+    gndRow.getCell('C').font = { size: 8 };
+    curr++;
+
+    const valRow = worksheet.getRow(curr);
+    valRow.getCell('C').value = totalGeral;
+    valRow.getCell('C').numFmt = 'R$ #,##0.00';
+    valRow.getCell('C').alignment = centerStyle;
+    valRow.getCell('C').border = border;
+    valRow.getCell('C').font = { bold: true, size: 9 };
 
     const buffer = await workbook.xlsx.writeBuffer();
     const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
@@ -287,12 +325,19 @@ const PTrabMaterialPermanenteReport: React.FC<PTrabMaterialPermanenteReportProps
                     <td className="border border-black p-1 whitespace-pre-wrap text-[7pt] text-left align-top">{item.memoria}</td>
                   </tr>
                 ))}
-                {/* Subtotal da OM */}
-                <tr className="bg-[#F2F2F2] font-bold">
-                  <td colSpan={2} className="border border-black p-1 text-right">SUBTOTAL {group.om}</td>
-                  <td className="border border-black p-1 text-center">{formatCurrency(group.subtotal)}</td>
-                  <td className="border border-black p-1 text-center">{formatCurrency(group.subtotal)}</td>
-                  <td className="border border-black p-1"></td>
+                {/* Linha 1: SOMA POR ND E GP DE DESPESA */}
+                <tr className="font-bold">
+                  <td colSpan={2} className="border border-black p-1 text-right bg-[#A6A6A6]">SOMA POR ND E GP DE DESPESA</td>
+                  <td className="border border-black p-1 text-center bg-[#BDD7EE]">{formatCurrency(group.subtotal)}</td>
+                  <td className="border border-black p-1 text-center bg-[#BDD7EE]">{formatCurrency(group.subtotal)}</td>
+                  <td className="border border-black p-1 bg-[#A6A6A6]"></td>
+                </tr>
+                {/* Linha 2: VALOR TOTAL do [OM] */}
+                <tr className="font-bold">
+                  <td colSpan={2} className="border border-black p-1 text-right bg-[#A6A6A6]">VALOR TOTAL do {group.om}</td>
+                  <td className="border border-black p-1 text-center bg-white">{formatCurrency(group.subtotal)}</td>
+                  <td className="border border-black p-1 bg-[#A6A6A6]"></td>
+                  <td className="border border-black p-1 bg-[#A6A6A6]"></td>
                 </tr>
                 {/* Linha em branco para separar OMs */}
                 {gIdx < groupedData.length - 1 && (
@@ -308,16 +353,22 @@ const PTrabMaterialPermanenteReport: React.FC<PTrabMaterialPermanenteReportProps
               <td colSpan={5} className="border-0"></td>
             </tr>
 
-            <tr className="bg-[#D9D9D9] font-bold">
-              <td colSpan={2} className="border border-black p-1 text-right">SOMA POR ND E GP DE DESPESA</td>
-              <td className="border border-black p-1 text-center">{formatCurrency(totalGeral)}</td>
-              <td className="border border-black p-1 text-center">{formatCurrency(totalGeral)}</td>
-              <td className="border border-black p-1"></td>
+            {/* Bloco de Total Geral Final */}
+            <tr className="font-bold">
+              <td colSpan={2} className="border border-black p-1 text-right bg-[#A6A6A6]">VALOR TOTAL</td>
+              <td className="border border-black p-1 text-center bg-white">{formatCurrency(totalGeral)}</td>
+              <td className="border border-black p-1 bg-[#A6A6A6]"></td>
+              <td className="border border-black p-1 bg-[#A6A6A6]"></td>
             </tr>
-            <tr className="bg-[#D9D9D9] font-bold">
-              <td colSpan={2} className="border border-black p-1 text-right">VALOR TOTAL</td>
-              <td colSpan={2} className="border border-black p-1 text-center">{formatCurrency(totalGeral)}</td>
-              <td className="border border-black p-1"></td>
+            <tr>
+              <td colSpan={2} className="border-0"></td>
+              <td className="border border-black p-1 text-center text-[7pt]">GND - 4</td>
+              <td colSpan={2} className="border-0"></td>
+            </tr>
+            <tr>
+              <td colSpan={2} className="border-0"></td>
+              <td className="border border-black p-1 text-center font-bold">{formatCurrency(totalGeral)}</td>
+              <td colSpan={2} className="border-0"></td>
             </tr>
           </tbody>
         </table>
