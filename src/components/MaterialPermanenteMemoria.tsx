@@ -4,7 +4,7 @@ import React from 'react';
 import { Card } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
-import { Loader2, Pencil, RefreshCw, XCircle, Check, Package } from "lucide-react";
+import { Loader2, Pencil, RefreshCw, XCircle, Check } from "lucide-react";
 import { formatCodug } from "@/lib/formatUtils";
 import { generateMaterialPermanenteMemoria } from "@/lib/materialPermanenteUtils";
 import { Badge } from "@/components/ui/badge";
@@ -47,17 +47,11 @@ const MaterialPermanenteMemoria: React.FC<MaterialPermanenteMemoriaProps> = ({
             <div className="flex items-start justify-between gap-4 mb-2">
                 <div className="flex flex-col flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
-                        <div className="bg-primary/10 p-1.5 rounded-md">
-                            <Package className="h-4 w-4 text-primary" />
-                        </div>
                         <h4 className="text-base font-semibold text-foreground">
                             {registro.organizacao} (UG: {formatCodug(registro.ug)})
                         </h4>
                         <Badge variant="secondary" className="text-[10px] bg-blue-100 text-blue-800 border-blue-200 hover:bg-blue-100 uppercase font-bold">
                             {item?.descricao_reduzida || item?.descricao_item || "Material Permanente"}
-                        </Badge>
-                        <Badge variant="outline" className="text-[10px] uppercase font-bold">
-                            {registro.fase_atividade}
                         </Badge>
                         {hasCustomMemoria && !isEditing && (
                             <Badge variant="outline" className="text-[10px] bg-orange-50 text-orange-700 border-orange-200 uppercase font-bold">
@@ -135,8 +129,7 @@ const MaterialPermanenteMemoria: React.FC<MaterialPermanenteMemoriaProps> = ({
                     </div>
                 ) : (
                     <div className="relative">
-                        <div className="absolute -left-2 top-0 bottom-0 w-1 bg-primary/10 rounded-full" />
-                        <pre className="text-sm font-medium italic whitespace-pre-wrap text-foreground/80 pl-4 leading-relaxed">
+                        <pre className="text-sm font-medium italic whitespace-pre-wrap text-foreground/80 leading-relaxed">
                             {memoriaDisplay}
                         </pre>
                     </div>
