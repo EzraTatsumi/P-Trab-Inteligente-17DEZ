@@ -2,6 +2,19 @@ import { subWeeks, startOfWeek, endOfWeek, format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
 /**
+ * Calcula a diferença em dias entre duas datas.
+ * @param inicio Data de início (string ISO ou Date).
+ * @param fim Data de fim (string ISO ou Date).
+ * @returns O número de dias (inclusivo).
+ */
+export const calculateDays = (inicio: string | Date, fim: string | Date): number => {
+  const start = new Date(inicio);
+  const end = new Date(fim);
+  const diff = end.getTime() - start.getTime();
+  return Math.ceil(diff / (1000 * 3600 * 24)) + 1;
+};
+
+/**
  * Formata um número ou string de 6 dígitos (CODUG) para o formato XXX.XXX.
  * Se o valor não for uma string de 6 dígitos, retorna o valor original.
  * @param codug O código da UG (Unidade Gestora).
