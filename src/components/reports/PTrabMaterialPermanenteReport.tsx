@@ -25,7 +25,6 @@ const PTrabMaterialPermanenteReport: React.FC<PTrabMaterialPermanenteReportProps
   const contentRef = useRef<HTMLDivElement>(null);
   const diasOperacao = useMemo(() => calculateDays(ptrabData.periodo_inicio, ptrabData.periodo_fim), [ptrabData]);
 
-  // Consolidação de itens para a tabela
   const rows = useMemo(() => {
     const allRows: any[] = [];
     registrosMaterialPermanente.forEach(reg => {
@@ -78,6 +77,7 @@ const PTrabMaterialPermanenteReport: React.FC<PTrabMaterialPermanenteReportProps
     const centerStyle = { horizontal: 'center' as const, vertical: 'middle' as const, wrapText: true };
     const border = { top: { style: 'thin' as const }, left: { style: 'thin' as const }, bottom: { style: 'thin' as const }, right: { style: 'thin' as const } };
     const headerFill = { type: 'pattern' as const, pattern: 'solid' as const, fgColor: { argb: 'FFD9D9D9' } };
+    const ndFill = { type: 'pattern' as const, pattern: 'solid' as const, fgColor: { argb: 'FFE2EFDA' } }; // Verde claro da imagem
     const valueFill = { type: 'pattern' as const, pattern: 'solid' as const, fgColor: { argb: 'FFB4C7E7' } };
 
     let curr = 1;
@@ -110,24 +110,43 @@ const PTrabMaterialPermanenteReport: React.FC<PTrabMaterialPermanenteReportProps
     addInfo('4. AÇÕES REALIZADAS OU A REALIZAR:', ptrabData.acoes);
     addInfo('5. DESPESAS DE MATERIAL PERMANENTE REALIZADAS OU A REALIZAR:', '');
 
+    // Header Tabela (2 linhas)
     const h1 = worksheet.getRow(curr);
-    const cols = ['A', 'B', 'C', 'D', 'E'];
+    const h2 = worksheet.getRow(curr + 1);
     
+    // Linha 1 do Header
     h1.getCell('A').value = 'DESPESAS';
-    h1.getCell('B').value = 'OM (UGE)\nCODUG';
-    h1.getCell('C').value = '44.90.52';
-    h1.getCell('D').value = 'GND 4';
+    worksheet.mergeCells(`A${curr}:A${curr+1}`);
+    h1.getCell('B').value = 'OM (UGE)';
+    h1.getCell('C').value = ''; // Espaço vazio acima das NDs
+    worksheet.mergeCells(`C${curr}:D${curr}`);
     h1.getCell('E').value = 'DETALHAMENTO / MEMÓRIA DE CÁLCULO';
 
-    cols.forEach(c => {
-      h1.getCell(c).fill = headerFill;
-      h1.getCell(c).border = border;
-      h1.getCell(c).alignment = centerStyle;
-      h1.getCell(c).font = { bold: true, size: 9 };
+    // Linha 2 do Header
+    h2.getCell('B').value = 'CODUG';
+    h2.getCell('C').value = '44.90.52';
+    h2.getCell('D').value = 'GND 4';
+    h2.getCell('E').value = '(DISCRIMINAR EFETIVOS, QUANTIDADES, VALORES UNITÁRIOS E TOTAIS)\nOBSERVAR A DIRETRIZ DE CUSTEIO LOGÍSTICO DO COLOG';
+
+    // Estilização do Header
+    ['A', 'B', 'C', 'D', 'E'].forEach(c => {
+      const cell1 = h1.getCell(c);
+      const cell2 = h2.getCell(c);
+      [cell1, cell2].forEach(cell => {
+        cell.fill = headerFill;
+        cell.border = border;
+        cell.alignment = centerStyle;
+        cell.font = { bold: true, size: 9 };
+      });
     });
 
+    // Cores específicas para NDs
+    h2.getCell('C').fill = ndFill;
+    h2.getCell('D').fill = ndFill;
+    h2.getCell('E').font = { size: 7, bold: false };
+
     worksheet.columns = [{ width: 25 }, { width: 20 }, { width: 15 }, { width: 15 }, { width: 60 }];
-    curr++;
+    curr += 2;
 
     rows.forEach(r => {
       const row = worksheet.getRow(curr);
@@ -142,7 +161,7 @@ const PTrabMaterialPermanenteReport: React.FC<PTrabMaterialPermanenteReportProps
         row.getCell(c).fill = valueFill;
       });
 
-      cols.forEach(c => {
+      ['A', 'B', 'C', 'D', 'E'].forEach(c => {
         row.getCell(c).border = border;
         row.getCell(c).alignment = c === 'E' ? { vertical: 'top', wrapText: true } : centerStyle;
         row.getCell(c).font = { size: 8 };
@@ -212,11 +231,19 @@ const PTrabMaterialPermanenteReport: React.FC<PTrabMaterialPermanenteReportProps
         <table className="w-full border-collapse border border-black text-[8pt]">
           <thead>
             <tr className="bg-[#D9D9D9] font-bold text-center">
-              <th className="border border-black p-1 w-[20%]">DESPESAS</th>
-              <th className="border border-black p-1 w-[15%]">OM (UGE)<br/>CODUG</th>
-              <th className="border border-black p-1 w-[12%]">44.90.52</th>
-              <th className="border border-black p-1 w-[12%]">GND 4</th>
+              <th rowSpan={2} className="border border-black p-1 w-[20%]">DESPESAS</th>
+              <th className="border border-black p-1 w-[15%]">OM (UGE)</th>
+              <th colSpan={2} className="border border-black p-1"></th>
               <th className="border border-black p-1">DETALHAMENTO / MEMÓRIA DE CÁLCULO</th>
+            </tr>
+            <tr className="bg-[#D9D9D9] font-bold text-center">
+              <th className="border border-black p-1">CODUG</th>
+              <th className="border border-black p-1 w-[12%] bg-[#E2EFDA]">44.90.52</th>
+              <th className="border border-black p-1 w-[12%] bg-[#E2EFDA]">GND 4</th>
+              <th className="border border-black p-1 font-normal text-[7pt] leading-tight">
+                (DISCRIMINAR EFETIVOS, QUANTIDADES, VALORES UNITÁRIOS E TOTAIS)<br/>
+                <span className="underline">OBSERVAR A DIRETRIZ DE CUSTEIO LOGÍSTICO DO COLOG</span>
+              </th>
             </tr>
           </thead>
           <tbody>
