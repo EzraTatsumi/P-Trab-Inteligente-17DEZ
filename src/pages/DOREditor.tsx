@@ -18,7 +18,7 @@ const DocumentInput = ({ value, onChange, placeholder, className, readOnly = fal
     placeholder={placeholder}
     readOnly={readOnly}
     className={cn(
-      "w-full bg-transparent border-none p-1 focus:ring-1 focus:ring-primary/30 focus:bg-yellow-50/50 outline-none text-black placeholder:text-gray-300 font-normal transition-colors",
+      "bg-transparent border-none p-0 focus:ring-1 focus:ring-primary/30 focus:bg-yellow-50/50 outline-none text-black placeholder:text-gray-300 font-normal transition-colors",
       className
     )}
   />
@@ -147,7 +147,7 @@ const DOREditor = () => {
     );
   }
 
-  const dataAtual = new Date().toLocaleDateString('pt-BR', { day: 'numeric', month: 'long', year: 'numeric' });
+  const dataAtual = new Date().toLocaleDateString('pt-BR');
 
   return (
     <div className="min-h-screen bg-slate-200 py-8 px-4 print:p-0 print:bg-white font-serif">
@@ -170,32 +170,40 @@ const DOREditor = () => {
         
         <div className="p-[20mm]">
           
-          {/* CABEÇALHO OFICIAL */}
-          <div className="text-center font-bold mb-8 space-y-0.5">
-            <div className="flex justify-center mb-4">
-               <img 
-                 src="https://upload.wikimedia.org/wikipedia/commons/thumb/b/bf/Coat_of_arms_of_Brazil.svg/100px-Coat_of_arms_of_Brazil.svg.png" 
-                 alt="Brasão da República" 
-                 className="h-[70px] w-auto"
-               />
-            </div>
-            <p className="uppercase text-[11pt]">Ministério da Defesa</p>
-            <p className="uppercase text-[11pt]">Exército Brasileiro</p>
-            <p className="uppercase text-[11pt]">{ptrab?.comando_militar_area}</p>
-            <p className="uppercase text-[11pt]">{ptrab?.nome_om_extenso || ptrab?.nome_om}</p>
-          </div>
-
-          {/* TÍTULO E NÚMERO */}
-          <div className="flex justify-between items-end mb-6 border-b-2 border-black pb-2">
-            <h1 className="font-bold text-[13pt] uppercase">Documento de Oficialização da Requisição - DOR</h1>
-            <div className="flex items-center gap-1">
-              <span className="font-bold text-[12pt]">Nº</span>
-              <DocumentInput 
-                value={formData.numero_dor}
-                onChange={(e: any) => setFormData({...formData, numero_dor: e.target.value})}
-                placeholder="000/2025"
-                className="w-28 text-right font-bold text-[13pt]"
+          {/* CABEÇALHO OFICIAL PADRONIZADO (3 COLUNAS) */}
+          <div className="border border-black grid grid-cols-[180px_1fr_200px] items-stretch mb-8">
+            {/* Coluna Esquerda: Logo Ministério da Defesa */}
+            <div className="border-r border-black p-2 flex flex-col items-center justify-center text-center">
+              <img 
+                src="https://upload.wikimedia.org/wikipedia/commons/thumb/b/bf/Coat_of_arms_of_Brazil.svg/100px-Coat_of_arms_of_Brazil.svg.png" 
+                alt="Brasão" 
+                className="h-12 w-auto mb-1"
               />
+              <p className="text-[7pt] font-bold leading-none uppercase text-gray-500">Ministério da</p>
+              <p className="text-[11pt] font-black leading-none uppercase text-gray-600">Defesa</p>
+            </div>
+
+            {/* Coluna Central: Identificação da OM */}
+            <div className="border-r border-black p-2 flex flex-col items-center justify-center text-center font-bold uppercase text-[10pt] leading-tight">
+              <p>Ministério da Defesa</p>
+              <p>Exército Brasileiro</p>
+              <p>{ptrab?.comando_militar_area}</p>
+              <p>{ptrab?.nome_om_extenso || ptrab?.nome_om}</p>
+            </div>
+
+            {/* Coluna Direita: Nome do Documento e Numeração */}
+            <div className="p-2 flex flex-col items-center justify-center text-center text-[9pt] leading-tight">
+              <p className="font-bold">Documento de Oficialização da Requisição – DOR</p>
+              <div className="flex items-center gap-1 font-bold mt-1">
+                <span>nº</span>
+                <DocumentInput 
+                  value={formData.numero_dor}
+                  onChange={(e: any) => setFormData({...formData, numero_dor: e.target.value})}
+                  placeholder="00 - 2025"
+                  className="w-20 text-center font-bold"
+                />
+              </div>
+              <p className="mt-3">{dataAtual}</p>
             </div>
           </div>
 
@@ -227,7 +235,7 @@ const DOREditor = () => {
                   value={formData.email}
                   onChange={(e: any) => setFormData({...formData, email: e.target.value})}
                   placeholder="exemplo@eb.mil.br"
-                  className="text-[10pt]"
+                  className="text-[10pt] w-full"
                 />
               </div>
               <div className="p-2 flex items-center gap-2">
@@ -236,7 +244,7 @@ const DOREditor = () => {
                   value={formData.telefone}
                   onChange={(e: any) => setFormData({...formData, telefone: e.target.value})}
                   placeholder="(00) 0000-0000"
-                  className="text-[10pt]"
+                  className="text-[10pt] w-full"
                 />
               </div>
             </div>
@@ -251,7 +259,7 @@ const DOREditor = () => {
                 <DocumentInput 
                   value={formData.acao_orcamentaria}
                   onChange={(e: any) => setFormData({...formData, acao_orcamentaria: e.target.value})}
-                  className="font-mono"
+                  className="font-mono w-full"
                 />
               </div>
               <div className="p-2 flex items-center gap-2">
@@ -259,7 +267,7 @@ const DOREditor = () => {
                 <DocumentInput 
                   value={formData.plano_orcamentario}
                   onChange={(e: any) => setFormData({...formData, plano_orcamentario: e.target.value})}
-                  className="font-mono"
+                  className="font-mono w-full"
                 />
               </div>
             </div>
@@ -344,7 +352,7 @@ const DOREditor = () => {
           {/* RODAPÉ E ASSINATURAS */}
           <div className="mt-16 flex flex-col items-center">
             <div className="text-center mb-12 w-full">
-              <p className="text-[11pt]">{ptrab?.local_om || "Local não informado"}, {dataAtual}.</p>
+              <p className="text-[11pt]">{ptrab?.local_om || "Local não informado"}, {new Date().toLocaleDateString('pt-BR', { day: 'numeric', month: 'long', year: 'numeric' })}.</p>
             </div>
 
             <div className="w-2/3 border-t border-black mt-10"></div>
