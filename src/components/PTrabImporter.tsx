@@ -1,0 +1,391 @@
+"use client";
+
+import React, { useState, useEffect } from 'react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { formatCurrency } from "@/lib/formatUtils";
+import { 
+  GripVertical, Plus, Trash2, ArrowRight, Package, 
+  Wallet, CheckCircle2, X, Loader2, Search
+} from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
+import { cn } from "@/lib/utils";
+
+export interface PTrabItem {
+  id: string;
+  descricao: string;
+  valor: number;
+  gnd: number;
+  natureza: string;
+  uge: string;
+  tableName: string;
+}
+
+export interface DorGroup {
+  id: string;
+  name: string;
+  items: PTrabItem[];
+  total: number;
+}
+
+interface PTrabImporterProps {
+  isOpen: boolean;
+  onClose: () => void;
+  ptrabId: string;
+  onImportConcluded: (groups: DorGroup[]) => void;
+}
+
+export function PTrabImporter({ isOpen, onClose, ptrabId, onImportConcluded }: PTrabImporterProps) {
+  const [loading, setLoading] = useState(false);
+  const [sourceItems, setSourceItems] = useState<PTrabItem[]>([]);
+  const [dorGroups, setDorGroups] = useState<DorGroup[]>([]);
+  const [newGroupName, setNewGroupName] = useState("");
+  const [draggedItem, setDraggedItem] = useState<PTrabItem | null>(null);
+  const [searchTerm, setSearchTerm] = useState("");
+
+  const loadPTrabItems = async () => {
+    if (!ptrabId) return;
+    setLoading(true);
+    try {
+      const tables = [
+        { name: 'classe_i_registros', gnd: 3, nature: 'Logístico', descField: 'categoria' },
+        { name: 'classe_ii_registros', gnd: 3, nature: 'Logístico', descField: 'categoria' },
+        { name: 'classe_iii_registros', gnd: 3, nature: 'Logístico', descField: 'tipo_equipamento' },
+        { name: 'classe_v_registros', gnd: 3, nature: 'Logístico', descField: 'categoria' },
+        { name: 'classe_vi_registros', gnd: 3, nature: 'Logístico', descField: 'categoria' },
+        { name: 'classe_vii_registros', gnd: 3, nature: 'Logístico', descField: 'categoria' },
+        { name: 'classe_viii_saude_registros', gnd: 3, nature: 'Logístico', descField: 'categoria' },
+        { name: 'classe_viii_remonta_registros', gnd: 3, nature: 'Logístico', descField: 'animal_tipo' },
+        { name: 'classe_ix_registros', gnd: 3, nature: 'Logístico', descField: 'categoria' },
+        { name: 'diaria_registros', gnd: 3, nature: 'Operacional', descField: 'destino' },
+        { name: 'verba_operacional_registros', gnd: 3, nature: 'Operacional', descField: 'objeto_aquisicao' },
+        { name: 'passagem_registros', gnd: 3, nature: 'Operacional', descField: 'destino' },
+        { name: 'concessionaria_registros', gnd: 3, nature: 'Operacional', descField: 'categoria' },
+        { name: 'horas_voo_registros', gnd: 3, nature: 'Operacional', descField: 'tipo_anv' },
+        { name: 'material_consumo_registros', gnd: 3, nature: 'Operacional', descField: 'group_name' },
+        { name: 'complemento_alimentacao_registros', gnd: 3, nature: 'Operacional', descField: 'group_name' },
+        { name: 'servicos_terceiros_registros', gnd: 3, nature: 'Operacional', descField: 'categoria' },
+        { name: 'material_permanente_registros', gnd: 4, nature: 'Operacional', descField: 'categoria' }
+      ];
+
+      const allItems: PTrabItem[] = [];
+
+      for (const table of tables) {
+        const { data, error } = await (supabase.from(table.name as any) as any)
+          .select(`id, organizacao, ug, valor_total, ${table.descField}`)
+          .eq('p_trab_id', ptrabId);
+
+        if (!error && data) {
+          data.forEach((row: any) => {
+            if (Number(row.valor_total) > 0) {
+              allItems.push({
+                id: `${table.name}-${row.id}`,
+                descricao: row[table.descField] || "Item sem descrição",
+                valor: Number(row.valor_total),
+                gnd: table.gnd,
+                natureza: table.nature,
+                uge: `${row.organizacao} (${row.ug})`,
+                tableName: table.name
+              });
+            }
+          });
+        }
+      }
+
+      setSourceItems(allItems);
+    } catch (e) {
+      console.error("Erro ao carregar itens:", e);
+      toast.error("Falha ao carregar itens do P-Trab.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (isOpen) {
+      loadPTrabItems();
+      setDorGroups([]);
+    }
+  }, [isOpen]);
+
+  const handleDragStart = (e: React.DragEvent, item: PTrabItem) => {
+    setDraggedItem(item);
+    e.dataTransfer.effectAllowed = "move";
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+  };
+
+  const handleDropOnGroup = (e: React.DragEvent, groupId: string) => {
+    e.preventDefault();
+    if (!draggedItem) return;
+
+    setDorGroups(prev => prev.map(group => {
+      if (group.id === groupId) {
+        return {
+          ...group,
+          items: [...group.items, draggedItem],
+          total: group.total + draggedItem.valor
+        };
+      }
+      return group;
+    }));
+
+    setSourceItems(prev => prev.filter(i => i.id !== draggedItem.id));
+    setDraggedItem(null);
+  };
+
+  const returnItemToSource = (groupId: string, item: PTrabItem) => {
+    setDorGroups(prev => prev.map(group => {
+      if (group.id === groupId) {
+        return {
+          ...group,
+          items: group.items.filter(i => i.id !== item.id),
+          total: group.total - item.valor
+        };
+      }
+      return group;
+    }));
+    setSourceItems(prev => [...prev, item]);
+  };
+
+  const handleCreateGroup = () => {
+    if (!newGroupName.trim()) return;
+    const newGroup: DorGroup = {
+      id: Math.random().toString(36).substr(2, 9),
+      name: newGroupName.toUpperCase(),
+      items: [],
+      total: 0
+    };
+    setDorGroups([...dorGroups, newGroup]);
+    setNewGroupName("");
+  };
+
+  const deleteGroup = (groupId: string) => {
+    const group = dorGroups.find(g => g.id === groupId);
+    if (group && group.items.length > 0) {
+      setSourceItems(prev => [...prev, ...group.items]);
+    }
+    setDorGroups(prev => prev.filter(g => g.id !== groupId));
+  };
+
+  const handleFinalize = () => {
+    if (dorGroups.length === 0) {
+      toast.error("Crie pelo menos um grupo e aloque itens antes de finalizar.");
+      return;
+    }
+    onImportConcluded(dorGroups);
+    onClose();
+  };
+
+  const filteredItems = sourceItems.filter(item => 
+    item.descricao.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    item.uge.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  return (
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent className="max-w-[95vw] w-[1200px] h-[90vh] flex flex-col p-0 gap-0 bg-slate-50 overflow-hidden">
+        <DialogHeader className="p-6 border-b bg-white shrink-0">
+          <div className="flex justify-between items-start">
+            <div>
+              <DialogTitle className="flex items-center gap-2 text-xl font-bold text-slate-800">
+                <Package className="h-6 w-6 text-primary" />
+                Importação e Agrupamento de Dados do P-Trab
+              </DialogTitle>
+              <DialogDescription className="text-slate-500 mt-1">
+                Crie grupos para o DOR na direita e arraste as despesas do P-Trab da esquerda para dentro deles.
+              </DialogDescription>
+            </div>
+            <Button variant="ghost" size="icon" onClick={onClose} className="rounded-full">
+              <X className="h-5 w-5" />
+            </Button>
+          </div>
+        </DialogHeader>
+
+        <div className="flex-1 overflow-hidden grid grid-cols-12 divide-x divide-slate-200">
+          {/* COLUNA ESQUERDA: ITENS DISPONÍVEIS */}
+          <div className="col-span-4 bg-slate-100/30 flex flex-col h-full overflow-hidden">
+            <div className="p-4 border-b bg-slate-100/50 space-y-3">
+              <div className="flex justify-between items-center">
+                <h3 className="font-bold text-xs text-slate-500 uppercase tracking-wider">Itens do P-Trab</h3>
+                <span className="text-[10px] bg-white border border-slate-200 px-2 py-0.5 rounded-full font-bold text-slate-600">
+                  {sourceItems.length} disponíveis
+                </span>
+              </div>
+              <div className="relative">
+                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-slate-400" />
+                <Input 
+                  placeholder="Filtrar itens..." 
+                  className="pl-9 h-9 bg-white border-slate-200 text-sm"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                />
+              </div>
+            </div>
+            
+            <ScrollArea className="flex-1 p-4">
+              {loading ? (
+                <div className="flex flex-col items-center justify-center py-20 text-slate-400">
+                  <Loader2 className="h-8 w-8 animate-spin mb-2" />
+                  <p className="text-sm">Buscando registros...</p>
+                </div>
+              ) : filteredItems.length === 0 ? (
+                <div className="text-center py-10 text-slate-400 italic text-sm">
+                  {searchTerm ? "Nenhum item corresponde à busca." : "Todos os itens foram alocados!"}
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {filteredItems.map(item => (
+                    <div
+                      key={item.id}
+                      draggable
+                      onDragStart={(e) => handleDragStart(e, item)}
+                      className={cn(
+                        "group bg-white p-3 rounded-lg border border-slate-200 shadow-sm cursor-grab active:cursor-grabbing hover:border-primary/50 hover:shadow-md transition-all flex flex-col gap-1",
+                        draggedItem?.id === item.id && "opacity-50 border-dashed border-primary bg-primary/5"
+                      )}
+                    >
+                      <div className="flex justify-between items-start gap-2">
+                        <div className="flex items-center gap-2 overflow-hidden">
+                          <GripVertical className="h-3.5 w-3.5 text-slate-300 shrink-0" />
+                          <p className="text-[11px] font-bold text-slate-700 truncate leading-tight uppercase">{item.descricao}</p>
+                        </div>
+                        <span className="font-bold text-xs text-slate-900 whitespace-nowrap">{formatCurrency(item.valor)}</span>
+                      </div>
+                      <div className="flex flex-wrap gap-1.5 mt-1 ml-5">
+                        <span className="text-[9px] text-slate-500 font-medium truncate max-w-[150px]">{item.uge}</span>
+                        <span className={cn("text-[8px] px-1 py-0 rounded font-black uppercase", item.gnd === 3 ? "bg-green-100 text-green-700" : "bg-blue-100 text-blue-700")}>
+                          GND {item.gnd}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </ScrollArea>
+          </div>
+
+          {/* COLUNA DIREITA: GRUPOS DO DOR */}
+          <div className="col-span-8 bg-white flex flex-col h-full overflow-hidden">
+            <div className="p-4 border-b bg-white shadow-sm shrink-0">
+              <div className="flex gap-2 items-end">
+                <div className="flex-1 max-w-md">
+                  <label className="text-[10px] font-black text-slate-400 uppercase mb-1.5 block ml-1">Novo Grupo de Custo (DOR)</label>
+                  <div className="flex gap-2">
+                    <Input 
+                      value={newGroupName}
+                      onChange={(e) => setNewGroupName(e.target.value)}
+                      placeholder="Ex: AQUISIÇÃO DE GÊNEROS DE ALIMENTAÇÃO"
+                      className="border-slate-200 focus-visible:ring-primary h-10 uppercase text-sm"
+                      onKeyDown={(e) => e.key === 'Enter' && handleCreateGroup()}
+                    />
+                    <Button onClick={handleCreateGroup} disabled={!newGroupName.trim()} className="h-10 px-4">
+                      <Plus className="h-4 w-4 mr-2" /> Criar Grupo
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <ScrollArea className="flex-1 p-6 bg-slate-50/50">
+              {dorGroups.length === 0 ? (
+                <div className="h-full flex flex-col items-center justify-center text-slate-400 py-20 border-2 border-dashed border-slate-200 rounded-2xl m-4">
+                  <Package className="h-12 w-12 mb-4 opacity-20" />
+                  <h4 className="font-bold text-slate-500">Nenhum grupo criado</h4>
+                  <p className="text-sm max-w-[300px] text-center mt-1">Crie um grupo acima para começar a organizar as despesas do DOR.</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 pb-24">
+                  {dorGroups.map(group => (
+                    <div 
+                      key={group.id}
+                      onDragOver={handleDragOver}
+                      onDrop={(e) => handleDropOnGroup(e, group.id)}
+                      className={cn(
+                        "bg-white rounded-xl border border-slate-200 shadow-sm flex flex-col transition-all overflow-hidden h-fit min-h-[180px]",
+                        "hover:border-primary/40 hover:shadow-md"
+                      )}
+                    >
+                      <div className="p-3.5 bg-slate-50 border-b flex justify-between items-center">
+                        <div className="overflow-hidden">
+                          <h4 className="font-black text-xs text-slate-800 uppercase truncate pr-2">{group.name}</h4>
+                          <p className="text-[9px] text-slate-500 font-bold mt-0.5">{group.items.length} ITENS ALOCADOS</p>
+                        </div>
+                        <Button variant="ghost" size="icon" className="h-7 w-7 text-slate-400 hover:text-red-500 hover:bg-red-50 shrink-0" onClick={() => deleteGroup(group.id)}>
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
+
+                      <div className="p-2 space-y-1.5 flex-1">
+                        {group.items.length === 0 ? (
+                          <div className="h-24 flex flex-col items-center justify-center text-slate-300 border-2 border-dashed border-slate-50 rounded-lg">
+                            <ArrowRight className="h-5 w-5 mb-1 opacity-30" />
+                            <span className="text-[10px] font-bold uppercase tracking-tighter">Solte itens aqui</span>
+                          </div>
+                        ) : (
+                          group.items.map(item => (
+                            <div key={item.id} className="flex justify-between items-center p-2 bg-slate-50/80 rounded border border-slate-100 text-[10px] group/item">
+                              <div className="flex flex-col overflow-hidden pr-2">
+                                <span className="truncate font-bold text-slate-700 uppercase" title={item.descricao}>{item.descricao}</span>
+                                <span className="text-[8px] text-slate-400 truncate">{item.uge}</span>
+                              </div>
+                              <div className="flex items-center gap-2 shrink-0">
+                                <span className="font-black text-slate-900">{formatCurrency(item.valor)}</span>
+                                <button 
+                                  onClick={() => returnItemToSource(group.id, item)}
+                                  className="text-slate-300 hover:text-red-500 transition-colors"
+                                >
+                                  <X className="h-3 w-3" />
+                                </button>
+                              </div>
+                            </div>
+                          ))
+                        )}
+                      </div>
+
+                      <div className="mt-auto p-3 bg-primary/5 border-t border-primary/10 flex justify-between items-center">
+                        <span className="text-[9px] font-black uppercase text-primary/60">Subtotal</span>
+                        <span className="font-black text-base text-primary">{formatCurrency(group.total)}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </ScrollArea>
+          </div>
+        </div>
+
+        <DialogFooter className="p-4 border-t bg-white flex justify-between items-center w-full sm:justify-between shrink-0">
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2 text-xs font-bold text-slate-500 uppercase">
+              <Wallet className="h-4 w-4 text-slate-400" />
+              <span>Total Alocado: <b className="text-slate-900 text-sm ml-1">{formatCurrency(dorGroups.reduce((acc, g) => acc + g.total, 0))}</b></span>
+            </div>
+            {sourceItems.length > 0 && (
+              <div className="text-[10px] font-bold text-orange-500 bg-orange-50 px-2 py-1 rounded border border-orange-100">
+                {sourceItems.length} ITENS RESTANTES
+              </div>
+            )}
+          </div>
+          <div className="flex gap-3">
+            <Button variant="outline" onClick={onClose} className="font-bold text-xs uppercase">Cancelar</Button>
+            <Button 
+              onClick={handleFinalize} 
+              disabled={dorGroups.length === 0}
+              className="px-8 font-black text-xs uppercase tracking-widest shadow-lg shadow-primary/20"
+            >
+              <CheckCircle2 className="h-4 w-4 mr-2" />
+              Confirmar Importação
+            </Button>
+          </div>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}

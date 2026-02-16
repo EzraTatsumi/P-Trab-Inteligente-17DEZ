@@ -9,6 +9,7 @@ import { ArrowLeft, Save, Printer, Loader2, Info, Download, RefreshCw } from "lu
 import { useSession } from "@/components/SessionContextProvider";
 import { cn } from "@/lib/utils";
 import { formatNumber } from "@/lib/formatUtils";
+import { PTrabImporter, DorGroup } from "@/components/PTrabImporter";
 
 // Componente auxiliar para Inputs que parecem texto do documento
 const DocumentInput = ({ value, onChange, placeholder, className, readOnly = false, style }: any) => (
@@ -72,6 +73,7 @@ const DOREditor = () => {
   const [ptrab, setPtrab] = useState<any>(null);
   const [dorItems, setDorItems] = useState<any[]>([]);
   const [showItemsTable, setShowItemsTable] = useState(false);
+  const [isImporterOpen, setIsImporterOpen] = useState(false);
   
   const [formData, setFormData] = useState({
     numero_dor: "",
@@ -120,6 +122,9 @@ const DOREditor = () => {
           consequencia: dorData.consequencia || "",
           observacoes: dorData.observacoes || ""
         });
+        
+        // Se já houver itens salvos no banco para este DOR, poderíamos carregar aqui.
+        // Por enquanto, mantemos a lógica de importação manual.
       } else {
         const opName = ptrabData.nome_operacao || "";
         const formattedOp = opName.toLowerCase().startsWith("operação") ? opName : `Operação ${opName}`;
@@ -138,63 +143,35 @@ const DOREditor = () => {
     }
   }, [ptrabId]);
 
-  const consolidateItems = async () => {
-    if (!ptrabId) return;
-    const loadingToast = toast.loading("Consolidando itens do P-Trab...");
-    try {
-      const tables = [
-        { name: 'classe_i_registros', gnd: 3, desc: 'COMPLEMENTAÇÃO DE ALIMENTAÇÃO' },
-        { name: 'classe_ii_registros', gnd: 3, desc: 'MATERIAL DE INTENDÊNCIA' },
-        { name: 'classe_iii_registros', gnd: 3, desc: 'AQUISIÇÃO DE COMBUSTÍVEL' },
-        { name: 'classe_v_registros', gnd: 3, desc: 'ARMAMENTO' },
-        { name: 'classe_vi_registros', gnd: 3, desc: 'MATERIAL DE ENGENHARIA' },
-        { name: 'classe_vii_registros', gnd: 3, desc: 'COMUNICAÇÕES E INFORMÁTICA' },
-        { name: 'classe_viii_saude_registros', gnd: 3, desc: 'MATERIAL DE SAÚDE' },
-        { name: 'classe_viii_remonta_registros', gnd: 3, desc: 'REMONTA E VETERINÁRIA' },
-        { name: 'classe_ix_registros', gnd: 3, desc: 'MANUTENÇÃO DE VIATURA' },
-        { name: 'diaria_registros', gnd: 3, desc: 'PAGAMENTO DE DIÁRIA' },
-        { name: 'verba_operacional_registros', gnd: 3, desc: 'VERBA OPERACIONAL' },
-        { name: 'passagem_registros', gnd: 3, desc: 'AQUISIÇÃO DE PASSAGENS' },
-        { name: 'concessionaria_registros', gnd: 3, desc: 'PAGAMENTO DE CONCESSIONÁRIA' },
-        { name: 'horas_voo_registros', gnd: 3, desc: 'FRETAMENTO AÉREO' },
-        { name: 'material_consumo_registros', gnd: 3, desc: 'MATERIAL DE CONSUMO' },
-        { name: 'complemento_alimentacao_registros', gnd: 3, desc: 'COMPLEMENTAÇÃO DE ALIMENTAÇÃO' },
-        { name: 'servicos_terceiros_registros', gnd: 3, desc: 'SERVIÇOS DE TERCEIROS' },
-        { name: 'material_permanente_registros', gnd: 4, desc: 'MATERIAL PERMANENTE' }
-      ];
+  const handleImportConcluded = (groups: DorGroup[]) => {
+    // Transforma os grupos criados pelo usuário em linhas da tabela do DOR
+    // Agrupando por UGE + GND + Nome do Grupo
+    const finalItems: any[] = [];
 
-      const aggregatedItems: any[] = [];
+    groups.forEach(group => {
+      // Dentro de cada grupo, precisamos separar por UGE e GND
+      const subAggregated: Record<string, number> = {};
+      
+      group.items.forEach(item => {
+        const key = `${item.uge}|${item.gnd}`;
+        subAggregated[key] = (subAggregated[key] || 0) + item.valor;
+      });
 
-      for (const table of tables) {
-        const { data, error } = await (supabase.from(table.name as any) as any)
-          .select('organizacao, ug, valor_total')
-          .eq('p_trab_id', ptrabId);
+      // Cria uma linha para cada combinação de UGE/GND dentro do grupo
+      Object.entries(subAggregated).forEach(([key, valor]) => {
+        const [uge, gnd] = key.split('|');
+        finalItems.push({
+          uge,
+          gnd: Number(gnd),
+          descricao: group.name,
+          valor_num: valor
+        });
+      });
+    });
 
-        if (!error && data) {
-          data.forEach((row: any) => {
-            const ugeLabel = `${row.organizacao} (${row.ug})`;
-            const existing = aggregatedItems.find(i => i.uge === ugeLabel && i.descricao === table.desc);
-            
-            if (existing) {
-              existing.valor_num += Number(row.valor_total || 0);
-            } else {
-              aggregatedItems.push({
-                uge: ugeLabel,
-                gnd: table.gnd,
-                descricao: table.desc,
-                valor_num: Number(row.valor_total || 0)
-              });
-            }
-          });
-        }
-      }
-
-      setDorItems(aggregatedItems.filter(i => i.valor_num > 0));
-      setShowItemsTable(true);
-      toast.success("Itens consolidados com sucesso!", { id: loadingToast });
-    } catch (error: any) {
-      toast.error("Erro ao consolidar: " + error.message, { id: loadingToast });
-    }
+    setDorItems(finalItems);
+    setShowItemsTable(true);
+    toast.success("Dados agrupados e importados com sucesso!");
   };
 
   useEffect(() => {
@@ -493,10 +470,10 @@ const DOREditor = () => {
                   <Button 
                     variant="outline" 
                     size="sm" 
-                    onClick={consolidateItems}
+                    onClick={() => setIsImporterOpen(true)}
                     className="print:hidden border-primary text-primary hover:bg-primary/5 font-sans"
                   >
-                    <Download className="h-4 w-4 mr-2" /> Importar Dados do P Trab
+                    <Download className="h-4 w-4 mr-2" /> Importar e Agrupar Dados do P Trab
                   </Button>
                 </div>
               ) : (
@@ -522,6 +499,17 @@ const DOREditor = () => {
                       Nenhum item de custo encontrado para este P-Trab.
                     </div>
                   )}
+                  
+                  <div className="p-2 text-center print:hidden border-t border-black bg-slate-50">
+                    <Button 
+                      variant="ghost" 
+                      size="xs" 
+                      onClick={() => setIsImporterOpen(true)}
+                      className="text-primary hover:text-primary/80 font-sans text-[10px] uppercase font-bold"
+                    >
+                      <RefreshCw className="h-3 w-3 mr-1" /> Refazer Agrupamento
+                    </Button>
+                  </div>
                 </>
               )}
             </div>
@@ -580,7 +568,7 @@ const DOREditor = () => {
               <div className="p-1 px-2">
                 <DocumentTextArea 
                   value={formData.consequencia}
-                  onChange={(e: any) => setFormData({...formData, comsequencia: e.target.value})}
+                  onChange={(e: any) => setFormData({...formData, consequencia: e.target.value})}
                   placeholder="- Possível inviabilidade de atuação da tropa nas atividades/tarefas/ações na Operação (COP 30) por ausência de suporte logístico."
                   style={bodyStyle}
                 />
@@ -627,6 +615,16 @@ const DOREditor = () => {
 
         </div>
       </div>
+
+      {/* Janela de Importação Avançada */}
+      {ptrabId && (
+        <PTrabImporter 
+          isOpen={isImporterOpen}
+          onClose={() => setIsImporterOpen(false)}
+          ptrabId={ptrabId}
+          onImportConcluded={handleImportConcluded}
+        />
+      )}
 
       {/* Dica Flutuante */}
       <div className="fixed bottom-6 right-6 max-w-xs bg-primary text-primary-foreground p-3 rounded-lg shadow-lg flex gap-3 items-start animate-in fade-in slide-in-from-bottom-4 print:hidden">
