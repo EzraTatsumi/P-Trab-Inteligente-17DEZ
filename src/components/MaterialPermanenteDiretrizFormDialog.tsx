@@ -11,7 +11,7 @@ import { Save, Loader2, BookOpen, FileSpreadsheet, Search, Pencil, Trash2 } from
 import { toast } from "sonner";
 import { useFormNavigation } from "@/hooks/useFormNavigation";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { DiretrizMaterialPermanente } from "@/types/diretrizesMaterialPermanente";
+import { DiretrizMaterialPermanente, ItemAquisicaoMaterial } from "@/types/diretrizesMaterialPermanente";
 import { ItemAquisicao } from "@/types/diretrizesMaterialConsumo";
 import CurrencyInput from "@/components/CurrencyInput";
 import { 
@@ -36,7 +36,7 @@ interface MaterialPermanenteDiretrizFormDialogProps {
     loading: boolean;
 }
 
-const initialItemForm: Omit<ItemAquisicao, 'id'> & { rawValor: string } = {
+const initialItemForm: Omit<ItemAquisicaoMaterial, 'id'> & { rawValor: string } = {
     descricao_item: '',
     descricao_reduzida: '', 
     valor_unitario: 0,
@@ -49,6 +49,7 @@ const initialItemForm: Omit<ItemAquisicao, 'id'> & { rawValor: string } = {
     nd: '449052',
     nr_subitem: '',
     nome_subitem: '',
+    unidade_medida: 'unidade',
 };
 
 type InternalForm = Omit<DiretrizMaterialPermanente, 'user_id' | 'created_at' | 'updated_at'> & { 
@@ -94,7 +95,7 @@ const MaterialPermanenteDiretrizFormDialog: React.FC<MaterialPermanenteDiretrizF
             toast.error("Preencha todos os campos obrigatórios do item.");
             return;
         }
-        const newItem: ItemAquisicao = {
+        const newItem: ItemAquisicaoMaterial = {
             id: editingItemId || Math.random().toString(36).substring(2, 9), 
             descricao_item: itemForm.descricao_item,
             descricao_reduzida: itemForm.descricao_reduzida, 
@@ -107,6 +108,7 @@ const MaterialPermanenteDiretrizFormDialog: React.FC<MaterialPermanenteDiretrizF
             nd: '449052',
             nr_subitem: subitemForm.nr_subitem,
             nome_subitem: subitemForm.nome_subitem,
+            unidade_medida: itemForm.unidade_medida,
         };
         const updatedItens = editingItemId ? subitemForm.itens_aquisicao.map(t => t.id === editingItemId ? newItem : t) : [...subitemForm.itens_aquisicao, newItem];
         setSubitemForm(prev => ({ ...prev, itens_aquisicao: updatedItens }));
@@ -114,7 +116,7 @@ const MaterialPermanenteDiretrizFormDialog: React.FC<MaterialPermanenteDiretrizF
         setItemForm(initialItemForm);
     };
 
-    const handleEditItem = (item: ItemAquisicao) => {
+    const handleEditItem = (item: ItemAquisicaoMaterial) => {
         setEditingItemId(item.id);
         setItemForm({ ...item, rawValor: numberToRawDigits(item.valor_unitario) });
         itemFormRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -202,15 +204,15 @@ const MaterialPermanenteDiretrizFormDialog: React.FC<MaterialPermanenteDiretrizF
                 onSelect={(c) => setSubitemForm(p => ({ ...p, nr_subitem: c.nr_subitem, nome_subitem: c.nome_subitem, descricao_subitem: c.descricao_subitem }))} 
             />
             <CatmatCatalogDialog open={isCatmatCatalogOpen} onOpenChange={setIsCatmatCatalogOpen} onSelect={(c) => setItemForm(p => ({ ...p, codigo_catmat: c.code, descricao_item: c.description, descricao_reduzida: c.short_description || '' }))} />
-            <ItemAquisicaoBulkUploadDialog open={isBulkUploadOpen} onOpenChange={setIsBulkUploadOpen} onImport={(items) => setSubitemForm(p => ({ ...p, itens_aquisicao: [...p.itens_aquisicao, ...items] }))} existingItemsInDiretriz={subitemForm.itens_aquisicao} mode="material" />
+            <ItemAquisicaoBulkUploadDialog open={isBulkUploadOpen} onOpenChange={setIsBulkUploadOpen} onImport={(items) => setSubitemForm(p => ({ ...p, itens_aquisicao: [...p.itens_aquisicao, ...items.map(i => ({ ...i, unidade_medida: 'unidade' }))] }))} existingItemsInDiretriz={subitemForm.itens_aquisicao} mode="material" />
             <ItemAquisicaoPNCPDialog 
                 open={isPNCPSearchOpen} 
                 onOpenChange={setIsPNCPSearchOpen} 
-                onImport={(items) => setSubitemForm(p => ({ ...p, itens_aquisicao: [...p.itens_aquisicao, ...items] }))} 
+                onImport={(items) => setSubitemForm(p => ({ ...p, itens_aquisicao: [...p.itens_aquisicao, ...items.map(i => ({ ...i, unidade_medida: 'unidade' }))] }))} 
                 existingItemsInDiretriz={subitemForm.itens_aquisicao} 
-                onReviewItem={(item) => { handleEditItem(item); setIsPNCPSearchOpen(false); }} 
+                onReviewItem={(item) => { handleEditItem({ ...item, unidade_medida: 'unidade' }); setIsPNCPSearchOpen(false); }} 
                 selectedYear={selectedYear} 
-                mode="permanente" // ATUALIZADO: Passando o modo correto
+                mode="permanente" 
             />
         </Dialog>
     );

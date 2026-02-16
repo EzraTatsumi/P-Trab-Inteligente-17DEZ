@@ -7,8 +7,6 @@ export type Json =
   | Json[]
 
 export type Database = {
-  // Allows to automatically instantiate createClient with right options
-  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
     PostgrestVersion: "13.0.5"
   }
@@ -445,7 +443,7 @@ export type Database = {
           detalhamento: string | null
           detalhamento_customizado: string | null
           dias_operacao: number
-          efetivo: number
+          efetivo: number | null
           fase_atividade: string | null
           id: string
           itens_equipamentos: Json
@@ -465,7 +463,7 @@ export type Database = {
           detalhamento?: string | null
           detalhamento_customizado?: string | null
           dias_operacao: number
-          efetivo?: number
+          efetivo?: number | null
           fase_atividade?: string | null
           id?: string
           itens_equipamentos: Json
@@ -485,7 +483,7 @@ export type Database = {
           detalhamento?: string | null
           detalhamento_customizado?: string | null
           dias_operacao?: number
-          efetivo?: number
+          efetivo?: number | null
           fase_atividade?: string | null
           id?: string
           itens_equipamentos?: Json
@@ -1158,6 +1156,110 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      material_permanente_registros: {
+        Row: {
+          id: string
+          p_trab_id: string
+          organizacao: string
+          ug: string
+          om_detentora: string | null
+          ug_detentora: string | null
+          dias_operacao: number
+          efetivo: number
+          fase_atividade: string | null
+          categoria: string
+          detalhes_planejamento: Json
+          valor_total: number
+          valor_nd_52: number
+          detalhamento_customizado: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          p_trab_id: string
+          organizacao: string
+          ug: string
+          om_detentora?: string | null
+          ug_detentora?: string | null
+          dias_operacao?: number
+          efetivo?: number
+          fase_atividade?: string | null
+          categoria: string
+          detalhes_planejamento: Json
+          valor_total?: number
+          valor_nd_52?: number
+          detalhamento_customizado?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          p_trab_id?: string
+          organizacao?: string
+          ug?: string
+          om_detentora?: string | null
+          ug_detentora?: string | null
+          dias_operacao?: number
+          efetivo?: number
+          fase_atividade?: string | null
+          categoria?: string
+          detalhes_planejamento?: Json
+          valor_total?: number
+          valor_nd_52?: number
+          detalhamento_customizado?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "material_permanente_registros_p_trab_id_fkey"
+            columns: ["p_trab_id"]
+            isOneToOne: false
+            referencedRelation: "p_trab"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      diretrizes_material_permanente: {
+        Row: {
+          id: string
+          user_id: string
+          ano_referencia: number
+          nr_subitem: string
+          nome_subitem: string
+          descricao_subitem: string | null
+          itens_aquisicao: Json
+          ativo: boolean
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          ano_referencia: number
+          nr_subitem: string
+          nome_subitem: string
+          descricao_subitem?: string | null
+          itens_aquisicao?: Json
+          ativo?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          ano_referencia?: number
+          nr_subitem?: string
+          nome_subitem?: string
+          descricao_subitem?: string | null
+          itens_aquisicao?: Json
+          ativo?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
       }
       diretrizes_classe_ii: {
         Row: {
@@ -2131,7 +2233,6 @@ type DatabaseWithoutInternals = Omit<Database, "__InternalSupabase">
 
 type DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, "public">]
 
-// Define TableName como uma união de literais de string
 export type TableName = keyof DefaultSchema["Tables"]; 
 
 export type Tables<T extends keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])> = 

@@ -6,14 +6,14 @@ import { Button } from "@/components/ui/button";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Package, Plus, Trash2, Calculator, Info } from "lucide-react";
+import { Package, Plus, Trash2, Calculator } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useSession } from '@/components/SessionContextProvider';
 import { formatCurrency } from '@/lib/formatUtils';
 import MaterialPermanenteItemSelectorDialog from './MaterialPermanenteItemSelectorDialog';
 import { ItemAquisicaoMaterial } from '@/types/diretrizesMaterialPermanente';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { ItemAquisicao } from '@/types/diretrizesMaterialConsumo';
 
 const formSchema = z.object({
     organizacao: z.string().min(1, "Organização é obrigatória"),
@@ -101,13 +101,13 @@ const MaterialPermanenteForm: React.FC<MaterialPermanenteFormProps> = ({
                 }))
             },
             valor_total: total,
-            valor_nd_52: total, // ND 52 para Material Permanente
+            valor_nd_52: total,
         };
 
         try {
             const { error } = initialData?.id 
-                ? await supabase.from('material_permanente_registros').update(payload).eq('id', initialData.id)
-                : await supabase.from('material_permanente_registros').insert([payload]);
+                ? await supabase.from('material_permanente_registros').update(payload as any).eq('id', initialData.id)
+                : await supabase.from('material_permanente_registros').insert([payload as any]);
 
             if (error) throw error;
             toast.success("Registro de Material Permanente salvo com sucesso!");
@@ -216,7 +216,7 @@ const MaterialPermanenteForm: React.FC<MaterialPermanenteFormProps> = ({
                 onOpenChange={setIsSelectorOpen}
                 selectedYear={selectedYear}
                 initialItems={selectedItems}
-                onSelect={setSelectedItems}
+                onSelect={(items) => setSelectedItems(items as ItemAquisicaoMaterial[])}
                 onAddDiretriz={() => {}}
                 categoria="Material Permanente"
             />
