@@ -2,7 +2,7 @@
 
 import React, { useRef } from 'react';
 import { Button } from "@/components/ui/button";
-import { Printer, Download, FileSpreadsheet } from "lucide-react";
+import { Printer, Download } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatNumber, formatCodug } from "@/lib/formatUtils";
 import jsPDF from 'jspdf';
@@ -122,10 +122,15 @@ const PTrabDORReport: React.FC<PTrabDORReportProps> = ({ ptrabData, dorData }) =
 
           {dorData.itens_dor?.map((item: any, idx: number) => (
             <div key={idx} className={cn("grid grid-cols-[130px_50px_110px_1fr] text-[10pt] text-center", idx !== dorData.itens_dor.length - 1 && "border-b border-black")}>
-              <div className="border-r border-black py-0 px-1">{item.uge_name} ({formatCodug(item.uge_code)})</div>
-              <div className="border-r border-black py-0 px-1">{item.gnd}</div>
-              <div className="border-r border-black py-0 px-1">{formatNumber(item.valor_num)}</div>
-              <div className="py-0 px-1 uppercase">{item.descricao}</div>
+              <div className="border-r border-black py-0 px-1 flex flex-col items-center justify-center leading-tight">
+                <span>{item.uge_name || item.uge || "N/I"}</span>
+                {(item.uge_code || item.ug) && (
+                  <span className="font-normal">({formatCodug(item.uge_code || item.ug)})</span>
+                )}
+              </div>
+              <div className="border-r border-black py-0 px-1 flex items-center justify-center">{item.gnd}</div>
+              <div className="border-r border-black py-0 px-1 flex items-center justify-center">{formatNumber(item.valor_num)}</div>
+              <div className="py-0 px-1 uppercase flex items-center justify-center">{item.descricao}</div>
             </div>
           ))}
         </div>
@@ -150,10 +155,12 @@ const PTrabDORReport: React.FC<PTrabDORReportProps> = ({ ptrabData, dorData }) =
           <div className="p-1 px-2 text-justify whitespace-pre-wrap">{dorData.observacoes}</div>
         </div>
 
-        <div className="mt-8 flex flex-col items-center text-center">
-          <p>{ptrabData.local_om}, {dataAtual}.</p>
-          <div className="mt-12">
-            <p className="font-bold uppercase">{ptrabData.nome_cmt_om}</p>
+        <div className="mt-4 border border-black p-1 flex flex-col items-center min-h-[150px] justify-between text-center">
+          <div className="pt-1">
+            <p>{ptrabData.local_om || "Local não informado"}, {dataAtual}.</p>
+          </div>
+          <div className="pb-2">
+            <p className="font-bold uppercase">{ptrabData.nome_cmt_om || "NOME DO ORDENADOR DE DESPESAS"}</p>
             <p>{ptrabData.nome_om_extenso || ptrabData.nome_om}</p>
           </div>
         </div>
