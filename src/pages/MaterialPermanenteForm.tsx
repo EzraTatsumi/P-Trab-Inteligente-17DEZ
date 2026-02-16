@@ -428,7 +428,7 @@ const MaterialPermanenteForm = () => {
 
                                         <Card className="rounded-lg p-4 bg-background">
                                             <div className="flex justify-between items-center mb-4">
-                                                <h4 className="text-base font-semibold flex items-center gap-2"><Package className="h-4 w-4 text-primary" /> Itens de Material Permanente</h4>
+                                                <h4 className="text-base font-semibold flex items-center gap-2">Itens de Material Permanente</h4>
                                                 <Button type="button" variant="outline" size="sm" onClick={() => setIsSelectorOpen(true)} disabled={!isPTrabEditable}><Plus className="mr-2 h-4 w-4" /> Importar da Diretriz</Button>
                                             </div>
 
@@ -472,7 +472,7 @@ const MaterialPermanenteForm = () => {
                                             )}
 
                                             <div className="flex justify-between items-center p-3 mt-4 border-t">
-                                                <span className="font-bold text-sm uppercase">VALOR TOTAL DO LOTE (ND 52):</span>
+                                                <span className="font-bold text-sm uppercase">VALOR TOTAL DO LOTE:</span>
                                                 <span className="font-extrabold text-lg text-primary">{formatCurrency(totalLote)}</span>
                                             </div>
                                         </Card>
