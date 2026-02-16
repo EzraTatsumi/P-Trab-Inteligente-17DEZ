@@ -23,6 +23,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { ItemAquisicao } from "@/types/diretrizesMaterialConsumo";
 import { formatCurrency, formatCodug, formatPregao } from "@/lib/formatUtils";
+import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 import { useSession } from "@/components/SessionContextProvider";
@@ -80,7 +81,7 @@ const MaterialPermanenteItemSelectorDialog: React.FC<MaterialPermanenteItemSelec
         queryFn: async () => {
             if (!user?.id) return [];
             const { data, error } = await supabase
-                .from('diretrizes_material_permanente' as any)
+                .from('diretrizes_material_permanente')
                 .select('*')
                 .eq('user_id', user.id)
                 .eq('ano_referencia', selectedYear)
@@ -88,7 +89,7 @@ const MaterialPermanenteItemSelectorDialog: React.FC<MaterialPermanenteItemSelec
                 .order('nr_subitem', { ascending: true });
 
             if (error) throw error;
-            return (data as any[]) || [];
+            return data || [];
         },
         enabled: open && !!user?.id
     });
