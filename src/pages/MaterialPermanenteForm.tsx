@@ -23,7 +23,8 @@ import {
     Calculator,
     Package,
     CheckCircle2,
-    Circle
+    Circle,
+    CircleX
 } from "lucide-react";
 import { useMilitaryOrganizations } from "@/hooks/useMilitaryOrganizations";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -492,7 +493,7 @@ const MaterialPermanenteForm = () => {
                                                                 <TableHead>Descrição do Material</TableHead>
                                                                 <TableHead className="text-right w-[140px]">Valor Unitário</TableHead>
                                                                 <TableHead className="text-right w-[140px]">Total</TableHead>
-                                                                <TableHead className="w-[80px] text-center">Justif.</TableHead>
+                                                                <TableHead className="w-[100px] text-center">Justificativa</TableHead>
                                                                 <TableHead className="w-[100px] text-center">Ações</TableHead>
                                                             </TableRow>
                                                         </TableHeader>
@@ -526,7 +527,7 @@ const MaterialPermanenteForm = () => {
                                                                             {isJustified ? (
                                                                                 <CheckCircle2 className="h-5 w-5 text-green-500 mx-auto" />
                                                                             ) : (
-                                                                                <Circle className="h-5 w-5 text-muted-foreground/30 mx-auto" />
+                                                                                <CircleX className="h-5 w-5 text-destructive mx-auto" />
                                                                             )}
                                                                         </TableCell>
                                                                         <TableCell className="text-center">
