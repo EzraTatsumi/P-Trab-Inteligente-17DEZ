@@ -172,15 +172,13 @@ const DOREditor = () => {
           
           {/* CABEÇALHO OFICIAL PADRONIZADO (3 COLUNAS) */}
           <div className="border border-black grid grid-cols-[180px_1fr_200px] items-stretch mb-8">
-            {/* Coluna Esquerda: Logo Ministério da Defesa */}
+            {/* Coluna Esquerda: Logo Ministério da Defesa (Imagem Oficial) */}
             <div className="border-r border-black p-2 flex flex-col items-center justify-center text-center">
               <img 
-                src="https://upload.wikimedia.org/wikipedia/commons/thumb/b/bf/Coat_of_arms_of_Brazil.svg/100px-Coat_of_arms_of_Brazil.svg.png" 
-                alt="Brasão" 
-                className="h-12 w-auto mb-1"
+                src="/ministerio_da_defesa.jpg" 
+                alt="Ministério da Defesa" 
+                className="h-16 w-auto"
               />
-              <p className="text-[7pt] font-bold leading-none uppercase text-gray-500">Ministério da</p>
-              <p className="text-[11pt] font-black leading-none uppercase text-gray-600">Defesa</p>
             </div>
 
             {/* Coluna Central: Identificação da OM */}
