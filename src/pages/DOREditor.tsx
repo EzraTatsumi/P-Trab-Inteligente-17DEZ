@@ -242,7 +242,7 @@ const DOREditor = () => {
     );
   }
 
-  const dataAtual = new Date().toLocaleDateString('pt-BR');
+  const dataAtual = new Date().toLocaleDateString('pt-BR', { day: 'numeric', month: 'long', year: 'numeric' });
   const anoAtual = new Date().getFullYear();
 
   // Estilo base para o corpo do documento (Calibri 12pt)
@@ -309,7 +309,7 @@ const DOREditor = () => {
                 />
                 <span>/ {anoAtual}</span>
               </div>
-              <p className="mt-2">{dataAtual}</p>
+              <p className="mt-2">{new Date().toLocaleDateString('pt-BR')}</p>
             </div>
           </div>
 
@@ -489,7 +489,6 @@ const DOREditor = () => {
                 <DocumentTextArea 
                   value={formData.finalidade}
                   onChange={(e: any) => setFormData({...formData, finalidade: e.target.value})}
-                  placeholder="Msg Op nº 196 - CCOp/CMN, de 15 ABR 24."
                   style={bodyStyle}
                 />
               </div>
@@ -507,7 +506,6 @@ const DOREditor = () => {
                 <DocumentTextArea 
                   value={formData.motivacao}
                   onChange={(e: any) => setFormData({...formData, motivacao: e.target.value})}
-                  placeholder="Msg Op nº 196 - CCOp/CMN, de 15 ABR 24."
                   style={bodyStyle}
                 />
               </div>
@@ -525,7 +523,6 @@ const DOREditor = () => {
                 <DocumentTextArea 
                   value={formData.consequencia}
                   onChange={(e: any) => setFormData({...formData, consequencia: e.target.value})}
-                  placeholder="- Possível inviabilidade de atuação da tropa nas atividades/tarefas/ações na Operação (COP 30) por ausência de suporte logístico."
                   style={bodyStyle}
                 />
               </div>
@@ -550,16 +547,15 @@ const DOREditor = () => {
 
           </div>
 
-          {/* RODAPÉ E ASSINATURAS */}
-          <div className="mt-8 flex flex-col items-center" style={bodyStyle}>
-            <div className="text-center mb-6 w-full">
-              <p>{ptrab?.local_om || "Local não informado"}, {new Date().toLocaleDateString('pt-BR', { day: 'numeric', month: 'long', year: 'numeric' })}.</p>
+          {/* RODAPÉ E ASSINATURAS - FORMATO TABULAR CONFORME IMAGEM */}
+          <div className="mt-4 border border-black p-1 flex flex-col items-center min-h-[150px] justify-between" style={bodyStyle}>
+            <div className="text-center w-full pt-1">
+              <p>{ptrab?.local_om || "Local não informado"}, {dataAtual}.</p>
             </div>
 
-            <div className="w-2/3 border-t border-black mt-6"></div>
-            <div className="text-center mt-1">
+            <div className="text-center pb-2">
               <p className="font-bold uppercase">{ptrab?.nome_cmt_om || "NOME DO ORDENADOR DE DESPESAS"}</p>
-              <p className="uppercase">Ordenador de Despesas da {ptrab?.nome_om}</p>
+              <p>{ptrab?.nome_om_extenso || `Ordenador de Despesas da ${ptrab?.nome_om}`}</p>
             </div>
           </div>
 
