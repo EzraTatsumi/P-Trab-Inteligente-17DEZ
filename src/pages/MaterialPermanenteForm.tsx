@@ -666,7 +666,8 @@ const MaterialPermanenteForm = () => {
                                             </Button>
                                         </div>
                                     </Card>
-                                )}
+                                </section>
+                            )}
 
                             {/* SEÇÃO 3: ITENS ADICIONADOS (PENDENTES) */}
                             {pendingItems.length > 0 && (
