@@ -1,4 +1,5 @@
-{/* ... keep existing imports */}
+"use client";
+
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -469,7 +470,7 @@ const PTrabManager = () => {
               totalComplementoAlimentacao = (complementoAlimentacaoData || []).reduce((sum, record) => sum + (Number(record.valor_total) || 0), 0);
           }
 
-          // 11. Fetch Serviços de Terceiros totals - NOVO
+          // 11. Fetch Serviços de Terceiros totals
           const { data: servicosTerceirosData, error: servicosTerceirosError } = await supabase
             .from('servicos_terceiros_registros' as any)
             .select('valor_total')
@@ -478,8 +479,18 @@ const PTrabManager = () => {
           let totalServicosTerceiros = 0;
           if (servicosTerceirosError) console.error("Erro ao carregar Serviços de Terceiros para PTrab", ptrab.numero_ptrab, servicosTerceirosError);
           else {
-              // Cast para any[] para evitar erro de inferência do SelectQueryError
               totalServicosTerceiros = (servicosTerceirosData as any[] || []).reduce((sum, record) => sum + (Number(record.valor_total) || 0), 0);
+          }
+
+          // 12. Fetch Material Permanente totals - NOVO
+          const { data: materialPermanenteData, error: materialPermanenteError } = await supabase
+            .from('material_permanente_registros' as any)
+            .select('valor_total')
+            .eq('p_trab_id', ptrab.id);
+            
+          if (materialPermanenteError) console.error("Erro ao carregar Material Permanente para PTrab", ptrab.numero_ptrab, materialPermanenteError);
+          else {
+              totalMaterialPermanenteCalculado = (materialPermanenteData as any[] || []).reduce((sum, record) => sum + (Number(record.valor_total) || 0), 0);
           }
 
           // SOMA TOTAL DA ABA LOGÍSTICA
@@ -844,7 +855,7 @@ const PTrabManager = () => {
     try {
         const { id, created_at, updated_at, user_id, share_token, shared_with, totalLogistica, totalOperacional, totalMaterialPermanente, quantidadeRacaoOp, quantidadeHorasVoo, isOwner, isShared, hasPendingRequests, ...restOfPTrab } = ptrabToClone;
         const newPTrabData: TablesInsert<'p_trab'> & { origem: PTrabDB['origem'] } = { ...restOfPTrab, numero_ptrab: suggestedCloneNumber, status: "aberto", origem: ptrabToClone.origem, comentario: null, rotulo_versao: versionName, user_id: (await supabase.auth.getUser()).data.user?.id! };
-        const { data: newPTrab, error: insertError } = await supabase.from("p_trab").insert([newPTrabData as TablesInsert<'p_trab'>]).select().single();
+        const { data: newPTrab, error: insertError = null } = await supabase.from("p_trab").insert([newPTrabData as TablesInsert<'p_trab'>]).select().single();
         if (insertError || !newPTrab) throw insertError;
         const newPTrabId = newPTrab.id;
         await cloneRelatedRecords(ptrabToClone.id, newPTrabId);
