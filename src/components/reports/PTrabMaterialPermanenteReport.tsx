@@ -29,17 +29,13 @@ const PTrabMaterialPermanenteReport: React.FC<PTrabMaterialPermanenteReportProps
   const rows = useMemo(() => {
     const allRows: any[] = [];
     registrosMaterialPermanente.forEach(reg => {
-      // Tenta buscar itens de detalhes_planejamento ou itens_aquisicao (dependendo da versão do form)
-      const items = (reg.detalhes_planejamento as any)?.items || (reg as any).itens_aquisicao || [];
-      
+      const items = (reg.detalhes_planejamento as any)?.items || [];
       items.forEach((item: any) => {
-        const valorTotal = Number(item.valor_unitario || 0) * Number(item.quantidade || 1);
         allRows.push({
-          id: `${reg.id}-${item.descricao_item}-${item.quantidade}`,
-          itemNome: (item.descricao_reduzida || item.descricao_item || "Item sem descrição").toUpperCase(),
+          itemNome: item.descricao_reduzida || item.descricao_item,
           omDestino: reg.om_detentora || reg.organizacao,
           ugDestino: reg.ug_detentora || reg.ug,
-          valor: valorTotal,
+          valor: item.valor_unitario * (item.quantidade || 1),
           memoria: generateMaterialPermanenteMemoriaCalculo(reg, { itemEspecifico: item })
         });
       });
@@ -59,7 +55,7 @@ const PTrabMaterialPermanenteReport: React.FC<PTrabMaterialPermanenteReportProps
     if (!contentRef.current) return;
     const pdfToast = toast({ title: "Gerando PDF...", description: "Aguarde enquanto o relatório é processado." });
     
-    html2canvas(contentRef.current, { scale: 3, useCORS: true, allowTaint: true }).then((canvas) => {
+    html2canvas(contentRef.current, { scale: 3, useCORS: true }).then((canvas) => {
       const imgData = canvas.toDataURL('image/jpeg', 1.0);
       const pdf = new jsPDF('l', 'mm', 'a4');
       const pdfWidth = 297;
@@ -80,11 +76,11 @@ const PTrabMaterialPermanenteReport: React.FC<PTrabMaterialPermanenteReportProps
     const worksheet = workbook.addWorksheet('Material Permanente');
     
     const centerStyle = { horizontal: 'center' as const, vertical: 'middle' as const, wrapText: true };
-    const leftTopStyle = { horizontal: 'left' as const, vertical: 'top' as const, wrapText: true };
     const border = { top: { style: 'thin' as const }, left: { style: 'thin' as const }, bottom: { style: 'thin' as const }, right: { style: 'thin' as const } };
     const headerFill = { type: 'pattern' as const, pattern: 'solid' as const, fgColor: { argb: 'FFD9D9D9' } };
-    const ndFill = { type: 'pattern' as const, pattern: 'solid' as const, fgColor: { argb: 'FFE2EFDA' } }; // Verde claro
-    
+    const ndFill = { type: 'pattern' as const, pattern: 'solid' as const, fgColor: { argb: 'FFE2EFDA' } };
+    const valueFill = { type: 'pattern' as const, pattern: 'solid' as const, fgColor: { argb: 'FFE2EFDA' } }; // Verde claro para os valores também
+
     let curr = 1;
     const addTitle = (text: string, bold = true, underline = false) => {
       const row = worksheet.getRow(curr);
@@ -112,7 +108,7 @@ const PTrabMaterialPermanenteReport: React.FC<PTrabMaterialPermanenteReportProps
     addInfo('1. NOME DA OPERAÇÃO:', ptrabData.nome_operacao);
     addInfo('2. PERÍODO:', `de ${formatDate(ptrabData.periodo_inicio)} a ${formatDate(ptrabData.periodo_fim)} - Nr Dias: ${diasOperacao}`);
     addInfo('3. EFETIVO EMPREGADO:', ptrabData.efetivo_empregado);
-    addInfo('4. AÇÕES REALIZADAS OU A REALIZAR:', ptrabData.acoes || '');
+    addInfo('4. AÇÕES REALIZADAS OU A REALIZAR:', ptrabData.acoes);
     addInfo('5. DESPESAS DE MATERIAL PERMANENTE REALIZADAS OU A REALIZAR:', '');
 
     const h1 = worksheet.getRow(curr);
@@ -149,7 +145,7 @@ const PTrabMaterialPermanenteReport: React.FC<PTrabMaterialPermanenteReportProps
 
     rows.forEach(r => {
       const row = worksheet.getRow(curr);
-      row.getCell('A').value = r.itemNome;
+      row.getCell('A').value = r.itemNome.toUpperCase();
       row.getCell('B').value = `${r.omDestino}\n(${formatCodug(r.ugDestino)})`;
       row.getCell('C').value = r.valor;
       row.getCell('D').value = r.valor;
@@ -157,12 +153,12 @@ const PTrabMaterialPermanenteReport: React.FC<PTrabMaterialPermanenteReportProps
 
       ['C', 'D'].forEach(c => {
         row.getCell(c).numFmt = 'R$ #,##0.00';
-        row.getCell(c).fill = ndFill;
+        row.getCell(c).fill = valueFill;
       });
 
       ['A', 'B', 'C', 'D', 'E'].forEach(c => {
         row.getCell(c).border = border;
-        row.getCell(c).alignment = c === 'E' ? leftTopStyle : centerStyle;
+        row.getCell(c).alignment = c === 'E' ? { vertical: 'top', wrapText: true } : centerStyle;
         row.getCell(c).font = { size: 8 };
       });
       curr++;
@@ -200,24 +196,6 @@ const PTrabMaterialPermanenteReport: React.FC<PTrabMaterialPermanenteReportProps
     a.href = url; a.download = generateFileName('Excel'); a.click();
     toast({ title: "Excel Exportado!" });
   }, [ptrabData, rows, totalGeral, diasOperacao, fileSuffix, toast]);
-
-  if (rows.length === 0) {
-    return (
-      <Card className="mt-4">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-secondary">
-            <HardHat className="h-5 w-5" />
-            P Trab Material Permanente
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="text-center py-8">
-            <p className="text-muted-foreground">Nenhum registro de material permanente encontrado.</p>
-          </div>
-        </CardContent>
-      </Card>
-    );
-  }
 
   return (
     <div className="space-y-4">
@@ -265,14 +243,11 @@ const PTrabMaterialPermanenteReport: React.FC<PTrabMaterialPermanenteReportProps
           </thead>
           <tbody>
             {rows.map((r, i) => (
-              <tr key={r.id || i}>
-                <td className="border border-black p-1 font-bold text-left align-middle">{r.itemNome}</td>
-                <td className="border border-black p-1 text-center align-middle">
-                  <div className="font-bold">{r.omDestino}</div>
-                  <div>({formatCodug(r.ugDestino)})</div>
-                </td>
-                <td className="border border-black p-1 text-center align-middle bg-[#E2EFDA]">{formatCurrency(r.valor)}</td>
-                <td className="border border-black p-1 text-center align-middle bg-[#E2EFDA]">{formatCurrency(r.valor)}</td>
+              <tr key={i}>
+                <td className="border border-black p-1 font-bold">{r.itemNome.toUpperCase()}</td>
+                <td className="border border-black p-1 text-center">{r.omDestino}<br/>({formatCodug(r.ugDestino)})</td>
+                <td className="border border-black p-1 text-center bg-[#E2EFDA]">{formatCurrency(r.valor)}</td>
+                <td className="border border-black p-1 text-center bg-[#E2EFDA]">{formatCurrency(r.valor)}</td>
                 <td className="border border-black p-1 whitespace-pre-wrap text-[7pt] text-left align-top">{r.memoria}</td>
               </tr>
             ))}
