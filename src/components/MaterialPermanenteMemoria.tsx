@@ -8,10 +8,10 @@ import { Loader2, Pencil, RefreshCw, XCircle, Check } from "lucide-react";
 import { formatCodug } from "@/lib/formatUtils";
 import { generateMaterialPermanenteMemoria } from "@/lib/materialPermanenteUtils";
 import { Badge } from "@/components/ui/badge";
-import { cn } from "@/lib/utils";
 
 interface MaterialPermanenteMemoriaProps {
     registro: any;
+    item: any; // Item específico para esta memória
     isPTrabEditable: boolean;
     isSaving?: boolean;
     editingMemoriaId: string | null;
@@ -25,6 +25,7 @@ interface MaterialPermanenteMemoriaProps {
 
 const MaterialPermanenteMemoria: React.FC<MaterialPermanenteMemoriaProps> = ({
     registro,
+    item,
     isPTrabEditable,
     isSaving = false,
     editingMemoriaId,
@@ -35,8 +36,9 @@ const MaterialPermanenteMemoria: React.FC<MaterialPermanenteMemoriaProps> = ({
     onSave,
     onRestore,
 }) => {
-    const isEditing = editingMemoriaId === registro.id;
-    const item = registro.detalhes_planejamento?.item_unico || registro.detalhes_planejamento?.itens_selecionados?.[0];
+    // O ID de edição agora precisa ser único por item se houver múltiplos no mesmo registro
+    const uniqueId = `${registro.id}-${item.id}`;
+    const isEditing = editingMemoriaId === uniqueId;
     
     const memoriaAutomatica = generateMaterialPermanenteMemoria(registro, item);
     const memoriaDisplay = registro.detalhamento_customizado || memoriaAutomatica;
@@ -62,7 +64,7 @@ const MaterialPermanenteMemoria: React.FC<MaterialPermanenteMemoriaProps> = ({
                 <div className="flex items-center justify-end gap-2 shrink-0">
                     {!isEditing ? (
                         <>
-                            <Button type="button" size="sm" variant="outline" onClick={() => onStartEdit(registro.id, memoriaDisplay)} disabled={isSaving || !isPTrabEditable} className="gap-2">
+                            <Button type="button" size="sm" variant="outline" onClick={() => onStartEdit(uniqueId, memoriaDisplay)} disabled={isSaving || !isPTrabEditable} className="gap-2">
                                 <Pencil className="h-4 w-4" /> Editar Memória
                             </Button>
                             {hasCustomMemoria && (
