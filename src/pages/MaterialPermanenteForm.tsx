@@ -225,26 +225,35 @@ const MaterialPermanenteForm = () => {
     // --- MUTATIONS ---
     const saveMutation = useMutation({
         mutationFn: async (itemsToSave: PendingPermanenteItem[]) => {
+            // Se estiver editando, remove o registro antigo antes de salvar os novos (que podem ser múltiplos se o lote foi expandido)
             const idsToDelete = itemsToSave.map(i => i.dbId).filter(Boolean) as string[];
             
             if (idsToDelete.length > 0) {
                 await supabase.from('material_permanente_registros').delete().in('id', idsToDelete);
             }
 
-            const records = itemsToSave.map(item => ({
-                p_trab_id: ptrabId,
-                organizacao: item.organizacao,
-                ug: item.ug,
-                om_detentora: item.om_detentora,
-                ug_detentora: item.ug_detentora,
-                dias_operacao: item.dias_operacao,
-                efetivo: item.efetivo,
-                fase_atividade: item.fase_atividade,
-                categoria: item.categoria,
-                detalhes_planejamento: item.detalhes_planejamento,
-                valor_total: item.valor_total,
-                valor_nd_52: item.valor_nd_52,
-            }));
+            // IMPORTANTE: Para garantir memórias individuais, salvamos cada item como um registro separado no banco
+            const records = itemsToSave.flatMap(lote => {
+                const items = lote.detalhes_planejamento?.itens_selecionados || [];
+                return items.map((item: any) => ({
+                    p_trab_id: ptrabId,
+                    organizacao: lote.organizacao,
+                    ug: lote.ug,
+                    om_detentora: lote.om_detentora,
+                    ug_detentora: lote.ug_detentora,
+                    dias_operacao: lote.dias_operacao,
+                    efetivo: lote.efetivo,
+                    fase_atividade: lote.fase_atividade,
+                    categoria: lote.categoria,
+                    detalhes_planejamento: { 
+                        item_unico: item, // Salva apenas este item
+                        has_efetivo: lote.detalhes_planejamento.has_efetivo 
+                    },
+                    valor_total: (item.quantidade || 1) * item.valor_unitario,
+                    valor_nd_52: (item.quantidade || 1) * item.valor_unitario,
+                }));
+            });
+
             const { error } = await supabase.from('material_permanente_registros').insert(records);
             if (error) throw error;
         },
@@ -355,17 +364,14 @@ const MaterialPermanenteForm = () => {
     };
 
     const handleEdit = (reg: any) => {
-        // 1. Definir IDs de controle
         setEditingId(reg.id);
         setActiveCompositionId(reg.id);
         
-        // 2. Popular dados da Seção 1
         const omFav = oms?.find(om => om.nome_om === reg.organizacao && om.codug_om === reg.ug);
         const omFavData = { nome: reg.organizacao, ug: reg.ug, id: omFav?.id || "" };
         setOmFavorecida(omFavData);
         setFaseAtividade(reg.fase_atividade || "");
         
-        // 3. Popular dados da Seção 2
         setEfetivo(reg.efetivo || 0);
         setDiasOperacao(reg.dias_operacao || 0);
         
@@ -374,12 +380,11 @@ const MaterialPermanenteForm = () => {
         setOmDestino(omDestData);
 
         const details = reg.detalhes_planejamento;
-        const items = details?.itens_selecionados || [];
+        // Se o registro foi salvo individualmente, o item está em 'item_unico'
+        const items = details?.item_unico ? [details.item_unico] : (details?.itens_selecionados || []);
         setSelectedItems(items);
         setHasEfetivo(details?.has_efetivo !== false);
 
-        // 4. Construir e popular Seção 3 (Itens Adicionados) imediatamente
-        // Isso evita problemas com a atualização assíncrona do estado do React
         const { totalGeral } = calculateMaterialPermanenteTotals(items);
         
         const newItem: PendingPermanenteItem = {
@@ -400,7 +405,6 @@ const MaterialPermanenteForm = () => {
 
         setPendingItems([newItem]);
 
-        // 5. Sincronizar estado de "sujo" (dirty)
         setLastStagedState({
             omFavorecidaId: omFavData.id,
             faseAtividade: reg.fase_atividade || "",
@@ -411,7 +415,6 @@ const MaterialPermanenteForm = () => {
             itemsKey: items.map((i: any) => `${i.id}-${i.quantidade}`).sort().join('|')
         });
 
-        // 6. Scroll para o topo para iniciar a edição
         window.scrollTo({ top: 0, behavior: 'smooth' });
     };
 
@@ -767,14 +770,15 @@ const MaterialPermanenteForm = () => {
                                             <div className="space-y-3">
                                                 {group.records.map((reg) => {
                                                     const isDifferentOm = reg.om_detentora?.trim() !== reg.organizacao?.trim();
-                                                    const totalQty = reg.detalhes_planejamento?.itens_selecionados?.reduce((acc: number, i: any) => acc + (i.quantidade || 0), 0) || 0;
+                                                    const item = reg.detalhes_planejamento?.item_unico || reg.detalhes_planejamento?.itens_selecionados?.[0];
+                                                    const totalQty = item?.quantidade || 0;
 
                                                     return (
                                                         <Card key={reg.id} className="p-3 bg-background border">
                                                             <div className="flex items-center justify-between">
                                                                 <div className="flex flex-col">
                                                                     <h4 className="font-semibold text-base text-foreground flex items-center gap-2">
-                                                                        Aquisição de Material Permanente
+                                                                        {item?.descricao_reduzida || item?.descricao_item || "Material Permanente"}
                                                                         <Badge variant="outline" className="text-xs font-semibold">{reg.fase_atividade}</Badge>
                                                                     </h4>
                                                                     <p className="text-xs text-muted-foreground">
