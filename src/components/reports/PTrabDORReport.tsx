@@ -70,7 +70,6 @@ const PTrabDORReport: React.FC<PTrabDORReportProps> = ({ ptrabData, dorData, sel
     textAlign: 'center' as const,
     textTransform: 'uppercase' as const,
     padding: '2px 0',
-    borderBottom: '1px solid black'
   };
 
   return (
@@ -104,7 +103,7 @@ const PTrabDORReport: React.FC<PTrabDORReportProps> = ({ ptrabData, dorData, sel
         style={bodyStyle}
       >
         {/* Cabeçalho do Documento */}
-        <div className="border border-black flex items-stretch mb-4 min-h-[100px]">
+        <div className="border-[1.5px] border-black flex items-stretch mb-4 min-h-[100px]">
           <div className="w-[180px] border-r border-black p-2 flex items-center justify-center">
             <img 
               src="/logo_md.png" 
@@ -125,9 +124,9 @@ const PTrabDORReport: React.FC<PTrabDORReportProps> = ({ ptrabData, dorData, sel
           </div>
         </div>
 
-        {/* DADOS DO ÓRGÃO REQUISITANTE - Replicando estrutura do Editor */}
-        <div className="border border-black mb-4 overflow-hidden">
-          <div style={headerTitleStyle}>DADOS DO ÓRGÃO REQUISITANTE</div>
+        {/* DADOS DO ÓRGÃO REQUISITANTE */}
+        <div className="border-[1.5px] border-black mb-4 overflow-hidden">
+          <div className="border-b border-black" style={headerTitleStyle}>DADOS DO ÓRGÃO REQUISITANTE</div>
           
           <div className="border-b border-black py-0 px-2 font-bold">
             Órgão:
@@ -160,13 +159,13 @@ const PTrabDORReport: React.FC<PTrabDORReportProps> = ({ ptrabData, dorData, sel
         </div>
 
         {/* ANEXOS */}
-        <div className="border border-black mb-4">
-          <div style={headerTitleStyle}>Anexos</div>
+        <div className="border-[1.5px] border-black mb-4">
+          <div className="border-b border-black" style={headerTitleStyle}>Anexos</div>
           <div className="py-0 px-2 text-center min-h-[1.2em]">{dorData.anexos}</div>
         </div>
 
         {/* AO / PO */}
-        <div className="border border-black mb-4">
+        <div className="border-[1.5px] border-black mb-4">
           <div className="border-b border-black py-0 px-2 flex items-center gap-2" style={headerTitleStyle}>
             <span className="font-bold shrink-0">Ação Orçamentária (AO):</span>
             <span className="font-normal">{dorData.acao_orcamentaria}</span>
@@ -178,8 +177,8 @@ const PTrabDORReport: React.FC<PTrabDORReportProps> = ({ ptrabData, dorData, sel
         </div>
 
         {/* OBJETO DE REQUISIÇÃO */}
-        <div className="border border-black mb-4 overflow-hidden">
-          <div style={headerTitleStyle}>OBJETO DE REQUISIÇÃO</div>
+        <div className="border-[1.5px] border-black mb-4 overflow-hidden">
+          <div className="border-b border-black" style={headerTitleStyle}>OBJETO DE REQUISIÇÃO</div>
           
           <div className="grid grid-cols-[120px_1fr] border-b border-black">
             <div className="py-0 px-2 border-r border-black font-bold flex items-center">
@@ -190,7 +189,7 @@ const PTrabDORReport: React.FC<PTrabDORReportProps> = ({ ptrabData, dorData, sel
             </div>
           </div>
           
-          <div style={headerTitleStyle}>DESCRIÇÃO DO ITEM (BEM E/OU SERVIÇO)</div>
+          <div className="border-b border-black" style={headerTitleStyle}>DESCRIÇÃO DO ITEM (BEM E/OU SERVIÇO)</div>
           
           <div className="flex border-b border-black font-bold text-center text-[10pt]">
             <div className="w-[150px] border-r border-black p-1">UGE</div>
@@ -215,31 +214,31 @@ const PTrabDORReport: React.FC<PTrabDORReportProps> = ({ ptrabData, dorData, sel
         </div>
 
         {/* FINALIDADE */}
-        <div className="border border-black mb-4">
-          <div style={headerTitleStyle}>FINALIDADE</div>
+        <div className="border-[1.5px] border-black mb-4">
+          <div className="border-b border-black" style={headerTitleStyle}>FINALIDADE</div>
           <div className="p-1 px-2 text-justify whitespace-pre-wrap leading-normal">{dorData.finalidade}</div>
         </div>
 
         {/* MOTIVAÇÃO */}
-        <div className="border border-black mb-4">
-          <div style={headerTitleStyle}>MOTIVAÇÃO</div>
+        <div className="border-[1.5px] border-black mb-4">
+          <div className="border-b border-black" style={headerTitleStyle}>MOTIVAÇÃO</div>
           <div className="p-1 px-2 text-justify whitespace-pre-wrap leading-normal">{dorData.motivacao}</div>
         </div>
 
         {/* CONSEQUÊNCIA */}
-        <div className="border border-black mb-4">
-          <div style={headerTitleStyle}>CONSEQUÊNCIA DO NÃO ATENDIMENTO</div>
+        <div className="border-[1.5px] border-black mb-4">
+          <div className="border-b border-black" style={headerTitleStyle}>CONSEQUÊNCIA DO NÃO ATENDIMENTO</div>
           <div className="p-1 px-2 text-justify whitespace-pre-wrap leading-normal">{dorData.consequencia}</div>
         </div>
 
         {/* OBSERVAÇÕES */}
-        <div className="border border-black mb-4">
-          <div style={headerTitleStyle}>OBSERVAÇÕES GERAIS</div>
+        <div className="border-[1.5px] border-black mb-4">
+          <div className="border-b border-black" style={headerTitleStyle}>OBSERVAÇÕES GERAIS</div>
           <div className="p-1 px-2 text-justify whitespace-pre-wrap text-[10pt] leading-tight">{dorData.observacoes}</div>
         </div>
 
         {/* ASSINATURA */}
-        <div className="mt-4 border border-black p-1 flex flex-col items-center min-h-[150px] justify-between text-center">
+        <div className="mt-4 border-[1.5px] border-black p-1 flex flex-col items-center min-h-[150px] justify-between text-center">
           <div className="pt-1">
             <p>{ptrabData.local_om || "Local não informado"}, {dataAtual}.</p>
           </div>
