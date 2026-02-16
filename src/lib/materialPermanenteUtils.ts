@@ -1,25 +1,35 @@
-import { ItemAquisicao } from "@/types/diretrizesMaterialConsumo";
-import { formatCurrency } from "./formatUtils";
+import { formatCurrency, formatPregao } from "./formatUtils";
 
-/**
- * Calcula os totais para um lote de materiais permanentes.
- */
-export const calculateMaterialPermanenteTotals = (items: ItemAquisicao[]) => {
-    const totalGeral = items.reduce((acc, item) => acc + ((item.quantidade || 0) * item.valor_unitario), 0);
+export const calculateMaterialPermanenteTotals = (items: any[]) => {
+    const totalGeral = items.reduce((acc, item) => acc + ((item.quantidade || 0) * (item.valor_unitario || 0)), 0);
     return { totalGeral };
 };
 
-/**
- * Gera o texto padrão da memória de cálculo para um item de material permanente.
- */
-export const generateMaterialPermanenteMemoria = (registro: any, item: ItemAquisicao) => {
-    const { organizacao, dias_operacao, fase_atividade } = registro;
-    const qtd = item.quantidade || 0;
-    const valorUnit = item.valor_unitario || 0;
-    const total = qtd * valorUnit;
-    
-    const justificativa = item.justificativa as any;
-    const motivoText = justificativa?.motivo ? ` Justifica-se essa aquisição ${justificativa.motivo}.` : "";
+export const generateMaterialPermanenteMemoria = (registro: any, item: any) => {
+    if (!item) return "";
 
-    return `Para atender às necessidades da ${organizacao}, durante o período de ${dias_operacao} ${dias_operacao === 1 ? 'dia' : 'dias'} da fase de ${fase_atividade || '[Fase]'}, faz-se necessária a aquisição de ${qtd} unidade(s) de ${item.descricao_reduzida || item.descricao_item}, ao valor unitário de ${formatCurrency(valorUnit)}, totalizando ${formatCurrency(total)}. A aquisição visa atender ${justificativa?.proposito || '[Propósito]'} ${justificativa?.destinacao || '[Destinação]'}, no local ${justificativa?.local || '[Local]'}, com a finalidade de ${justificativa?.finalidade || '[Finalidade]'}.${motivoText}`;
+    // Extração da justificativa (mesma lógica do Form)
+    const { grupo, proposito, destinacao, local, finalidade, motivo } = item.justificativa || {};
+    const diasStr = `${registro.dias_operacao} ${registro.dias_operacao === 1 ? 'dia' : 'dias'}`;
+    const fase = registro.fase_atividade || '[Fase]';
+    
+    const justificativa = `Aquisição de ${grupo || '[Grupo]'} para atender ${proposito || '[Propósito]'} ${destinacao || '[Destinação]'}, ${local || '[Local]'}, a fim de ${finalidade || '[Finalidade]'}, durante ${diasStr} de ${fase}. Justifica-se essa aquisição ${motivo || '[Motivo]'}.`;
+
+    const valorUnitario = Number(item.valor_unitario || 0);
+    const quantidade = Number(item.quantidade || 0);
+    const valorTotal = valorUnitario * quantidade;
+    const nomeItem = item.descricao_reduzida || item.descricao_item || "Item";
+    const pregao = formatPregao(item.numero_pregao);
+    const uasg = item.codigo_uasg || registro.ug_detentora || registro.ug || "N/A";
+
+    return `44.90.52 - ${justificativa}
+
+Cálculo: 
+- ${nomeItem}: ${formatCurrency(valorUnitario)}/ unid.
+
+Fórmula: Qtd do item x Valor do item.
+- ${quantidade} ${nomeItem} x ${formatCurrency(valorUnitario)}/unid = ${formatCurrency(valorTotal)}.
+
+Total: ${formatCurrency(valorTotal)}.
+(Pregão ${pregao} - UASG ${uasg})`;
 };

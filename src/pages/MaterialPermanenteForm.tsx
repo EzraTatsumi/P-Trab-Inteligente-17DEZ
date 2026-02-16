@@ -471,7 +471,7 @@ const MaterialPermanenteForm = () => {
 
                 <Card>
                     <CardHeader>
-                        <CardTitle className="flex items-center gap-2">Aquisição de Material Permanente</CardTitle>
+                        <CardTitle className="flex items-center gap-2">Material Permanente</CardTitle>
                         <CardDescription>Planejamento de necessidades de materiais permanentes.</CardDescription>
                     </CardHeader>
                     <CardContent>
@@ -693,7 +693,7 @@ const MaterialPermanenteForm = () => {
                                                     <CardContent className="p-4">
                                                         <div className="flex justify-between items-center pb-2 mb-2 border-b border-secondary/30">
                                                             <h4 className="font-bold text-base text-foreground">
-                                                                Aquisição de Material Permanente
+                                                                Material Permanente
                                                             </h4>
                                                             <div className="flex items-center gap-2">
                                                                 <p className="font-extrabold text-lg text-foreground text-right">{formatCurrency(item.valor_total)}</p>
@@ -774,7 +774,7 @@ const MaterialPermanenteForm = () => {
                                                             <div className="flex items-center justify-between">
                                                                 <div className="flex flex-col">
                                                                     <h4 className="font-semibold text-base text-foreground flex items-center gap-2">
-                                                                        Aquisição de Material Permanente
+                                                                        Material Permanente
                                                                         <Badge variant="outline" className="text-xs font-semibold">{reg.fase_atividade}</Badge>
                                                                     </h4>
                                                                     <p className="text-xs text-muted-foreground">
