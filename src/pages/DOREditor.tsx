@@ -475,7 +475,7 @@ const DOREditor = () => {
                 </div>
               ) : (
                 <>
-                  <div className="grid grid-cols-[1fr_60px_140px_1fr] border-b border-black font-bold text-center text-[10pt]">
+                  <div className="grid grid-cols-[130px_50px_110px_1fr] border-b border-black font-bold text-center text-[10pt]">
                     <div className="border-r border-black py-0 px-1">UGE</div>
                     <div className="border-r border-black py-0 px-1">GND</div>
                     <div className="border-r border-black py-0 px-1">VALOR</div>
@@ -484,15 +484,15 @@ const DOREditor = () => {
 
                   {dorItems.length > 0 ? (
                     dorItems.map((item, idx) => (
-                      <div key={idx} className={cn("grid grid-cols-[1fr_60px_140px_1fr] text-[10pt] text-center", idx !== dorItems.length - 1 && "border-b border-black")}>
-                        <div className="border-r border-black py-0 px-1 text-left leading-tight flex flex-col justify-center">
+                      <div key={idx} className={cn("grid grid-cols-[130px_50px_110px_1fr] text-[10pt] text-center", idx !== dorItems.length - 1 && "border-b border-black")}>
+                        <div className="border-r border-black py-0 px-1 text-center leading-tight flex flex-col items-center justify-center">
                           <span>{item.uge_name || item.uge}</span>
                           {item.uge_code && (
-                            <span className="text-[9pt] font-normal">{formatCodug(item.uge_code)}</span>
+                            <span className="font-normal">({formatCodug(item.uge_code)})</span>
                           )}
                         </div>
                         <div className="border-r border-black py-0 px-1 flex items-center justify-center">{item.gnd}</div>
-                        <div className="border-r border-black py-0 px-1 flex items-center justify-end">{formatNumber(item.valor_num)}</div>
+                        <div className="border-r border-black py-0 px-1 flex items-center justify-center">{formatNumber(item.valor_num)}</div>
                         <div className="py-0 px-1 text-left leading-tight uppercase flex items-center">{item.descricao}</div>
                       </div>
                     ))
