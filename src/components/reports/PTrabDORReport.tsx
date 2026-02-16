@@ -28,14 +28,12 @@ const PTrabDORReport: React.FC<PTrabDORReportProps> = ({ ptrabData, dorData, sel
     toast.loading("Gerando PDF de alta fidelidade...", { id: "pdf-gen" });
     
     try {
-      await new Promise(resolve => setTimeout(resolve, 300));
-
       const canvas = await html2canvas(reportRef.current, {
         scale: 3,
         useCORS: true,
         logging: false,
         backgroundColor: "#ffffff",
-        windowWidth: 1000,
+        windowWidth: 1200,
       });
       
       const imgData = canvas.toDataURL('image/png');
@@ -59,38 +57,24 @@ const PTrabDORReport: React.FC<PTrabDORReportProps> = ({ ptrabData, dorData, sel
   const dataAtual = new Date().toLocaleDateString('pt-BR', { day: 'numeric', month: 'long', year: 'numeric' });
   const anoAtual = new Date().getFullYear();
 
-  const tableStyle: React.CSSProperties = { 
-    width: '100%', 
-    borderCollapse: 'collapse', 
-    border: '1.5px solid black',
-    marginBottom: '16px',
-    tableLayout: 'fixed'
+  const bodyStyle = { 
+    fontFamily: 'Calibri, Arial, sans-serif', 
+    fontSize: '12pt', 
+    color: 'black', 
+    lineHeight: '1.2' 
   };
   
-  const cellStyle: React.CSSProperties = { 
-    border: '1px solid black', 
-    padding: '2px 8px', 
-    verticalAlign: 'top',
-    color: 'black'
-  };
-  
-  const headerCellStyle: React.CSSProperties = { 
-    ...cellStyle, 
-    backgroundColor: '#BFBFBF', 
-    textAlign: 'center', 
-    fontWeight: 'bold', 
-    textTransform: 'uppercase',
-    fontSize: '11pt'
-  };
-
-  const labelStyle: React.CSSProperties = { 
-    fontWeight: 'bold', 
-    display: 'block',
-    fontSize: '11pt'
+  const headerTitleStyle = { 
+    backgroundColor: '#BFBFBF',
+    fontWeight: 'bold' as const,
+    textAlign: 'center' as const,
+    textTransform: 'uppercase' as const,
+    padding: '2px 0',
   };
 
   return (
     <div className="space-y-6">
+      {/* Barra de Ações Padronizada */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-muted/30 p-4 rounded-xl border border-border print:hidden">
         <div className="flex items-center gap-3">
           {selector}
@@ -112,216 +96,157 @@ const PTrabDORReport: React.FC<PTrabDORReportProps> = ({ ptrabData, dorData, sel
         </div>
       </div>
 
+      {/* Container do Relatório */}
       <div 
         ref={reportRef}
         className="max-w-[210mm] mx-auto bg-white shadow-lg print:shadow-none p-[15mm] text-black print:p-0"
-        style={{ fontFamily: 'Calibri, Arial, sans-serif', fontSize: '12pt' }}
+        style={bodyStyle}
       >
-        <table style={{ ...tableStyle, border: '1.5px solid black', minHeight: '100px' }}>
-          <tbody>
-            <tr>
-              <td style={{ ...cellStyle, width: '180px', textAlign: 'center', verticalAlign: 'middle' }}>
-                <img 
-                  src="/logo_md.png" 
-                  alt="MD" 
-                  className="max-h-20 w-auto mx-auto object-contain"
-                  onError={(e: any) => e.target.src = "https://upload.wikimedia.org/wikipedia/commons/thumb/b/bf/Coat_of_arms_of_Brazil.svg/100px-Coat_of_arms_of_Brazil.svg.png"}
-                />
-              </td>
-              <td style={{ ...cellStyle, textAlign: 'center', verticalAlign: 'middle', fontWeight: 'bold', textTransform: 'uppercase', fontSize: '11pt', lineHeight: '1.2' }}>
-                <p>Ministério da Defesa</p>
-                <p>Exército Brasileiro</p>
-                <p>{ptrabData.comando_militar_area}</p>
-                <p>{ptrabData.nome_om_extenso || ptrabData.nome_om}</p>
-              </td>
-              <td style={{ ...cellStyle, width: '200px', textAlign: 'center', verticalAlign: 'middle', fontWeight: 'bold', fontSize: '11pt', lineHeight: '1.2' }}>
-                <p>Documento de Oficialização da Requisição – DOR</p>
-                <p className="mt-1">nº {dorData.numero_dor || '___'} / {anoAtual}</p>
-                <p className="mt-2 font-normal">{new Date(dorData.created_at).toLocaleDateString('pt-BR')}</p>
-              </td>
-            </tr>
-          </tbody>
-        </table>
+        {/* Cabeçalho do Documento */}
+        <div className="border-[1.5px] border-black flex items-stretch mb-4 min-h-[100px]">
+          <div className="w-[180px] border-r border-black p-2 flex items-center justify-center">
+            <img 
+              src="/logo_md.png" 
+              alt="MD" 
+              className="max-h-20 w-auto object-contain"
+              onError={(e: any) => e.target.src = "https://upload.wikimedia.org/wikipedia/commons/thumb/b/bf/Coat_of_arms_of_Brazil.svg/100px-Coat_of_arms_of_Brazil.svg.png"}
+            />
+          </div>
+          <div className="flex-1 border-r border-black p-2 flex flex-col items-center justify-center text-center font-bold uppercase text-[11pt] leading-tight">
+            <p>Ministério da Defesa</p>
+            <p>Exército Brasileiro</p>
+            <p>{ptrabData.comando_militar_area}</p>
+            <p>{ptrabData.nome_om_extenso || ptrabData.nome_om}</p>
+          </div>
+          <div className="w-[200px] p-2 flex flex-col items-center justify-center text-center font-bold text-[11pt] leading-tight">
+            <p>DOR nº {dorData.numero_dor || '___'} / {anoAtual}</p>
+            <p className="mt-2">{new Date(dorData.created_at).toLocaleDateString('pt-BR')}</p>
+          </div>
+        </div>
 
-        <table style={tableStyle}>
-          <tbody>
-            <tr>
-              <td style={headerCellStyle}>DADOS DO ÓRGÃO REQUISITANTE</td>
-            </tr>
-            <tr>
-              <td style={{ ...cellStyle, borderBottom: 'none', fontWeight: 'bold' }}>
-                Órgão:
-              </td>
-            </tr>
-            <tr>
-              <td style={{ ...cellStyle, borderTop: 'none' }}>
-                {ptrabData.nome_om_extenso || ptrabData.nome_om}
-              </td>
-            </tr>
-            <tr>
-              <td style={{ padding: 0, border: 'none' }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                  <tbody>
-                    <tr>
-                      <td style={{ ...cellStyle, width: '50%', borderLeft: 'none', borderBottom: 'none', fontWeight: 'bold' }}>
-                        Responsável pela Demanda:
-                      </td>
-                      <td style={{ ...cellStyle, width: '50%', borderRight: 'none', borderBottom: 'none' }}></td>
-                    </tr>
-                    <tr>
-                      <td style={{ ...cellStyle, borderLeft: 'none', borderTop: 'none' }}>
-                        {ptrabData.nome_cmt_om || "Não informado"}
-                      </td>
-                      <td style={{ ...cellStyle, borderRight: 'none', borderTop: 'none' }}></td>
-                    </tr>
-                  </tbody>
-                </table>
-              </td>
-            </tr>
-            <tr>
-              <td style={{ padding: 0, border: 'none' }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                  <tbody>
-                    <tr>
-                      <td style={{ ...cellStyle, width: '50%', borderLeft: 'none', borderBottom: 'none' }}>
-                        <span style={{ fontWeight: 'bold', display: 'inline' }}>E-mail: </span>
-                        <span style={{ fontWeight: 'normal' }}>{dorData.email}</span>
-                      </td>
-                      <td style={{ ...cellStyle, width: '50%', borderRight: 'none', borderBottom: 'none' }}>
-                        <span style={{ fontWeight: 'bold', display: 'inline' }}>Telefone: </span>
-                        <span style={{ fontWeight: 'normal' }}>{dorData.telefone}</span>
-                      </td>
-                    </tr>
-                  </tbody>
-                </table>
-              </td>
-            </tr>
-          </tbody>
-        </table>
+        {/* DADOS DO ÓRGÃO REQUISITANTE */}
+        <div className="border-[1.5px] border-black mb-4 overflow-hidden">
+          <div className="border-b border-black" style={headerTitleStyle}>DADOS DO ÓRGÃO REQUISITANTE</div>
+          
+          <div className="border-b border-black py-0 px-2 font-bold">
+            Órgão:
+          </div>
+          <div className="border-b border-black py-0 px-2">
+            {ptrabData.nome_om_extenso || ptrabData.nome_om}
+          </div>
+          
+          <div className="grid grid-cols-2 border-b border-black">
+            <div className="py-0 px-2 border-r border-black font-bold">
+              Responsável pela Demanda:
+            </div>
+            <div className="py-0 px-2"></div>
+          </div>
+          
+          <div className="border-b border-black py-0 px-2">
+            {ptrabData.nome_cmt_om || "Não informado"}
+          </div>
+          
+          <div className="grid grid-cols-2">
+            <div className="py-0 px-2 border-r border-black flex items-center gap-1">
+              <span className="font-bold whitespace-nowrap">E-mail:</span>
+              <span>{dorData.email}</span>
+            </div>
+            <div className="py-0 px-2 flex items-center gap-1">
+              <span className="font-bold whitespace-nowrap">Telefone:</span>
+              <span>{dorData.telefone}</span>
+            </div>
+          </div>
+        </div>
 
-        <table style={tableStyle}>
-          <tbody>
-            <tr>
-              <td style={headerCellStyle}>Anexos</td>
-            </tr>
-            <tr>
-              <td style={{ ...cellStyle, textAlign: 'center' }}>{dorData.anexos}</td>
-            </tr>
-          </tbody>
-        </table>
+        {/* ANEXOS */}
+        <div className="border-[1.5px] border-black mb-4">
+          <div className="border-b border-black" style={headerTitleStyle}>Anexos</div>
+          <div className="py-0 px-2 text-center min-h-[1.2em]">{dorData.anexos}</div>
+        </div>
 
-        <table style={tableStyle}>
-          <tbody>
-            <tr>
-              <td style={{ ...cellStyle, backgroundColor: '#BFBFBF', fontWeight: 'bold' }}>
-                <span style={{ display: 'inline' }}>Ação Orçamentária (AO): </span>
-                <span style={{ fontWeight: 'normal' }}>{dorData.acao_orcamentaria}</span>
-              </td>
-            </tr>
-            <tr>
-              <td style={cellStyle}>
-                <span style={{ fontWeight: 'bold', display: 'inline' }}>Plano Orçamentário (PO): </span>
-                <span style={{ fontWeight: 'normal' }}>{dorData.plano_orcamentario}</span>
-              </td>
-            </tr>
-          </tbody>
-        </table>
+        {/* AO / PO */}
+        <div className="border-[1.5px] border-black mb-4">
+          <div className="border-b border-black py-0 px-2 flex items-center gap-2" style={headerTitleStyle}>
+            <span className="font-bold shrink-0">Ação Orçamentária (AO):</span>
+            <span className="font-normal">{dorData.acao_orcamentaria}</span>
+          </div>
+          <div className="py-0 px-2 flex items-center gap-2">
+            <span className="font-bold shrink-0">Plano Orçamentário (PO):</span>
+            <span className="font-normal">{dorData.plano_orcamentario}</span>
+          </div>
+        </div>
 
-        <table style={tableStyle}>
-          <tbody>
-            <tr>
-              <td colSpan={4} style={headerCellStyle}>OBJETO DE REQUISIÇÃO</td>
-            </tr>
-            <tr>
-              <td colSpan={4} style={cellStyle}>
-                <span style={{ fontWeight: 'bold', display: 'inline' }}>Evento: </span>
-                <span style={{ fontWeight: 'normal' }}>{dorData.evento}</span>
-              </td>
-            </tr>
-            <tr>
-              <td colSpan={4} style={headerCellStyle}>DESCRIÇÃO DO ITEM (BEM E/OU SERVIÇO)</td>
-            </tr>
-            <tr style={{ fontWeight: 'bold', textAlign: 'center', fontSize: '10pt' }}>
-              <td style={{ ...cellStyle, width: '130px' }}>UGE</td>
-              <td style={{ ...cellStyle, width: '50px' }}>GND</td>
-              <td style={{ ...cellStyle, width: '110px' }}>VALOR</td>
-              <td style={cellStyle}>Descrição</td>
-            </tr>
-            {dorData.itens_dor?.map((item: any, idx: number) => (
-              <tr key={idx} style={{ fontSize: '10pt', textAlign: 'center' }}>
-                <td style={{ ...cellStyle, width: '130px', verticalAlign: 'middle', textAlign: 'center', lineHeight: '1.2' }}>
-                  <div style={{ fontWeight: 'normal' }}>{item.uge_name || item.uge || "N/I"}</div>
-                  {(item.uge_code || item.ug) && (
-                    <div style={{ fontSize: '9pt', fontWeight: 'normal' }}>({formatCodug(item.uge_code || item.ug)})</div>
-                  )}
-                </td>
-                <td style={{ ...cellStyle, width: '50px', verticalAlign: 'middle', textAlign: 'center' }}>{item.gnd}</td>
-                <td style={{ ...cellStyle, width: '110px', verticalAlign: 'middle', textAlign: 'center', fontWeight: 'normal' }}>{formatNumber(item.valor_num)}</td>
-                <td style={{ ...cellStyle, textAlign: 'center', textTransform: 'uppercase', verticalAlign: 'middle', lineHeight: '1.2' }}>{item.descricao}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        {/* OBJETO DE REQUISIÇÃO */}
+        <div className="border-[1.5px] border-black mb-4 overflow-hidden">
+          <div className="border-b border-black" style={headerTitleStyle}>OBJETO DE REQUISIÇÃO</div>
+          
+          <div className="grid grid-cols-[120px_1fr] border-b border-black">
+            <div className="py-0 px-2 border-r border-black font-bold flex items-center">
+              Evento:
+            </div>
+            <div className="py-0 px-2">
+              {dorData.evento}
+            </div>
+          </div>
+          
+          <div className="border-b border-black" style={headerTitleStyle}>DESCRIÇÃO DO ITEM (BEM E/OU SERVIÇO)</div>
+          
+          <div className="flex border-b border-black font-bold text-center text-[10pt]">
+            <div className="w-[150px] border-r border-black p-1">UGE</div>
+            <div className="w-[60px] border-r border-black p-1">GND</div>
+            <div className="w-[120px] border-r border-black p-1">VALOR</div>
+            <div className="flex-1 p-1">Descrição</div>
+          </div>
 
-        <table style={tableStyle}>
-          <tbody>
-            <tr>
-              <td style={headerCellStyle}>FINALIDADE</td>
-            </tr>
-            <tr>
-              <td style={{ ...cellStyle, textAlign: 'justify', whiteSpace: 'pre-wrap' }}>{dorData.finalidade}</td>
-            </tr>
-          </tbody>
-        </table>
+          {dorData.itens_dor?.map((item: any, idx: number) => (
+            <div key={idx} className={cn("flex text-[10pt] text-center min-h-[32px]", idx !== dorData.itens_dor.length - 1 && "border-b border-black")}>
+              <div className="w-[150px] border-r border-black p-1 flex flex-col items-center justify-center leading-tight">
+                <span className="font-bold">{item.uge_name || item.uge || "N/I"}</span>
+                {(item.uge_code || item.ug) && (
+                  <span className="text-[9pt]">({formatCodug(item.uge_code || item.ug)})</span>
+                )}
+              </div>
+              <div className="w-[60px] border-r border-black p-1 flex items-center justify-center">{item.gnd}</div>
+              <div className="w-[120px] border-r border-black p-1 flex items-center justify-center font-bold">{formatNumber(item.valor_num)}</div>
+              <div className="flex-1 p-1 uppercase flex items-center justify-center text-center px-2 leading-tight">{item.descricao}</div>
+            </div>
+          ))}
+        </div>
 
-        <table style={tableStyle}>
-          <tbody>
-            <tr>
-              <td style={headerCellStyle}>MOTIVAÇÃO</td>
-            </tr>
-            <tr>
-              <td style={{ ...cellStyle, textAlign: 'justify', whiteSpace: 'pre-wrap' }}>{dorData.motivacao}</td>
-            </tr>
-          </tbody>
-        </table>
+        {/* FINALIDADE */}
+        <div className="border-[1.5px] border-black mb-4">
+          <div className="border-b border-black" style={headerTitleStyle}>FINALIDADE</div>
+          <div className="p-1 px-2 text-justify whitespace-pre-wrap leading-normal">{dorData.finalidade}</div>
+        </div>
 
-        <table style={tableStyle}>
-          <tbody>
-            <tr>
-              <td style={headerCellStyle}>CONSEQUÊNCIA DO NÃO ATENDIMENTO</td>
-            </tr>
-            <tr>
-              <td style={{ ...cellStyle, textAlign: 'justify', whiteSpace: 'pre-wrap' }}>{dorData.consequencia}</td>
-            </tr>
-          </tbody>
-        </table>
+        {/* MOTIVAÇÃO */}
+        <div className="border-[1.5px] border-black mb-4">
+          <div className="border-b border-black" style={headerTitleStyle}>MOTIVAÇÃO</div>
+          <div className="p-1 px-2 text-justify whitespace-pre-wrap leading-normal">{dorData.motivacao}</div>
+        </div>
 
-        <table style={tableStyle}>
-          <tbody>
-            <tr>
-              <td style={headerCellStyle}>OBSERVAÇÕES GERAIS</td>
-            </tr>
-            <tr>
-              <td style={{ ...cellStyle, textAlign: 'justify', whiteSpace: 'pre-wrap', fontSize: '10pt' }}>{dorData.observacoes}</td>
-            </tr>
-          </tbody>
-        </table>
+        {/* CONSEQUÊNCIA */}
+        <div className="border-[1.5px] border-black mb-4">
+          <div className="border-b border-black" style={headerTitleStyle}>CONSEQUÊNCIA DO NÃO ATENDIMENTO</div>
+          <div className="p-1 px-2 text-justify whitespace-pre-wrap leading-normal">{dorData.consequencia}</div>
+        </div>
 
-        <table style={{ ...tableStyle, minHeight: '150px' }}>
-          <tbody>
-            <tr>
-              <td style={{ border: 'none', textAlign: 'center', paddingTop: '20px' }}>
-                <p>{ptrabData.local_om || "Local não informado"}, {dataAtual}.</p>
-              </td>
-            </tr>
-            <tr>
-              <td style={{ border: 'none', textAlign: 'center', paddingBottom: '20px', paddingTop: '60px' }}>
-                <p style={{ fontWeight: 'bold', textTransform: 'uppercase' }}>{ptrabData.nome_cmt_om || "NOME DO ORDENADOR DE DESPESAS"}</p>
-                <p>{ptrabData.nome_om_extenso || ptrabData.nome_om}</p>
-              </td>
-            </tr>
-          </tbody>
-        </table>
+        {/* OBSERVAÇÕES */}
+        <div className="border-[1.5px] border-black mb-4">
+          <div className="border-b border-black" style={headerTitleStyle}>OBSERVAÇÕES GERAIS</div>
+          <div className="p-1 px-2 text-justify whitespace-pre-wrap text-[10pt] leading-tight">{dorData.observacoes}</div>
+        </div>
+
+        {/* ASSINATURA */}
+        <div className="mt-4 border-[1.5px] border-black p-1 flex flex-col items-center min-h-[150px] justify-between text-center">
+          <div className="pt-1">
+            <p>{ptrabData.local_om || "Local não informado"}, {dataAtual}.</p>
+          </div>
+          <div className="pb-2">
+            <p className="font-bold uppercase">{ptrabData.nome_cmt_om || "NOME DO ORDENADOR DE DESPESAS"}</p>
+            <p>{ptrabData.nome_om_extenso || ptrabData.nome_om}</p>
+          </div>
+        </div>
       </div>
     </div>
   );
