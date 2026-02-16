@@ -65,7 +65,7 @@ const MaterialPermanenteJustificativaDialog = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-6xl h-[95vh] flex flex-col overflow-hidden">
+      <DialogContent className="max-w-7xl h-[95vh] flex flex-col overflow-hidden">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <FileText className="h-5 w-5 text-primary" />
@@ -76,7 +76,7 @@ const MaterialPermanenteJustificativaDialog = ({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="flex-grow overflow-y-auto pr-2">
+        <div className="flex-grow overflow-y-auto px-1 pr-4">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 py-4">
             <div className="lg:col-span-7 space-y-6">
               <div className="space-y-2">
