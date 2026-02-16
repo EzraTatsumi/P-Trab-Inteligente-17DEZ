@@ -24,6 +24,7 @@ import PTrabRacaoOperacionalReport from "@/components/reports/PTrabRacaoOperacio
 import PTrabOperacionalReport from "@/components/reports/PTrabOperacionalReport"; 
 import PTrabHorasVooReport from "@/components/reports/PTrabHorasVooReport"; 
 import PTrabMaterialPermanenteReport from "@/components/reports/PTrabMaterialPermanenteReport";
+import PTrabDORReport from "@/components/reports/PTrabDORReport";
 import {
   generateRacaoQuenteMemoriaCalculo,
   generateRacaoOperacionalMemoriaCalculo,
@@ -827,6 +828,8 @@ const PTrabReportManager = () => {
   const [registrosServicosTerceiros, setRegistrosServicosTerceiros] = useState<ServicoTerceiroRegistro[]>([]);
   const [registrosMaterialPermanente, setRegistrosMaterialPermanente] = useState<MaterialPermanenteRegistro[]>([]);
   const [registrosHorasVoo, setRegistrosHorasVoo] = useState<HorasVooRegistro[]>([]); 
+  const [registrosDOR, setRegistrosDOR] = useState<any[]>([]);
+  const [selectedDorId, setSelectedDorId] = useState<string | null>(null);
   const [diretrizesOperacionais, setDiretrizesOperacionais] = useState<Tables<'diretrizes_operacionais'> | null>(null);
   const [diretrizesPassagens, setDiretrizesPassagens] = useState<Tables<'diretrizes_passagens'>[]>([]);
   const [refLPC, setRefLPC] = useState<RefLPC | null>(null);
@@ -878,6 +881,7 @@ const PTrabReportManager = () => {
         { data: servicosTerceirosData },
         { data: materialPermanenteData },
         { data: horasVooData }, 
+        { data: dorData },
         diretrizesOpData,
         diretrizesPassagensData,
       ] = await Promise.all([
@@ -900,6 +904,7 @@ const PTrabReportManager = () => {
         supabase.from('servicos_terceiros_registros' as any).select('*').eq('p_trab_id', ptrabId),
         supabase.from('material_permanente_registros' as any).select('*').eq('p_trab_id', ptrabId),
         supabase.from('horas_voo_registros').select('*').eq('p_trab_id', ptrabId), 
+        supabase.from('dor_registros' as any).select('*').eq('p_trab_id', ptrabId).order('created_at', { ascending: true }),
         fetchDiretrizesOperacionais(year),
         fetchDiretrizesPassagens(year),
       ]);
@@ -1050,6 +1055,11 @@ const PTrabReportManager = () => {
           valor_total: Number(r.valor_total || 0),
           dias_operacao: r.dias_operacao || 0,
       })) as HorasVooRegistro[]);
+
+      setRegistrosDOR(dorData || []);
+      if (dorData && dorData.length > 0) {
+        setSelectedDorId(dorData[0].id);
+      }
       
     } catch (error) {
       console.error("Erro ao carregar dados:", error);
@@ -1500,11 +1510,11 @@ const PTrabReportManager = () => {
       case 'hora_voo':
         return registrosHorasVoo.length > 0;
       case 'dor':
-        return false; 
+        return registrosDOR.length > 0; 
       default:
         return false;
     }
-  }, [selectedReport, registrosClasseI, registrosClasseII, registrosClasseIII, registrosDiaria, registrosVerbaOperacional, registrosSuprimentoFundos, registrosPassagem, registrosConcessionaria, registrosMaterialConsumo, registrosComplementoAlimentacao, registrosServicosTerceiros, registrosMaterialPermanente, registrosHorasVoo]);
+  }, [selectedReport, registrosClasseI, registrosClasseII, registrosClasseIII, registrosDiaria, registrosVerbaOperacional, registrosSuprimentoFundos, registrosPassagem, registrosConcessionaria, registrosMaterialConsumo, registrosComplementoAlimentacao, registrosServicosTerceiros, registrosMaterialPermanente, registrosHorasVoo, registrosDOR]);
 
 
   const renderReport = () => {
@@ -1597,13 +1607,27 @@ const PTrabReportManager = () => {
             />
         );
       case 'dor':
+        const selectedDor = registrosDOR.find(d => d.id === selectedDorId) || registrosDOR[0];
         return (
-          <div className="text-center py-12">
-            <FileText className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-            <h3 className="text-xl font-semibold">Relatório {currentReportOption.label}</h3>
-            <p className="text-muted-foreground mt-2">
-              Este relatório ainda não está implementado.
-            </p>
+          <div className="space-y-6">
+            {registrosDOR.length > 1 && (
+              <div className="flex items-center gap-3 bg-muted/50 p-4 rounded-lg border border-border print:hidden">
+                <span className="text-sm font-bold">Selecionar Documento:</span>
+                <Select value={selectedDorId || ''} onValueChange={setSelectedDorId}>
+                  <SelectTrigger className="w-[300px] bg-white">
+                    <SelectValue placeholder="Escolha o DOR" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {registrosDOR.map(dor => (
+                      <SelectItem key={dor.id} value={dor.id}>
+                        DOR Nr {dor.numero_dor || 'S/N'} - {new Date(dor.created_at).toLocaleDateString()}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+            <PTrabDORReport ptrabData={ptrabData} dorData={selectedDor} />
           </div>
         );
       default:

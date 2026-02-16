@@ -37,9 +37,10 @@ interface PTrabImporterProps {
   onClose: () => void;
   ptrabId: string;
   onImportConcluded: (groups: DorGroup[], selectedGnd: number) => void;
+  initialGroups?: DorGroup[]; // Propriedade para edição
 }
 
-export function PTrabImporter({ isOpen, onClose, ptrabId, onImportConcluded }: PTrabImporterProps) {
+export function PTrabImporter({ isOpen, onClose, ptrabId, onImportConcluded, initialGroups }: PTrabImporterProps) {
   const [loading, setLoading] = useState(false);
   const [allItems, setAllItems] = useState<PTrabItem[]>([]);
   const [selectedGnd, setSelectedGnd] = useState<number>(3);
@@ -95,7 +96,7 @@ export function PTrabImporter({ isOpen, onClose, ptrabId, onImportConcluded }: P
         } else if (table.isVerbaOp) {
           selectFields.push('valor_nd_30', 'valor_nd_39', 'detalhamento');
         } else {
-          selectFields.push(table.valueField || 'valor_total');
+          selectFields.push('valor_total');
         }
         
         if (table.descField && !table.isVerbaOp) selectFields.push(table.descField);
@@ -110,7 +111,6 @@ export function PTrabImporter({ isOpen, onClose, ptrabId, onImportConcluded }: P
 
         if (!error && data) {
           data.forEach((row: any) => {
-            // Lógica especial para Classe I
             if (table.isClasseI) {
               const qs = Number(row.total_qs || 0);
               const qr = Number(row.total_qr || 0);
@@ -137,7 +137,6 @@ export function PTrabImporter({ isOpen, onClose, ptrabId, onImportConcluded }: P
               return;
             }
 
-            // Lógica especial para Verba Operacional / Suprimento de Fundos
             if (table.isVerbaOp) {
               const valor = Number(row.valor_nd_30 || 0) + Number(row.valor_nd_39 || 0);
               if (valor <= 0) return;
@@ -163,7 +162,6 @@ export function PTrabImporter({ isOpen, onClose, ptrabId, onImportConcluded }: P
               return;
             }
 
-            // Lógica especial para Material Permanente
             if (table.name === 'material_permanente_registros' && row.detalhes_planejamento?.itens_selecionados) {
               row.detalhes_planejamento.itens_selecionados.forEach((subItem: any) => {
                 const valorItem = Number(subItem.quantidade || 0) * Number(subItem.valor_unitario || 0);
@@ -186,7 +184,7 @@ export function PTrabImporter({ isOpen, onClose, ptrabId, onImportConcluded }: P
               return;
             }
 
-            const valor = Number(row[table.valueField || 'valor_total'] || 0);
+            const valor = Number(row.valor_total || 0);
             if (valor <= 0) return;
 
             let descValue = table.descField ? (row[table.descField] || table.label) : table.label;
@@ -234,9 +232,18 @@ export function PTrabImporter({ isOpen, onClose, ptrabId, onImportConcluded }: P
   useEffect(() => {
     if (isOpen) {
       loadPTrabItems();
-      setDorGroups([]);
+      // Se houver grupos iniciais, carrega-os. Caso contrário, limpa.
+      if (initialGroups && initialGroups.length > 0) {
+        setDorGroups(initialGroups);
+        // Define o GND baseado no primeiro item do primeiro grupo
+        if (initialGroups[0].items.length > 0) {
+          setSelectedGnd(initialGroups[0].items[0].gnd);
+        }
+      } else {
+        setDorGroups([]);
+      }
     }
-  }, [isOpen]);
+  }, [isOpen, initialGroups]);
 
   const availableItems = useMemo(() => {
     const alocatedIds = new Set(dorGroups.flatMap(g => g.items.map(i => i.id)));
@@ -351,7 +358,7 @@ export function PTrabImporter({ isOpen, onClose, ptrabId, onImportConcluded }: P
               GND 4 (Investimento)
             </button>
           </div>
-          {dorGroups.length > 0 && (
+          {dorGroups.length > 0 && !initialGroups && (
             <span className="text-[10px] text-orange-500 font-bold animate-pulse">
               * Mudar o GND limpará os grupos atuais
             </span>
