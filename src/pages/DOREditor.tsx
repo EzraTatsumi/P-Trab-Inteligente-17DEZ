@@ -173,11 +173,11 @@ const DOREditor = () => {
           {/* CABEÇALHO OFICIAL PADRONIZADO (3 COLUNAS) */}
           <div className="border border-black grid grid-cols-[180px_1fr_200px] items-stretch mb-8">
             {/* Coluna Esquerda: Logo Ministério da Defesa (Arquivo Local) */}
-            <div className="border-r border-black p-2 flex items-center justify-center text-center">
+            <div className="border-r border-black p-2 flex items-center justify-center text-center overflow-hidden">
               <img 
                 src="/logo_md.png" 
                 alt="Ministério da Defesa" 
-                className="h-16 w-auto object-contain"
+                className="max-h-20 w-auto object-contain"
                 onError={(e: any) => {
                   e.target.src = "https://upload.wikimedia.org/wikipedia/commons/thumb/b/bf/Coat_of_arms_of_Brazil.svg/100px-Coat_of_arms_of_Brazil.svg.png";
                   console.warn("Arquivo logo_md.png não encontrado na pasta public. Usando brasão genérico como fallback.");
