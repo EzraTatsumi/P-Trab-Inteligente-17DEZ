@@ -195,6 +195,10 @@ const MaterialPermanenteForm = () => {
         }, 0);
     }, [selectedItems]);
 
+    const totalPendingValue = useMemo(() => {
+        return pendingItems.reduce((acc, item) => acc + item.valor_total, 0);
+    }, [pendingItems]);
+
     const isDirty = useMemo(() => {
         if (!lastStagedState || pendingItems.length === 0) return false;
         
@@ -460,8 +464,8 @@ const MaterialPermanenteForm = () => {
                                             </CardHeader>
                                             <CardContent className="pt-2">
                                                 <div className="p-4 bg-background rounded-lg border">
-                                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                                        <div className="space-y-2">
+                                                    <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
+                                                        <div className="md:col-span-2 space-y-2">
                                                             <Label>Período (Nr Dias) *</Label>
                                                             <Input 
                                                                 type="number" 
@@ -471,14 +475,14 @@ const MaterialPermanenteForm = () => {
                                                                 disabled={!isPTrabEditable} 
                                                                 onWheel={(e) => e.currentTarget.blur()}
                                                                 onKeyDown={(e) => (e.key === 'ArrowUp' || e.key === 'ArrowDown') && e.preventDefault()}
-                                                                className="max-w-[150px] [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" 
+                                                                className="w-full [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" 
                                                             />
                                                         </div>
-                                                        <div className="space-y-2">
+                                                        <div className="md:col-span-8 space-y-2">
                                                             <Label>OM Destino do Recurso *</Label>
                                                             <OmSelector selectedOmId={omDestino.id || undefined} onChange={(om) => om && setOmDestino({nome: om.nome_om, ug: om.codug_om, id: om.id})} placeholder="Selecione a OM Destino" disabled={!isPTrabEditable} />
                                                         </div>
-                                                        <div className="space-y-2">
+                                                        <div className="md:col-span-2 space-y-2">
                                                             <Label>UG Destino</Label>
                                                             <Input value={formatCodug(omDestino.ug)} disabled className="bg-muted/50" />
                                                         </div>
@@ -624,39 +628,78 @@ const MaterialPermanenteForm = () => {
                             {/* SEÇÃO 3: ITENS ADICIONADOS (PENDENTES) */}
                             {pendingItems.length > 0 && (
                                 <section className="space-y-4 border-b pb-6">
-                                    <h3 className="text-lg font-semibold flex items-center gap-2">3. Lote Preparado</h3>
-                                    {isDirty && <Alert variant="destructive"><AlertCircle className="h-4 w-4" /><AlertDescription>Os dados foram alterados. Clique em "Recalcular/Revisar Lote" para atualizar.</AlertDescription></Alert>}
+                                    <h3 className="text-lg font-semibold flex items-center gap-2">3. Itens Adicionados ({pendingItems.length})</h3>
                                     
-                                    {pendingItems.map((item) => (
-                                        <Card key={item.tempId} className="border-2 shadow-md border-secondary bg-secondary/10">
-                                            <CardContent className="p-4">
-                                                <div className="flex justify-between items-center pb-2 mb-2 border-b border-secondary/30">
-                                                    <h4 className="font-bold text-base text-foreground">Aquisição de Material Permanente</h4>
-                                                    <div className="flex items-center gap-2">
-                                                        <p className="font-extrabold text-lg text-foreground">{formatCurrency(item.valor_total)}</p>
-                                                        {!editingId && <Button variant="ghost" size="icon" onClick={() => setPendingItems([])}><Trash2 className="h-4 w-4 text-destructive" /></Button>}
-                                                    </div>
-                                                </div>
-                                                <div className="grid grid-cols-2 gap-4 text-xs">
-                                                    <div className="space-y-1">
-                                                        <p className="font-medium">OM Favorecida: {item.organizacao} ({formatCodug(item.ug)})</p>
-                                                        <p className="font-medium">OM Destino: {item.om_detentora} ({formatCodug(item.ug_detentora)})</p>
-                                                    </div>
-                                                    <div className="text-right space-y-1">
-                                                        <p className="font-medium">Período: {item.dias_operacao} dias</p>
-                                                        <p className="font-medium">Itens: {item.detalhes_planejamento.itens_selecionados.length} tipos</p>
-                                                    </div>
-                                                </div>
-                                            </CardContent>
-                                        </Card>
-                                    ))}
+                                    {isDirty && (
+                                        <Alert variant="destructive">
+                                            <AlertCircle className="h-4 w-4" />
+                                            <AlertDescription className="font-medium">
+                                                Atenção: Os dados do formulário foram alterados. Clique em "Salvar Item na Lista" na Seção 2 para atualizar o lote pendente.
+                                            </AlertDescription>
+                                        </Alert>
+                                    )}
+                                    
+                                    <div className="space-y-4">
+                                        {pendingItems.map((item) => {
+                                            const isOmDestinoDifferent = item.organizacao.trim() !== item.om_detentora.trim();
+                                            const totalQty = item.detalhes_planejamento?.itens_selecionados?.reduce((acc: number, i: any) => acc + (i.quantidade || 0), 0) || 0;
+
+                                            return (
+                                                <Card key={item.tempId} className="border-2 shadow-md border-secondary bg-secondary/10">
+                                                    <CardContent className="p-4">
+                                                        <div className="flex justify-between items-center pb-2 mb-2 border-b border-secondary/30">
+                                                            <h4 className="font-bold text-base text-foreground">
+                                                                Aquisição de Material Permanente
+                                                            </h4>
+                                                            <div className="flex items-center gap-2">
+                                                                <p className="font-extrabold text-lg text-foreground text-right">{formatCurrency(item.valor_total)}</p>
+                                                                {!editingId && (
+                                                                    <Button variant="ghost" size="icon" onClick={() => setPendingItems(prev => prev.filter(i => i.tempId !== item.tempId))} disabled={saveMutation.isPending}><Trash2 className="h-4 w-4 text-destructive" /></Button>
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                        <div className="grid grid-cols-2 gap-4 text-xs pt-1">
+                                                            <div className="space-y-1">
+                                                                <p className="font-medium">OM Favorecida:</p>
+                                                                <p className="font-medium">OM Destino do Recurso:</p>
+                                                                <p className="font-medium">Período / Qtd Itens:</p>
+                                                            </div>
+                                                            <div className="text-right space-y-1">
+                                                                <p className="font-medium">{item.organizacao} ({formatCodug(item.ug)})</p>
+                                                                <p className={cn("font-medium", isOmDestinoDifferent && "text-destructive font-bold")}>{item.om_detentora} ({formatCodug(item.ug_detentora)})</p>
+                                                                <p className="font-medium">
+                                                                    {item.dias_operacao} {item.dias_operacao === 1 ? 'dia' : 'dias'} / {totalQty} un
+                                                                </p>
+                                                            </div>
+                                                        </div>
+                                                        <div className="w-full h-[1px] bg-secondary/30 my-3" />
+                                                        <div className="flex flex-col gap-1">
+                                                            <div className="flex justify-between text-xs">
+                                                                <span className="text-muted-foreground">Total ND 52:</span>
+                                                                <span className="font-medium text-green-600">{formatCurrency(item.valor_nd_52)}</span>
+                                                            </div>
+                                                        </div>
+                                                    </CardContent>
+                                                </Card>
+                                            );
+                                        })}
+                                    </div>
+                                    
+                                    <Card className="bg-gray-100 shadow-inner">
+                                        <CardContent className="p-4 flex justify-between items-center">
+                                            <span className="font-bold text-base uppercase">VALOR TOTAL DA OM</span>
+                                            <span className="font-extrabold text-xl text-foreground">{formatCurrency(totalPendingValue)}</span>
+                                        </CardContent>
+                                    </Card>
                                     
                                     <div className="flex justify-end gap-3 pt-4">
-                                        <Button onClick={() => saveMutation.mutate(pendingItems)} disabled={saveMutation.isPending || isDirty} className="bg-primary">
+                                        <Button type="button" onClick={() => saveMutation.mutate(pendingItems)} disabled={saveMutation.isPending || pendingItems.length === 0 || isDirty} className="w-full md:w-auto bg-primary hover:bg-primary/90" id="save-records-btn">
                                             {saveMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-                                            {editingId ? "Atualizar Registro" : "Salvar no P Trab"}
+                                            {editingId ? "Atualizar Lote" : "Salvar Registros"}
                                         </Button>
-                                        <Button variant="outline" onClick={resetForm} disabled={saveMutation.isPending}><XCircle className="mr-2 h-4 w-4" /> Cancelar</Button>
+                                        <Button type="button" variant="outline" onClick={resetForm} disabled={saveMutation.isPending}>
+                                            <XCircle className="mr-2 h-4 w-4" /> {editingId ? "Cancelar Edição" : "Limpar Lista"}
+                                        </Button>
                                     </div>
                                 </section>
                             )}
