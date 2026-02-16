@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -26,20 +26,33 @@ const DocumentInput = ({ value, onChange, placeholder, className, readOnly = fal
   />
 );
 
-// Componente auxiliar para Textareas que se integram ao layout
-const DocumentTextArea = ({ value, onChange, placeholder, className, rows = 3, style }: any) => (
-  <textarea
-    value={value || ""}
-    onChange={onChange}
-    placeholder={placeholder}
-    rows={rows}
-    style={style}
-    className={cn(
-      "w-full bg-transparent border-none p-0 focus:ring-1 focus:ring-primary/30 focus:bg-yellow-50/50 outline-none resize-none text-black placeholder:text-gray-300 font-normal text-justify transition-colors",
-      className
-    )}
-  />
-);
+// Componente auxiliar para Textareas que se integram ao layout e auto-ajustam a altura
+const DocumentTextArea = ({ value, onChange, placeholder, className, rows = 1, style }: any) => {
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  // Ajusta a altura automaticamente baseada no scrollHeight
+  useEffect(() => {
+    if (textareaRef.current) {
+      textareaRef.current.style.height = "auto";
+      textareaRef.current.style.height = `${textareaRef.current.scrollHeight}px`;
+    }
+  }, [value]);
+
+  return (
+    <textarea
+      ref={textareaRef}
+      value={value || ""}
+      onChange={onChange}
+      placeholder={placeholder}
+      rows={rows}
+      style={style}
+      className={cn(
+        "w-full bg-transparent border-none p-0 focus:ring-1 focus:ring-primary/30 focus:bg-yellow-50/50 outline-none resize-none text-black placeholder:text-gray-300 font-normal text-justify transition-colors overflow-hidden",
+        className
+      )}
+    />
+  );
+};
 
 const DOREditor = () => {
   const navigate = useNavigate();
@@ -464,7 +477,6 @@ const DOREditor = () => {
                   value={formData.finalidade}
                   onChange={(e: any) => setFormData({...formData, finalidade: e.target.value})}
                   placeholder="Descreva a finalidade desta requisição..."
-                  rows={3}
                   style={bodyStyle}
                 />
               </div>
@@ -485,7 +497,6 @@ const DOREditor = () => {
                   value={formData.motivacao}
                   onChange={(e: any) => setFormData({...formData, motivacao: e.target.value})}
                   placeholder="Justifique a necessidade técnica e operacional..."
-                  rows={3}
                   style={bodyStyle}
                 />
               </div>
@@ -496,7 +507,6 @@ const DOREditor = () => {
                   value={formData.consequencia}
                   onChange={(e: any) => setFormData({...formData, consequencia: e.target.value})}
                   placeholder="Descreva os riscos e prejuízos caso a requisição não seja atendida..."
-                  rows={2}
                   style={bodyStyle}
                 />
               </div>
@@ -515,7 +525,6 @@ const DOREditor = () => {
                   value={formData.observacoes}
                   onChange={(e: any) => setFormData({...formData, observacoes: e.target.value})}
                   placeholder="Informações adicionais relevantes..."
-                  rows={2}
                   style={bodyStyle}
                 />
               </div>
