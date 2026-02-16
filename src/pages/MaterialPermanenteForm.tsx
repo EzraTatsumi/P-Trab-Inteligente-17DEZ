@@ -21,7 +21,9 @@ import {
     Pencil,
     ChevronDown,
     Calculator,
-    Package
+    Package,
+    CheckCircle2,
+    Circle
 } from "lucide-react";
 import { useMilitaryOrganizations } from "@/hooks/useMilitaryOrganizations";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -490,48 +492,60 @@ const MaterialPermanenteForm = () => {
                                                                 <TableHead>Descrição do Material</TableHead>
                                                                 <TableHead className="text-right w-[140px]">Valor Unitário</TableHead>
                                                                 <TableHead className="text-right w-[140px]">Total</TableHead>
+                                                                <TableHead className="w-[80px] text-center">Justif.</TableHead>
                                                                 <TableHead className="w-[100px] text-center">Ações</TableHead>
                                                             </TableRow>
                                                         </TableHeader>
                                                         <TableBody>
-                                                            {selectedItems.map((item) => (
-                                                                <TableRow key={item.id}>
-                                                                    <TableCell>
-                                                                        <Input 
-                                                                            type="number" 
-                                                                            min={1} 
-                                                                            value={item.quantidade || ""} 
-                                                                            onChange={(e) => {
-                                                                                const qty = parseInt(e.target.value) || 0;
-                                                                                setSelectedItems(prev => prev.map(i => i.id === item.id ? { ...i, quantidade: qty } : i));
-                                                                            }} 
-                                                                            onWheel={(e) => e.currentTarget.blur()}
-                                                                            onKeyDown={(e) => (e.key === 'ArrowUp' || e.key === 'ArrowDown') && e.preventDefault()}
-                                                                            className="h-8 text-center [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" 
-                                                                        />
-                                                                    </TableCell>
-                                                                    <TableCell className="text-xs">
-                                                                        <p className="font-medium">{item.descricao_reduzida || item.descricao_item}</p>
-                                                                        <p className="text-muted-foreground text-[10px]">CATMAT: {item.codigo_catmat} | Pregão: {formatPregao(item.numero_pregao)}</p>
-                                                                    </TableCell>
-                                                                    <TableCell className="text-right text-xs text-muted-foreground">{formatCurrency(item.valor_unitario)}</TableCell>
-                                                                    <TableCell className="text-right text-sm font-bold">{formatCurrency((item.quantidade || 0) * item.valor_unitario)}</TableCell>
-                                                                    <TableCell className="text-center">
-                                                                        <div className="flex items-center justify-center gap-1">
-                                                                            <Button 
-                                                                                variant="ghost" 
-                                                                                size="icon" 
-                                                                                className={cn("h-7 w-7", item.justificativa ? "text-primary" : "text-muted-foreground")} 
-                                                                                onClick={() => handleOpenJustificativa(item)}
-                                                                                title="Justificativa da Aquisição"
-                                                                            >
-                                                                                <FileText className="h-4 w-4" />
-                                                                            </Button>
-                                                                            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setSelectedItems(prev => prev.filter(i => i.id !== item.id))}><Trash2 className="h-4 w-4 text-destructive" /></Button>
-                                                                        </div>
-                                                                    </TableCell>
-                                                                </TableRow>
-                                                            ))}
+                                                            {selectedItems.map((item) => {
+                                                                const isJustified = !!(item.justificativa && Object.values(item.justificativa).some(v => v && v.toString().trim() !== ""));
+                                                                
+                                                                return (
+                                                                    <TableRow key={item.id}>
+                                                                        <TableCell>
+                                                                            <Input 
+                                                                                type="number" 
+                                                                                min={1} 
+                                                                                value={item.quantidade || ""} 
+                                                                                onChange={(e) => {
+                                                                                    const qty = parseInt(e.target.value) || 0;
+                                                                                    setSelectedItems(prev => prev.map(i => i.id === item.id ? { ...i, quantidade: qty } : i));
+                                                                                }} 
+                                                                                onWheel={(e) => e.currentTarget.blur()}
+                                                                                onKeyDown={(e) => (e.key === 'ArrowUp' || e.key === 'ArrowDown') && e.preventDefault()}
+                                                                                className="h-8 text-center [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" 
+                                                                            />
+                                                                        </TableCell>
+                                                                        <TableCell className="text-xs">
+                                                                            <p className="font-medium">{item.descricao_reduzida || item.descricao_item}</p>
+                                                                            <p className="text-muted-foreground text-[10px]">CATMAT: {item.codigo_catmat} | Pregão: {formatPregao(item.numero_pregao)}</p>
+                                                                        </TableCell>
+                                                                        <TableCell className="text-right text-xs text-muted-foreground">{formatCurrency(item.valor_unitario)}</TableCell>
+                                                                        <TableCell className="text-right text-sm font-bold">{formatCurrency((item.quantidade || 0) * item.valor_unitario)}</TableCell>
+                                                                        <TableCell className="text-center">
+                                                                            {isJustified ? (
+                                                                                <CheckCircle2 className="h-5 w-5 text-green-500 mx-auto" />
+                                                                            ) : (
+                                                                                <Circle className="h-5 w-5 text-muted-foreground/30 mx-auto" />
+                                                                            )}
+                                                                        </TableCell>
+                                                                        <TableCell className="text-center">
+                                                                            <div className="flex items-center justify-center gap-1">
+                                                                                <Button 
+                                                                                    variant="ghost" 
+                                                                                    size="icon" 
+                                                                                    className={cn("h-7 w-7", isJustified ? "text-primary" : "text-muted-foreground")} 
+                                                                                    onClick={() => handleOpenJustificativa(item)}
+                                                                                    title="Justificativa da Aquisição"
+                                                                                >
+                                                                                    <FileText className="h-4 w-4" />
+                                                                                </Button>
+                                                                                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setSelectedItems(prev => prev.filter(i => i.id !== item.id))}><Trash2 className="h-4 w-4 text-destructive" /></Button>
+                                                                            </div>
+                                                                        </TableCell>
+                                                                    </TableRow>
+                                                                );
+                                                            })}
                                                         </TableBody>
                                                     </Table>
                                                 </div>
