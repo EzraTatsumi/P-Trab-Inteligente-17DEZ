@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -52,7 +52,23 @@ import { useSession } from "@/components/SessionContextProvider";
 import MaterialPermanenteJustificativaDialog from "@/components/MaterialPermanenteJustificativaDialog";
 import MaterialPermanenteBulkJustificativaDialog from "@/components/MaterialPermanenteBulkJustificativaDialog";
 import { Collapsible, CollapsibleContent } from "@/components/ui/collapsible";
-import React from "react";
+
+// Interface para os registros vindos do banco de dados
+interface MaterialPermanenteDBRecord {
+    id: string;
+    organizacao: string;
+    ug: string;
+    om_detentora: string;
+    ug_detentora: string;
+    dias_operacao: number;
+    efetivo: number;
+    fase_atividade: string;
+    categoria: string;
+    detalhes_planejamento: any;
+    valor_total: number;
+    valor_nd_52: number;
+    detalhamento_customizado?: string | null;
+}
 
 interface PendingPermanenteItem {
     tempId: string;
@@ -134,18 +150,18 @@ const MaterialPermanenteForm = () => {
         return new Date().getFullYear();
     }, [ptrabData?.periodo_inicio, profile]);
 
-    const { data: registros, isLoading: isLoadingRegistros } = useQuery<any[]>({
+    const { data: registros, isLoading: isLoadingRegistros } = useQuery<MaterialPermanenteDBRecord[]>({
         queryKey: ['materialPermanenteRegistros', ptrabId],
         queryFn: async () => {
             const data = await fetchPTrabRecords('material_permanente_registros' as any, ptrabId!);
-            return data;
+            return data as unknown as MaterialPermanenteDBRecord[];
         },
         enabled: !!ptrabId,
     });
 
     const consolidatedRegistros = useMemo<ConsolidatedPermanenteRecord[]>(() => {
         if (!registros) return [];
-        const groups = (registros as any[]).reduce((acc, reg) => {
+        const groups = registros.reduce((acc, reg) => {
             const key = `${reg.organizacao}|${reg.ug}`;
             if (!acc[key]) {
                 acc[key] = { groupKey: key, organizacao: reg.organizacao, ug: reg.ug, records: [], totalGeral: 0 };
@@ -154,10 +170,11 @@ const MaterialPermanenteForm = () => {
             acc[key].totalGeral += Number(reg.valor_total || 0);
             return acc;
         }, {} as Record<string, ConsolidatedPermanenteRecord>);
+        
         return Object.values(groups).sort((a, b) => a.organizacao.localeCompare(b.organizacao));
     }, [registros]);
 
-    const sortedRegistrosForMemoria = useMemo(() => {
+    const sortedRegistrosForMemoria = useMemo<MaterialPermanenteDBRecord[]>(() => {
         if (!registros) return [];
         return [...registros].sort((a, b) => a.organizacao.localeCompare(b.organizacao));
     }, [registros]);
@@ -294,7 +311,7 @@ const MaterialPermanenteForm = () => {
         toast.info("Lote preparado para salvamento.");
     };
 
-    const handleEdit = (reg: any) => {
+    const handleEdit = (reg: MaterialPermanenteDBRecord) => {
         setEditingId(reg.id);
         setActiveCompositionId(reg.id);
         const omFav = oms?.find(om => om.nome_om === reg.organizacao && om.codug_om === reg.ug);
@@ -536,7 +553,7 @@ const MaterialPermanenteForm = () => {
                                         <Card key={group.groupKey} className="p-4 bg-primary/5 border-primary/20">
                                             <div className="flex items-center justify-between mb-3 border-b pb-2"><h3 className="font-bold text-lg text-primary flex items-center gap-2">{group.organizacao} (UG: {formatCodug(group.ug)})</h3><span className="font-extrabold text-xl text-primary">{formatCurrency(group.totalGeral)}</span></div>
                                             <div className="space-y-3">
-                                                {group.records.map((reg) => {
+                                                {group.records.map((reg: MaterialPermanenteDBRecord) => {
                                                     const isDifferentOm = reg.om_detentora?.trim() !== reg.organizacao?.trim();
                                                     const item = reg.detalhes_planejamento?.item_unico || reg.detalhes_planejamento?.itens_selecionados?.[0];
                                                     const totalQty = item?.quantidade || 0;
