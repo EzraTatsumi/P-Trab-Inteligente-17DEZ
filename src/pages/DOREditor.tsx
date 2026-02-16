@@ -30,13 +30,7 @@ const DocumentInput = ({ value, onChange, placeholder, className, readOnly = fal
 const DocumentTextArea = ({ 
   value, 
   onChange, 
-  placeholder = `1. Os valores e cálculos apresentados nesse DOR Complementar consideram as informações passadas pelo CCOp/CMN do aumento do efetivo a ser apoiado de 150 (cento e cinquenta) agentes, nos meses de maio, junho e julho de 2025.
-2. Não há nesse DOR valores referentes ao emprego de aeronaves e embarcações em ações conduzidas sob a responsabilidade dos órgãos de Governo encarregados da Operação. Todos os valores solicitados nesse DOR consideram apenas missões de apoio logístico a ser prestada na Base de Operações, a semelhança do que ocorreu na Operação ARARIBOIA, MUNDURUKU, APYTEREWA e TRINCHEIRA BACAJÁ.
-3. As memórias de cálculo detalhadas e parametrizadas das despesas custeadas serão mantidas em arquivos próprios.
-4. O bem e/ou serviço requisitado estará de acordo com a “Descrição” da Ação Orçamentária adotada pelo MD e com a “Caracterização” do respectivo PO do Cadastro de Ações do Sistema Integrado de Planejamento e Orçamento (SIOP).
-5. Os saldos não aplicados serão restituídos ao EMCFA com tempestividade.
-6. Serão observados os potenciais riscos nas aquisições de bens e serviços da Mensagem SIAFI nº 2021/0612168, de 17 de novembro de 2021, item 1.
-7. Considerando que não há uma definição exata da missão a ser executada, atividades logísticas que serão demandadas, eixos que serão utilizados pelos elementos apoiados (terrestres, fluviais e/ou aéreos), locais de instalações de bases e o efetivo de órgãos a serem apoiados, os valores poderão variar para mais ou para menos, exigindo a retificação do DOR, documentações e/ou planos complementares.`, 
+  placeholder, 
   className, 
   rows = 1, 
   style 
@@ -489,6 +483,7 @@ const DOREditor = () => {
                 <DocumentTextArea 
                   value={formData.finalidade}
                   onChange={(e: any) => setFormData({...formData, finalidade: e.target.value})}
+                  placeholder="Msg Op nº 196 - CCOp/CMN, de 15 ABR 24."
                   style={bodyStyle}
                 />
               </div>
@@ -506,6 +501,7 @@ const DOREditor = () => {
                 <DocumentTextArea 
                   value={formData.motivacao}
                   onChange={(e: any) => setFormData({...formData, motivacao: e.target.value})}
+                  placeholder="Msg Op nº 196 - CCOp/CMN, de 15 ABR 24."
                   style={bodyStyle}
                 />
               </div>
@@ -523,6 +519,7 @@ const DOREditor = () => {
                 <DocumentTextArea 
                   value={formData.consequencia}
                   onChange={(e: any) => setFormData({...formData, consequencia: e.target.value})}
+                  placeholder="- Possível inviabilidade de atuação da tropa nas atividades/tarefas/ações na Operação (COP 30) por ausência de suporte logístico."
                   style={bodyStyle}
                 />
               </div>
@@ -540,6 +537,13 @@ const DOREditor = () => {
                 <DocumentTextArea 
                   value={formData.observacoes}
                   onChange={(e: any) => setFormData({...formData, observacoes: e.target.value})}
+                  placeholder={`1. Os valores e cálculos apresentados nesse DOR Complementar consideram as informações passadas pelo CCOp/CMN do aumento do efetivo a ser apoiado de 150 (cento e cinquenta) agentes, nos meses de maio, junho e julho de 2025.
+2. Não há nesse DOR valores referentes ao emprego de aeronaves e embarcações em ações conduzidas sob a responsabilidade dos órgãos de Governo encarregados da Operação. Todos os valores solicitados nesse DOR consideram apenas missões de apoio logístico a ser prestada na Base de Operações, a semelhança do que ocorreu na Operação ARARIBOIA, MUNDURUKU, APYTEREWA e TRINCHEIRA BACAJÁ.
+3. As memórias de cálculo detalhadas e parametrizadas das despesas custeadas serão mantidas em arquivos próprios.
+4. O bem e/ou serviço requisitado estará de acordo com a “Descrição” da Ação Orçamentária adotada pelo MD e com a “Caracterização” do respectivo PO do Cadastro de Ações do Sistema Integrado de Planejamento e Orçamento (SIOP).
+5. Os saldos não aplicados serão restituídos ao EMCFA com tempestividade.
+6. Serão observados os potenciais riscos nas aquisições de bens e serviços da Mensagem SIAFI nº 2021/0612168, de 17 de novembro de 2021, item 1.
+7. Considerando que não há uma definição exata da missão a ser executada, atividades logísticas que serão demandadas, eixos que serão utilizados pelos elementos apoiados (terrestres, fluviais e/ou aéreos), locais de instalações de bases e o efetivo de órgãos a serem apoiados, os valores poderão variar para mais ou para menos, exigindo a retificação do DOR, documentações e/ou planos complementares.`}
                   style={bodyStyle}
                 />
               </div>
