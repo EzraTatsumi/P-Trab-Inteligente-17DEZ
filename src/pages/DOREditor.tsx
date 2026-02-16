@@ -5,7 +5,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { ArrowLeft, Save, Printer, Loader2, Info } from "lucide-react";
+import { ArrowLeft, Save, Printer, Loader2, Info, RefreshCw } from "lucide-react";
 import { useSession } from "@/components/SessionContextProvider";
 import { cn } from "@/lib/utils";
 import { formatNumber } from "@/lib/formatUtils";
@@ -51,6 +51,7 @@ const DOREditor = () => {
   const [saving, setSaving] = useState(false);
   const [ptrab, setPtrab] = useState<any>(null);
   const [dorItems, setDorItems] = useState<any[]>([]);
+  const [showItemsTable, setShowItemsTable] = useState(false);
   
   const [formData, setFormData] = useState({
     numero_dor: "",
@@ -70,7 +71,6 @@ const DOREditor = () => {
     if (!ptrabId) return;
     setLoading(true);
     try {
-      // 1. Carregar dados do P-Trab
       const { data: ptrabData, error: ptrabError } = await supabase
         .from("p_trab")
         .select("*")
@@ -80,7 +80,6 @@ const DOREditor = () => {
       if (ptrabError) throw ptrabError;
       setPtrab(ptrabData);
 
-      // 2. Carregar dados do DOR (se existirem)
       const { data: dorData } = await supabase
         .from("dor_registros")
         .select("*")
@@ -102,15 +101,28 @@ const DOREditor = () => {
           observacoes: dorData.observacoes || ""
         });
       } else {
+        // Adiciona o prefixo "Operação " se não existir
+        const opName = ptrabData.nome_operacao || "";
+        const formattedOp = opName.toLowerCase().startsWith("operação") ? opName : `Operação ${opName}`;
+        
         setFormData(prev => ({
           ...prev,
-          evento: ptrabData.nome_operacao,
+          evento: formattedOp,
           finalidade: ptrabData.acoes || "",
           numero_dor: "" 
         }));
       }
+    } catch (error: any) {
+      toast.error("Erro ao carregar dados: " + error.message);
+    } finally {
+      setLoading(false);
+    }
+  }, [ptrabId]);
 
-      // 3. Consolidar Itens para a Tabela
+  const consolidateItems = async () => {
+    if (!ptrabId) return;
+    const loadingToast = toast.loading("Consolidando itens do P-Trab...");
+    try {
       const tables = [
         { name: 'classe_i_registros', gnd: 3, desc: 'COMPLEMENTAÇÃO DE ALIMENTAÇÃO' },
         { name: 'classe_ii_registros', gnd: 3, desc: 'MATERIAL DE INTENDÊNCIA' },
@@ -159,13 +171,12 @@ const DOREditor = () => {
       }
 
       setDorItems(aggregatedItems.filter(i => i.valor_num > 0));
-
+      setShowItemsTable(true);
+      toast.success("Itens consolidados com sucesso!", { id: loadingToast });
     } catch (error: any) {
-      toast.error("Erro ao carregar dados: " + error.message);
-    } finally {
-      setLoading(false);
+      toast.error("Erro ao consolidar: " + error.message, { id: loadingToast });
     }
-  }, [ptrabId]);
+  };
 
   useEffect(() => {
     loadData();
@@ -389,7 +400,7 @@ const DOREditor = () => {
                     value={formData.evento}
                     onChange={(e: any) => setFormData({...formData, evento: e.target.value})}
                     placeholder="Nome da Operação / Atividade"
-                    className="w-full font-bold uppercase"
+                    className="w-full"
                     style={bodyStyle}
                   />
                 </div>
@@ -402,27 +413,42 @@ const DOREditor = () => {
                 DESCRIÇÃO DO ITEM (BEM E/OU SERVIÇO)
               </div>
 
-              <div className="grid grid-cols-[1fr_60px_140px_1fr] border-b border-black font-bold text-center text-[10pt]">
-                <div className="border-r border-black py-0 px-1">UGE</div>
-                <div className="border-r border-black py-0 px-1">GND</div>
-                <div className="border-r border-black py-0 px-1">VALOR</div>
-                <div className="py-0 px-1">Descrição</div>
-              </div>
-
-              {/* Linhas de Itens Consolidadas */}
-              {dorItems.length > 0 ? (
-                dorItems.map((item, idx) => (
-                  <div key={idx} className={cn("grid grid-cols-[1fr_60px_140px_1fr] text-[10pt] text-center", idx !== dorItems.length - 1 && "border-b border-black")}>
-                    <div className="border-r border-black py-0 px-1 text-left leading-tight flex items-center">{item.uge}</div>
-                    <div className="border-r border-black py-0 px-1 flex items-center justify-center">{item.gnd}</div>
-                    <div className="border-r border-black py-0 px-1 flex items-center justify-end">{formatNumber(item.valor_num)}</div>
-                    <div className="py-0 px-1 text-left leading-tight uppercase flex items-center">{item.descricao}</div>
-                  </div>
-                ))
-              ) : (
-                <div className="p-4 text-center text-slate-400 italic text-[10pt]">
-                  Nenhum item de custo encontrado para este P-Trab.
+              {!showItemsTable ? (
+                <div className="p-6 text-center flex flex-col items-center gap-3">
+                  <p className="text-slate-600 font-medium">Para os dados da descrição dos itens pressionar o botão abaixo:</p>
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={consolidateItems}
+                    className="print:hidden border-primary text-primary hover:bg-primary/5"
+                  >
+                    <RefreshCw className="h-4 w-4 mr-2" /> Consolidar Itens do P-Trab
+                  </Button>
                 </div>
+              ) : (
+                <>
+                  <div className="grid grid-cols-[1fr_60px_140px_1fr] border-b border-black font-bold text-center text-[10pt]">
+                    <div className="border-r border-black py-0 px-1">UGE</div>
+                    <div className="border-r border-black py-0 px-1">GND</div>
+                    <div className="border-r border-black py-0 px-1">VALOR</div>
+                    <div className="py-0 px-1">Descrição</div>
+                  </div>
+
+                  {dorItems.length > 0 ? (
+                    dorItems.map((item, idx) => (
+                      <div key={idx} className={cn("grid grid-cols-[1fr_60px_140px_1fr] text-[10pt] text-center", idx !== dorItems.length - 1 && "border-b border-black")}>
+                        <div className="border-r border-black py-0 px-1 text-left leading-tight flex items-center">{item.uge}</div>
+                        <div className="border-r border-black py-0 px-1 flex items-center justify-center">{item.gnd}</div>
+                        <div className="border-r border-black py-0 px-1 flex items-center justify-end">{formatNumber(item.valor_num)}</div>
+                        <div className="py-0 px-1 text-left leading-tight uppercase flex items-center">{item.descricao}</div>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="p-4 text-center text-slate-400 italic text-[10pt]">
+                      Nenhum item de custo encontrado para este P-Trab.
+                    </div>
+                  )}
+                </>
               )}
             </div>
 
