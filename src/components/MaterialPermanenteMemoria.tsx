@@ -6,12 +6,12 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Loader2, Pencil, RefreshCw, XCircle, Check, AlertCircle } from "lucide-react";
 import { formatCodug } from "@/lib/formatUtils";
-import { generateMaterialPermanenteMemoria } from "@/lib/materialPermanenteUtils";
+import { generateMaterialPermanenteMemoriaCalculo } from "@/lib/materialPermanenteUtils";
 import { Badge } from "@/components/ui/badge";
 
 interface MaterialPermanenteMemoriaProps {
     registro: any;
-    item: any; // Item específico para esta memória
+    item: any;
     isPTrabEditable: boolean;
     isSaving?: boolean;
     editingMemoriaId: string | null;
@@ -36,16 +36,11 @@ const MaterialPermanenteMemoria: React.FC<MaterialPermanenteMemoriaProps> = ({
     onSave,
     onRestore,
 }) => {
-    // Fallback para ID do item caso não exista (comum em objetos JSON)
     const itemId = item.id || item.codigo_item || Math.random().toString(36).substring(7);
     const uniqueId = `${registro.id}-${itemId}`;
     const isEditing = editingMemoriaId === uniqueId;
     
-    const memoriaAutomatica = generateMaterialPermanenteMemoria(registro, item);
-    
-    // Se houver detalhamento customizado no registro, ele sobrescreve a automática.
-    // Nota: Se houver múltiplos itens no mesmo registro, eles compartilharão o mesmo detalhamento_customizado
-    // a menos que a lógica do pai trate isso separadamente.
+    const memoriaAutomatica = generateMaterialPermanenteMemoriaCalculo(registro, item);
     const memoriaDisplay = registro.detalhamento_customizado || memoriaAutomatica;
     const hasCustomMemoria = !!registro.detalhamento_customizado;
 
