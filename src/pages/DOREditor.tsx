@@ -34,7 +34,7 @@ const DocumentTextArea = ({ value, onChange, placeholder, className, rows = 3, s
     rows={rows}
     style={style}
     className={cn(
-      "w-full bg-transparent border-none p-1 focus:ring-1 focus:ring-primary/30 focus:bg-yellow-50/50 outline-none resize-none text-black placeholder:text-gray-300 font-normal text-justify transition-colors",
+      "w-full bg-transparent border-none p-0 focus:ring-1 focus:ring-primary/30 focus:bg-yellow-50/50 outline-none resize-none text-black placeholder:text-gray-300 font-normal text-justify transition-colors",
       className
     )}
   />
@@ -153,7 +153,7 @@ const DOREditor = () => {
   const anoAtual = new Date().getFullYear();
 
   // Estilo base para o corpo do documento (Calibri 12pt)
-  const bodyStyle = { fontFamily: 'Calibri, sans-serif', fontSize: '12pt', color: 'black' };
+  const bodyStyle = { fontFamily: 'Calibri, sans-serif', fontSize: '12pt', color: 'black', lineHeight: '1.2' };
   const headerTitleStyle = { backgroundColor: '#BFBFBF' };
 
   return (
@@ -178,12 +178,12 @@ const DOREditor = () => {
         <div className="p-[20mm]">
           
           {/* CABEÇALHO OFICIAL PADRONIZADO (3 COLUNAS) - MANTIDO 11PT */}
-          <div className="border border-black grid grid-cols-[180px_1fr_200px] items-stretch mb-8">
-            <div className="border-r border-black p-2 flex items-center justify-center text-center overflow-hidden">
+          <div className="border border-black grid grid-cols-[180px_1fr_200px] items-stretch mb-4">
+            <div className="border-r border-black p-1 flex items-center justify-center text-center overflow-hidden">
               <img 
                 src="/logo_md.png" 
                 alt="Ministério da Defesa" 
-                className="max-h-20 w-auto object-contain"
+                className="max-h-16 w-auto object-contain"
                 onError={(e: any) => {
                   e.target.src = "https://upload.wikimedia.org/wikipedia/commons/thumb/b/bf/Coat_of_arms_of_Brazil.svg/100px-Coat_of_arms_of_Brazil.svg.png";
                 }}
@@ -191,7 +191,7 @@ const DOREditor = () => {
             </div>
 
             <div 
-              className="border-r border-black p-2 flex flex-col items-center justify-center text-center font-bold uppercase leading-tight"
+              className="border-r border-black p-1 flex flex-col items-center justify-center text-center font-bold uppercase leading-tight"
               style={{ fontFamily: 'Calibri, sans-serif', fontSize: '11pt' }}
             >
               <p>Ministério da Defesa</p>
@@ -201,7 +201,7 @@ const DOREditor = () => {
             </div>
 
             <div 
-              className="p-2 flex flex-col items-center justify-center text-center leading-tight font-bold"
+              className="p-1 flex flex-col items-center justify-center text-center leading-tight font-bold"
               style={{ fontFamily: 'Calibri, sans-serif', fontSize: '11pt' }}
             >
               <p>Documento de Oficialização da Requisição – DOR</p>
@@ -216,7 +216,7 @@ const DOREditor = () => {
                 />
                 <span>/ {anoAtual}</span>
               </div>
-              <p className="mt-3">{dataAtual}</p>
+              <p className="mt-2">{dataAtual}</p>
             </div>
           </div>
 
@@ -225,32 +225,32 @@ const DOREditor = () => {
             
             {/* SEÇÃO 1: DADOS DO REQUISITANTE */}
             <div 
-              className="border-b border-black p-1 font-bold text-center uppercase"
+              className="border-b border-black p-0.5 font-bold text-center uppercase"
               style={headerTitleStyle}
             >
               DADOS DO ÓRGÃO REQUISITANTE
             </div>
             
-            <div className="border-b border-black py-0.5 px-2 font-bold">
+            <div className="border-b border-black py-0 px-2 font-bold">
               Órgão:
             </div>
-            <div className="border-b border-black py-0.5 px-2">
+            <div className="border-b border-black py-0 px-2">
               {ptrab?.nome_om_extenso || ptrab?.nome_om}
             </div>
             
             <div className="grid grid-cols-2 border-b border-black">
-              <div className="py-0.5 px-2 border-r border-black font-bold">
+              <div className="py-0 px-2 border-r border-black font-bold">
                 Responsável pela Demanda:
               </div>
-              <div className="py-0.5 px-2"></div>
+              <div className="py-0 px-2"></div>
             </div>
             
-            <div className="border-b border-black py-0.5 px-2">
+            <div className="border-b border-black py-0 px-2">
               {ptrab?.nome_cmt_om || "Não informado"}
             </div>
 
             <div className="grid grid-cols-2 border-b border-black">
-              <div className="py-0.5 px-2 border-r border-black flex items-center gap-1">
+              <div className="py-0 px-2 border-r border-black flex items-center gap-1">
                 <span className="font-bold whitespace-nowrap">E-mail:</span>
                 <DocumentInput 
                   value={formData.email}
@@ -260,7 +260,7 @@ const DOREditor = () => {
                   style={bodyStyle}
                 />
               </div>
-              <div className="py-0.5 px-2 flex items-center gap-1">
+              <div className="py-0 px-2 flex items-center gap-1">
                 <span className="font-bold whitespace-nowrap">Telefone:</span>
                 <DocumentInput 
                   value={formData.telefone}
@@ -274,13 +274,13 @@ const DOREditor = () => {
 
             {/* SEÇÃO 2: DADOS ORÇAMENTÁRIOS */}
             <div 
-              className="border-b border-black p-1 font-bold text-center uppercase"
+              className="border-b border-black p-0.5 font-bold text-center uppercase"
               style={headerTitleStyle}
             >
               2. Dados Orçamentários
             </div>
             <div className="grid grid-cols-2 border-b border-black">
-              <div className="py-1 px-2 border-r border-black flex items-center gap-2">
+              <div className="py-0 px-2 border-r border-black flex items-center gap-2">
                 <span className="font-bold uppercase shrink-0">Ação Orçamentária (AO):</span>
                 <DocumentInput 
                   value={formData.acao_orcamentaria}
@@ -289,7 +289,7 @@ const DOREditor = () => {
                   style={bodyStyle}
                 />
               </div>
-              <div className="py-1 px-2 flex items-center gap-2">
+              <div className="py-0 px-2 flex items-center gap-2">
                 <span className="font-bold uppercase shrink-0">Plano Orçamentário (PO):</span>
                 <DocumentInput 
                   value={formData.plano_orcamentario}
@@ -302,13 +302,13 @@ const DOREditor = () => {
 
             {/* SEÇÃO 3: OBJETO */}
             <div 
-              className="border-b border-black p-1 font-bold text-center uppercase"
+              className="border-b border-black p-0.5 font-bold text-center uppercase"
               style={headerTitleStyle}
             >
               3. Objeto da Requisição
             </div>
-            <div className="border-b border-black p-2">
-              <span className="block font-bold uppercase mb-1">Evento / Operação / Atividade:</span>
+            <div className="border-b border-black p-1 px-2">
+              <span className="block font-bold uppercase mb-0.5">Evento / Operação / Atividade:</span>
               <DocumentTextArea 
                 value={formData.evento}
                 onChange={(e: any) => setFormData({...formData, evento: e.target.value})}
@@ -321,14 +321,14 @@ const DOREditor = () => {
 
             {/* SEÇÃO 4: ITENS */}
             <div 
-              className="border-b border-black p-1 font-bold text-center uppercase"
+              className="border-b border-black p-0.5 font-bold text-center uppercase"
               style={headerTitleStyle}
             >
               4. Descrição dos Itens (Bens e/ou Serviços)
             </div>
-            <div className="p-4 text-center border-b border-black bg-slate-50 text-slate-500 italic">
-              <div className="flex flex-col items-center gap-1">
-                <Info className="h-4 w-4" />
+            <div className="p-2 text-center border-b border-black bg-slate-50 text-slate-500 italic">
+              <div className="flex flex-col items-center gap-0.5">
+                <Info className="h-3.5 w-3.5" />
                 <p className="text-[11pt]">A tabela detalhada de itens e valores será consolidada automaticamente no relatório final do P-Trab.</p>
                 <p className="text-[10pt]">Consulte o P-Trab Nr {ptrab?.numero_ptrab} para o detalhamento completo.</p>
               </div>
@@ -336,53 +336,53 @@ const DOREditor = () => {
 
             {/* SEÇÃO 5: JUSTIFICATIVAS */}
             <div 
-              className="border-b border-black p-1 font-bold text-center uppercase"
+              className="border-b border-black p-0.5 font-bold text-center uppercase"
               style={headerTitleStyle}
             >
               5. Justificativas da Contratação / Requisição
             </div>
             
-            <div className="border-b border-black p-2">
-              <span className="block font-bold uppercase mb-1">5.1. Finalidade:</span>
+            <div className="border-b border-black p-1 px-2">
+              <span className="block font-bold uppercase mb-0.5">5.1. Finalidade:</span>
               <DocumentTextArea 
                 value={formData.finalidade}
                 onChange={(e: any) => setFormData({...formData, finalidade: e.target.value})}
                 placeholder="Descreva a finalidade desta requisição..."
-                rows={3}
+                rows={2}
                 style={bodyStyle}
               />
             </div>
 
-            <div className="border-b border-black p-2">
-              <span className="block font-bold uppercase mb-1">5.2. Motivação / Justificativa:</span>
+            <div className="border-b border-black p-1 px-2">
+              <span className="block font-bold uppercase mb-0.5">5.2. Motivação / Justificativa:</span>
               <DocumentTextArea 
                 value={formData.motivacao}
                 onChange={(e: any) => setFormData({...formData, motivacao: e.target.value})}
                 placeholder="Justifique a necessidade técnica e operacional..."
-                rows={4}
+                rows={3}
                 style={bodyStyle}
               />
             </div>
 
-            <div className="border-b border-black p-2">
-              <span className="block font-bold uppercase mb-1">5.3. Consequência do Não Atendimento:</span>
+            <div className="border-b border-black p-1 px-2">
+              <span className="block font-bold uppercase mb-0.5">5.3. Consequência do Não Atendimento:</span>
               <DocumentTextArea 
                 value={formData.consequencia}
                 onChange={(e: any) => setFormData({...formData, consequencia: e.target.value})}
                 placeholder="Descreva os riscos e prejuízos caso a requisição não seja atendida..."
-                rows={3}
+                rows={2}
                 style={bodyStyle}
               />
             </div>
 
             {/* SEÇÃO 6: OBSERVAÇÕES */}
              <div 
-              className="border-b border-black p-1 font-bold text-center uppercase"
+              className="border-b border-black p-0.5 font-bold text-center uppercase"
               style={headerTitleStyle}
             >
               6. Observações Gerais
             </div>
-            <div className="p-2">
+            <div className="p-1 px-2">
               <DocumentTextArea 
                 value={formData.observacoes}
                 onChange={(e: any) => setFormData({...formData, observacoes: e.target.value})}
@@ -395,13 +395,13 @@ const DOREditor = () => {
           </div>
 
           {/* RODAPÉ E ASSINATURAS */}
-          <div className="mt-12 flex flex-col items-center" style={bodyStyle}>
-            <div className="text-center mb-8 w-full">
+          <div className="mt-8 flex flex-col items-center" style={bodyStyle}>
+            <div className="text-center mb-6 w-full">
               <p>{ptrab?.local_om || "Local não informado"}, {new Date().toLocaleDateString('pt-BR', { day: 'numeric', month: 'long', year: 'numeric' })}.</p>
             </div>
 
-            <div className="w-2/3 border-t border-black mt-8"></div>
-            <div className="text-center mt-2">
+            <div className="w-2/3 border-t border-black mt-6"></div>
+            <div className="text-center mt-1">
               <p className="font-bold uppercase">{ptrab?.nome_cmt_om || "NOME DO ORDENADOR DE DESPESAS"}</p>
               <p className="uppercase">Ordenador de Despesas da {ptrab?.nome_om}</p>
             </div>
