@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { 
     ArrowLeft, 
@@ -15,13 +16,10 @@ import {
     Sparkles, 
     AlertCircle, 
     Trash2, 
-    FileText, 
     Plus, 
     XCircle, 
     Pencil,
-    ChevronDown,
-    Calculator,
-    Package
+    Info
 } from "lucide-react";
 import { useMilitaryOrganizations } from "@/hooks/useMilitaryOrganizations";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -30,13 +28,11 @@ import { PTrabData, fetchPTrabData, fetchPTrabRecords } from "@/lib/ptrabUtils";
 import { Badge } from "@/components/ui/badge";
 import { FaseAtividadeSelect } from "@/components/FaseAtividadeSelect";
 import { OmSelector } from "@/components/OmSelector";
-import { cn } from "@/lib/utils";
-import { ItemAquisicao } from "@/types/diretrizesMaterialConsumo";
 import MaterialPermanenteItemSelectorDialog from "@/components/MaterialPermanenteItemSelectorDialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { calculateMaterialPermanenteTotals, generateMaterialPermanenteMemoria } from "@/lib/materialPermanenteUtils";
+import { calculateMaterialPermanenteTotals } from "@/lib/materialPermanenteUtils";
 import MaterialPermanenteMemoria from "@/components/MaterialPermanenteMemoria";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -47,9 +43,26 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Switch } from "@/components/ui/switch";
 import PageMetadata from "@/components/PageMetadata";
 import { useSession } from "@/components/SessionContextProvider";
+
+interface ItemAquisicaoExtended {
+    id: string;
+    codigo_catmat: string;
+    descricao_item: string;
+    descricao_reduzida?: string;
+    valor_unitario: number;
+    numero_pregao: string;
+    uasg: string;
+    quantidade: number;
+    // Novos campos de justificativa
+    proposito?: string;
+    destinacao?: string;
+    local?: string;
+    finalidade?: string;
+    periodo?: string;
+    motivo?: string;
+}
 
 interface PendingPermanenteItem {
     tempId: string;
@@ -86,13 +99,10 @@ const MaterialPermanenteForm = () => {
     // --- ESTADOS DO FORMULÁRIO ---
     const [omFavorecida, setOmFavorecida] = useState({ nome: "", ug: "", id: "" });
     const [faseAtividade, setFaseAtividade] = useState("");
-    const [efetivo, setEfetivo] = useState<number>(0);
-    const [hasEfetivo, setHasEfetivo] = useState(true);
-    const [diasOperacao, setDiasOperacao] = useState<number>(0);
     const [omDestino, setOmDestino] = useState({ nome: "", ug: "", id: "" });
     const [categoria, setCategoria] = useState("Material Permanente");
 
-    const [selectedItems, setSelectedItems] = useState<ItemAquisicao[]>([]);
+    const [selectedItems, setSelectedItems] = useState<ItemAquisicaoExtended[]>([]);
     const [isSelectorOpen, setIsSelectorOpen] = useState(false);
     
     const [pendingItems, setPendingItems] = useState<PendingPermanenteItem[]>([]);
@@ -113,7 +123,6 @@ const MaterialPermanenteForm = () => {
         enabled: !!ptrabId,
     });
 
-    // Busca o perfil para obter o ano padrão
     const { data: profile } = useQuery({
         queryKey: ['userProfile', user?.id],
         queryFn: async () => {
@@ -128,17 +137,14 @@ const MaterialPermanenteForm = () => {
         enabled: !!user?.id
     });
 
-    // Lógica de ano: Prioriza o ano padrão do perfil (2026) conforme solicitado
     const selectedYear = useMemo(() => {
         if (profile?.default_logistica_year) return profile.default_logistica_year;
         if (profile?.default_operacional_year) return profile.default_operacional_year;
-
         const dateStr = ptrabData?.periodo_inicio;
         if (dateStr) {
             const yearMatch = dateStr.match(/\d{4}/);
             if (yearMatch) return parseInt(yearMatch[0]);
         }
-        
         return new Date().getFullYear();
     }, [ptrabData?.periodo_inicio, profile]);
 
@@ -186,17 +192,14 @@ const MaterialPermanenteForm = () => {
         const contextChanged = (
             omFavorecida.id !== lastStagedState.omFavorecidaId ||
             faseAtividade !== lastStagedState.faseAtividade ||
-            efetivo !== lastStagedState.efetivo ||
-            hasEfetivo !== lastStagedState.hasEfetivo ||
-            diasOperacao !== lastStagedState.diasOperacao ||
             omDestino.id !== lastStagedState.omDestinoId
         );
 
         if (contextChanged) return true;
 
-        const currentItemsKey = selectedItems.map(i => `${i.id}-${i.quantidade}`).sort().join('|');
+        const currentItemsKey = selectedItems.map(i => `${i.id}-${i.quantidade}-${i.proposito}-${i.motivo}`).sort().join('|');
         return currentItemsKey !== lastStagedState.itemsKey;
-    }, [omFavorecida, faseAtividade, efetivo, hasEfetivo, diasOperacao, omDestino, selectedItems, lastStagedState, pendingItems]);
+    }, [omFavorecida, faseAtividade, omDestino, selectedItems, lastStagedState, pendingItems]);
 
     // --- MUTATIONS ---
     const saveMutation = useMutation({
@@ -207,20 +210,34 @@ const MaterialPermanenteForm = () => {
                 await supabase.from('material_permanente_registros').delete().in('id', idsToDelete);
             }
 
-            const records = itemsToSave.map(item => ({
-                p_trab_id: ptrabId,
-                organizacao: item.organizacao,
-                ug: item.ug,
-                om_detentora: item.om_detentora,
-                ug_detentora: item.ug_detentora,
-                dias_operacao: item.dias_operacao,
-                efetivo: item.efetivo,
-                fase_atividade: item.fase_atividade,
-                categoria: item.categoria,
-                detalhes_planejamento: item.detalhes_planejamento,
-                valor_total: item.valor_total,
-                valor_nd_52: item.valor_nd_52,
-            }));
+            const records = itemsToSave.map(item => {
+                // Gerar memória de cálculo automática baseada nas respostas
+                const memorias = item.detalhes_planejamento.itens_selecionados.map((it: ItemAquisicaoExtended) => {
+                    const header = `44.90.52 - Aquisição de ${it.proposito || '[Propósito]'} para atender ${it.finalidade || '[Finalidade]'} do ${it.destinacao || '[Destinação]'}, no ${it.local || '[Local]'}, a fim de manter a capacidade de trabalho durante ${it.periodo || '[Período]'}. Justifica-se essa aquisição pela necessidade de ${it.motivo || '[Motivo]'}.`;
+                    const calculo = `- ${it.descricao_reduzida || it.descricao_item}: ${formatCurrency(it.valor_unitario)}/ unid.`;
+                    const formula = `- ${it.quantidade} ${it.descricao_reduzida || it.descricao_item} x ${formatCurrency(it.valor_unitario)}/unid = ${formatCurrency(it.quantidade * it.valor_unitario)}.`;
+                    const total = `Total: ${formatCurrency(it.quantidade * it.valor_unitario)}.`;
+                    const rodape = `(Pregão ${formatPregao(it.numero_pregao)} - UASG ${it.uasg}).`;
+                    
+                    return `${header}\n\nCálculo:\n${calculo}\n\nFórmula:\n${formula}\n\n${total}\n${rodape}`;
+                }).join('\n\n---\n\n');
+
+                return {
+                    p_trab_id: ptrabId,
+                    organizacao: item.organizacao,
+                    ug: item.ug,
+                    om_detentora: item.om_detentora,
+                    ug_detentora: item.ug_detentora,
+                    dias_operacao: 1, // Valor padrão pois não é mais usado no cálculo
+                    efetivo: 0, // Valor padrão pois não é mais usado no cálculo
+                    fase_atividade: item.fase_atividade,
+                    categoria: item.categoria,
+                    detalhes_planejamento: item.detalhes_planejamento,
+                    detalhamento: memorias,
+                    valor_total: item.valor_total,
+                    valor_nd_52: item.valor_nd_52,
+                };
+            });
             const { error } = await supabase.from('material_permanente_registros').insert(records);
             if (error) throw error;
         },
@@ -252,9 +269,6 @@ const MaterialPermanenteForm = () => {
         setPendingItems([]);
         setLastStagedState(null);
         setSelectedItems([]);
-        setEfetivo(0);
-        setHasEfetivo(true);
-        setDiasOperacao(0);
         setFaseAtividade("");
         setEditingId(null);
         setActiveCompositionId(null);
@@ -267,21 +281,27 @@ const MaterialPermanenteForm = () => {
         } else setOmFavorecida({ nome: "", ug: "", id: "" });
     };
 
+    const handleUpdateItemField = (id: string, field: keyof ItemAquisicaoExtended, value: any) => {
+        setSelectedItems(prev => prev.map(item => item.id === id ? { ...item, [field]: value } : item));
+    };
+
     const handleAddToPending = () => {
         if (selectedItems.length === 0) {
             toast.warning("Selecione pelo menos um item.");
             return;
         }
 
-        if (diasOperacao <= 0) {
-            toast.warning("Informe o período da operação.");
+        // Validar se todos os campos de justificativa foram preenchidos
+        const incomplete = selectedItems.some(it => !it.proposito || !it.destinacao || !it.local || !it.finalidade || !it.periodo || !it.motivo);
+        if (incomplete) {
+            toast.warning("Por favor, preencha todos os campos de justificativa para cada item.");
             return;
         }
 
         const compositionId = editingId || activeCompositionId || crypto.randomUUID();
         if (!editingId && !activeCompositionId) setActiveCompositionId(compositionId);
 
-        const { totalGeral } = calculateMaterialPermanenteTotals(selectedItems);
+        const totalGeral = selectedItems.reduce((acc, it) => acc + (it.quantidade * it.valor_unitario), 0);
         
         const newItem: PendingPermanenteItem = {
             tempId: compositionId,
@@ -290,13 +310,12 @@ const MaterialPermanenteForm = () => {
             ug: omFavorecida.ug,
             om_detentora: omDestino.nome,
             ug_detentora: omDestino.ug || omFavorecida.ug,
-            dias_operacao: diasOperacao,
-            efetivo: hasEfetivo ? efetivo : 0,
+            dias_operacao: 1,
+            efetivo: 0,
             fase_atividade: faseAtividade,
             categoria: categoria,
             detalhes_planejamento: { 
-                itens_selecionados: selectedItems,
-                has_efetivo: hasEfetivo
+                itens_selecionados: selectedItems
             },
             valor_total: totalGeral,
             valor_nd_52: totalGeral,
@@ -307,11 +326,8 @@ const MaterialPermanenteForm = () => {
         setLastStagedState({
             omFavorecidaId: omFavorecida.id,
             faseAtividade,
-            efetivo,
-            hasEfetivo,
-            diasOperacao,
             omDestinoId: omDestino.id,
-            itemsKey: selectedItems.map(i => `${i.id}-${i.quantidade}`).sort().join('|')
+            itemsKey: selectedItems.map(i => `${i.id}-${i.quantidade}-${i.proposito}-${i.motivo}`).sort().join('|')
         });
 
         setEditingId(null);
@@ -325,15 +341,12 @@ const MaterialPermanenteForm = () => {
         const omFav = oms?.find(om => om.nome_om === reg.organizacao && om.codug_om === reg.ug);
         setOmFavorecida({ nome: reg.organizacao, ug: reg.ug, id: omFav?.id || "" });
         setFaseAtividade(reg.fase_atividade || "");
-        setEfetivo(reg.efetivo || 0);
-        setDiasOperacao(reg.dias_operacao || 0);
         
         const omDest = oms?.find(om => om.nome_om === reg.om_detentora && om.codug_om === reg.ug_detentora);
         setOmDestino({ nome: reg.om_detentora || "", ug: reg.ug_detentora || "", id: omDest?.id || "" });
 
         const details = reg.detalhes_planejamento;
         setSelectedItems(details?.itens_selecionados || []);
-        setHasEfetivo(details?.has_efetivo !== false);
 
         handleAddToPending();
         window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -371,7 +384,7 @@ const MaterialPermanenteForm = () => {
                 <Card>
                     <CardHeader>
                         <CardTitle className="flex items-center gap-2">Aquisição de Material Permanente</CardTitle>
-                        <CardDescription>Planejamento de necessidades de materiais permanentes.</CardDescription>
+                        <CardDescription>Planejamento de necessidades de materiais permanentes com justificativa detalhada.</CardDescription>
                     </CardHeader>
                     <CardContent>
                         <div className="space-y-8">
@@ -403,49 +416,11 @@ const MaterialPermanenteForm = () => {
                                     <Card className="bg-muted/50 rounded-lg p-4">
                                         <Card className="rounded-lg mb-4">
                                             <CardHeader className="py-3">
-                                                <CardTitle className="text-base font-semibold">Período, Efetivo e Destino do Recurso</CardTitle>
+                                                <CardTitle className="text-base font-semibold">Destino do Recurso</CardTitle>
                                             </CardHeader>
                                             <CardContent className="pt-2">
                                                 <div className="p-4 bg-background rounded-lg border">
-                                                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                                                        <div className="space-y-2">
-                                                            <Label>Período (Nr Dias) *</Label>
-                                                            <Input 
-                                                                type="number" 
-                                                                value={diasOperacao || ""} 
-                                                                onChange={(e) => setDiasOperacao(Number(e.target.value))} 
-                                                                placeholder="Ex: 15" 
-                                                                disabled={!isPTrabEditable} 
-                                                                onWheel={(e) => e.currentTarget.blur()}
-                                                                onKeyDown={(e) => (e.key === 'ArrowUp' || e.key === 'ArrowDown') && e.preventDefault()}
-                                                                className="max-w-[150px] [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" 
-                                                            />
-                                                        </div>
-                                                        <div className="space-y-2">
-                                                            <Label>Efetivo *</Label>
-                                                            <Input 
-                                                                type="number" 
-                                                                value={!hasEfetivo ? "" : (efetivo || "")} 
-                                                                onChange={(e) => setEfetivo(Number(e.target.value))} 
-                                                                placeholder={!hasEfetivo ? "N/A" : "Ex: 50"} 
-                                                                disabled={!isPTrabEditable || !hasEfetivo} 
-                                                                onWheel={(e) => e.currentTarget.blur()}
-                                                                onKeyDown={(e) => (e.key === 'ArrowUp' || e.key === 'ArrowDown') && e.preventDefault()}
-                                                                className="max-w-[150px] [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" 
-                                                            />
-                                                            <div className="flex items-center gap-1 mt-1">
-                                                                <span className="text-[10px] font-bold text-muted-foreground uppercase">{hasEfetivo ? 'Ativo' : 'Inativo'}</span>
-                                                                <Switch 
-                                                                    checked={hasEfetivo} 
-                                                                    onCheckedChange={(checked) => {
-                                                                        setHasEfetivo(checked);
-                                                                        if (!checked) setEfetivo(0);
-                                                                    }}
-                                                                    disabled={!isPTrabEditable}
-                                                                    className="scale-75"
-                                                                />
-                                                            </div>
-                                                        </div>
+                                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                                         <div className="space-y-2">
                                                             <Label>OM Destino do Recurso *</Label>
                                                             <OmSelector selectedOmId={omDestino.id || undefined} onChange={(om) => om && setOmDestino({nome: om.nome_om, ug: om.codug_om, id: om.id})} placeholder="Selecione a OM Destino" disabled={!isPTrabEditable} />
@@ -461,47 +436,64 @@ const MaterialPermanenteForm = () => {
 
                                         <Card className="rounded-lg p-4 bg-background">
                                             <div className="flex justify-between items-center mb-4">
-                                                <h4 className="text-base font-semibold flex items-center gap-2">Itens de Material Permanente</h4>
+                                                <h4 className="text-base font-semibold flex items-center gap-2">Itens e Justificativas</h4>
                                                 <Button type="button" variant="outline" size="sm" onClick={() => setIsSelectorOpen(true)} disabled={!isPTrabEditable}><Plus className="mr-2 h-4 w-4" /> Importar da Diretriz</Button>
                                             </div>
 
                                             {selectedItems.length > 0 ? (
-                                                <div className="border rounded-md overflow-hidden">
-                                                    <Table>
-                                                        <TableHeader>
-                                                            <TableRow>
-                                                                <TableHead className="w-[80px] text-center">Qtd</TableHead>
-                                                                <TableHead>Descrição do Material</TableHead>
-                                                                <TableHead className="text-right w-[140px]">Valor Unitário</TableHead>
-                                                                <TableHead className="text-right w-[140px]">Total</TableHead>
-                                                                <TableHead className="w-[60px] text-center">Ações</TableHead>
-                                                            </TableRow>
-                                                        </TableHeader>
-                                                        <TableBody>
-                                                            {selectedItems.map((item) => (
-                                                                <TableRow key={item.id}>
-                                                                    <TableCell>
-                                                                        <Input type="number" min={1} value={item.quantidade || ""} onChange={(e) => {
-                                                                            const qty = parseInt(e.target.value) || 0;
-                                                                            setSelectedItems(prev => prev.map(i => i.id === item.id ? { ...i, quantidade: qty } : i));
-                                                                        }} className="h-8 text-center" />
-                                                                    </TableCell>
-                                                                    <TableCell className="text-xs">
-                                                                        <p className="font-medium">{item.descricao_reduzida || item.descricao_item}</p>
-                                                                        <p className="text-muted-foreground text-[10px]">CATMAT: {item.codigo_catmat} | Pregão: {formatPregao(item.numero_pregao)}</p>
-                                                                    </TableCell>
-                                                                    <TableCell className="text-right text-xs text-muted-foreground">{formatCurrency(item.valor_unitario)}</TableCell>
-                                                                    <TableCell className="text-right text-sm font-bold">{formatCurrency((item.quantidade || 0) * item.valor_unitario)}</TableCell>
-                                                                    <TableCell className="text-center">
-                                                                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setSelectedItems(prev => prev.filter(i => i.id !== item.id))}><Trash2 className="h-4 w-4 text-destructive" /></Button>
-                                                                    </TableCell>
-                                                                </TableRow>
-                                                            ))}
-                                                        </TableBody>
-                                                    </Table>
+                                                <div className="space-y-6">
+                                                    {selectedItems.map((item) => (
+                                                        <Card key={item.id} className="border-2 border-primary/10 overflow-hidden">
+                                                            <div className="bg-primary/5 p-3 border-b flex justify-between items-center">
+                                                                <div className="flex items-center gap-3">
+                                                                    <Badge variant="secondary" className="font-mono">{item.codigo_catmat}</Badge>
+                                                                    <span className="font-bold text-sm">{item.descricao_reduzida || item.descricao_item}</span>
+                                                                </div>
+                                                                <div className="flex items-center gap-4">
+                                                                    <div className="flex items-center gap-2">
+                                                                        <Label className="text-[10px] uppercase font-bold text-muted-foreground">Qtd:</Label>
+                                                                        <Input type="number" min={1} value={item.quantidade || ""} onChange={(e) => handleUpdateItemField(item.id, 'quantidade', parseInt(e.target.value) || 0)} className="h-8 w-16 text-center font-bold" />
+                                                                    </div>
+                                                                    <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => setSelectedItems(prev => prev.filter(i => i.id !== item.id))}><Trash2 className="h-4 w-4" /></Button>
+                                                                </div>
+                                                            </div>
+                                                            <CardContent className="p-4 space-y-4">
+                                                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                                                    <div className="space-y-1.5">
+                                                                        <Label className="text-[11px] font-bold flex items-center gap-1">Propósito (Obj imediato?) <Info className="h-3 w-3 text-muted-foreground" /></Label>
+                                                                        <Input value={item.proposito || ""} onChange={(e) => handleUpdateItemField(item.id, 'proposito', e.target.value)} placeholder="Ex: Eqp Informática" className="h-8 text-xs" />
+                                                                    </div>
+                                                                    <div className="space-y-1.5">
+                                                                        <Label className="text-[11px] font-bold flex items-center gap-1">Destinação (Para quem?) Seç/OM <Info className="h-3 w-3 text-muted-foreground" /></Label>
+                                                                        <Input value={item.destinacao || ""} onChange={(e) => handleUpdateItemField(item.id, 'destinacao', e.target.value)} placeholder="Ex: Cmdo / 23ª Bda Inf Sl" className="h-8 text-xs" />
+                                                                    </div>
+                                                                    <div className="space-y-1.5">
+                                                                        <Label className="text-[11px] font-bold flex items-center gap-1">Local (Onde será empregado?) <Info className="h-3 w-3 text-muted-foreground" /></Label>
+                                                                        <Input value={item.local || ""} onChange={(e) => handleUpdateItemField(item.id, 'local', e.target.value)} placeholder="Ex: nos COI das Base Op e Log" className="h-8 text-xs" />
+                                                                    </div>
+                                                                    <div className="space-y-1.5">
+                                                                        <Label className="text-[11px] font-bold flex items-center gap-1">Finalidade (Para quê?) Obj Geral <Info className="h-3 w-3 text-muted-foreground" /></Label>
+                                                                        <Input value={item.finalidade || ""} onChange={(e) => handleUpdateItemField(item.id, 'finalidade', e.target.value)} placeholder="Ex: atender as necessidades computacionais" className="h-8 text-xs" />
+                                                                    </div>
+                                                                    <div className="space-y-1.5">
+                                                                        <Label className="text-[11px] font-bold flex items-center gap-1">Período (Quando?) <Info className="h-3 w-3 text-muted-foreground" /></Label>
+                                                                        <Input value={item.periodo || ""} onChange={(e) => handleUpdateItemField(item.id, 'periodo', e.target.value)} placeholder="Ex: durante operação" className="h-8 text-xs" />
+                                                                    </div>
+                                                                    <div className="space-y-1.5">
+                                                                        <Label className="text-[11px] font-bold flex items-center gap-1">Motivo (Porque?) <Info className="h-3 w-3 text-muted-foreground" /></Label>
+                                                                        <Input value={item.motivo || ""} onChange={(e) => handleUpdateItemField(item.id, 'motivo', e.target.value)} placeholder="Ex: necessidade de disponibilizar terminais" className="h-8 text-xs" />
+                                                                    </div>
+                                                                </div>
+                                                                <div className="flex justify-between items-center pt-2 border-t text-[10px] text-muted-foreground">
+                                                                    <span>Pregão: {formatPregao(item.numero_pregao)} | UASG: {item.uasg}</span>
+                                                                    <span className="font-bold text-foreground">Subtotal: {formatCurrency(item.quantidade * item.valor_unitario)}</span>
+                                                                </div>
+                                                            </CardContent>
+                                                        </Card>
+                                                    ))}
                                                 </div>
                                             ) : (
-                                                <div className="text-center py-8 border-2 border-dashed rounded-lg text-muted-foreground">Selecione itens da diretriz para iniciar.</div>
+                                                <div className="text-center py-8 border-2 border-dashed rounded-lg text-muted-foreground">Selecione itens da diretriz para iniciar o planejamento.</div>
                                             )}
 
                                             <div className="flex justify-between items-center p-3 mt-4 border-t">
@@ -511,7 +503,7 @@ const MaterialPermanenteForm = () => {
                                         </Card>
 
                                         <div className="flex justify-end gap-3 pt-4">
-                                            <Button className="bg-primary hover:bg-primary/90" disabled={selectedItems.length === 0 || diasOperacao <= 0} onClick={handleAddToPending}>
+                                            <Button className="bg-primary hover:bg-primary/90" disabled={selectedItems.length === 0} onClick={handleAddToPending}>
                                                 <Save className="mr-2 h-4 w-4" /> {editingId ? "Recalcular/Revisar Lote" : "Preparar Lote"}
                                             </Button>
                                         </div>
@@ -541,8 +533,8 @@ const MaterialPermanenteForm = () => {
                                                         <p className="font-medium">OM Destino: {item.om_detentora} ({formatCodug(item.ug_detentora)})</p>
                                                     </div>
                                                     <div className="text-right space-y-1">
-                                                        <p className="font-medium">Período: {item.dias_operacao} dias</p>
                                                         <p className="font-medium">Itens: {item.detalhes_planejamento.itens_selecionados.length} tipos</p>
+                                                        <p className="font-medium italic text-muted-foreground">Justificativas preenchidas</p>
                                                     </div>
                                                 </div>
                                             </CardContent>
@@ -575,7 +567,7 @@ const MaterialPermanenteForm = () => {
                                                         <div className="flex items-center justify-between">
                                                             <div>
                                                                 <h4 className="font-semibold text-base flex items-center gap-2">Material Permanente <Badge variant="outline">{reg.fase_atividade}</Badge></h4>
-                                                                <p className="text-xs text-muted-foreground">Período: {reg.dias_operacao} dias | Valor ND 52: {formatCurrency(Number(reg.valor_nd_52))}</p>
+                                                                <p className="text-xs text-muted-foreground">Itens: {reg.detalhes_planejamento.itens_selecionados.length} | Valor ND 52: {formatCurrency(Number(reg.valor_nd_52))}</p>
                                                             </div>
                                                             <div className="flex gap-1">
                                                                 <Button variant="ghost" size="icon" onClick={() => handleEdit(reg)} disabled={!isPTrabEditable || pendingItems.length > 0}><Pencil className="h-4 w-4" /></Button>
@@ -623,7 +615,13 @@ const MaterialPermanenteForm = () => {
                 onSelect={(items) => {
                     setSelectedItems(items.map(item => ({
                         ...item,
-                        quantidade: item.quantidade || 1
+                        quantidade: item.quantidade || 1,
+                        proposito: item.proposito || "",
+                        destinacao: item.destinacao || "",
+                        local: item.local || "",
+                        finalidade: item.finalidade || "",
+                        periodo: item.periodo || "",
+                        motivo: item.motivo || ""
                     })));
                 }} 
                 onAddDiretriz={() => navigate('/config/custos-operacionais')} 
