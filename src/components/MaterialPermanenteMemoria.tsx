@@ -54,9 +54,7 @@ const MaterialPermanenteMemoria: React.FC<MaterialPermanenteMemoriaProps> = ({
                             {item?.descricao_reduzida || item?.descricao_item || "Material Permanente"}
                         </Badge>
                         {hasCustomMemoria && !isEditing && (
-                            <Badge variant="outline" className="text-[10px] bg-orange-50 text-orange-700 border-orange-200 uppercase font-bold">
-                                Editada manualmente
-                            </Badge>
+                            <Badge variant="outline" className="text-xs">Editada manualmente</Badge>
                         )}
                     </div>
                 </div>
@@ -64,75 +62,33 @@ const MaterialPermanenteMemoria: React.FC<MaterialPermanenteMemoriaProps> = ({
                 <div className="flex items-center justify-end gap-2 shrink-0">
                     {!isEditing ? (
                         <>
-                            <Button 
-                                type="button" 
-                                size="sm" 
-                                variant="outline" 
-                                onClick={() => onStartEdit(registro.id, memoriaDisplay)} 
-                                disabled={isSaving || !isPTrabEditable} 
-                                className="h-8 gap-2 text-xs font-semibold border-primary/20 hover:bg-primary/5"
-                            >
-                                <Pencil className="h-3.5 w-3.5" /> Editar Memória
+                            <Button type="button" size="sm" variant="outline" onClick={() => onStartEdit(registro.id, memoriaDisplay)} disabled={isSaving || !isPTrabEditable} className="gap-2">
+                                <Pencil className="h-4 w-4" /> Editar Memória
                             </Button>
                             {hasCustomMemoria && (
-                                <Button 
-                                    type="button" 
-                                    size="sm" 
-                                    variant="ghost" 
-                                    onClick={() => onRestore(registro.id)} 
-                                    disabled={isSaving || !isPTrabEditable} 
-                                    className="h-8 gap-2 text-xs font-semibold text-orange-600 hover:bg-orange-50"
-                                >
-                                    <RefreshCw className="h-3.5 w-3.5" /> Restaurar Automática
+                                <Button type="button" size="sm" variant="ghost" onClick={() => onRestore(registro.id)} disabled={isSaving || !isPTrabEditable} className="gap-2 text-muted-foreground">
+                                    <RefreshCw className="h-4 w-4" /> Restaurar Automática
                                 </Button>
                             )}
                         </>
                     ) : (
                         <>
-                            <Button 
-                                type="button" 
-                                size="sm" 
-                                variant="default" 
-                                onClick={() => onSave(registro.id)} 
-                                disabled={isSaving} 
-                                className="h-8 gap-2 text-xs font-semibold bg-green-600 hover:bg-green-700"
-                            >
-                                {isSaving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />} Salvar
+                            <Button type="button" size="sm" variant="default" onClick={() => onSave(registro.id)} disabled={isSaving} className="gap-2">
+                                {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />} Salvar
                             </Button>
-                            <Button 
-                                type="button" 
-                                size="sm" 
-                                variant="outline" 
-                                onClick={onCancelEdit} 
-                                disabled={isSaving} 
-                                className="h-8 gap-2 text-xs font-semibold text-destructive hover:bg-destructive/5"
-                            >
-                                <XCircle className="h-3.5 w-3.5" /> Cancelar
+                            <Button type="button" size="sm" variant="outline" onClick={onCancelEdit} disabled={isSaving} className="gap-2">
+                                <XCircle className="h-4 w-4" /> Cancelar
                             </Button>
                         </>
                     )}
                 </div>
             </div>
             
-            <Card className="p-5 bg-background rounded-lg border shadow-sm">
+            <Card className="p-4 bg-background rounded-lg border">
                 {isEditing ? (
-                    <div className="space-y-2">
-                        <Textarea 
-                            value={memoriaEdit} 
-                            onChange={(e) => setMemoriaEdit(e.target.value)} 
-                            className="min-h-[200px] font-mono text-sm leading-relaxed focus-visible:ring-primary resize-none" 
-                            placeholder="Digite aqui a memória de cálculo detalhada..."
-                        />
-                        <p className="text-[10px] text-muted-foreground italic">
-                            * Você está editando manualmente a memória de cálculo deste item.
-                        </p>
-                    </div>
+                    <Textarea value={memoriaEdit} onChange={(e) => setMemoriaEdit(e.target.value)} className="min-h-[250px] font-mono text-sm" />
                 ) : (
-                    <div className="relative">
-                        <pre className="text-sm font-medium italic whitespace-pre-wrap text-foreground/80 leading-relaxed">
-                            {memoriaDisplay}
-                        </pre>
-                    </div>
+                    <pre className="text-sm font-mono whitespace-pre-wrap text-foreground">{memoriaDisplay}</pre>
                 )}
             </Card>
         </div>
