@@ -122,9 +122,6 @@ const DOREditor = () => {
           consequencia: dorData.consequencia || "",
           observacoes: dorData.observacoes || ""
         });
-        
-        // Se já houver itens salvos no banco para este DOR, poderíamos carregar aqui.
-        // Por enquanto, mantemos a lógica de importação manual.
       } else {
         const opName = ptrabData.nome_operacao || "";
         const formattedOp = opName.toLowerCase().startsWith("operação") ? opName : `Operação ${opName}`;
@@ -143,26 +140,27 @@ const DOREditor = () => {
     }
   }, [ptrabId]);
 
-  const handleImportConcluded = (groups: DorGroup[]) => {
+  const handleImportConcluded = (groups: DorGroup[], selectedGnd: number) => {
     // Transforma os grupos criados pelo usuário em linhas da tabela do DOR
-    // Agrupando por UGE + GND + Nome do Grupo
+    // Expandindo os tipos de custo de volta para registros por UGE
     const finalItems: any[] = [];
 
     groups.forEach(group => {
-      // Dentro de cada grupo, precisamos separar por UGE e GND
-      const subAggregated: Record<string, number> = {};
+      // Para cada grupo do DOR, consolidamos os valores por UGE
+      const ugeAggregated: Record<string, number> = {};
       
-      group.items.forEach(item => {
-        const key = `${item.uge}|${item.gnd}`;
-        subAggregated[key] = (subAggregated[key] || 0) + item.valor;
+      group.items.forEach(typeItem => {
+        typeItem.originalRecords.forEach(record => {
+          const ugeLabel = `${record.organizacao} (${record.ug})`;
+          ugeAggregated[ugeLabel] = (ugeAggregated[ugeLabel] || 0) + Number(record.valor_total);
+        });
       });
 
-      // Cria uma linha para cada combinação de UGE/GND dentro do grupo
-      Object.entries(subAggregated).forEach(([key, valor]) => {
-        const [uge, gnd] = key.split('|');
+      // Cria uma linha para cada UGE dentro deste grupo do DOR
+      Object.entries(ugeAggregated).forEach(([uge, valor]) => {
         finalItems.push({
           uge,
-          gnd: Number(gnd),
+          gnd: selectedGnd,
           descricao: group.name,
           valor_num: valor
         });
@@ -171,7 +169,7 @@ const DOREditor = () => {
 
     setDorItems(finalItems);
     setShowItemsTable(true);
-    toast.success("Dados agrupados e importados com sucesso!");
+    toast.success(`Dados de GND ${selectedGnd} importados com sucesso!`);
   };
 
   useEffect(() => {

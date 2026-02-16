@@ -1,14 +1,14 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { formatCurrency } from "@/lib/formatUtils";
 import { 
-  GripVertical, Plus, Trash2, ArrowRight, Package, 
-  Wallet, CheckCircle2, X, Loader2, Search
+  GripVertical, Plus, Trash2, ArrowRight, 
+  Wallet, CheckCircle2, Loader2, Search, Layers
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -22,6 +22,7 @@ export interface PTrabItem {
   natureza: string;
   uge: string;
   tableName: string;
+  originalRecords: any[]; // Mantém os registros originais para expansão posterior
 }
 
 export interface DorGroup {
@@ -35,12 +36,13 @@ interface PTrabImporterProps {
   isOpen: boolean;
   onClose: () => void;
   ptrabId: string;
-  onImportConcluded: (groups: DorGroup[]) => void;
+  onImportConcluded: (groups: DorGroup[], selectedGnd: number) => void;
 }
 
 export function PTrabImporter({ isOpen, onClose, ptrabId, onImportConcluded }: PTrabImporterProps) {
   const [loading, setLoading] = useState(false);
-  const [sourceItems, setSourceItems] = useState<PTrabItem[]>([]);
+  const [allItems, setAllItems] = useState<PTrabItem[]>([]);
+  const [selectedGnd, setSelectedGnd] = useState<number>(3);
   const [dorGroups, setDorGroups] = useState<DorGroup[]>([]);
   const [newGroupName, setNewGroupName] = useState("");
   const [draggedItem, setDraggedItem] = useState<PTrabItem | null>(null);
@@ -51,27 +53,27 @@ export function PTrabImporter({ isOpen, onClose, ptrabId, onImportConcluded }: P
     setLoading(true);
     try {
       const tables = [
-        { name: 'classe_i_registros', gnd: 3, nature: 'Logístico', descField: 'categoria' },
-        { name: 'classe_ii_registros', gnd: 3, nature: 'Logístico', descField: 'categoria' },
-        { name: 'classe_iii_registros', gnd: 3, nature: 'Logístico', descField: 'tipo_equipamento' },
-        { name: 'classe_v_registros', gnd: 3, nature: 'Logístico', descField: 'categoria' },
-        { name: 'classe_vi_registros', gnd: 3, nature: 'Logístico', descField: 'categoria' },
-        { name: 'classe_vii_registros', gnd: 3, nature: 'Logístico', descField: 'categoria' },
-        { name: 'classe_viii_saude_registros', gnd: 3, nature: 'Logístico', descField: 'categoria' },
-        { name: 'classe_viii_remonta_registros', gnd: 3, nature: 'Logístico', descField: 'animal_tipo' },
-        { name: 'classe_ix_registros', gnd: 3, nature: 'Logístico', descField: 'categoria' },
-        { name: 'diaria_registros', gnd: 3, nature: 'Operacional', descField: 'destino' },
-        { name: 'verba_operacional_registros', gnd: 3, nature: 'Operacional', descField: 'objeto_aquisicao' },
-        { name: 'passagem_registros', gnd: 3, nature: 'Operacional', descField: 'destino' },
-        { name: 'concessionaria_registros', gnd: 3, nature: 'Operacional', descField: 'categoria' },
-        { name: 'horas_voo_registros', gnd: 3, nature: 'Operacional', descField: 'tipo_anv' },
-        { name: 'material_consumo_registros', gnd: 3, nature: 'Operacional', descField: 'group_name' },
-        { name: 'complemento_alimentacao_registros', gnd: 3, nature: 'Operacional', descField: 'group_name' },
-        { name: 'servicos_terceiros_registros', gnd: 3, nature: 'Operacional', descField: 'categoria' },
-        { name: 'material_permanente_registros', gnd: 4, nature: 'Operacional', descField: 'categoria' }
+        { name: 'classe_i_registros', gnd: 3, nature: 'Logístico', descField: 'categoria', label: 'Classe I - Subsistência' },
+        { name: 'classe_ii_registros', gnd: 3, nature: 'Logístico', descField: 'categoria', label: 'Classe II - Intendência' },
+        { name: 'classe_iii_registros', gnd: 3, nature: 'Logístico', descField: 'tipo_equipamento', label: 'Classe III - Combustíveis' },
+        { name: 'classe_v_registros', gnd: 3, nature: 'Logístico', descField: 'categoria', label: 'Classe V - Armamento' },
+        { name: 'classe_vi_registros', gnd: 3, nature: 'Logístico', descField: 'categoria', label: 'Classe VI - Engenharia' },
+        { name: 'classe_vii_registros', gnd: 3, nature: 'Logístico', descField: 'categoria', label: 'Classe VII - Comunicações' },
+        { name: 'classe_viii_saude_registros', gnd: 3, nature: 'Logístico', descField: 'categoria', label: 'Classe VIII - Saúde' },
+        { name: 'classe_viii_remonta_registros', gnd: 3, nature: 'Logístico', descField: 'animal_tipo', label: 'Classe VIII - Remonta' },
+        { name: 'classe_ix_registros', gnd: 3, nature: 'Logístico', descField: 'categoria', label: 'Classe IX - Motomecanização' },
+        { name: 'diaria_registros', gnd: 3, nature: 'Operacional', descField: 'destino', label: 'Diárias' },
+        { name: 'verba_operacional_registros', gnd: 3, nature: 'Operacional', descField: 'objeto_aquisicao', label: 'Verba Operacional' },
+        { name: 'passagem_registros', gnd: 3, nature: 'Operacional', descField: 'destino', label: 'Passagens' },
+        { name: 'concessionaria_registros', gnd: 3, nature: 'Operacional', descField: 'categoria', label: 'Concessionárias' },
+        { name: 'horas_voo_registros', gnd: 3, nature: 'Operacional', descField: 'tipo_anv', label: 'Horas de Voo' },
+        { name: 'material_consumo_registros', gnd: 3, nature: 'Operacional', descField: 'group_name', label: 'Material de Consumo' },
+        { name: 'complemento_alimentacao_registros', gnd: 3, nature: 'Operacional', descField: 'group_name', label: 'Complemento de Alimentação' },
+        { name: 'servicos_terceiros_registros', gnd: 3, nature: 'Operacional', descField: 'categoria', label: 'Serviços de Terceiros' },
+        { name: 'material_permanente_registros', gnd: 4, nature: 'Operacional', descField: 'categoria', label: 'Material Permanente' }
       ];
 
-      const allItems: PTrabItem[] = [];
+      const aggregatedMap: Record<string, PTrabItem> = {};
 
       for (const table of tables) {
         const { data, error } = await (supabase.from(table.name as any) as any)
@@ -80,22 +82,33 @@ export function PTrabImporter({ isOpen, onClose, ptrabId, onImportConcluded }: P
 
         if (!error && data) {
           data.forEach((row: any) => {
-            if (Number(row.valor_total) > 0) {
-              allItems.push({
-                id: `${table.name}-${row.id}`,
-                descricao: row[table.descField] || "Item sem descrição",
-                valor: Number(row.valor_total),
+            const valor = Number(row.valor_total || 0);
+            if (valor <= 0) return;
+
+            // Agrupamos por Tabela + Descrição (Tipo de Custo)
+            const descValue = row[table.descField] || table.label;
+            const key = `${table.name}-${descValue}`;
+
+            if (!aggregatedMap[key]) {
+              aggregatedMap[key] = {
+                id: key,
+                descricao: descValue,
+                valor: 0,
                 gnd: table.gnd,
                 natureza: table.nature,
-                uge: `${row.organizacao} (${row.ug})`,
-                tableName: table.name
-              });
+                uge: "Múltiplas OMs",
+                tableName: table.name,
+                originalRecords: []
+              };
             }
+
+            aggregatedMap[key].valor += valor;
+            aggregatedMap[key].originalRecords.push(row);
           });
         }
       }
 
-      setSourceItems(allItems);
+      setAllItems(Object.values(aggregatedMap));
     } catch (e) {
       console.error("Erro ao carregar itens:", e);
       toast.error("Falha ao carregar itens do P-Trab.");
@@ -110,6 +123,16 @@ export function PTrabImporter({ isOpen, onClose, ptrabId, onImportConcluded }: P
       setDorGroups([]);
     }
   }, [isOpen]);
+
+  // Filtra itens pelo GND selecionado e que ainda não foram alocados
+  const availableItems = useMemo(() => {
+    const alocatedIds = new Set(dorGroups.flatMap(g => g.items.map(i => i.id)));
+    return allItems.filter(item => 
+      item.gnd === selectedGnd && 
+      !alocatedIds.has(item.id) &&
+      (item.descricao.toLowerCase().includes(searchTerm.toLowerCase()))
+    );
+  }, [allItems, selectedGnd, dorGroups, searchTerm]);
 
   const handleDragStart = (e: React.DragEvent, item: PTrabItem) => {
     setDraggedItem(item);
@@ -136,7 +159,6 @@ export function PTrabImporter({ isOpen, onClose, ptrabId, onImportConcluded }: P
       return group;
     }));
 
-    setSourceItems(prev => prev.filter(i => i.id !== draggedItem.id));
     setDraggedItem(null);
   };
 
@@ -151,7 +173,6 @@ export function PTrabImporter({ isOpen, onClose, ptrabId, onImportConcluded }: P
       }
       return group;
     }));
-    setSourceItems(prev => [...prev, item]);
   };
 
   const handleCreateGroup = () => {
@@ -167,26 +188,17 @@ export function PTrabImporter({ isOpen, onClose, ptrabId, onImportConcluded }: P
   };
 
   const deleteGroup = (groupId: string) => {
-    const group = dorGroups.find(g => g.id === groupId);
-    if (group && group.items.length > 0) {
-      setSourceItems(prev => [...prev, ...group.items]);
-    }
     setDorGroups(prev => prev.filter(g => g.id !== groupId));
   };
 
   const handleFinalize = () => {
     if (dorGroups.length === 0) {
-      toast.error("Crie pelo menos um grupo e aloque itens antes de finalizar.");
+      toast.error("Crie pelo menos um grupo e aloque tipos de custo antes de finalizar.");
       return;
     }
-    onImportConcluded(dorGroups);
+    onImportConcluded(dorGroups, selectedGnd);
     onClose();
   };
-
-  const filteredItems = sourceItems.filter(item => 
-    item.descricao.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    item.uge.toLowerCase().includes(searchTerm.toLowerCase())
-  );
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -194,34 +206,60 @@ export function PTrabImporter({ isOpen, onClose, ptrabId, onImportConcluded }: P
         <DialogHeader className="p-6 border-b bg-white shrink-0">
           <div className="flex justify-between items-start">
             <div>
-              <DialogTitle className="flex items-center gap-2 text-xl font-bold text-slate-800">
-                <Package className="h-6 w-6 text-primary" />
+              <DialogTitle className="text-xl font-bold text-slate-800">
                 Importação e Agrupamento de Dados do P-Trab
               </DialogTitle>
               <DialogDescription className="text-slate-500 mt-1">
-                Crie grupos para o DOR na direita e arraste as despesas do P-Trab da esquerda para dentro deles.
+                Selecione o GND, crie grupos para o DOR e arraste os tipos de custo para organizá-los.
               </DialogDescription>
             </div>
-            <Button variant="ghost" size="icon" onClick={onClose} className="rounded-full">
-              <X className="h-5 w-5" />
-            </Button>
           </div>
         </DialogHeader>
 
+        {/* SELETOR DE GND */}
+        <div className="px-6 py-3 bg-white border-b flex items-center gap-4 shrink-0">
+          <span className="text-xs font-black text-slate-400 uppercase">Filtrar por Natureza:</span>
+          <div className="flex bg-slate-100 p-1 rounded-lg">
+            <button 
+              onClick={() => { setSelectedGnd(3); setDorGroups([]); }}
+              className={cn(
+                "px-4 py-1.5 rounded-md text-xs font-bold transition-all",
+                selectedGnd === 3 ? "bg-white shadow-sm text-primary" : "text-slate-500 hover:text-slate-700"
+              )}
+            >
+              GND 3 (Custeio)
+            </button>
+            <button 
+              onClick={() => { setSelectedGnd(4); setDorGroups([]); }}
+              className={cn(
+                "px-4 py-1.5 rounded-md text-xs font-bold transition-all",
+                selectedGnd === 4 ? "bg-white shadow-sm text-primary" : "text-slate-500 hover:text-slate-700"
+              )}
+            >
+              GND 4 (Investimento)
+            </button>
+          </div>
+          {dorGroups.length > 0 && (
+            <span className="text-[10px] text-orange-500 font-bold animate-pulse">
+              * Mudar o GND limpará os grupos atuais
+            </span>
+          )}
+        </div>
+
         <div className="flex-1 overflow-hidden grid grid-cols-12 divide-x divide-slate-200">
-          {/* COLUNA ESQUERDA: ITENS DISPONÍVEIS */}
+          {/* COLUNA ESQUERDA: TIPOS DE CUSTO */}
           <div className="col-span-4 bg-slate-100/30 flex flex-col h-full overflow-hidden">
             <div className="p-4 border-b bg-slate-100/50 space-y-3">
               <div className="flex justify-between items-center">
-                <h3 className="font-bold text-xs text-slate-500 uppercase tracking-wider">Itens do P-Trab</h3>
+                <h3 className="font-bold text-xs text-slate-500 uppercase tracking-wider">Classes / Tipos de Custo</h3>
                 <span className="text-[10px] bg-white border border-slate-200 px-2 py-0.5 rounded-full font-bold text-slate-600">
-                  {sourceItems.length} disponíveis
+                  {availableItems.length} disponíveis
                 </span>
               </div>
               <div className="relative">
                 <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-slate-400" />
                 <Input 
-                  placeholder="Filtrar itens..." 
+                  placeholder="Filtrar tipos..." 
                   className="pl-9 h-9 bg-white border-slate-200 text-sm"
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
@@ -233,15 +271,15 @@ export function PTrabImporter({ isOpen, onClose, ptrabId, onImportConcluded }: P
               {loading ? (
                 <div className="flex flex-col items-center justify-center py-20 text-slate-400">
                   <Loader2 className="h-8 w-8 animate-spin mb-2" />
-                  <p className="text-sm">Buscando registros...</p>
+                  <p className="text-sm">Consolidando tipos...</p>
                 </div>
-              ) : filteredItems.length === 0 ? (
+              ) : availableItems.length === 0 ? (
                 <div className="text-center py-10 text-slate-400 italic text-sm">
-                  {searchTerm ? "Nenhum item corresponde à busca." : "Todos os itens foram alocados!"}
+                  {searchTerm ? "Nenhum tipo corresponde à busca." : "Todos os tipos foram alocados!"}
                 </div>
               ) : (
                 <div className="space-y-2">
-                  {filteredItems.map(item => (
+                  {availableItems.map(item => (
                     <div
                       key={item.id}
                       draggable
@@ -258,10 +296,10 @@ export function PTrabImporter({ isOpen, onClose, ptrabId, onImportConcluded }: P
                         </div>
                         <span className="font-bold text-xs text-slate-900 whitespace-nowrap">{formatCurrency(item.valor)}</span>
                       </div>
-                      <div className="flex flex-wrap gap-1.5 mt-1 ml-5">
-                        <span className="text-[9px] text-slate-500 font-medium truncate max-w-[150px]">{item.uge}</span>
-                        <span className={cn("text-[8px] px-1 py-0 rounded font-black uppercase", item.gnd === 3 ? "bg-green-100 text-green-700" : "bg-blue-100 text-blue-700")}>
-                          GND {item.gnd}
+                      <div className="flex items-center gap-1.5 mt-1 ml-5">
+                        <Layers className="h-3 w-3 text-slate-400" />
+                        <span className="text-[9px] text-slate-500 font-medium">
+                          {item.originalRecords.length} registros em {new Set(item.originalRecords.map(r => r.ug)).size} UGEs
                         </span>
                       </div>
                     </div>
@@ -281,7 +319,7 @@ export function PTrabImporter({ isOpen, onClose, ptrabId, onImportConcluded }: P
                     <Input 
                       value={newGroupName}
                       onChange={(e) => setNewGroupName(e.target.value)}
-                      placeholder="Ex: AQUISIÇÃO DE GÊNEROS DE ALIMENTAÇÃO"
+                      placeholder="Ex: COMPLEMENTO DE ALIMENTAÇÃO"
                       className="border-slate-200 focus-visible:ring-primary h-10 uppercase text-sm"
                       onKeyDown={(e) => e.key === 'Enter' && handleCreateGroup()}
                     />
@@ -296,8 +334,7 @@ export function PTrabImporter({ isOpen, onClose, ptrabId, onImportConcluded }: P
             <ScrollArea className="flex-1 p-6 bg-slate-50/50">
               {dorGroups.length === 0 ? (
                 <div className="h-full flex flex-col items-center justify-center text-slate-400 py-20 border-2 border-dashed border-slate-200 rounded-2xl m-4">
-                  <Package className="h-12 w-12 mb-4 opacity-20" />
-                  <h4 className="font-bold text-slate-500">Nenhum grupo criado</h4>
+                  <h4 className="font-bold text-slate-500">Nenhum grupo criado para GND {selectedGnd}</h4>
                   <p className="text-sm max-w-[300px] text-center mt-1">Crie um grupo acima para começar a organizar as despesas do DOR.</p>
                 </div>
               ) : (
@@ -315,7 +352,7 @@ export function PTrabImporter({ isOpen, onClose, ptrabId, onImportConcluded }: P
                       <div className="p-3.5 bg-slate-50 border-b flex justify-between items-center">
                         <div className="overflow-hidden">
                           <h4 className="font-black text-xs text-slate-800 uppercase truncate pr-2">{group.name}</h4>
-                          <p className="text-[9px] text-slate-500 font-bold mt-0.5">{group.items.length} ITENS ALOCADOS</p>
+                          <p className="text-[9px] text-slate-500 font-bold mt-0.5">{group.items.length} TIPOS ALOCADOS</p>
                         </div>
                         <Button variant="ghost" size="icon" className="h-7 w-7 text-slate-400 hover:text-red-500 hover:bg-red-50 shrink-0" onClick={() => deleteGroup(group.id)}>
                           <Trash2 className="h-3.5 w-3.5" />
@@ -326,14 +363,14 @@ export function PTrabImporter({ isOpen, onClose, ptrabId, onImportConcluded }: P
                         {group.items.length === 0 ? (
                           <div className="h-24 flex flex-col items-center justify-center text-slate-300 border-2 border-dashed border-slate-50 rounded-lg">
                             <ArrowRight className="h-5 w-5 mb-1 opacity-30" />
-                            <span className="text-[10px] font-bold uppercase tracking-tighter">Solte itens aqui</span>
+                            <span className="text-[10px] font-bold uppercase tracking-tighter">Solte tipos aqui</span>
                           </div>
                         ) : (
                           group.items.map(item => (
                             <div key={item.id} className="flex justify-between items-center p-2 bg-slate-50/80 rounded border border-slate-100 text-[10px] group/item">
                               <div className="flex flex-col overflow-hidden pr-2">
                                 <span className="truncate font-bold text-slate-700 uppercase" title={item.descricao}>{item.descricao}</span>
-                                <span className="text-[8px] text-slate-400 truncate">{item.uge}</span>
+                                <span className="text-[8px] text-slate-400 truncate">{item.originalRecords.length} registros</span>
                               </div>
                               <div className="flex items-center gap-2 shrink-0">
                                 <span className="font-black text-slate-900">{formatCurrency(item.valor)}</span>
@@ -365,13 +402,8 @@ export function PTrabImporter({ isOpen, onClose, ptrabId, onImportConcluded }: P
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-2 text-xs font-bold text-slate-500 uppercase">
               <Wallet className="h-4 w-4 text-slate-400" />
-              <span>Total Alocado: <b className="text-slate-900 text-sm ml-1">{formatCurrency(dorGroups.reduce((acc, g) => acc + g.total, 0))}</b></span>
+              <span>Total Alocado (GND {selectedGnd}): <b className="text-slate-900 text-sm ml-1">{formatCurrency(dorGroups.reduce((acc, g) => acc + g.total, 0))}</b></span>
             </div>
-            {sourceItems.length > 0 && (
-              <div className="text-[10px] font-bold text-orange-500 bg-orange-50 px-2 py-1 rounded border border-orange-100">
-                {sourceItems.length} ITENS RESTANTES
-              </div>
-            )}
           </div>
           <div className="flex gap-3">
             <Button variant="outline" onClick={onClose} className="font-bold text-xs uppercase">Cancelar</Button>
