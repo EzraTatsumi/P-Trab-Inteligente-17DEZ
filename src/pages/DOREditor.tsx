@@ -254,6 +254,38 @@ const DOREditor = () => {
 
   return (
     <div className="min-h-screen bg-slate-200 py-8 px-4 print:p-0 print:bg-white">
+      <style>{`
+        @media print {
+          @page {
+            margin-top: 25mm;
+            margin-bottom: 20mm;
+            size: A4;
+          }
+          .continuation-header {
+            position: fixed;
+            top: 5mm;
+            left: 20mm;
+            right: 20mm;
+            display: block !important;
+            z-index: 1;
+          }
+          /* Bloqueador para esconder o cabeçalho de continuação na página 1 */
+          .first-page-header-cover {
+            position: absolute;
+            top: -25mm;
+            left: -20mm;
+            right: -20mm;
+            height: 25mm;
+            background: white;
+            z-index: 10;
+            display: block !important;
+          }
+          .page-number::after {
+            content: counter(page);
+          }
+        }
+      `}</style>
+
       {/* Barra de Ferramentas Flutuante */}
       <div className="fixed top-4 right-4 z-50 flex gap-2 print:hidden bg-white/90 backdrop-blur p-2 rounded-lg shadow-xl border border-slate-200">
         <Button variant="outline" size="sm" onClick={() => navigate(-1)}>
@@ -268,9 +300,23 @@ const DOREditor = () => {
         </Button>
       </div>
 
+      {/* Cabeçalho de Continuação (Fixo para Print) */}
+      <div className="continuation-header hidden pointer-events-none">
+        <div className="flex items-end w-full text-[10pt] font-normal italic text-black">
+          <span className="whitespace-nowrap">
+            (Continuação do DOR Nr {formData.numero_dor || '___'} - {anoAtual} – {ptrab?.nome_om}, de {dataAtual}
+          </span>
+          <span className="flex-1 border-b border-dotted border-black mb-1 mx-1"></span>
+          <span className="whitespace-nowrap">fl <span className="page-number"></span>)</span>
+        </div>
+      </div>
+
       {/* A FOLHA A4 */}
       <div className="max-w-[210mm] mx-auto bg-white shadow-2xl print:shadow-none min-h-[297mm] relative text-black print:w-full">
         
+        {/* Bloqueador do cabeçalho na página 1 */}
+        <div className="first-page-header-cover hidden"></div>
+
         <div className="p-[20mm]">
           
           {/* CABEÇALHO OFICIAL PADRONIZADO (3 COLUNAS) - MANTIDO 11PT */}
