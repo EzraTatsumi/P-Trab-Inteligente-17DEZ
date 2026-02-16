@@ -62,9 +62,9 @@ export function PTrabImporter({ isOpen, onClose, ptrabId, onImportConcluded }: P
         { name: 'classe_viii_saude_registros', gnd: 3, nature: 'Logístico', descField: 'categoria', label: 'Classe VIII - Saúde' },
         { name: 'classe_viii_remonta_registros', gnd: 3, nature: 'Logístico', descField: 'animal_tipo', label: 'Classe VIII - Remonta' },
         { name: 'classe_ix_registros', gnd: 3, nature: 'Logístico', descField: 'categoria', label: 'Classe IX - Motomecanização' },
-        { name: 'diaria_registros', gnd: 3, nature: 'Operacional', descField: 'destino', label: 'Diárias' },
+        { name: 'diaria_registros', gnd: 3, nature: 'Operacional', descField: null, label: 'DIÁRIAS' },
         { name: 'verba_operacional_registros', gnd: 3, nature: 'Operacional', descField: 'objeto_aquisicao', label: 'Verba Operacional' },
-        { name: 'passagem_registros', gnd: 3, nature: 'Operacional', descField: 'destino', label: 'Passagens' },
+        { name: 'passagem_registros', gnd: 3, nature: 'Operacional', descField: null, label: 'PASSAGENS' },
         { name: 'concessionaria_registros', gnd: 3, nature: 'Operacional', descField: 'categoria', label: 'Concessionárias' },
         { name: 'horas_voo_registros', gnd: 3, nature: 'Operacional', descField: 'tipo_anv', label: 'Horas de Voo' },
         { name: 'material_consumo_registros', gnd: 3, nature: 'Operacional', descField: 'group_name', label: 'Material de Consumo' },
@@ -76,8 +76,11 @@ export function PTrabImporter({ isOpen, onClose, ptrabId, onImportConcluded }: P
       const aggregatedMap: Record<string, PTrabItem> = {};
 
       for (const table of tables) {
+        const selectFields = ['id', 'organizacao', 'ug', 'valor_total'];
+        if (table.descField) selectFields.push(table.descField);
+
         const { data, error } = await (supabase.from(table.name as any) as any)
-          .select(`id, organizacao, ug, valor_total, ${table.descField}`)
+          .select(selectFields.join(','))
           .eq('p_trab_id', ptrabId);
 
         if (!error && data) {
@@ -85,8 +88,9 @@ export function PTrabImporter({ isOpen, onClose, ptrabId, onImportConcluded }: P
             const valor = Number(row.valor_total || 0);
             if (valor <= 0) return;
 
-            // Agrupamos por Tabela + Descrição (Tipo de Custo)
-            const descValue = row[table.descField] || table.label;
+            // Lógica de descrição: Se for Diária/Passagem, usa o label fixo. 
+            // Se for outros, usa o descField (como group_name ou categoria).
+            const descValue = table.descField ? (row[table.descField] || table.label) : table.label;
             const key = `${table.name}-${descValue}`;
 
             if (!aggregatedMap[key]) {
@@ -124,7 +128,6 @@ export function PTrabImporter({ isOpen, onClose, ptrabId, onImportConcluded }: P
     }
   }, [isOpen]);
 
-  // Filtra itens pelo GND selecionado e que ainda não foram alocados
   const availableItems = useMemo(() => {
     const alocatedIds = new Set(dorGroups.flatMap(g => g.items.map(i => i.id)));
     return allItems.filter(item => 
@@ -216,7 +219,6 @@ export function PTrabImporter({ isOpen, onClose, ptrabId, onImportConcluded }: P
           </div>
         </DialogHeader>
 
-        {/* SELETOR DE GND */}
         <div className="px-6 py-3 bg-white border-b flex items-center gap-4 shrink-0">
           <span className="text-xs font-black text-slate-400 uppercase">Filtrar por Natureza:</span>
           <div className="flex bg-slate-100 p-1 rounded-lg">
@@ -247,7 +249,6 @@ export function PTrabImporter({ isOpen, onClose, ptrabId, onImportConcluded }: P
         </div>
 
         <div className="flex-1 overflow-hidden grid grid-cols-12 divide-x divide-slate-200">
-          {/* COLUNA ESQUERDA: TIPOS DE CUSTO */}
           <div className="col-span-4 bg-slate-100/30 flex flex-col h-full overflow-hidden">
             <div className="p-4 border-b bg-slate-100/50 space-y-3">
               <div className="flex justify-between items-center">
@@ -299,7 +300,7 @@ export function PTrabImporter({ isOpen, onClose, ptrabId, onImportConcluded }: P
                       <div className="flex items-center gap-1.5 mt-1 ml-5">
                         <Layers className="h-3 w-3 text-slate-400" />
                         <span className="text-[9px] text-slate-500 font-medium">
-                          {item.originalRecords.length} registros em {new Set(item.originalRecords.map(r => r.ug)).size} UGEs
+                          {item.originalRecords.length} registros consolidados
                         </span>
                       </div>
                     </div>
@@ -309,7 +310,6 @@ export function PTrabImporter({ isOpen, onClose, ptrabId, onImportConcluded }: P
             </ScrollArea>
           </div>
 
-          {/* COLUNA DIREITA: GRUPOS DO DOR */}
           <div className="col-span-8 bg-white flex flex-col h-full overflow-hidden">
             <div className="p-4 border-b bg-white shadow-sm shrink-0">
               <div className="flex gap-2 items-end">
