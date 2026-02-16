@@ -268,10 +268,10 @@ const MaterialPermanenteItemSelectorDialog: React.FC<MaterialPermanenteItemSelec
                             Selecionados: <span className="font-bold text-primary">{totalSelected}</span>
                         </p>
                         <div className="flex gap-2">
-                            <Button variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
                             <Button onClick={handleConfirmSelection} disabled={totalSelected === 0}>
                                 <Check className="mr-2 h-4 w-4" /> Confirmar Seleção
                             </Button>
+                            <Button variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
                         </div>
                     </div>
                 </DialogFooter>
