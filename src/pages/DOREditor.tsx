@@ -415,14 +415,14 @@ const DOREditor = () => {
 
               {!showItemsTable ? (
                 <div className="p-6 text-center flex flex-col items-center gap-3">
-                  <p className="text-slate-600 font-medium">Para os dados da descrição dos itens pressionar o botão abaixo:</p>
+                  <p className="text-slate-600 font-medium font-sans">Para os dados da descrição dos itens pressionar o botão abaixo:</p>
                   <Button 
                     variant="outline" 
                     size="sm" 
                     onClick={consolidateItems}
-                    className="print:hidden border-primary text-primary hover:bg-primary/5"
+                    className="print:hidden border-primary text-primary hover:bg-primary/5 font-sans"
                   >
-                    <RefreshCw className="h-4 w-4 mr-2" /> Consolidar Itens do P-Trab
+                    <RefreshCw className="h-4 w-4 mr-2" /> Importar Dados do P Trab
                   </Button>
                 </div>
               ) : (
