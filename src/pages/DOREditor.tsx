@@ -101,7 +101,6 @@ const DOREditor = () => {
           observacoes: dorData.observacoes || ""
         });
       } else {
-        // Adiciona o prefixo "Operação " se não existir
         const opName = ptrabData.nome_operacao || "";
         const formattedOp = opName.toLowerCase().startsWith("operação") ? opName : `Operação ${opName}`;
         
@@ -452,6 +451,25 @@ const DOREditor = () => {
               )}
             </div>
 
+            {/* SEÇÃO 4: FINALIDADE */}
+            <div className="border border-black mb-4">
+              <div 
+                className="border-b border-black p-0.5 font-bold text-center uppercase"
+                style={headerTitleStyle}
+              >
+                4. Finalidade
+              </div>
+              <div className="p-1 px-2">
+                <DocumentTextArea 
+                  value={formData.finalidade}
+                  onChange={(e: any) => setFormData({...formData, finalidade: e.target.value})}
+                  placeholder="Descreva a finalidade desta requisição..."
+                  rows={3}
+                  style={bodyStyle}
+                />
+              </div>
+            </div>
+
             {/* SEÇÃO 5: JUSTIFICATIVAS */}
             <div className="border border-black mb-4">
               <div 
@@ -462,18 +480,7 @@ const DOREditor = () => {
               </div>
               
               <div className="border-b border-black p-1 px-2">
-                <span className="block font-bold uppercase mb-0.5">5.1. Finalidade:</span>
-                <DocumentTextArea 
-                  value={formData.finalidade}
-                  onChange={(e: any) => setFormData({...formData, finalidade: e.target.value})}
-                  placeholder="Descreva a finalidade desta requisição..."
-                  rows={2}
-                  style={bodyStyle}
-                />
-              </div>
-
-              <div className="border-b border-black p-1 px-2">
-                <span className="block font-bold uppercase mb-0.5">5.2. Motivação / Justificativa:</span>
+                <span className="block font-bold uppercase mb-0.5">5.1. Motivação / Justificativa:</span>
                 <DocumentTextArea 
                   value={formData.motivacao}
                   onChange={(e: any) => setFormData({...formData, motivacao: e.target.value})}
@@ -484,7 +491,7 @@ const DOREditor = () => {
               </div>
 
               <div className="p-1 px-2">
-                <span className="block font-bold uppercase mb-0.5">5.3. Consequência do Não Atendimento:</span>
+                <span className="block font-bold uppercase mb-0.5">5.2. Consequência do Não Atendimento:</span>
                 <DocumentTextArea 
                   value={formData.consequencia}
                   onChange={(e: any) => setFormData({...formData, consequencia: e.target.value})}
