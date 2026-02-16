@@ -32,3 +32,17 @@ export const generateMaterialPermanenteMemoriaCalculo = (registro: any, options?
 
     return memoria;
 };
+
+/**
+ * Calcula os totais de uma lista de registros de Material Permanente.
+ */
+export const calculateMaterialPermanenteTotals = (registros: any[]) => {
+  return registros.reduce((acc, reg) => {
+    const valor = Number(reg.valor_total || 0);
+    const nd52 = Number(reg.valor_nd_52 || 0);
+    return {
+      totalGeral: acc.totalGeral + valor,
+      totalND52: acc.totalND52 + nd52
+    };
+  }, { totalGeral: 0, totalND52: 0 });
+};
