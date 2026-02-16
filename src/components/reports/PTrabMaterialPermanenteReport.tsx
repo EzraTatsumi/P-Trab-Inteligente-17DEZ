@@ -28,7 +28,16 @@ const PTrabMaterialPermanenteReport: React.FC<PTrabMaterialPermanenteReportProps
   // Função auxiliar para concordância de gênero da OM
   const getOmPrefix = (name: string) => {
     const n = name.toUpperCase();
-    if (n.startsWith('CIA') || n.startsWith('COMPANHIA') || n.startsWith('BASE') || n.startsWith('REGIAO') || n.startsWith('BRIGADA') || n.startsWith('BDA')) return 'DA';
+    // Verifica se contém palavras femininas, mesmo após numerais (ex: 10ª Cia)
+    if (
+      n.includes('CIA') || 
+      n.includes('COMPANHIA') || 
+      n.includes('BASE') || 
+      n.includes('REGIAO') || 
+      n.includes('BRIGADA') || 
+      n.includes('BDA') ||
+      n.includes('ESCOLA')
+    ) return 'DA';
     return 'DO';
   };
 
@@ -362,7 +371,7 @@ const PTrabMaterialPermanenteReport: React.FC<PTrabMaterialPermanenteReportProps
             <tr className="font-bold">
               <td colSpan={3} className="border border-black p-1 text-right bg-[#D9D9D9]">VALOR TOTAL</td>
               <td className="border border-black p-1 text-center bg-white">{formatCurrency(totalGeral)}</td>
-              <td className="border border-black p-1 bg-[#D9D9D9]"></td>
+              <td className="border border-black p-1 bg-white border-0"></td>
             </tr>
             <tr>
               <td colSpan={3} className="border-0"></td>
