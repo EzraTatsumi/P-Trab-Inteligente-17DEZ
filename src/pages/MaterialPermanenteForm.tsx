@@ -225,14 +225,12 @@ const MaterialPermanenteForm = () => {
     // --- MUTATIONS ---
     const saveMutation = useMutation({
         mutationFn: async (itemsToSave: PendingPermanenteItem[]) => {
-            // Se estiver editando, remove o registro antigo antes de salvar os novos (que podem ser múltiplos se o lote foi expandido)
             const idsToDelete = itemsToSave.map(i => i.dbId).filter(Boolean) as string[];
             
             if (idsToDelete.length > 0) {
                 await supabase.from('material_permanente_registros').delete().in('id', idsToDelete);
             }
 
-            // IMPORTANTE: Para garantir memórias individuais, salvamos cada item como um registro separado no banco
             const records = itemsToSave.flatMap(lote => {
                 const items = lote.detalhes_planejamento?.itens_selecionados || [];
                 return items.map((item: any) => ({
@@ -246,7 +244,7 @@ const MaterialPermanenteForm = () => {
                     fase_atividade: lote.fase_atividade,
                     categoria: lote.categoria,
                     detalhes_planejamento: { 
-                        item_unico: item, // Salva apenas este item
+                        item_unico: item,
                         has_efetivo: lote.detalhes_planejamento.has_efetivo 
                     },
                     valor_total: (item.quantidade || 1) * item.valor_unitario,
@@ -312,7 +310,6 @@ const MaterialPermanenteForm = () => {
             return;
         }
 
-        // Validação de justificativa obrigatória
         const itemsWithoutJustification = selectedItems.filter(item => 
             !item.justificativa || 
             !Object.values(item.justificativa).some(v => v && v.toString().trim() !== "")
@@ -380,7 +377,6 @@ const MaterialPermanenteForm = () => {
         setOmDestino(omDestData);
 
         const details = reg.detalhes_planejamento;
-        // Se o registro foi salvo individualmente, o item está em 'item_unico'
         const items = details?.item_unico ? [details.item_unico] : (details?.itens_selecionados || []);
         setSelectedItems(items);
         setHasEfetivo(details?.has_efetivo !== false);
@@ -670,8 +666,7 @@ const MaterialPermanenteForm = () => {
                                             </Button>
                                         </div>
                                     </Card>
-                                </section>
-                            )}
+                                )}
 
                             {/* SEÇÃO 3: ITENS ADICIONADOS (PENDENTES) */}
                             {pendingItems.length > 0 && (
@@ -778,7 +773,7 @@ const MaterialPermanenteForm = () => {
                                                             <div className="flex items-center justify-between">
                                                                 <div className="flex flex-col">
                                                                     <h4 className="font-semibold text-base text-foreground flex items-center gap-2">
-                                                                        {item?.descricao_reduzida || item?.descricao_item || "Material Permanente"}
+                                                                        Aquisição de Material Permanente
                                                                         <Badge variant="outline" className="text-xs font-semibold">{reg.fase_atividade}</Badge>
                                                                     </h4>
                                                                     <p className="text-xs text-muted-foreground">
