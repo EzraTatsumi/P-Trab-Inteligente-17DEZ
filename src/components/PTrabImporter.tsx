@@ -8,7 +8,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { formatCurrency } from "@/lib/formatUtils";
 import { 
   GripVertical, Plus, Trash2, ArrowRight, 
-  Wallet, CheckCircle2, Loader2, Search, Layers
+  Wallet, CheckCircle2, Loader2, Search, Layers, X
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
