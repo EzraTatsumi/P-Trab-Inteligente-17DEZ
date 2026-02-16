@@ -364,24 +364,24 @@ const PTrabMaterialPermanenteReport: React.FC<PTrabMaterialPermanenteReportProps
             
             {/* Espaço antes do total final */}
             <tr className="h-4">
-              <td colSpan={5} className="border-0"></td>
+              <td colSpan={5} className="border-y-0 border-x-0"></td>
             </tr>
 
             {/* Bloco de Total Geral Final */}
             <tr className="font-bold">
               <td colSpan={3} className="border border-black p-1 text-right bg-[#D9D9D9]">VALOR TOTAL</td>
               <td className="border border-black p-1 text-center bg-white">{formatCurrency(totalGeral)}</td>
-              <td className="border border-black p-1 bg-white border-0"></td>
+              <td className="border-0 p-1 bg-white"></td>
             </tr>
             <tr>
               <td colSpan={3} className="border-0"></td>
-              <td className="border border-black p-1 text-center text-[7pt]">GND - 4</td>
-              <td className="border border-black p-1 border-0"></td>
+              <td className="border-t border-r border-b border-black p-1 text-center text-[7pt]">GND - 4</td>
+              <td className="border-0 p-1"></td>
             </tr>
             <tr>
               <td colSpan={3} className="border-0"></td>
-              <td className="border border-black p-1 text-center font-bold">{formatCurrency(totalGeral)}</td>
-              <td className="border border-black p-1 border-0"></td>
+              <td className="border-t border-r border-black p-1 text-center font-bold">{formatCurrency(totalGeral)}</td>
+              <td className="border-0 p-1"></td>
             </tr>
           </tbody>
         </table>
