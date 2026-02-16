@@ -100,7 +100,7 @@ const MaterialPermanenteBulkJustificativaDialog = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-[98vw] w-full max-h-[98vh] h-[95vh] overflow-hidden flex flex-col">
+      <DialogContent className="max-w-[95vw] w-full max-h-[90vh] overflow-hidden flex flex-col">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <TableIcon className="h-5 w-5 text-primary" />
@@ -138,7 +138,6 @@ const MaterialPermanenteBulkJustificativaDialog = ({
                         value={item.justificativa?.[field] || ""}
                         onChange={(e) => {
                           handleInputChange(item.id, field, e.target.value);
-                          // Auto-resize height
                           e.target.style.height = 'auto';
                           e.target.style.height = e.target.scrollHeight + 'px';
                         }}

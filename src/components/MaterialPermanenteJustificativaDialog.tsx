@@ -65,7 +65,7 @@ const MaterialPermanenteJustificativaDialog = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-6xl max-h-[95vh] h-[90vh] flex flex-col overflow-hidden">
+      <DialogContent className="max-w-6xl h-[95vh] flex flex-col overflow-hidden">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <FileText className="h-5 w-5 text-primary" />
@@ -137,7 +137,7 @@ const MaterialPermanenteJustificativaDialog = ({
                   value={formData.motivo || ""} 
                   onChange={(e) => setFormData({ ...formData, motivo: e.target.value })}
                   placeholder="Descreva a necessidade técnica da aquisição..."
-                  className="min-h-[120px] resize-none"
+                  className="min-h-[150px] resize-none"
                 />
               </div>
             </div>
