@@ -184,7 +184,10 @@ const DOREditor = () => {
             </div>
 
             {/* Coluna Central: Identificação da OM */}
-            <div className="border-r border-black p-2 flex flex-col items-center justify-center text-center font-bold uppercase text-[10pt] leading-tight">
+            <div 
+              className="border-r border-black p-2 flex flex-col items-center justify-center text-center font-bold uppercase leading-tight"
+              style={{ fontFamily: 'Calibri, sans-serif', fontSize: '11pt' }}
+            >
               <p>Ministério da Defesa</p>
               <p>Exército Brasileiro</p>
               <p>{ptrab?.comando_militar_area}</p>
@@ -192,15 +195,19 @@ const DOREditor = () => {
             </div>
 
             {/* Coluna Direita: Nome do Documento e Numeração */}
-            <div className="p-2 flex flex-col items-center justify-center text-center text-[9pt] leading-tight">
-              <p className="font-bold">Documento de Oficialização da Requisição – DOR</p>
-              <div className="flex items-center gap-1 font-bold mt-1">
+            <div 
+              className="p-2 flex flex-col items-center justify-center text-center leading-tight font-bold"
+              style={{ fontFamily: 'Calibri, sans-serif', fontSize: '11pt' }}
+            >
+              <p>Documento de Oficialização da Requisição – DOR</p>
+              <div className="flex items-center gap-1 mt-1">
                 <span>nº</span>
                 <DocumentInput 
                   value={formData.numero_dor}
                   onChange={(e: any) => setFormData({...formData, numero_dor: e.target.value})}
                   placeholder="00 - 2025"
                   className="w-20 text-center font-bold"
+                  style={{ fontSize: '11pt' }}
                 />
               </div>
               <p className="mt-3">{dataAtual}</p>
