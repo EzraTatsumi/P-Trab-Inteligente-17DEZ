@@ -6,17 +6,15 @@ import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { 
-    ArrowLeft, Loader2, Plus, Trash2, Calculator, 
-    Save, Info, Pencil, History, CheckCircle2, AlertCircle 
+    ArrowLeft, Loader2, Plus, Trash2, 
+    Save, Pencil, CheckCircle2 
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import PageMetadata from "@/components/PageMetadata";
 import { formatCurrency } from '@/lib/formatUtils';
 import { useSession } from '@/components/SessionContextProvider';
@@ -24,7 +22,7 @@ import MaterialPermanenteItemSelectorDialog from '@/components/MaterialPermanent
 import MaterialPermanenteJustificativaDialog from '@/components/MaterialPermanenteJustificativaDialog';
 import MaterialPermanenteBulkJustificativaDialog from '@/components/MaterialPermanenteBulkJustificativaDialog';
 import { 
-    ItemAquisicaoMaterial, 
+    ItemAquisicaoPermanente, 
     ConsolidatedPermanenteRecord 
 } from '@/types/diretrizesMaterialPermanente';
 
@@ -40,13 +38,11 @@ const MaterialPermanenteFormPage = () => {
     const [ug, setUg] = useState("");
     const [faseAtividade, setFaseAtividade] = useState("");
     const [diasOperacao, setDiasOperacao] = useState(1);
-    const [selectedItems, setSelectedItems] = useState<ItemAquisicaoMaterial[]>([]);
+    const [selectedItems, setSelectedItems] = useState<ItemAquisicaoPermanente[]>([]);
     const [isSelectorOpen, setIsSelectorOpen] = useState(false);
     const [justificativaDialogOpen, setJustificativaDialogOpen] = useState(false);
     const [isBulkJustificativaOpen, setIsBulkJustificativaOpen] = useState(false);
-    const [itemForJustificativa, setItemForJustificativa] = useState<ItemAquisicaoMaterial | null>(null);
-    const [expandedJustifications, setExpandedJustifications] = useState<Record<string, boolean>>({});
-    const [memoriaEdit, setMemoriaEdit] = useState("");
+    const [itemForJustificativa, setItemForJustificativa] = useState<ItemAquisicaoPermanente | null>(null);
 
     const { data: ptrabData } = useQuery({
         queryKey: ['ptrab', ptrabId],
@@ -106,6 +102,7 @@ const MaterialPermanenteFormPage = () => {
             const itemsWithoutJustification = selectedItems.filter(item => !item.justificativa || !Object.values(item.justificativa).some(v => v && v.toString().trim() !== ""));
             if (itemsWithoutJustification.length > 0) { toast.error("Todos os itens devem possuir uma justificativa preenchida."); return; }
 
+            const total = selectedItems.reduce((acc, i) => acc + (i.valor_unitario * (i.quantidade || 1)), 0);
             const payload = {
                 p_trab_id: ptrabId,
                 organizacao,
@@ -113,9 +110,9 @@ const MaterialPermanenteFormPage = () => {
                 fase_atividade: faseAtividade,
                 dias_operacao: diasOperacao,
                 categoria: "Material Permanente",
-                detalhes_planejamento: { items: selectedItems },
-                valor_total: selectedItems.reduce((acc, i) => acc + (i.valor_unitario * (i.quantidade || 1)), 0),
-                valor_nd_52: selectedItems.reduce((acc, i) => acc + (i.valor_unitario * (i.quantidade || 1)), 0),
+                detalhes_planejamento: { items: selectedItems } as any,
+                valor_total: total,
+                valor_nd_52: total,
             };
 
             const { error } = await supabase.from('material_permanente_registros').insert([payload]);
@@ -148,21 +145,6 @@ const MaterialPermanenteFormPage = () => {
 
     const handleSaveBulkJustificativas = (data: Record<string, any>) => {
         setSelectedItems(prev => prev.map(i => ({ ...i, justificativa: data })));
-    };
-
-    const handleSaveMemoria = async (id: string) => {
-        const { error } = await supabase.from('material_permanente_registros').update({ detalhamento_customizado: memoriaEdit }).eq('id', id);
-        if (error) toast.error("Erro ao salvar memória.");
-        else {
-            toast.success("Memória atualizada.");
-            queryClient.invalidateQueries({ queryKey: ['materialPermanenteRegistros', ptrabId] });
-        }
-    };
-
-    const handleRestoreMemoria = async (id: string) => {
-        await supabase.from('material_permanente_registros').update({ detalhamento_customizado: null }).eq('id', id);
-        toast.success("Memória restaurada.");
-        queryClient.invalidateQueries({ queryKey: ['materialPermanenteRegistros', ptrabId] });
     };
 
     return (
@@ -227,7 +209,7 @@ const MaterialPermanenteFormPage = () => {
                                                             type="number" 
                                                             className="w-16 h-8 mx-auto" 
                                                             value={item.quantidade || 1} 
-                                                            onChange={(e) => setSelectedItems(prev => prev.map(i => i.id === item.id ? { ...i, quantidade: parseInt(e.target.value) || 1 } : i))}
+                                                            onChange={(e) => setSelectedItems(prev => prev.map(i => i.id === item.id ? { ...i, quantity: parseInt(e.target.value) || 1 } : i))}
                                                         />
                                                     </TableCell>
                                                     <TableCell className="text-right">{formatCurrency(item.valor_unitario * (item.quantidade || 1))}</TableCell>

@@ -1,6 +1,6 @@
 import { ItemAquisicao } from "./diretrizesMaterialConsumo";
 
-export interface ItemAquisicaoMaterial extends ItemAquisicao {
+export interface ItemAquisicaoPermanente extends ItemAquisicao {
     unidade_medida?: string;
     justificativa?: Record<string, any>;
 }
@@ -12,7 +12,7 @@ export interface DiretrizMaterialPermanente {
     nr_subitem: string;
     nome_subitem: string;
     descricao_subitem?: string;
-    itens_aquisicao: ItemAquisicaoMaterial[];
+    itens_aquisicao: ItemAquisicaoPermanente[];
     ativo: boolean;
     created_at?: string;
     updated_at?: string;

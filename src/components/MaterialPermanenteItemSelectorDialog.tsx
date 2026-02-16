@@ -23,7 +23,6 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { ItemAquisicao } from "@/types/diretrizesMaterialConsumo";
 import { formatCurrency, formatCodug, formatPregao } from "@/lib/formatUtils";
-import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 import { useSession } from "@/components/SessionContextProvider";
@@ -109,7 +108,7 @@ const MaterialPermanenteItemSelectorDialog: React.FC<MaterialPermanenteItemSelec
         const groups: Record<string, SubitemGroup> = {};
         const lowerCaseSearch = searchTerm.toLowerCase().trim();
 
-        diretrizes.forEach(diretriz => {
+        diretrizes.forEach((diretriz: any) => {
             const items = Array.isArray(diretriz.itens_aquisicao) ? (diretriz.itens_aquisicao as any[]) : [];
             
             const filteredItems = items.filter(item => {
