@@ -29,13 +29,14 @@ const PTrabMaterialPermanenteReport: React.FC<PTrabMaterialPermanenteReportProps
   const rows = useMemo(() => {
     const allRows: any[] = [];
     registrosMaterialPermanente.forEach(reg => {
-      const items = (reg.detalhes_planejamento as any)?.items || [];
+      // CORREÇÃO: A chave correta no seu banco é 'itens_selecionados'
+      const items = (reg.detalhes_planejamento as any)?.itens_selecionados || [];
       items.forEach((item: any) => {
         allRows.push({
           itemNome: item.descricao_reduzida || item.descricao_item,
           omDestino: reg.om_detentora || reg.organizacao,
           ugDestino: reg.ug_detentora || reg.ug,
-          valor: item.valor_unitario * (item.quantidade || 1),
+          valor: Number(item.valor_unitario || 0) * Number(item.quantidade || 1),
           memoria: generateMaterialPermanenteMemoriaCalculo(reg, { itemEspecifico: item })
         });
       });
@@ -79,7 +80,7 @@ const PTrabMaterialPermanenteReport: React.FC<PTrabMaterialPermanenteReportProps
     const border = { top: { style: 'thin' as const }, left: { style: 'thin' as const }, bottom: { style: 'thin' as const }, right: { style: 'thin' as const } };
     const headerFill = { type: 'pattern' as const, pattern: 'solid' as const, fgColor: { argb: 'FFD9D9D9' } };
     const ndFill = { type: 'pattern' as const, pattern: 'solid' as const, fgColor: { argb: 'FFE2EFDA' } };
-    const valueFill = { type: 'pattern' as const, pattern: 'solid' as const, fgColor: { argb: 'FFE2EFDA' } }; // Verde claro para os valores também
+    const valueFill = { type: 'pattern' as const, pattern: 'solid' as const, fgColor: { argb: 'FFE2EFDA' } };
 
     let curr = 1;
     const addTitle = (text: string, bold = true, underline = false) => {
