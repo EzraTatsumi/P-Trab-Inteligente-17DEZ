@@ -470,7 +470,7 @@ const DOREditor = () => {
                 className="border-b border-black p-0.5 font-bold text-center uppercase"
                 style={headerTitleStyle}
               >
-                4. Finalidade
+                FINALIDADE
               </div>
               <div className="p-1 px-2">
                 <DocumentTextArea 
@@ -482,17 +482,15 @@ const DOREditor = () => {
               </div>
             </div>
 
-            {/* SEÇÃO 5: JUSTIFICATIVAS */}
+            {/* SEÇÃO 5: MOTIVAÇÃO */}
             <div className="border border-black mb-4">
               <div 
                 className="border-b border-black p-0.5 font-bold text-center uppercase"
                 style={headerTitleStyle}
               >
-                5. Justificativas da Contratação / Requisição
+                MOTIVAÇÃO
               </div>
-              
-              <div className="border-b border-black p-1 px-2">
-                <span className="block font-bold uppercase mb-0.5">5.1. Motivação / Justificativa:</span>
+              <div className="p-1 px-2">
                 <DocumentTextArea 
                   value={formData.motivacao}
                   onChange={(e: any) => setFormData({...formData, motivacao: e.target.value})}
@@ -500,9 +498,17 @@ const DOREditor = () => {
                   style={bodyStyle}
                 />
               </div>
+            </div>
 
+            {/* SEÇÃO 6: CONSEQUÊNCIA DO NÃO ATENDIMENTO */}
+            <div className="border border-black mb-4">
+              <div 
+                className="border-b border-black p-0.5 font-bold text-center uppercase"
+                style={headerTitleStyle}
+              >
+                CONSEQUÊNCIA DO NÃO ATENDIMENTO
+              </div>
               <div className="p-1 px-2">
-                <span className="block font-bold uppercase mb-0.5">5.2. Consequência do Não Atendimento:</span>
                 <DocumentTextArea 
                   value={formData.consequencia}
                   onChange={(e: any) => setFormData({...formData, consequencia: e.target.value})}
@@ -512,13 +518,13 @@ const DOREditor = () => {
               </div>
             </div>
 
-            {/* SEÇÃO 6: OBSERVAÇÕES */}
+            {/* SEÇÃO 7: OBSERVAÇÕES */}
             <div className="border border-black mb-4">
                <div 
                 className="border-b border-black p-0.5 font-bold text-center uppercase"
                 style={headerTitleStyle}
               >
-                6. Observações Gerais
+                OBSERVAÇÕES GERAIS
               </div>
               <div className="p-1 px-2">
                 <DocumentTextArea 
