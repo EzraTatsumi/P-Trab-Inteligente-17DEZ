@@ -5,7 +5,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { ArrowLeft, Save, Printer, Loader2, Info, Download } from "lucide-react";
+import { ArrowLeft, Save, Printer, Loader2, Info, Download, RefreshCw } from "lucide-react";
 import { useSession } from "@/components/SessionContextProvider";
 import { cn } from "@/lib/utils";
 import { formatNumber } from "@/lib/formatUtils";
@@ -115,7 +115,7 @@ const DOREditor = () => {
           plano_orcamentario: dorData.plano_orcamentario || "A cargo do MD.",
           anexos: (dorData as any).anexos || "----",
           evento: dorData.evento || "",
-          finalidade: dorData.finalidade || "",
+          finalidade: dorData.finalidade || ptrabData.acoes || "",
           motivacao: dorData.motivacao || "",
           consequencia: dorData.consequencia || "",
           observacoes: dorData.observacoes || ""
@@ -225,6 +225,15 @@ const DOREditor = () => {
 
   const handlePrint = () => {
     window.print();
+  };
+
+  const importFinalidadeFromPtrab = () => {
+    if (ptrab?.acoes) {
+      setFormData(prev => ({ ...prev, finalidade: ptrab.acoes }));
+      toast.success("Finalidade importada do P-Trab!");
+    } else {
+      toast.error("Nenhuma ação descrita no cabeçalho do P-Trab.");
+    }
   };
 
   if (loading) {
@@ -474,10 +483,17 @@ const DOREditor = () => {
             {/* SEÇÃO 4: FINALIDADE */}
             <div className="border border-black mb-4">
               <div 
-                className="border-b border-black p-0.5 font-bold text-center uppercase"
+                className="border-b border-black p-0.5 font-bold text-center uppercase relative group"
                 style={headerTitleStyle}
               >
                 FINALIDADE
+                <button 
+                  onClick={importFinalidadeFromPtrab}
+                  className="absolute right-1 top-1/2 -translate-y-1/2 p-1 hover:bg-black/10 rounded transition-colors print:hidden opacity-0 group-hover:opacity-100"
+                  title="Importar do P-Trab"
+                >
+                  <RefreshCw className="h-3 w-3" />
+                </button>
               </div>
               <div className="p-1 px-2">
                 <DocumentTextArea 
