@@ -225,33 +225,33 @@ const DOREditor = () => {
             
             {/* SEÇÃO 1: DADOS DO REQUISITANTE */}
             <div 
-              className="border-b border-black p-1.5 font-bold text-center uppercase"
+              className="border-b border-black p-1 font-bold text-center uppercase"
               style={headerTitleStyle}
             >
               DADOS DO ÓRGÃO REQUISITANTE
             </div>
             
-            <div className="border-b border-black p-1 px-2 font-bold">
+            <div className="border-b border-black py-0.5 px-2 font-bold">
               Órgão:
             </div>
-            <div className="border-b border-black p-1 px-2">
+            <div className="border-b border-black py-0.5 px-2">
               {ptrab?.nome_om_extenso || ptrab?.nome_om}
             </div>
             
             <div className="grid grid-cols-2 border-b border-black">
-              <div className="p-1 px-2 border-r border-black font-bold">
+              <div className="py-0.5 px-2 border-r border-black font-bold">
                 Responsável pela Demanda:
               </div>
-              <div className="p-1 px-2"></div>
+              <div className="py-0.5 px-2"></div>
             </div>
             
-            <div className="border-b border-black p-1 px-2">
+            <div className="border-b border-black py-0.5 px-2">
               {ptrab?.nome_cmt_om || "Não informado"}
             </div>
 
             <div className="grid grid-cols-2 border-b border-black">
-              <div className="p-1 px-2 border-r border-black flex items-center gap-1">
-                <span className="font-bold">E-mail:</span>
+              <div className="py-0.5 px-2 border-r border-black flex items-center gap-1">
+                <span className="font-bold whitespace-nowrap">E-mail:</span>
                 <DocumentInput 
                   value={formData.email}
                   onChange={(e: any) => setFormData({...formData, email: e.target.value})}
@@ -260,8 +260,8 @@ const DOREditor = () => {
                   style={bodyStyle}
                 />
               </div>
-              <div className="p-1 px-2 flex items-center gap-1">
-                <span className="font-bold">Telefone:</span>
+              <div className="py-0.5 px-2 flex items-center gap-1">
+                <span className="font-bold whitespace-nowrap">Telefone:</span>
                 <DocumentInput 
                   value={formData.telefone}
                   onChange={(e: any) => setFormData({...formData, telefone: e.target.value})}
@@ -274,13 +274,13 @@ const DOREditor = () => {
 
             {/* SEÇÃO 2: DADOS ORÇAMENTÁRIOS */}
             <div 
-              className="border-b border-black p-1.5 font-bold text-center uppercase"
+              className="border-b border-black p-1 font-bold text-center uppercase"
               style={headerTitleStyle}
             >
               2. Dados Orçamentários
             </div>
             <div className="grid grid-cols-2 border-b border-black">
-              <div className="p-2 border-r border-black flex items-center gap-2">
+              <div className="py-1 px-2 border-r border-black flex items-center gap-2">
                 <span className="font-bold uppercase shrink-0">Ação Orçamentária (AO):</span>
                 <DocumentInput 
                   value={formData.acao_orcamentaria}
@@ -289,7 +289,7 @@ const DOREditor = () => {
                   style={bodyStyle}
                 />
               </div>
-              <div className="p-2 flex items-center gap-2">
+              <div className="py-1 px-2 flex items-center gap-2">
                 <span className="font-bold uppercase shrink-0">Plano Orçamentário (PO):</span>
                 <DocumentInput 
                   value={formData.plano_orcamentario}
@@ -302,7 +302,7 @@ const DOREditor = () => {
 
             {/* SEÇÃO 3: OBJETO */}
             <div 
-              className="border-b border-black p-1.5 font-bold text-center uppercase"
+              className="border-b border-black p-1 font-bold text-center uppercase"
               style={headerTitleStyle}
             >
               3. Objeto da Requisição
@@ -321,22 +321,22 @@ const DOREditor = () => {
 
             {/* SEÇÃO 4: ITENS */}
             <div 
-              className="border-b border-black p-1.5 font-bold text-center uppercase"
+              className="border-b border-black p-1 font-bold text-center uppercase"
               style={headerTitleStyle}
             >
               4. Descrição dos Itens (Bens e/ou Serviços)
             </div>
-            <div className="p-6 text-center border-b border-black bg-slate-50 text-slate-500 italic">
-              <div className="flex flex-col items-center gap-2">
-                <Info className="h-5 w-5" />
-                <p>A tabela detalhada de itens e valores será consolidada automaticamente no relatório final do P-Trab.</p>
+            <div className="p-4 text-center border-b border-black bg-slate-50 text-slate-500 italic">
+              <div className="flex flex-col items-center gap-1">
+                <Info className="h-4 w-4" />
+                <p className="text-[11pt]">A tabela detalhada de itens e valores será consolidada automaticamente no relatório final do P-Trab.</p>
                 <p className="text-[10pt]">Consulte o P-Trab Nr {ptrab?.numero_ptrab} para o detalhamento completo.</p>
               </div>
             </div>
 
             {/* SEÇÃO 5: JUSTIFICATIVAS */}
             <div 
-              className="border-b border-black p-1.5 font-bold text-center uppercase"
+              className="border-b border-black p-1 font-bold text-center uppercase"
               style={headerTitleStyle}
             >
               5. Justificativas da Contratação / Requisição
@@ -377,7 +377,7 @@ const DOREditor = () => {
 
             {/* SEÇÃO 6: OBSERVAÇÕES */}
              <div 
-              className="border-b border-black p-1.5 font-bold text-center uppercase"
+              className="border-b border-black p-1 font-bold text-center uppercase"
               style={headerTitleStyle}
             >
               6. Observações Gerais
@@ -395,12 +395,12 @@ const DOREditor = () => {
           </div>
 
           {/* RODAPÉ E ASSINATURAS */}
-          <div className="mt-16 flex flex-col items-center" style={bodyStyle}>
-            <div className="text-center mb-12 w-full">
+          <div className="mt-12 flex flex-col items-center" style={bodyStyle}>
+            <div className="text-center mb-8 w-full">
               <p>{ptrab?.local_om || "Local não informado"}, {new Date().toLocaleDateString('pt-BR', { day: 'numeric', month: 'long', year: 'numeric' })}.</p>
             </div>
 
-            <div className="w-2/3 border-t border-black mt-10"></div>
+            <div className="w-2/3 border-t border-black mt-8"></div>
             <div className="text-center mt-2">
               <p className="font-bold uppercase">{ptrab?.nome_cmt_om || "NOME DO ORDENADOR DE DESPESAS"}</p>
               <p className="uppercase">Ordenador de Despesas da {ptrab?.nome_om}</p>
