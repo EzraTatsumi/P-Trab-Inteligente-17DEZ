@@ -10,13 +10,14 @@ import { useSession } from "@/components/SessionContextProvider";
 import { cn } from "@/lib/utils";
 
 // Componente auxiliar para Inputs que parecem texto do documento
-const DocumentInput = ({ value, onChange, placeholder, className, readOnly = false }: any) => (
+const DocumentInput = ({ value, onChange, placeholder, className, readOnly = false, style }: any) => (
   <input
     type="text"
     value={value || ""}
     onChange={onChange}
     placeholder={placeholder}
     readOnly={readOnly}
+    style={style}
     className={cn(
       "bg-transparent border-none p-0 focus:ring-1 focus:ring-primary/30 focus:bg-yellow-50/50 outline-none text-black placeholder:text-gray-300 font-normal transition-colors",
       className
@@ -98,7 +99,7 @@ const DOREditor = () => {
           ...prev,
           evento: ptrabData.nome_operacao,
           finalidade: ptrabData.acoes || "",
-          numero_dor: `${new Date().getFullYear()}`
+          numero_dor: "" // Deixa vazio para mostrar o placeholder '01'
         }));
       }
     } catch (error: any) {
@@ -148,6 +149,7 @@ const DOREditor = () => {
   }
 
   const dataAtual = new Date().toLocaleDateString('pt-BR');
+  const anoAtual = new Date().getFullYear();
 
   return (
     <div className="min-h-screen bg-slate-200 py-8 px-4 print:p-0 print:bg-white font-serif">
@@ -202,15 +204,16 @@ const DOREditor = () => {
               style={{ fontFamily: 'Calibri, sans-serif', fontSize: '11pt' }}
             >
               <p>Documento de Oficialização da Requisição – DOR</p>
-              <div className="flex items-center gap-1 mt-1">
+              <div className="flex items-center justify-center gap-0.5 mt-1">
                 <span>nº</span>
                 <DocumentInput 
                   value={formData.numero_dor}
                   onChange={(e: any) => setFormData({...formData, numero_dor: e.target.value})}
-                  placeholder="00 - 2025"
-                  className="w-20 text-center font-bold"
+                  placeholder="01"
+                  className="w-8 text-center font-bold"
                   style={{ fontSize: '11pt' }}
                 />
+                <span>/ {anoAtual}</span>
               </div>
               <p className="mt-3">{dataAtual}</p>
             </div>
