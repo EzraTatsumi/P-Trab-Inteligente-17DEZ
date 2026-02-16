@@ -8,6 +8,7 @@ import { toast } from "sonner";
 import { ArrowLeft, Save, Printer, Loader2, Info } from "lucide-react";
 import { useSession } from "@/components/SessionContextProvider";
 import { cn } from "@/lib/utils";
+import { formatNumber } from "@/lib/formatUtils";
 
 // Componente auxiliar para Inputs que parecem texto do documento
 const DocumentInput = ({ value, onChange, placeholder, className, readOnly = false, style }: any) => (
@@ -49,6 +50,7 @@ const DOREditor = () => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [ptrab, setPtrab] = useState<any>(null);
+  const [dorItems, setDorItems] = useState<any[]>([]);
   
   const [formData, setFormData] = useState({
     numero_dor: "",
@@ -68,6 +70,7 @@ const DOREditor = () => {
     if (!ptrabId) return;
     setLoading(true);
     try {
+      // 1. Carregar dados do P-Trab
       const { data: ptrabData, error: ptrabError } = await supabase
         .from("p_trab")
         .select("*")
@@ -77,6 +80,7 @@ const DOREditor = () => {
       if (ptrabError) throw ptrabError;
       setPtrab(ptrabData);
 
+      // 2. Carregar dados do DOR (se existirem)
       const { data: dorData } = await supabase
         .from("dor_registros")
         .select("*")
@@ -105,6 +109,57 @@ const DOREditor = () => {
           numero_dor: "" 
         }));
       }
+
+      // 3. Consolidar Itens para a Tabela
+      const tables = [
+        { name: 'classe_i_registros', gnd: 3, desc: 'COMPLEMENTAÇÃO DE ALIMENTAÇÃO' },
+        { name: 'classe_ii_registros', gnd: 3, desc: 'MATERIAL DE INTENDÊNCIA' },
+        { name: 'classe_iii_registros', gnd: 3, desc: 'AQUISIÇÃO DE COMBUSTÍVEL' },
+        { name: 'classe_v_registros', gnd: 3, desc: 'ARMAMENTO' },
+        { name: 'classe_vi_registros', gnd: 3, desc: 'MATERIAL DE ENGENHARIA' },
+        { name: 'classe_vii_registros', gnd: 3, desc: 'COMUNICAÇÕES E INFORMÁTICA' },
+        { name: 'classe_viii_saude_registros', gnd: 3, desc: 'MATERIAL DE SAÚDE' },
+        { name: 'classe_viii_remonta_registros', gnd: 3, desc: 'REMONTA E VETERINÁRIA' },
+        { name: 'classe_ix_registros', gnd: 3, desc: 'MANUTENÇÃO DE VIATURA' },
+        { name: 'diaria_registros', gnd: 3, desc: 'PAGAMENTO DE DIÁRIA' },
+        { name: 'verba_operacional_registros', gnd: 3, desc: 'VERBA OPERACIONAL' },
+        { name: 'passagem_registros', gnd: 3, desc: 'AQUISIÇÃO DE PASSAGENS' },
+        { name: 'concessionaria_registros', gnd: 3, desc: 'PAGAMENTO DE CONCESSIONÁRIA' },
+        { name: 'horas_voo_registros', gnd: 3, desc: 'FRETAMENTO AÉREO' },
+        { name: 'material_consumo_registros', gnd: 3, desc: 'MATERIAL DE CONSUMO' },
+        { name: 'complemento_alimentacao_registros', gnd: 3, desc: 'COMPLEMENTAÇÃO DE ALIMENTAÇÃO' },
+        { name: 'servicos_terceiros_registros', gnd: 3, desc: 'SERVIÇOS DE TERCEIROS' },
+        { name: 'material_permanente_registros', gnd: 4, desc: 'MATERIAL PERMANENTE' }
+      ];
+
+      const aggregatedItems: any[] = [];
+
+      for (const table of tables) {
+        const { data, error } = await (supabase.from(table.name as any) as any)
+          .select('organizacao, ug, valor_total')
+          .eq('p_trab_id', ptrabId);
+
+        if (!error && data) {
+          data.forEach((row: any) => {
+            const ugeLabel = `${row.organizacao} (${row.ug})`;
+            const existing = aggregatedItems.find(i => i.uge === ugeLabel && i.descricao === table.desc);
+            
+            if (existing) {
+              existing.valor_num += Number(row.valor_total || 0);
+            } else {
+              aggregatedItems.push({
+                uge: ugeLabel,
+                gnd: table.gnd,
+                descricao: table.desc,
+                valor_num: Number(row.valor_total || 0)
+              });
+            }
+          });
+        }
+      }
+
+      setDorItems(aggregatedItems.filter(i => i.valor_num > 0));
+
     } catch (error: any) {
       toast.error("Erro ao carregar dados: " + error.message);
     } finally {
@@ -213,7 +268,7 @@ const DOREditor = () => {
                   value={formData.numero_dor}
                   onChange={(e: any) => setFormData({...formData, numero_dor: e.target.value})}
                   placeholder="01"
-                  className="w-8 text-center"
+                  className="w-8 text-center font-bold"
                   style={{ fontSize: '11pt' }}
                 />
                 <span>/ {anoAtual}</span>
@@ -316,7 +371,7 @@ const DOREditor = () => {
               </div>
             </div>
 
-            {/* SEÇÃO 3: OBJETO */}
+            {/* SEÇÃO 3: OBJETO E ITENS */}
             <div className="border border-black mb-4">
               <div 
                 className="border-b border-black p-0.5 font-bold text-center uppercase"
@@ -324,33 +379,51 @@ const DOREditor = () => {
               >
                 OBJETO DE REQUISIÇÃO
               </div>
-              <div className="p-1 px-2">
-                <DocumentTextArea 
-                  value={formData.evento}
-                  onChange={(e: any) => setFormData({...formData, evento: e.target.value})}
-                  placeholder="Descreva o evento ou operação..."
-                  rows={2}
-                  className="font-bold uppercase"
-                  style={bodyStyle}
-                />
+              
+              <div className="grid grid-cols-[120px_1fr] border-b border-black">
+                <div className="py-0 px-2 border-r border-black font-bold flex items-center">
+                  Evento:
+                </div>
+                <div className="py-0 px-2">
+                  <DocumentInput 
+                    value={formData.evento}
+                    onChange={(e: any) => setFormData({...formData, evento: e.target.value})}
+                    placeholder="Nome da Operação / Atividade"
+                    className="w-full font-bold uppercase"
+                    style={bodyStyle}
+                  />
+                </div>
               </div>
-            </div>
 
-            {/* SEÇÃO 4: ITENS */}
-            <div className="border border-black mb-4">
               <div 
                 className="border-b border-black p-0.5 font-bold text-center uppercase"
                 style={headerTitleStyle}
               >
-                4. Descrição dos Itens (Bens e/ou Serviços)
+                DESCRIÇÃO DO ITEM (BEM E/OU SERVIÇO)
               </div>
-              <div className="p-2 text-center bg-slate-50 text-slate-500 italic">
-                <div className="flex flex-col items-center gap-0.5">
-                  <Info className="h-3.5 w-3.5" />
-                  <p className="text-[11pt]">A tabela detalhada de itens e valores será consolidada automaticamente no relatório final do P-Trab.</p>
-                  <p className="text-[10pt]">Consulte o P-Trab Nr {ptrab?.numero_ptrab} para o detalhamento completo.</p>
+
+              <div className="grid grid-cols-[1fr_60px_140px_1fr] border-b border-black font-bold text-center text-[10pt]">
+                <div className="border-r border-black py-0 px-1">UGE</div>
+                <div className="border-r border-black py-0 px-1">GND</div>
+                <div className="border-r border-black py-0 px-1">VALOR</div>
+                <div className="py-0 px-1">Descrição</div>
+              </div>
+
+              {/* Linhas de Itens Consolidadas */}
+              {dorItems.length > 0 ? (
+                dorItems.map((item, idx) => (
+                  <div key={idx} className={cn("grid grid-cols-[1fr_60px_140px_1fr] text-[10pt] text-center", idx !== dorItems.length - 1 && "border-b border-black")}>
+                    <div className="border-r border-black py-0 px-1 text-left leading-tight flex items-center">{item.uge}</div>
+                    <div className="border-r border-black py-0 px-1 flex items-center justify-center">{item.gnd}</div>
+                    <div className="border-r border-black py-0 px-1 flex items-center justify-end">{formatNumber(item.valor_num)}</div>
+                    <div className="py-0 px-1 text-left leading-tight uppercase flex items-center">{item.descricao}</div>
+                  </div>
+                ))
+              ) : (
+                <div className="p-4 text-center text-slate-400 italic text-[10pt]">
+                  Nenhum item de custo encontrado para este P-Trab.
                 </div>
-              </div>
+              )}
             </div>
 
             {/* SEÇÃO 5: JUSTIFICATIVAS */}
