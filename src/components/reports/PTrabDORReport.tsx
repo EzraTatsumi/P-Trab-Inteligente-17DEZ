@@ -28,15 +28,14 @@ const PTrabDORReport: React.FC<PTrabDORReportProps> = ({ ptrabData, dorData, sel
     toast.loading("Gerando PDF de alta fidelidade...", { id: "pdf-gen" });
     
     try {
-      // Pequeno delay para garantir que o DOM esteja estável
       await new Promise(resolve => setTimeout(resolve, 300));
 
       const canvas = await html2canvas(reportRef.current, {
-        scale: 3, // Alta resolução
+        scale: 3,
         useCORS: true,
         logging: false,
         backgroundColor: "#ffffff",
-        windowWidth: 1000, // Largura fixa para consistência
+        windowWidth: 1000,
       });
       
       const imgData = canvas.toDataURL('image/png');
@@ -60,7 +59,6 @@ const PTrabDORReport: React.FC<PTrabDORReportProps> = ({ ptrabData, dorData, sel
   const dataAtual = new Date().toLocaleDateString('pt-BR', { day: 'numeric', month: 'long', year: 'numeric' });
   const anoAtual = new Date().getFullYear();
 
-  // Estilos inline para garantir fidelidade no html2canvas
   const tableStyle: React.CSSProperties = { 
     width: '100%', 
     borderCollapse: 'collapse', 
@@ -93,7 +91,6 @@ const PTrabDORReport: React.FC<PTrabDORReportProps> = ({ ptrabData, dorData, sel
 
   return (
     <div className="space-y-6">
-      {/* Barra de Ações */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-muted/30 p-4 rounded-xl border border-border print:hidden">
         <div className="flex items-center gap-3">
           {selector}
@@ -115,13 +112,11 @@ const PTrabDORReport: React.FC<PTrabDORReportProps> = ({ ptrabData, dorData, sel
         </div>
       </div>
 
-      {/* Container do Relatório (Folha A4) */}
       <div 
         ref={reportRef}
         className="max-w-[210mm] mx-auto bg-white shadow-lg print:shadow-none p-[15mm] text-black print:p-0"
         style={{ fontFamily: 'Calibri, Arial, sans-serif', fontSize: '12pt' }}
       >
-        {/* Cabeçalho do Documento (Tabela para evitar desalinhamento) */}
         <table style={{ ...tableStyle, border: '1.5px solid black', minHeight: '100px' }}>
           <tbody>
             <tr>
@@ -148,7 +143,6 @@ const PTrabDORReport: React.FC<PTrabDORReportProps> = ({ ptrabData, dorData, sel
           </tbody>
         </table>
 
-        {/* 1. DADOS DO ÓRGÃO REQUISITANTE */}
         <table style={tableStyle}>
           <tbody>
             <tr>
@@ -205,7 +199,6 @@ const PTrabDORReport: React.FC<PTrabDORReportProps> = ({ ptrabData, dorData, sel
           </tbody>
         </table>
 
-        {/* 2. ANEXOS */}
         <table style={tableStyle}>
           <tbody>
             <tr>
@@ -217,7 +210,6 @@ const PTrabDORReport: React.FC<PTrabDORReportProps> = ({ ptrabData, dorData, sel
           </tbody>
         </table>
 
-        {/* 3. AO / PO */}
         <table style={tableStyle}>
           <tbody>
             <tr>
@@ -235,7 +227,6 @@ const PTrabDORReport: React.FC<PTrabDORReportProps> = ({ ptrabData, dorData, sel
           </tbody>
         </table>
 
-        {/* 4. OBJETO DE REQUISIÇÃO */}
         <table style={tableStyle}>
           <tbody>
             <tr>
@@ -251,28 +242,27 @@ const PTrabDORReport: React.FC<PTrabDORReportProps> = ({ ptrabData, dorData, sel
               <td colSpan={4} style={headerCellStyle}>DESCRIÇÃO DO ITEM (BEM E/OU SERVIÇO)</td>
             </tr>
             <tr style={{ fontWeight: 'bold', textAlign: 'center', fontSize: '10pt' }}>
-              <td style={{ ...cellStyle, width: '150px' }}>UGE</td>
-              <td style={{ ...cellStyle, width: '60px' }}>GND</td>
-              <td style={{ ...cellStyle, width: '120px' }}>VALOR</td>
+              <td style={{ ...cellStyle, width: '130px' }}>UGE</td>
+              <td style={{ ...cellStyle, width: '50px' }}>GND</td>
+              <td style={{ ...cellStyle, width: '110px' }}>VALOR</td>
               <td style={cellStyle}>Descrição</td>
             </tr>
             {dorData.itens_dor?.map((item: any, idx: number) => (
               <tr key={idx} style={{ fontSize: '10pt', textAlign: 'center' }}>
-                <td style={cellStyle}>
-                  <div style={{ fontWeight: 'bold' }}>{item.uge_name || item.uge || "N/I"}</div>
+                <td style={{ ...cellStyle, verticalAlign: 'middle', textAlign: 'center', lineHeight: '1.2' }}>
+                  <div style={{ fontWeight: 'normal' }}>{item.uge_name || item.uge || "N/I"}</div>
                   {(item.uge_code || item.ug) && (
                     <div style={{ fontSize: '9pt', fontWeight: 'normal' }}>({formatCodug(item.uge_code || item.ug)})</div>
                   )}
                 </td>
                 <td style={{ ...cellStyle, verticalAlign: 'middle' }}>{item.gnd}</td>
-                <td style={{ ...cellStyle, verticalAlign: 'middle', fontWeight: 'bold' }}>{formatNumber(item.valor_num)}</td>
-                <td style={{ ...cellStyle, textAlign: 'left', textTransform: 'uppercase', verticalAlign: 'middle' }}>{item.descricao}</td>
+                <td style={{ ...cellStyle, verticalAlign: 'middle', fontWeight: 'normal' }}>{formatNumber(item.valor_num)}</td>
+                <td style={{ ...cellStyle, textAlign: 'center', textTransform: 'uppercase', verticalAlign: 'middle', lineHeight: '1.2' }}>{item.descricao}</td>
               </tr>
             ))}
           </tbody>
         </table>
 
-        {/* 5. FINALIDADE */}
         <table style={tableStyle}>
           <tbody>
             <tr>
@@ -284,7 +274,6 @@ const PTrabDORReport: React.FC<PTrabDORReportProps> = ({ ptrabData, dorData, sel
           </tbody>
         </table>
 
-        {/* 6. MOTIVAÇÃO */}
         <table style={tableStyle}>
           <tbody>
             <tr>
@@ -296,7 +285,6 @@ const PTrabDORReport: React.FC<PTrabDORReportProps> = ({ ptrabData, dorData, sel
           </tbody>
         </table>
 
-        {/* 7. CONSEQUÊNCIA */}
         <table style={tableStyle}>
           <tbody>
             <tr>
@@ -308,7 +296,6 @@ const PTrabDORReport: React.FC<PTrabDORReportProps> = ({ ptrabData, dorData, sel
           </tbody>
         </table>
 
-        {/* 8. OBSERVAÇÕES */}
         <table style={tableStyle}>
           <tbody>
             <tr>
@@ -320,7 +307,6 @@ const PTrabDORReport: React.FC<PTrabDORReportProps> = ({ ptrabData, dorData, sel
           </tbody>
         </table>
 
-        {/* ASSINATURA */}
         <table style={{ ...tableStyle, minHeight: '150px' }}>
           <tbody>
             <tr>
