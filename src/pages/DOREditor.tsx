@@ -258,8 +258,13 @@ const DOREditor = () => {
       `}</style>
 
       <div className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-6 py-3 bg-white/90 backdrop-blur border-b border-slate-200 shadow-sm print:hidden">
-        <Button variant="outline" size="sm" onClick={() => navigate(-1)}>
-          <ArrowLeft className="h-4 w-4 mr-2" /> Voltar para o P-Trab
+        <Button
+          variant="ghost"
+          onClick={() => navigate(`/ptrab/form?ptrabId=${ptrabId}`)}
+          className="mb-4"
+        >
+          <ArrowLeft className="mr-2 h-4 w-4" />
+          Voltar
         </Button>
         
         <div className="flex gap-2">
