@@ -53,7 +53,7 @@ export function PTrabImporter({ isOpen, onClose, ptrabId, onImportConcluded }: P
     setLoading(true);
     try {
       const tables = [
-        { name: 'classe_i_registros', gnd: 3, nature: 'Logístico', descField: 'categoria', label: 'Classe I - Subsistência' },
+        { name: 'classe_i_registros', gnd: 3, nature: 'Logístico', descField: 'categoria', label: 'Classe I - Subsistência', isClasseI: true },
         { name: 'classe_ii_registros', gnd: 3, nature: 'Logístico', descField: 'categoria', label: 'Classe II - Intendência' },
         { name: 'classe_iii_registros', gnd: 3, nature: 'Logístico', descField: 'tipo_equipamento', label: 'Classe III - Combustíveis' },
         { name: 'classe_v_registros', gnd: 3, nature: 'Logístico', descField: 'categoria', label: 'Classe V - Armamento' },
@@ -76,7 +76,12 @@ export function PTrabImporter({ isOpen, onClose, ptrabId, onImportConcluded }: P
       const aggregatedMap: Record<string, PTrabItem> = {};
 
       for (const table of tables) {
-        const selectFields = ['id', 'organizacao', 'ug', 'valor_total'];
+        const selectFields = ['id', 'organizacao', 'ug', 'detalhamento_customizado'];
+        if (table.isClasseI) {
+          selectFields.push('total_qs', 'total_qr', 'categoria');
+        } else {
+          selectFields.push('valor_total');
+        }
         if (table.descField) selectFields.push(table.descField);
 
         const { data, error } = await (supabase.from(table.name as any) as any)
@@ -85,13 +90,46 @@ export function PTrabImporter({ isOpen, onClose, ptrabId, onImportConcluded }: P
 
         if (!error && data) {
           data.forEach((row: any) => {
+            // Lógica especial para Classe I (QS e QR)
+            if (table.isClasseI) {
+              const qs = Number(row.total_qs || 0);
+              const qr = Number(row.total_qr || 0);
+
+              if (qs > 0) {
+                const desc = "SUBSISTÊNCIA (QS)";
+                const key = `${table.name}-QS`;
+                if (!aggregatedMap[key]) {
+                  aggregatedMap[key] = { id: key, descricao: desc, valor: 0, gnd: 3, natureza: table.nature, uge: "Múltiplas OMs", tableName: table.name, originalRecords: [] };
+                }
+                aggregatedMap[key].valor += qs;
+                aggregatedMap[key].originalRecords.push({ ...row, valor_total: qs, tipo_rancho: 'QS' });
+              }
+
+              if (qr > 0) {
+                const desc = "SUBSISTÊNCIA (QR)";
+                const key = `${table.name}-QR`;
+                if (!aggregatedMap[key]) {
+                  aggregatedMap[key] = { id: key, descricao: desc, valor: 0, gnd: 3, natureza: table.nature, uge: "Múltiplas OMs", tableName: table.name, originalRecords: [] };
+                }
+                aggregatedMap[key].valor += qr;
+                aggregatedMap[key].originalRecords.push({ ...row, valor_total: qr, tipo_rancho: 'QR' });
+              }
+              return;
+            }
+
             const valor = Number(row.valor_total || 0);
             if (valor <= 0) return;
 
-            const descValue = table.descField ? (row[table.descField] || table.label) : table.label;
+            let descValue = table.descField ? (row[table.descField] || table.label) : table.label;
+            const isOutros = descValue.toUpperCase() === "OUTROS";
             
-            // Se for GND 4, usamos o ID do registro para não consolidar (item a item)
-            const key = table.gnd === 4 ? `${table.name}-${row.id}` : `${table.name}-${descValue}`;
+            // Se for "Outros", tenta usar o detalhamento customizado
+            if (isOutros && row.detalhamento_customizado) {
+              descValue = row.detalhamento_customizado;
+            }
+
+            // Se for GND 4 ou se for "Outros", tratamos item a item (sem consolidar)
+            const key = (table.gnd === 4 || isOutros) ? `${table.name}-${row.id}` : `${table.name}-${descValue}`;
 
             if (!aggregatedMap[key]) {
               aggregatedMap[key] = {
@@ -100,7 +138,7 @@ export function PTrabImporter({ isOpen, onClose, ptrabId, onImportConcluded }: P
                 valor: 0,
                 gnd: table.gnd,
                 natureza: table.nature,
-                uge: table.gnd === 4 ? `${row.organizacao} (${row.ug})` : "Múltiplas OMs",
+                uge: (table.gnd === 4 || isOutros) ? `${row.organizacao} (${row.ug})` : "Múltiplas OMs",
                 tableName: table.name,
                 originalRecords: []
               };
