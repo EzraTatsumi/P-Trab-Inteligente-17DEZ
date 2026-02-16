@@ -1455,7 +1455,7 @@ const PTrabManager = () => {
                               Preencher P Trab
                             </Button>
                             <Button 
-                              onClick={() => toast.info("Funcionalidade 'Preencher DOR' em desenvolvimento.")} 
+                              onClick={() => navigate(`/ptrab/dor?ptrabId=${ptrab.id}`)} 
                               size="sm" 
                               variant="outline"
                               className="flex items-center gap-2 w-full justify-start" 
