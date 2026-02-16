@@ -228,25 +228,30 @@ const DOREditor = () => {
               className="border-b border-black p-1.5 font-bold text-center uppercase"
               style={headerTitleStyle}
             >
-              1. Dados do Órgão Requisitante
+              DADOS DO ÓRGÃO REQUISITANTE
+            </div>
+            
+            <div className="border-b border-black p-1 px-2 font-bold">
+              Órgão:
+            </div>
+            <div className="border-b border-black p-1 px-2">
+              {ptrab?.nome_om_extenso || ptrab?.nome_om}
             </div>
             
             <div className="grid grid-cols-2 border-b border-black">
-              <div className="p-2 border-r border-black">
-                <span className="block font-bold uppercase mb-1">Órgão / OM:</span>
-                <div className="font-bold uppercase">{ptrab?.nome_om}</div>
-                <div>UG: {ptrab?.codug_om}</div>
+              <div className="p-1 px-2 border-r border-black font-bold">
+                Responsável pela Demanda:
               </div>
-              <div className="p-2">
-                <span className="block font-bold uppercase mb-1">Responsável pela Demanda (OD):</span>
-                <div className="font-bold uppercase">{ptrab?.nome_cmt_om || "Não informado"}</div>
-                <div>Ordenador de Despesas</div>
-              </div>
+              <div className="p-1 px-2"></div>
+            </div>
+            
+            <div className="border-b border-black p-1 px-2">
+              {ptrab?.nome_cmt_om || "Não informado"}
             </div>
 
             <div className="grid grid-cols-2 border-b border-black">
-              <div className="p-2 border-r border-black flex items-center gap-2">
-                <span className="font-bold uppercase shrink-0">E-mail:</span>
+              <div className="p-1 px-2 border-r border-black flex items-center gap-1">
+                <span className="font-bold">E-mail:</span>
                 <DocumentInput 
                   value={formData.email}
                   onChange={(e: any) => setFormData({...formData, email: e.target.value})}
@@ -255,8 +260,8 @@ const DOREditor = () => {
                   style={bodyStyle}
                 />
               </div>
-              <div className="p-2 flex items-center gap-2">
-                <span className="font-bold uppercase shrink-0">Telefone:</span>
+              <div className="p-1 px-2 flex items-center gap-1">
+                <span className="font-bold">Telefone:</span>
                 <DocumentInput 
                   value={formData.telefone}
                   onChange={(e: any) => setFormData({...formData, telefone: e.target.value})}
