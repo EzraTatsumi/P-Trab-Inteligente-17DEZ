@@ -1,41 +1,31 @@
-import { formatCurrency } from "./formatUtils";
-
-export interface ItemMaterialPermanente {
-    descricao: string;
-    quantidade: number;
-    valor_unitario: number;
-    numero_pregao?: string;
-    ug_pregao?: string;
-    justificativa?: string;
-}
+import { formatCurrency, formatNumber, formatCodug, formatPregao } from "./formatUtils";
 
 /**
- * Gera a memória de cálculo detalhada para um item de material permanente.
+ * Gera a memória de cálculo para registros de Material Permanente.
+ * @param registro O registro de material permanente vindo do banco.
+ * @param context Contexto opcional com dados da OM e operação.
+ * @returns Uma string formatada com o detalhamento dos itens.
  */
-export const generateMaterialPermanenteMemoriaCalculo = (registro: any, item: ItemMaterialPermanente) => {
-    if (registro.detalhamento_customizado) return registro.detalhamento_customizado;
-    
-    const valorUnitario = Number(item.valor_unitario || 0);
-    const quantidade = Number(item.quantidade || 0);
-    const total = valorUnitario * quantidade;
-    
-    let memoria = `44.90.52 - Aquisição de ${item.descricao} para atender as necessidades de ${registro.organizacao}.\n`;
-    
-    if (item.justificativa) {
-        memoria += `${item.justificativa}\n\n`;
-    } else {
-        memoria += `Justifica-se essa aquisição para garantir a capacidade de suporte às atividades administrativas e operacionais da OM, visando manter a capacidade de trabalho dos diversos setores.\n\n`;
+export const generateMaterialPermanenteMemoria = (registro: any, context?: any): string => {
+    if (registro.detalhamento_customizado && registro.detalhamento_customizado.trim().length > 0) {
+        return registro.detalhamento_customizado;
     }
-    
-    memoria += `Cálculo:\n`;
-    memoria += `- ${item.descricao}: ${formatCurrency(valorUnitario)}/ unid.\n\n`;
-    memoria += `Fórmula: Qtd do item x Valor do item.\n`;
-    memoria += `- ${quantidade} ${item.descricao} x ${formatCurrency(valorUnitario)}/unid = ${formatCurrency(total)}.\n\n`;
-    memoria += `Total: ${formatCurrency(total)}.`;
-    
-    if (item.numero_pregao) {
-        memoria += `\n(Pregão ${item.numero_pregao}${item.ug_pregao ? ` - UASG ${item.ug_pregao}` : ''})`;
-    }
+
+    const items = registro.detalhes_planejamento?.items || [];
+    if (items.length === 0) return "Nenhum item detalhado.";
+
+    const org = registro.organizacao || context?.organizacao || 'OM não especificada';
+    let memoria = `Aquisição de Material Permanente para ${org}:\n\n`;
+
+    items.forEach((item: any, index: number) => {
+        const totalItem = (item.valor_unitario || 0) * (item.quantidade || 0);
+        memoria += `${index + 1}. ${item.descricao_reduzida || item.descricao_item}\n`;
+        memoria += `   - CATMAT: ${item.codigo_catmat || 'N/A'}\n`;
+        memoria += `   - Pregão: ${formatPregao(item.numero_pregao)} | UASG: ${formatCodug(item.uasg)}\n`;
+        memoria += `   - Qtd: ${formatNumber(item.quantidade, 0)} | Unit: ${formatCurrency(item.valor_unitario)} | Total: ${formatCurrency(totalItem)}\n\n`;
+    });
+
+    memoria += `Valor Total do Registro: ${formatCurrency(registro.valor_total || 0)}`;
     
     return memoria;
 };
