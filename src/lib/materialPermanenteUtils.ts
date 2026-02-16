@@ -1,38 +1,41 @@
-import { formatCurrency, formatPregao, formatCodug } from "./formatUtils";
+import { formatCurrency } from "./formatUtils";
 
-export const calculateMaterialPermanenteTotals = (items: any[]) => {
-    const totalGeral = items.reduce((acc, item) => acc + ((item.quantidade || 0) * (item.valor_unitario || 0)), 0);
-    return { totalGeral };
-};
+export interface ItemMaterialPermanente {
+    descricao: string;
+    quantidade: number;
+    valor_unitario: number;
+    numero_pregao?: string;
+    ug_pregao?: string;
+    justificativa?: string;
+}
 
-export const generateMaterialPermanenteMemoria = (registro: any, item: any) => {
-    if (!item) return "";
-
-    // Extração da justificativa
-    const { grupo, proposito, destinacao, local, finalidade, motivo } = item.justificativa || {};
-    const diasStr = `${registro.dias_operacao} ${registro.dias_operacao === 1 ? 'dia' : 'dias'}`;
-    const fase = registro.fase_atividade || '[Fase]';
+/**
+ * Gera a memória de cálculo detalhada para um item de material permanente.
+ */
+export const generateMaterialPermanenteMemoriaCalculo = (registro: any, item: ItemMaterialPermanente) => {
+    if (registro.detalhamento_customizado) return registro.detalhamento_customizado;
     
-    const justificativa = `Aquisição de ${grupo || '[Grupo]'} para atender ${proposito || '[Propósito]'} ${destinacao || '[Destinação]'}, ${local || '[Local]'}, a fim de ${finalidade || '[Finalidade]'}, durante ${diasStr} de ${fase}. Justifica-se essa aquisição ${motivo || '[Motivo]'}.`;
-
     const valorUnitario = Number(item.valor_unitario || 0);
     const quantidade = Number(item.quantidade || 0);
-    const valorTotal = valorUnitario * quantidade;
-    const nomeItem = item.descricao_reduzida || item.descricao_item || "Item";
+    const total = valorUnitario * quantidade;
     
-    // Formatação de Pregão e UASG
-    const pregao = formatPregao(item.numero_pregao);
-    const uasgRaw = item.codigo_uasg || registro.ug_detentora || registro.ug || "";
-    const uasg = uasgRaw ? formatCodug(uasgRaw) : "N/A";
-
-    return `44.90.52 - ${justificativa}
-
-Cálculo: 
-- ${nomeItem}: ${formatCurrency(valorUnitario)}/ unid.
-
-Fórmula: Qtd do item x Valor do item.
-- ${quantidade} ${nomeItem} x ${formatCurrency(valorUnitario)}/unid = ${formatCurrency(valorTotal)}.
-
-Total: ${formatCurrency(valorTotal)}.
-(Pregão ${pregao} - UASG ${uasg})`;
+    let memoria = `44.90.52 - Aquisição de ${item.descricao} para atender as necessidades de ${registro.organizacao}.\n`;
+    
+    if (item.justificativa) {
+        memoria += `${item.justificativa}\n\n`;
+    } else {
+        memoria += `Justifica-se essa aquisição para garantir a capacidade de suporte às atividades administrativas e operacionais da OM, visando manter a capacidade de trabalho dos diversos setores.\n\n`;
+    }
+    
+    memoria += `Cálculo:\n`;
+    memoria += `- ${item.descricao}: ${formatCurrency(valorUnitario)}/ unid.\n\n`;
+    memoria += `Fórmula: Qtd do item x Valor do item.\n`;
+    memoria += `- ${quantidade} ${item.descricao} x ${formatCurrency(valorUnitario)}/unid = ${formatCurrency(total)}.\n\n`;
+    memoria += `Total: ${formatCurrency(total)}.`;
+    
+    if (item.numero_pregao) {
+        memoria += `\n(Pregão ${item.numero_pregao}${item.ug_pregao ? ` - UASG ${item.ug_pregao}` : ''})`;
+    }
+    
+    return memoria;
 };

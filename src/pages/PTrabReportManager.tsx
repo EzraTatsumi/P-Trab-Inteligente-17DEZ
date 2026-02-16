@@ -23,6 +23,7 @@ import PTrabLogisticoReport from "@/components/reports/PTrabLogisticoReport";
 import PTrabRacaoOperacionalReport from "@/components/reports/PTrabRacaoOperacionalReport";
 import PTrabOperacionalReport from "@/components/reports/PTrabOperacionalReport"; 
 import PTrabHorasVooReport from "@/components/reports/PTrabHorasVooReport"; 
+import PTrabMaterialPermanenteReport from "@/components/reports/PTrabMaterialPermanenteReport";
 import {
   generateRacaoQuenteMemoriaCalculo,
   generateRacaoOperacionalMemoriaCalculo,
@@ -145,6 +146,13 @@ export type MaterialConsumoRegistro = MaterialConsumoRegistroType;
 export type ComplementoAlimentacaoRegistro = ComplementoAlimentacaoRegistroType;
 
 export type ServicoTerceiroRegistro = ServicoTerceiroRegistroType;
+
+export interface MaterialPermanenteRegistro extends Tables<'material_permanente_registros'> {
+  valor_total: number;
+  valor_nd_52: number;
+  dias_operacao: number;
+  efetivo: number;
+}
 
 export interface HorasVooRegistro extends Tables<'horas_voo_registros'> {
   quantidade_hv: number;
@@ -817,6 +825,7 @@ const PTrabReportManager = () => {
   const [registrosMaterialConsumo, setRegistrosMaterialConsumo] = useState<MaterialConsumoRegistro[]>([]); 
   const [registrosComplementoAlimentacao, setRegistrosComplementoAlimentacao] = useState<ComplementoAlimentacaoRegistro[]>([]);
   const [registrosServicosTerceiros, setRegistrosServicosTerceiros] = useState<ServicoTerceiroRegistro[]>([]);
+  const [registrosMaterialPermanente, setRegistrosMaterialPermanente] = useState<MaterialPermanenteRegistro[]>([]);
   const [registrosHorasVoo, setRegistrosHorasVoo] = useState<HorasVooRegistro[]>([]); 
   const [diretrizesOperacionais, setDiretrizesOperacionais] = useState<Tables<'diretrizes_operacionais'> | null>(null);
   const [diretrizesPassagens, setDiretrizesPassagens] = useState<Tables<'diretrizes_passagens'>[]>([]);
@@ -867,6 +876,7 @@ const PTrabReportManager = () => {
         { data: materialConsumoData }, 
         { data: complementoAlimentacaoData },
         { data: servicosTerceirosData },
+        { data: materialPermanenteData },
         { data: horasVooData }, 
         diretrizesOpData,
         diretrizesPassagensData,
@@ -888,6 +898,7 @@ const PTrabReportManager = () => {
         supabase.from('material_consumo_registros').select('*').eq('p_trab_id', ptrabId), 
         supabase.from('complemento_alimentacao_registros').select('*').eq('p_trab_id', ptrabId),
         supabase.from('servicos_terceiros_registros' as any).select('*').eq('p_trab_id', ptrabId),
+        supabase.from('material_permanente_registros' as any).select('*').eq('p_trab_id', ptrabId),
         supabase.from('horas_voo_registros').select('*').eq('p_trab_id', ptrabId), 
         fetchDiretrizesOperacionais(year),
         fetchDiretrizesPassagens(year),
@@ -1022,6 +1033,14 @@ const PTrabReportManager = () => {
           dias_operacao: r.dias_operacao || 0,
           efetivo: r.efetivo || 0,
       })) as ServicoTerceiroRegistro[]);
+
+      setRegistrosMaterialPermanente(((materialPermanenteData as any[]) || []).map(r => ({
+          ...r,
+          valor_total: Number(r.valor_total || 0),
+          valor_nd_52: Number(r.valor_nd_52 || 0),
+          dias_operacao: r.dias_operacao || 0,
+          efetivo: r.efetivo || 0,
+      })) as MaterialPermanenteRegistro[]);
       
       setRegistrosHorasVoo((horasVooData || []).map(r => ({
           ...r,
@@ -1477,7 +1496,7 @@ const PTrabReportManager = () => {
                registrosServicosTerceiros.length > 0; 
 
       case 'material_permanente':
-        return false; 
+        return registrosMaterialPermanente.length > 0; 
       case 'hora_voo':
         return registrosHorasVoo.length > 0;
       case 'dor':
@@ -1485,7 +1504,7 @@ const PTrabReportManager = () => {
       default:
         return false;
     }
-  }, [selectedReport, registrosClasseI, registrosClasseII, registrosClasseIII, registrosDiaria, registrosVerbaOperacional, registrosSuprimentoFundos, registrosPassagem, registrosConcessionaria, registrosMaterialConsumo, registrosComplementoAlimentacao, registrosServicosTerceiros, registrosHorasVoo]);
+  }, [selectedReport, registrosClasseI, registrosClasseII, registrosClasseIII, registrosDiaria, registrosVerbaOperacional, registrosSuprimentoFundos, registrosPassagem, registrosConcessionaria, registrosMaterialConsumo, registrosComplementoAlimentacao, registrosServicosTerceiros, registrosMaterialPermanente, registrosHorasVoo]);
 
 
   const renderReport = () => {
@@ -1562,13 +1581,11 @@ const PTrabReportManager = () => {
         );
       case 'material_permanente':
         return (
-          <div className="text-center py-12">
-            <FileText className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-            <h3 className="text-xl font-semibold">Relatório {currentReportOption.label}</h3>
-            <p className="text-muted-foreground mt-2">
-              Este relatório ainda não está implementado.
-            </p>
-          </div>
+          <PTrabMaterialPermanenteReport
+            ptrabData={ptrabData}
+            registrosMaterialPermanente={registrosMaterialPermanente}
+            fileSuffix={fileSuffix}
+          />
         );
       case 'hora_voo':
         return (
