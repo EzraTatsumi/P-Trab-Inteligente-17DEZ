@@ -10,13 +10,14 @@ import { useSession } from "@/components/SessionContextProvider";
 import { cn } from "@/lib/utils";
 
 // Componente auxiliar para Inputs que parecem texto do documento
-const DocumentInput = ({ value, onChange, placeholder, className, readOnly = false }: any) => (
+const DocumentInput = ({ value, onChange, placeholder, className, readOnly = false, style }: any) => (
   <input
     type="text"
     value={value || ""}
     onChange={onChange}
     placeholder={placeholder}
     readOnly={readOnly}
+    style={style}
     className={cn(
       "bg-transparent border-none p-0 focus:ring-1 focus:ring-primary/30 focus:bg-yellow-50/50 outline-none text-black placeholder:text-gray-300 font-normal transition-colors",
       className
@@ -170,49 +171,40 @@ const DOREditor = () => {
         
         <div className="p-[20mm]">
           
-          {/* CABEÇALHO OFICIAL PADRONIZADO (3 COLUNAS) */}
-          <div className="border border-black grid grid-cols-[180px_1fr_200px] items-stretch mb-8">
-            {/* Coluna Esquerda: Logo Ministério da Defesa */}
-            <div className="border-r border-black p-2 flex items-center justify-center gap-2">
-              <img 
-                src="https://upload.wikimedia.org/wikipedia/commons/thumb/b/bf/Coat_of_arms_of_Brazil.svg/100px-Coat_of_arms_of_Brazil.svg.png" 
-                alt="Brasão" 
-                className="h-10 w-auto"
-              />
-              <div className="flex flex-col text-left leading-none">
-                <p className="text-[7pt] font-bold uppercase text-gray-500">Ministério da</p>
-                <p className="text-[11pt] font-black uppercase text-gray-700">Defesa</p>
-              </div>
+          {/* CABEÇALHO OFICIAL CENTRALIZADO */}
+          <div className="flex flex-col items-center justify-center mb-8">
+            {/* Imagem do Brasão - Tamanho fixo e proporção correta */}
+            <img 
+              src="https://upload.wikimedia.org/wikipedia/commons/thumb/b/bf/Coat_of_arms_of_Brazil.svg/240px-Coat_of_arms_of_Brazil.svg.png" 
+              alt="Brasão da República" 
+              className="w-[90px] h-auto mb-3 object-contain"
+              style={{ printColorAdjust: 'exact' } as any}
+            />
+            
+            {/* Texto Hierárquico - Espaçamento e fontes ajustados */}
+            <div className="text-center text-black leading-tight space-y-1" style={{ fontFamily: 'Calibri, sans-serif' }}>
+              <p className="font-bold uppercase text-[12pt] tracking-wide">Ministério da Defesa</p>
+              <p className="font-bold uppercase text-[12pt] tracking-wide">Exército Brasileiro</p>
+              <p className="font-bold uppercase text-[11pt]">{ptrab?.comando_militar_area}</p>
+              <p className="font-bold uppercase text-[11pt]">
+                {ptrab?.nome_om_extenso || ptrab?.nome_om}
+              </p>
             </div>
 
-            {/* Coluna Central: Identificação da OM */}
-            <div 
-              className="border-r border-black p-2 flex flex-col items-center justify-center text-center font-bold uppercase leading-tight"
-              style={{ fontFamily: 'Calibri, sans-serif', fontSize: '11pt' }}
-            >
-              <p>Ministério da Defesa</p>
-              <p>Exército Brasileiro</p>
-              <p>{ptrab?.comando_militar_area}</p>
-              <p>{ptrab?.nome_om_extenso || ptrab?.nome_om}</p>
-            </div>
-
-            {/* Coluna Direita: Nome do Documento e Numeração */}
-            <div 
-              className="p-2 flex flex-col items-center justify-center text-center leading-tight font-bold"
-              style={{ fontFamily: 'Calibri, sans-serif', fontSize: '11pt' }}
-            >
-              <p>Documento de Oficialização da Requisição – DOR</p>
-              <div className="flex items-center gap-1 mt-1">
+            {/* Título do Documento e Numeração */}
+            <div className="mt-6 text-center leading-tight font-bold" style={{ fontFamily: 'Calibri, sans-serif', fontSize: '11pt' }}>
+              <p className="uppercase">Documento de Oficialização da Requisição – DOR</p>
+              <div className="flex items-center justify-center gap-1 mt-1">
                 <span>nº</span>
                 <DocumentInput 
                   value={formData.numero_dor}
                   onChange={(e: any) => setFormData({...formData, numero_dor: e.target.value})}
                   placeholder="00 - 2025"
-                  className="w-20 text-center font-bold"
+                  className="w-24 text-center font-bold"
                   style={{ fontSize: '11pt' }}
                 />
               </div>
-              <p className="mt-3">{dataAtual}</p>
+              <p className="mt-2 font-normal">{dataAtual}</p>
             </div>
           </div>
 
