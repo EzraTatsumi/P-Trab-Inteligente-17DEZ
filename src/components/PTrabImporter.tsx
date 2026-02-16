@@ -83,6 +83,11 @@ export function PTrabImporter({ isOpen, onClose, ptrabId, onImportConcluded }: P
           selectFields.push('valor_total');
         }
         if (table.descField) selectFields.push(table.descField);
+        
+        // Adiciona detalhes_planejamento para serviços de terceiros
+        if (table.name === 'servicos_terceiros_registros') {
+          selectFields.push('detalhes_planejamento');
+        }
 
         const { data, error } = await (supabase.from(table.name as any) as any)
           .select(selectFields.join(','))
@@ -121,6 +126,12 @@ export function PTrabImporter({ isOpen, onClose, ptrabId, onImportConcluded }: P
             if (valor <= 0) return;
 
             let descValue = table.descField ? (row[table.descField] || table.label) : table.label;
+            
+            // Lógica especial para Serviços de Terceiros: busca nome_servico_outros no JSON
+            if (table.name === 'servicos_terceiros_registros' && row.detalhes_planejamento?.nome_servico_outros) {
+              descValue = row.detalhes_planejamento.nome_servico_outros;
+            }
+
             const isOutros = descValue.toUpperCase() === "OUTROS";
             
             // Se for "Outros", tenta usar o detalhamento customizado
