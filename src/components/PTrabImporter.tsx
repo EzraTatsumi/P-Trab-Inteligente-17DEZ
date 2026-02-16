@@ -88,10 +88,10 @@ export function PTrabImporter({ isOpen, onClose, ptrabId, onImportConcluded }: P
             const valor = Number(row.valor_total || 0);
             if (valor <= 0) return;
 
-            // Lógica de descrição: Se for Diária/Passagem, usa o label fixo. 
-            // Se for outros, usa o descField (como group_name ou categoria).
             const descValue = table.descField ? (row[table.descField] || table.label) : table.label;
-            const key = `${table.name}-${descValue}`;
+            
+            // Se for GND 4, usamos o ID do registro para não consolidar (item a item)
+            const key = table.gnd === 4 ? `${table.name}-${row.id}` : `${table.name}-${descValue}`;
 
             if (!aggregatedMap[key]) {
               aggregatedMap[key] = {
@@ -100,7 +100,7 @@ export function PTrabImporter({ isOpen, onClose, ptrabId, onImportConcluded }: P
                 valor: 0,
                 gnd: table.gnd,
                 natureza: table.nature,
-                uge: "Múltiplas OMs",
+                uge: table.gnd === 4 ? `${row.organizacao} (${row.ug})` : "Múltiplas OMs",
                 tableName: table.name,
                 originalRecords: []
               };
@@ -300,7 +300,10 @@ export function PTrabImporter({ isOpen, onClose, ptrabId, onImportConcluded }: P
                       <div className="flex items-center gap-1.5 mt-1 ml-5">
                         <Layers className="h-3 w-3 text-slate-400" />
                         <span className="text-[9px] text-slate-500 font-medium">
-                          {item.originalRecords.length} registros consolidados
+                          {item.gnd === 4 
+                            ? item.uge 
+                            : `${item.originalRecords.length} registros consolidados`
+                          }
                         </span>
                       </div>
                     </div>
@@ -370,7 +373,9 @@ export function PTrabImporter({ isOpen, onClose, ptrabId, onImportConcluded }: P
                             <div key={item.id} className="flex justify-between items-center p-2 bg-slate-50/80 rounded border border-slate-100 text-[10px] group/item">
                               <div className="flex flex-col overflow-hidden pr-2">
                                 <span className="truncate font-bold text-slate-700 uppercase" title={item.descricao}>{item.descricao}</span>
-                                <span className="text-[8px] text-slate-400 truncate">{item.originalRecords.length} registros</span>
+                                <span className="text-[8px] text-slate-400 truncate">
+                                  {item.gnd === 4 ? item.uge : `${item.originalRecords.length} registros`}
+                                </span>
                               </div>
                               <div className="flex items-center gap-2 shrink-0">
                                 <span className="font-black text-slate-900">{formatCurrency(item.valor)}</span>
@@ -406,7 +411,6 @@ export function PTrabImporter({ isOpen, onClose, ptrabId, onImportConcluded }: P
             </div>
           </div>
           <div className="flex gap-3">
-            <Button variant="outline" onClick={onClose} className="font-bold text-xs uppercase">Cancelar</Button>
             <Button 
               onClick={handleFinalize} 
               disabled={dorGroups.length === 0}
@@ -415,6 +419,7 @@ export function PTrabImporter({ isOpen, onClose, ptrabId, onImportConcluded }: P
               <CheckCircle2 className="h-4 w-4 mr-2" />
               Confirmar Importação
             </Button>
+            <Button variant="outline" onClick={onClose} className="font-bold text-xs uppercase">Cancelar</Button>
           </div>
         </DialogFooter>
       </DialogContent>
