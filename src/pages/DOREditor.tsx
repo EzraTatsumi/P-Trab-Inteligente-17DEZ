@@ -5,7 +5,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { ArrowLeft, Save, Printer, Loader2, Info, Download, RefreshCw } from "lucide-react";
+import { ArrowLeft, Save, Loader2, Info, Download, RefreshCw } from "lucide-react";
 import { useSession } from "@/components/SessionContextProvider";
 import { cn } from "@/lib/utils";
 import { formatNumber } from "@/lib/formatUtils";
@@ -200,10 +200,6 @@ const DOREditor = () => {
     }
   };
 
-  const handlePrint = () => {
-    window.print();
-  };
-
   const importFinalidadeFromPtrab = () => {
     if (ptrab?.acoes) {
       setFormData(prev => ({ ...prev, finalidade: ptrab.acoes }));
@@ -262,14 +258,11 @@ const DOREditor = () => {
       `}</style>
 
       <div className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-6 py-3 bg-white/90 backdrop-blur border-b border-slate-200 shadow-sm print:hidden">
-        <Button variant="ghost" size="sm" onClick={() => navigate(-1)} className="text-slate-600 hover:text-primary">
+        <Button variant="outline" size="sm" onClick={() => navigate(-1)}>
           <ArrowLeft className="h-4 w-4 mr-2" /> Voltar para o P-Trab
         </Button>
         
         <div className="flex gap-2">
-          <Button variant="outline" size="sm" onClick={handlePrint}>
-            <Printer className="h-4 w-4 mr-2" /> Imprimir / PDF
-          </Button>
           <Button size="sm" onClick={handleSave} disabled={saving} className="px-6">
             {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
             Salvar Alterações
