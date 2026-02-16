@@ -2,6 +2,7 @@ import { ItemAquisicao } from "./diretrizesMaterialConsumo";
 
 export interface ItemAquisicaoMaterial extends ItemAquisicao {
     unidade_medida?: string;
+    justificativa?: Record<string, string>;
 }
 
 // Alias for compatibility with components using this name
