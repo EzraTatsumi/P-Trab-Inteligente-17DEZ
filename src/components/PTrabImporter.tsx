@@ -63,7 +63,16 @@ export function PTrabImporter({ isOpen, onClose, ptrabId, onImportConcluded }: P
         { name: 'classe_viii_remonta_registros', gnd: 3, nature: 'Logístico', descField: 'animal_tipo', label: 'Classe VIII - Remonta', hasDetalhamento: true },
         { name: 'classe_ix_registros', gnd: 3, nature: 'Logístico', descField: 'categoria', label: 'Classe IX - Motomecanização', hasDetalhamento: true },
         { name: 'diaria_registros', gnd: 3, nature: 'Operacional', descField: null, label: 'DIÁRIAS', hasDetalhamento: true },
-        { name: 'verba_operacional_registros', gnd: 3, nature: 'Operacional', descField: 'objeto_aquisicao', label: 'Verba Operacional', valueField: 'valor_total_solicitado', hasDetalhamento: true },
+        { 
+          name: 'verba_operacional_registros', 
+          gnd: 3, 
+          nature: 'Operacional', 
+          descField: 'objeto_aquisicao', 
+          label: 'Verba Operacional / Suprimento', 
+          valueField: 'valor_total_solicitado', 
+          hasDetalhamento: true,
+          isVerbaOp: true 
+        },
         { name: 'passagem_registros', gnd: 3, nature: 'Operacional', descField: null, label: 'PASSAGENS', hasDetalhamento: true },
         { name: 'concessionaria_registros', gnd: 3, nature: 'Operacional', descField: 'categoria', label: 'Concessionárias', hasDetalhamento: true },
         { name: 'horas_voo_registros', gnd: 3, nature: 'Operacional', descField: 'tipo_anv', label: 'Horas de Voo', hasDetalhamento: true },
@@ -89,6 +98,11 @@ export function PTrabImporter({ isOpen, onClose, ptrabId, onImportConcluded }: P
         }
         
         if (table.descField) selectFields.push(table.descField);
+        
+        // Campos extras para Verba Operacional
+        if (table.isVerbaOp) {
+          selectFields.push('objeto_contratacao');
+        }
         
         if (table.name === 'servicos_terceiros_registros' || table.name === 'material_permanente_registros') {
           selectFields.push('detalhes_planejamento');
@@ -127,7 +141,7 @@ export function PTrabImporter({ isOpen, onClose, ptrabId, onImportConcluded }: P
               return;
             }
 
-            // Lógica especial para Material Permanente: expandir itens do JSON
+            // Lógica especial para Material Permanente
             if (table.name === 'material_permanente_registros' && row.detalhes_planejamento?.itens_selecionados) {
               row.detalhes_planejamento.itens_selecionados.forEach((subItem: any) => {
                 const valorItem = Number(subItem.quantidade || 0) * Number(subItem.valor_unitario || 0);
@@ -153,7 +167,14 @@ export function PTrabImporter({ isOpen, onClose, ptrabId, onImportConcluded }: P
             const valor = Number(row[table.valueField || 'valor_total'] || 0);
             if (valor <= 0) return;
 
-            let descValue = table.descField ? (row[table.descField] || table.label) : table.label;
+            let descValue = table.label;
+            
+            if (table.isVerbaOp) {
+              // Prioriza objeto_aquisicao, depois objeto_contratacao, depois o label genérico
+              descValue = row.objeto_aquisicao || row.objeto_contratacao || table.label;
+            } else if (table.descField) {
+              descValue = row[table.descField] || table.label;
+            }
             
             if (table.name === 'servicos_terceiros_registros' && row.detalhes_planejamento?.nome_servico_outros) {
               descValue = row.detalhes_planejamento.nome_servico_outros;
