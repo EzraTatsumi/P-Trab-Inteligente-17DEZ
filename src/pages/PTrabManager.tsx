@@ -23,7 +23,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { toast } from "sonner";
-import { Plus, Edit, Trash2, LogOut, FileText, Printer, Settings, PenSquare, MoreVertical, Pencil, Copy, FileSpreadsheet, Download, MessageSquare, ArrowRight, HelpCircle, CheckCircle, GitBranch, Archive, RefreshCw, User, Loader2, Share2, Link, Users, XCircle, ArrowDownUp } from "lucide-react";
+import { Plus, Edit, Trash2, LogOut, FileText, Printer, Settings, PenSquare, MoreVertical, Pencil, Copy, FileSpreadsheet, Download, MessageSquare, ArrowRight, HelpCircle, CheckCircle, GitBranch, Archive, RefreshCw, User, Loader2, Share2, Link, Users, XCircle, ArrowDownUp, ClipboardList } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { sanitizeError } from "@/lib/errorUtils";
@@ -715,7 +715,7 @@ const PTrabManager = () => {
         toast.success("P Trab atualizado!");
       } else {
         const { id, ...insertData } = ptrabData as Partial<PTrab> & { id?: string };
-        const { data: newPTrab, error: insertError } = await supabase.from("p_trab").insert([insertData as TablesInsert<'p_trab'>]).select().single();
+        const { data: newPTrab, error: insertError = null } = await supabase.from("p_trab").insert([insertData as TablesInsert<'p_trab'>]).select().single();
         if (insertError || !newPTrab) throw insertError;
         const newPTrabId = newPTrab.id;
         if (originalPTrabIdToClone) {
@@ -1441,9 +1441,31 @@ const PTrabManager = () => {
                         </TooltipProvider>
                       </TableCell>
                       <TableCell className="text-right">
-                        <div className="flex justify-end gap-2">
+                        <div className="flex justify-end gap-2 items-start">
                           {(needsNumbering(ptrab) || isApprovedOrArchived) && <Button onClick={() => handleOpenApproveDialog(ptrab)} size="sm" className="flex items-center gap-2 bg-green-600 hover:bg-green-700" disabled={loading || isApprovedOrArchived || isActionDisabledForNonOwner}><CheckCircle className="h-4 w-4" />Aprovar</Button>}
-                          <Button onClick={() => handleSelectPTrab(ptrab)} size="sm" className="flex items-center gap-2" disabled={!isEditable}><FileText className="h-4 w-4" />Preencher</Button>
+                          
+                          <div className="flex flex-col gap-1">
+                            <Button 
+                              onClick={() => handleSelectPTrab(ptrab)} 
+                              size="sm" 
+                              className="flex items-center gap-2 w-full justify-start" 
+                              disabled={!isEditable}
+                            >
+                              <FileText className="h-4 w-4" />
+                              Preencher P Trab
+                            </Button>
+                            <Button 
+                              onClick={() => toast.info("Funcionalidade 'Preencher DOR' em desenvolvimento.")} 
+                              size="sm" 
+                              variant="outline"
+                              className="flex items-center gap-2 w-full justify-start" 
+                              disabled={!isEditable}
+                            >
+                              <ClipboardList className="h-4 w-4" />
+                              Preencher DOR
+                            </Button>
+                          </div>
+
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild><Button variant="ghost" size="sm"><MoreVertical className="h-4 w-4" /></Button></DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
