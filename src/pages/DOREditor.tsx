@@ -94,6 +94,7 @@ const DOREditor = () => {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   
   const [dorItems, setDorItems] = useState<any[]>([]);
+  const [dorGroups, setDorGroups] = useState<DorGroup[]>([]);
   const [showItemsTable, setShowItemsTable] = useState(false);
   const [isImporterOpen, setIsImporterOpen] = useState(false);
   
@@ -128,6 +129,13 @@ const DOREditor = () => {
       observacoes: dorData.observacoes || ""
     });
     
+    // Carrega os grupos originais para permitir edição
+    if (dorData.grupos_dor) {
+      setDorGroups(dorData.grupos_dor);
+    } else {
+      setDorGroups([]);
+    }
+
     if (dorData.itens_dor && Array.isArray(dorData.itens_dor) && dorData.itens_dor.length > 0) {
       setDorItems(dorData.itens_dor);
       setShowItemsTable(true);
@@ -195,6 +203,7 @@ const DOREditor = () => {
   const handleCreateNewDor = () => {
     setSelectedDorId(null);
     setDorItems([]);
+    setDorGroups([]);
     setShowItemsTable(false);
     const opName = ptrab?.nome_operacao || "";
     const formattedOp = opName.toLowerCase().startsWith("operação") ? opName : `Operação ${opName}`;
@@ -243,6 +252,9 @@ const DOREditor = () => {
 
   const handleImportConcluded = (groups: DorGroup[], selectedGnd: number) => {
     const finalItems: any[] = [];
+    
+    // Salva a estrutura original dos grupos para edição futura
+    setDorGroups(groups);
 
     groups.forEach(group => {
       const ugeAggregated: Record<string, { name: string, code: string, total: number }> = {};
@@ -286,6 +298,7 @@ const DOREditor = () => {
         user_id: user.id,
         ...formData,
         itens_dor: dorItems,
+        grupos_dor: dorGroups, // Salva a estrutura de grupos
         updated_at: new Date().toISOString()
       };
 
@@ -770,6 +783,7 @@ const DOREditor = () => {
           onClose={() => setIsImporterOpen(false)}
           ptrabId={ptrabId}
           onImportConcluded={handleImportConcluded}
+          initialGroups={dorGroups}
         />
       )}
 
