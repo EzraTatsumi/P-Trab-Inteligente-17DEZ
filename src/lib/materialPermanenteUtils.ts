@@ -1,55 +1,35 @@
-import { formatCurrency, formatCodug, formatPregao } from "./formatUtils";
+import { formatCurrency, formatNumber } from "./formatUtils";
 
 /**
- * Gera a memória de cálculo detalhada para um item de Material Permanente.
- * Utiliza os campos específicos do objeto de justificativa.
+ * Gera a memória de cálculo automática para um item de Material Permanente.
  */
-export const generateMaterialPermanenteMemoriaCalculo = (registro: any, options?: { itemEspecifico?: any }) => {
-    const item = options?.itemEspecifico;
-    if (!item) return "";
+export const generateMaterialPermanenteMemoria = (registro: any, item: any) => {
+  if (!registro || !item) return "Dados insuficientes para gerar a memória.";
 
-    // Dados do item e subitem
-    const subitemNome = item.subitem_nome || registro.nome_subitem || "Material Permanente";
-    const nomeItem = item.descricao_reduzida || item.descricao_item;
-    const valorUnitario = item.valor_unitario || 0;
-    const quantidade = item.quantidade || 1;
-    const valorTotal = valorUnitario * quantidade;
-    const pregao = item.numero_pregao || "N/A";
-    const uasg = item.uasg || "N/A";
+  const qtd = Number(item.quantidade || 0);
+  const valorUnit = Number(item.valor_unitario || 0);
+  const totalItem = qtd * valorUnit;
 
-    // Extração da justificativa estruturada
-    const j = item.justificativa || {};
-    const proposito = j.proposito || "as necessidades operacionais";
-    const destinacao = j.destinacao || "";
-    const local = j.local || "na organização militar";
-    const motivo = j.motivo || "pela necessidade de recompletamento";
-    const finalidade = j.finalidade || "garantir a continuidade das ações";
+  let memoria = `DETALHAMENTO DE MATERIAL PERMANENTE\n`;
+  memoria += `====================================\n\n`;
+  
+  memoria += `ITEM: ${item.descricao_item || item.descricao_reduzida || "Não especificado"}\n`;
+  if (item.codigo_item || item.code) {
+    memoria += `CÓDIGO (CATMAT): ${item.codigo_item || item.code}\n`;
+  }
+  
+  memoria += `ORGANIZAÇÃO: ${registro.organizacao || "Não informada"}\n`;
+  memoria += `QUANTIDADE: ${formatNumber(qtd, 0)} unidade(s)\n`;
+  memoria += `VALOR UNITÁRIO: ${formatCurrency(valorUnit)}\n`;
+  memoria += `VALOR TOTAL DO ITEM: ${formatCurrency(totalItem)}\n`;
+  
+  if (registro.fase_atividade) {
+    memoria += `\nFASE/ATIVIDADE: ${registro.fase_atividade}\n`;
+  }
+  
+  if (item.justificativa || item.observacao) {
+    memoria += `\nJUSTIFICATIVA/OBSERVAÇÃO:\n${item.justificativa || item.observacao}\n`;
+  }
 
-    // Montagem da frase principal (Seção 5)
-    let memoria = `44.90.52 - Aquisição de ${subitemNome} para atender ${proposito} ${destinacao}, ${local}, ${motivo}, a fim de ${finalidade}.\n\n`;
-    
-    memoria += `Cálculo:\n`;
-    memoria += `- ${nomeItem}: ${formatCurrency(valorUnitario)}/ unid.\n\n`;
-    
-    memoria += `Fórmula: Qtd do item x Valor do item.\n`;
-    memoria += `- ${quantidade} ${nomeItem} x ${formatCurrency(valorUnitario)}/unid = ${formatCurrency(valorTotal)}.\n\n`;
-    
-    memoria += `Total: ${formatCurrency(valorTotal)}.\n`;
-    memoria += `(Pregão ${formatPregao(pregao)} - UASG ${formatCodug(uasg)}).`;
-
-    return memoria;
-};
-
-/**
- * Calcula os totais de uma lista de registros de Material Permanente.
- */
-export const calculateMaterialPermanenteTotals = (registros: any[]) => {
-  return registros.reduce((acc, reg) => {
-    const valor = Number(reg.valor_total || 0);
-    const nd52 = Number(reg.valor_nd_52 || 0);
-    return {
-      totalGeral: acc.totalGeral + valor,
-      totalND52: acc.totalND52 + nd52
-    };
-  }, { totalGeral: 0, totalND52: 0 });
+  return memoria;
 };

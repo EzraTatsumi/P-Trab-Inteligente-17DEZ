@@ -4,9 +4,9 @@ import React from 'react';
 import { Card } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
-import { Loader2, Pencil, RefreshCw, XCircle, Check } from "lucide-react";
+import { Loader2, Pencil, RefreshCw, XCircle, Check, AlertCircle } from "lucide-react";
 import { formatCodug } from "@/lib/formatUtils";
-import { generateMaterialPermanenteMemoriaCalculo } from "@/lib/materialPermanenteUtils";
+import { generateMaterialPermanenteMemoria } from "@/lib/materialPermanenteUtils";
 import { Badge } from "@/components/ui/badge";
 
 interface MaterialPermanenteMemoriaProps {
@@ -36,11 +36,16 @@ const MaterialPermanenteMemoria: React.FC<MaterialPermanenteMemoriaProps> = ({
     onSave,
     onRestore,
 }) => {
-    // O ID de edição agora precisa ser único por item se houver múltiplos no mesmo registro
-    const uniqueId = `${registro.id}-${item.id}`;
+    // Fallback para ID do item caso não exista (comum em objetos JSON)
+    const itemId = item.id || item.codigo_item || Math.random().toString(36).substring(7);
+    const uniqueId = `${registro.id}-${itemId}`;
     const isEditing = editingMemoriaId === uniqueId;
     
-    const memoriaAutomatica = generateMaterialPermanenteMemoriaCalculo(registro, item);
+    const memoriaAutomatica = generateMaterialPermanenteMemoria(registro, item);
+    
+    // Se houver detalhamento customizado no registro, ele sobrescreve a automática.
+    // Nota: Se houver múltiplos itens no mesmo registro, eles compartilharão o mesmo detalhamento_customizado
+    // a menos que a lógica do pai trate isso separadamente.
     const memoriaDisplay = registro.detalhamento_customizado || memoriaAutomatica;
     const hasCustomMemoria = !!registro.detalhamento_customizado;
 
@@ -56,7 +61,7 @@ const MaterialPermanenteMemoria: React.FC<MaterialPermanenteMemoriaProps> = ({
                             {item?.descricao_reduzida || item?.descricao_item || "Material Permanente"}
                         </Badge>
                         {hasCustomMemoria && !isEditing && (
-                            <Badge variant="outline" className="text-xs">Editada manualmente</Badge>
+                            <Badge variant="outline" className="text-xs border-orange-200 text-orange-700 bg-orange-50">Editada manualmente</Badge>
                         )}
                     </div>
                 </div>
@@ -64,21 +69,49 @@ const MaterialPermanenteMemoria: React.FC<MaterialPermanenteMemoriaProps> = ({
                 <div className="flex items-center justify-end gap-2 shrink-0">
                     {!isEditing ? (
                         <>
-                            <Button type="button" size="sm" variant="outline" onClick={() => onStartEdit(uniqueId, memoriaDisplay)} disabled={isSaving || !isPTrabEditable} className="gap-2">
+                            <Button 
+                                type="button" 
+                                size="sm" 
+                                variant="outline" 
+                                onClick={() => onStartEdit(uniqueId, memoriaDisplay)} 
+                                disabled={isSaving || !isPTrabEditable} 
+                                className="gap-2"
+                            >
                                 <Pencil className="h-4 w-4" /> Editar Memória
                             </Button>
                             {hasCustomMemoria && (
-                                <Button type="button" size="sm" variant="ghost" onClick={() => onRestore(registro.id)} disabled={isSaving || !isPTrabEditable} className="gap-2 text-muted-foreground">
+                                <Button 
+                                    type="button" 
+                                    size="sm" 
+                                    variant="ghost" 
+                                    onClick={() => onRestore(registro.id)} 
+                                    disabled={isSaving || !isPTrabEditable} 
+                                    className="gap-2 text-muted-foreground hover:text-destructive"
+                                >
                                     <RefreshCw className="h-4 w-4" /> Restaurar Automática
                                 </Button>
                             )}
                         </>
                     ) : (
                         <>
-                            <Button type="button" size="sm" variant="default" onClick={() => onSave(registro.id)} disabled={isSaving} className="gap-2">
-                                {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />} Salvar
+                            <Button 
+                                type="button" 
+                                size="sm" 
+                                variant="default" 
+                                onClick={() => onSave(registro.id)} 
+                                disabled={isSaving} 
+                                className="gap-2 bg-green-600 hover:bg-green-700"
+                            >
+                                {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />} Salvar
                             </Button>
-                            <Button type="button" size="sm" variant="outline" onClick={onCancelEdit} disabled={isSaving} className="gap-2">
+                            <Button 
+                                type="button" 
+                                size="sm" 
+                                variant="outline" 
+                                onClick={onCancelEdit} 
+                                disabled={isSaving} 
+                                className="gap-2"
+                            >
                                 <XCircle className="h-4 w-4" /> Cancelar
                             </Button>
                         </>
@@ -86,11 +119,26 @@ const MaterialPermanenteMemoria: React.FC<MaterialPermanenteMemoriaProps> = ({
                 </div>
             </div>
             
-            <Card className="p-4 bg-background rounded-lg border">
+            <Card className="p-4 bg-background rounded-lg border shadow-sm">
                 {isEditing ? (
-                    <Textarea value={memoriaEdit} onChange={(e) => setMemoriaEdit(e.target.value)} className="min-h-[250px] font-mono text-sm" />
+                    <Textarea 
+                        value={memoriaEdit} 
+                        onChange={(e) => setMemoriaEdit(e.target.value)} 
+                        className="min-h-[250px] font-mono text-sm focus-visible:ring-primary" 
+                        placeholder="Digite a memória de cálculo personalizada..."
+                    />
                 ) : (
-                    <pre className="text-sm font-mono whitespace-pre-wrap text-foreground">{memoriaDisplay}</pre>
+                    <div className="relative">
+                        {!memoriaDisplay && (
+                            <div className="flex items-center gap-2 text-muted-foreground py-4 italic">
+                                <AlertCircle className="h-4 w-4" />
+                                Nenhuma informação disponível para gerar a memória.
+                            </div>
+                        )}
+                        <pre className="text-sm font-mono whitespace-pre-wrap text-foreground leading-relaxed">
+                            {memoriaDisplay}
+                        </pre>
+                    </div>
                 )}
             </Card>
         </div>
