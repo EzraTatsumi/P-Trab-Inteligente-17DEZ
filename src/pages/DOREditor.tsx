@@ -5,11 +5,19 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { ArrowLeft, Save, Loader2, Info, Download, RefreshCw } from "lucide-react";
+import { ArrowLeft, Save, Loader2, Info, Download, RefreshCw, FilePlus, ChevronDown, FileText } from "lucide-react";
 import { useSession } from "@/components/SessionContextProvider";
 import { cn } from "@/lib/utils";
 import { formatNumber, formatCodug } from "@/lib/formatUtils";
 import { PTrabImporter, DorGroup } from "@/components/PTrabImporter";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 // Componente auxiliar para Inputs que parecem texto do documento
 const DocumentInput = ({ value, onChange, placeholder, className, readOnly = false, style }: any) => (
@@ -71,6 +79,9 @@ const DOREditor = () => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [ptrab, setPtrab] = useState<any>(null);
+  const [availableDors, setAvailableDors] = useState<any[]>([]);
+  const [selectedDorId, setSelectedDorId] = useState<string | null>(null);
+  
   const [dorItems, setDorItems] = useState<any[]>([]);
   const [showItemsTable, setShowItemsTable] = useState(false);
   const [isImporterOpen, setIsImporterOpen] = useState(false);
@@ -89,61 +100,108 @@ const DOREditor = () => {
     observacoes: ""
   });
 
-  const loadData = useCallback(async () => {
+  const loadPTrab = useCallback(async () => {
     if (!ptrabId) return;
-    setLoading(true);
+    const { data, error } = await supabase
+      .from("p_trab")
+      .select("*")
+      .eq("id", ptrabId)
+      .single();
+    if (!error) setPtrab(data);
+    return data;
+  }, [ptrabId]);
+
+  const loadDors = useCallback(async (currentPtrab?: any) => {
+    if (!ptrabId) return;
     try {
-      const { data: ptrabData, error: ptrabError } = await supabase
-        .from("p_trab")
-        .select("*")
-        .eq("id", ptrabId)
-        .single();
-
-      if (ptrabError) throw ptrabError;
-      setPtrab(ptrabData);
-
-      const { data: dorData } = await supabase
+      const { data, error } = await supabase
         .from("dor_registros" as any)
         .select("*")
         .eq("p_trab_id", ptrabId)
-        .maybeSingle();
+        .order("created_at", { ascending: true });
 
-      if (dorData) {
-        setFormData({
-          numero_dor: dorData.numero_dor || "",
-          email: dorData.email || "",
-          telefone: dorData.telefone || "",
-          acao_orcamentaria: dorData.acao_orcamentaria || "A cargo do MD.",
-          plano_orcamentario: dorData.plano_orcamentario || "A cargo do MD.",
-          anexos: (dorData as any).anexos || "----",
-          evento: dorData.evento || "",
-          finalidade: dorData.finalidade || ptrabData.acoes || "",
-          motivacao: dorData.motivacao || "",
-          consequencia: dorData.consequencia || "",
-          observacoes: dorData.observacoes || ""
-        });
-        
-        if (dorData.itens_dor && Array.isArray(dorData.itens_dor) && dorData.itens_dor.length > 0) {
-          setDorItems(dorData.itens_dor);
-          setShowItemsTable(true);
+      if (error) throw error;
+      setAvailableDors(data || []);
+
+      // Se houver DORs e nenhum selecionado, seleciona o primeiro
+      if (data && data.length > 0 && !selectedDorId) {
+        applyDorData(data[0]);
+      } else if (data && data.length === 0) {
+        // Se não houver nenhum, prepara um novo
+        const p = currentPtrab || ptrab;
+        if (p) {
+          const opName = p.nome_operacao || "";
+          const formattedOp = opName.toLowerCase().startsWith("operação") ? opName : `Operação ${opName}`;
+          setFormData(prev => ({
+            ...prev,
+            evento: formattedOp,
+            finalidade: p.acoes || "",
+            numero_dor: ""
+          }));
         }
-      } else {
-        const opName = ptrabData.nome_operacao || "";
-        const formattedOp = opName.toLowerCase().startsWith("operação") ? opName : `Operação ${opName}`;
-        
-        setFormData(prev => ({
-          ...prev,
-          evento: formattedOp,
-          finalidade: ptrabData.acoes || "",
-          numero_dor: "" 
-        }));
       }
     } catch (error: any) {
-      toast.error("Erro ao carregar dados: " + error.message);
-    } finally {
-      setLoading(false);
+      console.error("Erro ao carregar DORs:", error);
     }
-  }, [ptrabId]);
+  }, [ptrabId, selectedDorId, ptrab]);
+
+  const applyDorData = (dorData: any) => {
+    setSelectedDorId(dorData.id);
+    setFormData({
+      numero_dor: dorData.numero_dor || "",
+      email: dorData.email || "",
+      telefone: dorData.telefone || "",
+      acao_orcamentaria: dorData.acao_orcamentaria || "A cargo do MD.",
+      plano_orcamentario: dorData.plano_orcamentario || "A cargo do MD.",
+      anexos: dorData.anexos || "----",
+      evento: dorData.evento || "",
+      finalidade: dorData.finalidade || "",
+      motivacao: dorData.motivacao || "",
+      consequencia: dorData.consequencia || "",
+      observacoes: dorData.observacoes || ""
+    });
+    
+    if (dorData.itens_dor && Array.isArray(dorData.itens_dor) && dorData.itens_dor.length > 0) {
+      setDorItems(dorData.itens_dor);
+      setShowItemsTable(true);
+    } else {
+      setDorItems([]);
+      setShowItemsTable(false);
+    }
+  };
+
+  const handleCreateNewDor = () => {
+    setSelectedDorId(null);
+    setDorItems([]);
+    setShowItemsTable(false);
+    const opName = ptrab?.nome_operacao || "";
+    const formattedOp = opName.toLowerCase().startsWith("operação") ? opName : `Operação ${opName}`;
+    setFormData({
+      numero_dor: "",
+      email: "",
+      telefone: "",
+      acao_orcamentaria: "A cargo do MD.",
+      plano_orcamentario: "A cargo do MD.",
+      anexos: "----",
+      evento: formattedOp,
+      finalidade: ptrab?.acoes || "",
+      motivacao: "",
+      consequencia: "",
+      observacoes: ""
+    });
+    toast.info("Novo formulário de DOR iniciado.");
+  };
+
+  const loadInitialData = useCallback(async () => {
+    setLoading(true);
+    const p = await loadPTrab();
+    await loadDors(p);
+    setLoading(false);
+  }, [loadPTrab, loadDors]);
+
+  useEffect(() => {
+    loadInitialData();
+  }, [loadInitialData]);
 
   const handleImportConcluded = (groups: DorGroup[], selectedGnd: number) => {
     const finalItems: any[] = [];
@@ -181,26 +239,34 @@ const DOREditor = () => {
     toast.success(`Dados de GND ${selectedGnd} importados com sucesso!`);
   };
 
-  useEffect(() => {
-    loadData();
-  }, [loadData]);
-
   const handleSave = async () => {
     if (!ptrabId || !user) return;
     setSaving(true);
     try {
-      const { error } = await supabase
+      const payload = {
+        p_trab_id: ptrabId,
+        user_id: user.id,
+        ...formData,
+        itens_dor: dorItems,
+        updated_at: new Date().toISOString()
+      };
+
+      // Se já temos um ID, atualizamos o registro específico
+      if (selectedDorId) {
+        (payload as any).id = selectedDorId;
+      }
+
+      const { data, error } = await supabase
         .from("dor_registros" as any)
-        .upsert({
-          p_trab_id: ptrabId,
-          user_id: user.id,
-          ...formData,
-          itens_dor: dorItems, // Salvando os itens importados
-          updated_at: new Date().toISOString()
-        }, { onConflict: 'p_trab_id' });
+        .upsert(payload)
+        .select()
+        .single();
 
       if (error) throw error;
+      
       toast.success("DOR salvo com sucesso!");
+      setSelectedDorId(data.id);
+      await loadDors(); // Recarrega a lista para atualizar nomes/números
     } catch (error: any) {
       toast.error("Erro ao salvar: " + error.message);
     } finally {
@@ -266,14 +332,53 @@ const DOREditor = () => {
       `}</style>
 
       <div className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-6 py-3 bg-white/90 backdrop-blur border-b border-slate-200 shadow-sm print:hidden">
-        <Button
-          variant="ghost"
-          onClick={() => navigate('/ptrab')}
-          className="mb-4"
-        >
-          <ArrowLeft className="mr-2 h-4 w-4" />
-          Voltar
-        </Button>
+        <div className="flex items-center gap-4">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => navigate('/ptrab')}
+          >
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Voltar
+          </Button>
+
+          <div className="h-6 w-px bg-slate-200" />
+
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm" className="gap-2">
+                <FileText className="h-4 w-4 text-primary" />
+                {selectedDorId 
+                  ? `DOR Nr ${formData.numero_dor || 'S/N'}` 
+                  : "Novo Documento (DOR)"}
+                <ChevronDown className="h-3 w-3 opacity-50" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" className="w-64">
+              <DropdownMenuLabel>Documentos Salvos</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              {availableDors.length > 0 ? (
+                availableDors.map((dor) => (
+                  <DropdownMenuItem 
+                    key={dor.id} 
+                    onClick={() => applyDorData(dor)}
+                    className={cn(selectedDorId === dor.id && "bg-primary/5 font-medium")}
+                  >
+                    <FileText className="h-4 w-4 mr-2 opacity-70" />
+                    DOR Nr {dor.numero_dor || 'S/N'} - {new Date(dor.created_at).toLocaleDateString()}
+                  </DropdownMenuItem>
+                ))
+              ) : (
+                <div className="px-2 py-1.5 text-xs text-muted-foreground italic">Nenhum documento salvo</div>
+              )}
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={handleCreateNewDor} className="text-primary font-medium">
+                <FilePlus className="h-4 w-4 mr-2" />
+                Criar Novo DOR
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
         
         <div className="flex gap-2">
           <Button size="sm" onClick={handleSave} disabled={saving} className="px-6">
@@ -625,7 +730,7 @@ const DOREditor = () => {
       <div className="fixed bottom-6 right-6 max-w-xs bg-primary text-primary-foreground p-3 rounded-lg shadow-lg flex gap-3 items-start animate-in fade-in slide-in-from-bottom-4 print:hidden">
         <Info className="h-5 w-5 shrink-0 mt-0.5" />
         <p className="text-xs leading-relaxed">
-          Este editor permite preencher o DOR diretamente no layout oficial. Clique nos campos para editar. As alterações são vinculadas ao P-Trab Nr {ptrab?.numero_ptrab}.
+          Este editor permite preencher múltiplos DORs para o mesmo P-Trab. Use o seletor no topo para alternar entre documentos ou criar um novo.
         </p>
       </div>
     </div>
