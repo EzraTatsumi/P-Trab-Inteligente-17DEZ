@@ -464,8 +464,8 @@ const MaterialPermanenteForm = () => {
                                             </CardHeader>
                                             <CardContent className="pt-2">
                                                 <div className="p-4 bg-background rounded-lg border">
-                                                    <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
-                                                        <div className="md:col-span-2 space-y-2">
+                                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                                        <div className="space-y-2">
                                                             <Label>Período (Nr Dias) *</Label>
                                                             <Input 
                                                                 type="number" 
@@ -478,11 +478,11 @@ const MaterialPermanenteForm = () => {
                                                                 className="w-full [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" 
                                                             />
                                                         </div>
-                                                        <div className="md:col-span-8 space-y-2">
+                                                        <div className="space-y-2">
                                                             <Label>OM Destino do Recurso *</Label>
                                                             <OmSelector selectedOmId={omDestino.id || undefined} onChange={(om) => om && setOmDestino({nome: om.nome_om, ug: om.codug_om, id: om.id})} placeholder="Selecione a OM Destino" disabled={!isPTrabEditable} />
                                                         </div>
-                                                        <div className="md:col-span-2 space-y-2">
+                                                        <div className="space-y-2">
                                                             <Label>UG Destino</Label>
                                                             <Input value={formatCodug(omDestino.ug)} disabled className="bg-muted/50" />
                                                         </div>
