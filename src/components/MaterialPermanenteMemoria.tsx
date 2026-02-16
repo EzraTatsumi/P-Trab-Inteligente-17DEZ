@@ -6,7 +6,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Loader2, Pencil, RefreshCw, XCircle, Check } from "lucide-react";
 import { formatCodug } from "@/lib/formatUtils";
-import { generateMaterialPermanenteMemoria } from "@/lib/materialPermanenteUtils";
+import { generateMaterialPermanenteMemoriaCalculo } from "@/lib/materialPermanenteUtils";
 import { Badge } from "@/components/ui/badge";
 
 interface MaterialPermanenteMemoriaProps {
@@ -40,7 +40,7 @@ const MaterialPermanenteMemoria: React.FC<MaterialPermanenteMemoriaProps> = ({
     const uniqueId = `${registro.id}-${item.id}`;
     const isEditing = editingMemoriaId === uniqueId;
     
-    const memoriaAutomatica = generateMaterialPermanenteMemoria(registro, item);
+    const memoriaAutomatica = generateMaterialPermanenteMemoriaCalculo(registro, item);
     const memoriaDisplay = registro.detalhamento_customizado || memoriaAutomatica;
     const hasCustomMemoria = !!registro.detalhamento_customizado;
 
