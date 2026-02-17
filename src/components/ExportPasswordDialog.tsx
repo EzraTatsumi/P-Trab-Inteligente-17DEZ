@@ -21,6 +21,7 @@ interface ExportPasswordDialogProps {
   title: string;
   description: string;
   confirmButtonText: string;
+  autoComplete?: "new-password" | "current-password";
 }
 
 export const ExportPasswordDialog: React.FC<ExportPasswordDialogProps> = ({
@@ -30,6 +31,7 @@ export const ExportPasswordDialog: React.FC<ExportPasswordDialogProps> = ({
   title,
   description,
   confirmButtonText,
+  autoComplete = "new-password",
 }) => {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -70,6 +72,7 @@ export const ExportPasswordDialog: React.FC<ExportPasswordDialogProps> = ({
                 minLength={8}
                 required
                 autoFocus
+                autoComplete={autoComplete}
               />
               <Button
                 type="button"
