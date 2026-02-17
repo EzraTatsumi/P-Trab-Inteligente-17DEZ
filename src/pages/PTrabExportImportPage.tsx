@@ -14,14 +14,14 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Dialog
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { cn } from "@/lib/utils";
 import { ExportPasswordDialog } from "@/components/ExportPasswordDialog";
-import { encryptData, decryptData } from "@/lib/cryptoUtils"; // Importar utilitários de criptografia
-import { OMData } from "@/lib/omUtils"; // Importar OMData
-import { ImportConflictDialog } from "@/components/ImportConflictDialog"; // NOVO IMPORT
-import { generateUniqueMinutaNumber, isPTrabNumberDuplicate } from "@/lib/ptrabNumberUtils"; // Importar utilitários de numeração
-import { formatDateDDMMMAA } from "@/lib/formatUtils"; // Importar utilitário de formatação de data
+import { encryptData, decryptData } from "@/lib/cryptoUtils";
+import { OMData } from "@/lib/omUtils";
+import { ImportConflictDialog } from "@/components/ImportConflictDialog";
+import { generateUniqueMinutaNumber, isPTrabNumberDuplicate } from "@/lib/ptrabNumberUtils";
+import { formatDateDDMMMAA } from "@/lib/formatUtils";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { MinutaNumberDialog } from "@/components/MinutaNumberDialog"; // NOVO IMPORT
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"; // NOVO IMPORT
+import { MinutaNumberDialog } from "@/components/MinutaNumberDialog";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 
 // Define the structure of the exported data
 interface ExportData {
@@ -30,21 +30,40 @@ interface ExportData {
   userId: string;
   type: 'full_backup' | 'single_ptrab';
   data: {
-    p_trab: Tables<'p_trab'>[] | Tables<'p_trab'>; // Array for full, single object for single
+    p_trab: Tables<'p_trab'>[] | Tables<'p_trab'>;
     classe_i_registros: Tables<'classe_i_registros'>[];
-    classe_ii_registros: Tables<'classe_ii_registros'>[]; // Adicionado Classe II
+    classe_ii_registros: Tables<'classe_ii_registros'>[];
     classe_iii_registros: Tables<'classe_iii_registros'>[];
-    classe_v_registros: Tables<'classe_v_registros'>[]; // NOVO
-    classe_vi_registros: Tables<'classe_vi_registros'>[]; // NOVO
-    classe_vii_registros: Tables<'classe_vii_registros'>[]; // NOVO
-    classe_viii_saude_registros: Tables<'classe_viii_saude_registros'>[]; // NOVO
-    classe_viii_remonta_registros: Tables<'classe_viii_remonta_registros'>[]; // NOVO
-    classe_ix_registros: Tables<'classe_ix_registros'>[]; // NOVO
-    p_trab_ref_lpc: Tables<'p_trab_ref_lpc'>[] | null; // ALTERADO: Agora é um array
+    classe_v_registros: Tables<'classe_v_registros'>[];
+    classe_vi_registros: Tables<'classe_vi_registros'>[];
+    classe_vii_registros: Tables<'classe_vii_registros'>[];
+    classe_viii_saude_registros: Tables<'classe_viii_saude_registros'>[];
+    classe_viii_remonta_registros: Tables<'classe_viii_remonta_registros'>[];
+    classe_ix_registros: Tables<'classe_ix_registros'>[];
+    passagem_registros: Tables<'passagem_registros'>[];
+    diaria_registros: Tables<'diaria_registros'>[];
+    verba_operacional_registros: Tables<'verba_operacional_registros'>[];
+    material_consumo_registros: Tables<'material_consumo_registros'>[];
+    complemento_alimentacao_registros: Tables<'complemento_alimentacao_registros'>[];
+    servicos_terceiros_registros: Tables<'servicos_terceiros_registros'>[];
+    concessionaria_registros: Tables<'concessionaria_registros'>[];
+    horas_voo_registros: Tables<'horas_voo_registros'>[];
+    material_permanente_registros: Tables<'material_permanente_registros'>[];
+    dor_registros: Tables<'dor_registros'>[];
+    p_trab_ref_lpc: Tables<'p_trab_ref_lpc'>[];
+    
     // Global tables only included in full backup
     organizacoes_militares?: Tables<'organizacoes_militares'>[];
     diretrizes_custeio?: Tables<'diretrizes_custeio'>[];
     diretrizes_equipamentos_classe_iii?: Tables<'diretrizes_equipamentos_classe_iii'>[];
+    diretrizes_operacionais?: Tables<'diretrizes_operacionais'>[];
+    diretrizes_material_consumo?: Tables<'diretrizes_material_consumo'>[];
+    diretrizes_material_permanente?: Tables<'diretrizes_material_permanente'>[];
+    diretrizes_servicos_terceiros?: Tables<'diretrizes_servicos_terceiros'>[];
+    diretrizes_concessionaria?: Tables<'diretrizes_concessionaria'>[];
+    diretrizes_passagens?: Tables<'diretrizes_passagens'>[];
+    diretrizes_classe_ii?: Tables<'diretrizes_classe_ii'>[];
+    diretrizes_classe_ix?: Tables<'diretrizes_classe_ix'>[];
   };
 }
 
@@ -62,41 +81,23 @@ interface ImportSummary {
     operationName?: string;
 }
 
-// NOVO: Função para gerar o nome do arquivo de exportação
 const generateExportFileName = (pTrabData: Tables<'p_trab'>): string => {
     const dataAtz = formatDateDDMMMAA(pTrabData.updated_at);
-    // Substitui barras por hífens para segurança no nome do arquivo
     const numeroPTrab = pTrabData.numero_ptrab.replace(/\//g, '-'); 
-    
     const isMinuta = pTrabData.numero_ptrab.startsWith("Minuta");
     const currentYear = new Date(pTrabData.periodo_inicio).getFullYear();
     
-    // 1. Construir o nome base
     let nomeBase = `P Trab Nr ${numeroPTrab}`;
-    
     if (isMinuta) {
-        // Se for Minuta, adiciona o ano e a sigla da OM
         nomeBase += ` - ${currentYear} - ${pTrabData.nome_om}`;
-    } else {
-        // Se for Aprovado, o número já contém o ano e a sigla da OM (ex: 1-2025-23ª Bda Inf Sl)
-        // Apenas adiciona a sigla da OM para clareza, mas sem o separador extra
-        // Ex: P Trab Nr 1-2025-23ª Bda Inf Sl - Op MARAJOARA...
     }
-    
-    // 2. Adicionar o nome da operação
     nomeBase += ` - ${pTrabData.nome_operacao}`;
-    
-    // 3. Adicionar a data de atualização
     nomeBase += ` - Atz ${dataAtz}`;
     
     return `${nomeBase}.json`;
 };
 
-// Tipo auxiliar para o retorno de consultas Supabase (array)
 type SupabaseArrayResponse<T> = { data: T[] | null; error: any };
-// Tipo auxiliar para o retorno de consultas Supabase (single/maybeSingle)
-type SupabaseSingleResponse<T> = { data: T | null; error: any };
-
 
 const PTrabExportImportPage = () => {
   const navigate = useNavigate();
@@ -106,21 +107,19 @@ const PTrabExportImportPage = () => {
   const [exportPassword, setExportPassword] = useState("");
   const [showPasswordDialog, setShowPasswordDialog] = useState(false);
   const [exportType, setExportType] = useState<'single' | 'full'>('single');
-  const [isPopoverOpen, setIsPopoverOpen] = useState(false); // Estado para controlar o Popover
+  const [isPopoverOpen, setIsPopoverOpen] = useState(false);
   
-  // Import States
   const [fileToImport, setFileToImport] = useState<File | null>(null);
   const [importPassword, setImportPassword] = useState("");
   const [showImportPasswordDialog, setShowImportPasswordDialog] = useState(false);
   const [importSummary, setImportSummary] = useState<ImportSummary | null>(null);
   const [decryptedData, setDecryptedData] = useState<ExportData | null>(null);
   
-  // Conflict/Options States
   const [showConflictDialog, setShowConflictDialog] = useState(false);
-  const [showMinutaNumberDialog, setShowMinutaNumberDialog] = useState(false); // NOVO
+  const [showMinutaNumberDialog, setShowMinutaNumberDialog] = useState(false);
   const [importedPTrab, setImportedPTrab] = useState<Tables<'p_trab'> | null>(null);
   const [existingPTrabNumbers, setExistingPTrabNumbers] = useState<string[]>([]);
-  const [userOms, setUserOms] = useState<OMData[]>([]); // Mantido, mas não usado no fluxo simplificado
+  const [userOms, setUserOms] = useState<OMData[]>([]);
   
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { handleEnterToNextField } = useFormNavigation();
@@ -157,10 +156,6 @@ const PTrabExportImportPage = () => {
     }
   };
 
-  // =================================================================
-  // EXPORT LOGIC
-  // =================================================================
-
   const handleExport = async (password: string) => {
     if (!userId) {
       toast.error("Usuário não autenticado.");
@@ -169,7 +164,7 @@ const PTrabExportImportPage = () => {
     
     setLoading(true);
     setShowPasswordDialog(false);
-    setExportPassword(password); // Salva a senha para uso
+    setExportPassword(password);
 
     try {
       let exportData: ExportData['data'];
@@ -178,38 +173,40 @@ const PTrabExportImportPage = () => {
       const currentUserId = await userId;
 
       if (exportType === 'single' && selectedPTrabId) {
-        // Exportar P Trab Único
         const { data: pTrab, error: pTrabError } = await supabase
           .from('p_trab')
-          .select('*, updated_at') // Seleciona explicitamente updated_at
+          .select('*, updated_at')
           .eq('id', selectedPTrabId)
           .single();
         
         if (pTrabError || !pTrab) throw new Error("P Trab não encontrado.");
 
         const [
-          classeI,
-          classeII,
-          classeIII,
-          classeV,
-          classeVI,
-          classeVII,
-          classeVIIISaude,
-          classeVIIIRemonta,
-          classeIX,
-          refLPC,
+          classeI, classeII, classeIII, classeV, classeVI, classeVII, 
+          classeVIIISaude, classeVIIIRemonta, classeIX, passagem, diaria, 
+          verbaOp, materialConsumo, complemento, servicos, concessionaria, 
+          horasVoo, materialPermanente, dor, refLPC
         ] = await Promise.all([
-          (supabase.from('classe_i_registros').select('*').eq('p_trab_id', selectedPTrabId) as unknown as Promise<SupabaseArrayResponse<Tables<'classe_i_registros'>>>),
-          (supabase.from('classe_ii_registros').select('*, itens_equipamentos, valor_nd_30, valor_nd_39').eq('p_trab_id', selectedPTrabId) as unknown as Promise<SupabaseArrayResponse<Tables<'classe_ii_registros'>>>),
-          (supabase.from('classe_iii_registros').select('*').eq('p_trab_id', selectedPTrabId) as unknown as Promise<SupabaseArrayResponse<Tables<'classe_iii_registros'>>>),
-          (supabase.from('classe_v_registros').select('*, itens_equipamentos, valor_nd_30, valor_nd_39').eq('p_trab_id', selectedPTrabId) as unknown as Promise<SupabaseArrayResponse<Tables<'classe_v_registros'>>>),
-          (supabase.from('classe_vi_registros').select('*, itens_equipamentos, valor_nd_30, valor_nd_39').eq('p_trab_id', selectedPTrabId) as unknown as Promise<SupabaseArrayResponse<Tables<'classe_vi_registros'>>>),
-          (supabase.from('classe_vii_registros').select('*, itens_equipamentos, valor_nd_30, valor_nd_39').eq('p_trab_id', selectedPTrabId) as unknown as Promise<SupabaseArrayResponse<Tables<'classe_vii_registros'>>>),
-          (supabase.from('classe_viii_saude_registros').select('*, itens_saude, valor_nd_30, valor_nd_39').eq('p_trab_id', selectedPTrabId) as unknown as Promise<SupabaseArrayResponse<Tables<'classe_viii_saude_registros'>>>),
-          (supabase.from('classe_viii_remonta_registros').select('*, itens_remonta, valor_nd_30, valor_nd_39').eq('p_trab_id', selectedPTrabId) as unknown as Promise<SupabaseArrayResponse<Tables<'classe_viii_remonta_registros'>>>),
-          (supabase.from('classe_ix_registros').select('*, itens_motomecanizacao, valor_nd_30, valor_nd_39').eq('p_trab_id', selectedPTrabId) as unknown as Promise<SupabaseArrayResponse<Tables<'classe_ix_registros'>>>),
-          // ALTERADO: Usamos select('*') para retornar um array, mesmo que seja de 0 ou 1 elemento.
-          (supabase.from('p_trab_ref_lpc').select('*').eq('p_trab_id', selectedPTrabId) as unknown as Promise<SupabaseArrayResponse<Tables<'p_trab_ref_lpc'>>>),
+          supabase.from('classe_i_registros').select('*').eq('p_trab_id', selectedPTrabId),
+          supabase.from('classe_ii_registros').select('*').eq('p_trab_id', selectedPTrabId),
+          supabase.from('classe_iii_registros').select('*').eq('p_trab_id', selectedPTrabId),
+          supabase.from('classe_v_registros').select('*').eq('p_trab_id', selectedPTrabId),
+          supabase.from('classe_vi_registros').select('*').eq('p_trab_id', selectedPTrabId),
+          supabase.from('classe_vii_registros').select('*').eq('p_trab_id', selectedPTrabId),
+          supabase.from('classe_viii_saude_registros').select('*').eq('p_trab_id', selectedPTrabId),
+          supabase.from('classe_viii_remonta_registros').select('*').eq('p_trab_id', selectedPTrabId),
+          supabase.from('classe_ix_registros').select('*').eq('p_trab_id', selectedPTrabId),
+          supabase.from('passagem_registros').select('*').eq('p_trab_id', selectedPTrabId),
+          supabase.from('diaria_registros').select('*').eq('p_trab_id', selectedPTrabId),
+          supabase.from('verba_operacional_registros').select('*').eq('p_trab_id', selectedPTrabId),
+          supabase.from('material_consumo_registros').select('*').eq('p_trab_id', selectedPTrabId),
+          supabase.from('complemento_alimentacao_registros').select('*').eq('p_trab_id', selectedPTrabId),
+          supabase.from('servicos_terceiros_registros').select('*').eq('p_trab_id', selectedPTrabId),
+          supabase.from('concessionaria_registros').select('*').eq('p_trab_id', selectedPTrabId),
+          supabase.from('horas_voo_registros').select('*').eq('p_trab_id', selectedPTrabId),
+          supabase.from('material_permanente_registros').select('*').eq('p_trab_id', selectedPTrabId),
+          supabase.from('dor_registros').select('*').eq('p_trab_id', selectedPTrabId),
+          supabase.from('p_trab_ref_lpc').select('*').eq('p_trab_id', selectedPTrabId),
         ]);
 
         exportData = {
@@ -223,43 +220,63 @@ const PTrabExportImportPage = () => {
           classe_viii_saude_registros: classeVIIISaude.data || [],
           classe_viii_remonta_registros: classeVIIIRemonta.data || [],
           classe_ix_registros: classeIX.data || [],
-          p_trab_ref_lpc: refLPC.data || [], // ALTERADO: Se for null, retorna array vazio
+          passagem_registros: passagem.data || [],
+          diaria_registros: diaria.data || [],
+          verba_operacional_registros: verbaOp.data || [],
+          material_consumo_registros: materialConsumo.data || [],
+          complemento_alimentacao_registros: complemento.data || [],
+          servicos_terceiros_registros: servicos.data || [],
+          concessionaria_registros: concessionaria.data || [],
+          horas_voo_registros: horasVoo.data || [],
+          material_permanente_registros: materialPermanente.data || [],
+          dor_registros: dor.data || [],
+          p_trab_ref_lpc: refLPC.data || [],
         };
         fileName = generateExportFileName(pTrab);
         exportTypeFinal = 'single_ptrab';
 
       } else if (exportType === 'full') {
-        // Exportar Backup Completo (inclui dados globais)
         const [
-          pTrabsData,
-          classeI,
-          classeII,
-          classeIII,
-          classeV,
-          classeVI,
-          classeVII,
-          classeVIIISaude,
-          classeVIIIRemonta,
-          classeIX,
-          refLPC,
-          omsData,
-          diretrizesCusteio,
-          diretrizesEquipamentos,
+          pTrabsData, classeI, classeII, classeIII, classeV, classeVI, classeVII, 
+          classeVIIISaude, classeVIIIRemonta, classeIX, passagem, diaria, 
+          verbaOp, materialConsumo, complemento, servicos, concessionaria, 
+          horasVoo, materialPermanente, dor, refLPC,
+          omsData, custeio, equipamentos, operacionais, matConsumoDir, 
+          matPermDir, servicosDir, concessionariaDir, passagensDir, 
+          classeIIDir, classeIXDir
         ] = await Promise.all([
-          (supabase.from('p_trab').select('*, updated_at').eq('user_id', currentUserId) as unknown as Promise<SupabaseArrayResponse<Tables<'p_trab'>>>),
-          (supabase.from('classe_i_registros').select('*') as unknown as Promise<SupabaseArrayResponse<Tables<'classe_i_registros'>>>),
-          (supabase.from('classe_ii_registros').select('*, itens_equipamentos, valor_nd_30, valor_nd_39') as unknown as Promise<SupabaseArrayResponse<Tables<'classe_ii_registros'>>>),
-          (supabase.from('classe_iii_registros').select('*') as unknown as Promise<SupabaseArrayResponse<Tables<'classe_iii_registros'>>>),
-          (supabase.from('classe_v_registros').select('*, itens_equipamentos, valor_nd_30, valor_nd_39') as unknown as Promise<SupabaseArrayResponse<Tables<'classe_v_registros'>>>),
-          (supabase.from('classe_vi_registros').select('*, itens_equipamentos, valor_nd_30, valor_nd_39') as unknown as Promise<SupabaseArrayResponse<Tables<'classe_vi_registros'>>>),
-          (supabase.from('classe_vii_registros').select('*, itens_equipamentos, valor_nd_30, valor_nd_39') as unknown as Promise<SupabaseArrayResponse<Tables<'classe_vii_registros'>>>),
-          (supabase.from('classe_viii_saude_registros').select('*, itens_saude, valor_nd_30, valor_nd_39') as unknown as Promise<SupabaseArrayResponse<Tables<'classe_viii_saude_registros'>>>),
-          (supabase.from('classe_viii_remonta_registros').select('*, itens_remonta, valor_nd_30, valor_nd_39') as unknown as Promise<SupabaseArrayResponse<Tables<'classe_viii_remonta_registros'>>>),
-          (supabase.from('classe_ix_registros').select('*, itens_motomecanizacao, valor_nd_30, valor_nd_39') as unknown as Promise<SupabaseArrayResponse<Tables<'classe_ix_registros'>>>),
-          (supabase.from('p_trab_ref_lpc').select('*') as unknown as Promise<SupabaseArrayResponse<Tables<'p_trab_ref_lpc'>>>),
-          (supabase.from('organizacoes_militares').select('*').eq('user_id', currentUserId) as unknown as Promise<SupabaseArrayResponse<Tables<'organizacoes_militares'>>>),
-          (supabase.from('diretrizes_custeio').select('*').eq('user_id', currentUserId) as unknown as Promise<SupabaseArrayResponse<Tables<'diretrizes_custeio'>>>),
-          (supabase.from('diretrizes_equipamentos_classe_iii').select('*').eq('user_id', currentUserId) as unknown as Promise<SupabaseArrayResponse<Tables<'diretrizes_equipamentos_classe_iii'>>>),
+          supabase.from('p_trab').select('*, updated_at').eq('user_id', currentUserId),
+          supabase.from('classe_i_registros').select('*'),
+          supabase.from('classe_ii_registros').select('*'),
+          supabase.from('classe_iii_registros').select('*'),
+          supabase.from('classe_v_registros').select('*'),
+          supabase.from('classe_vi_registros').select('*'),
+          supabase.from('classe_vii_registros').select('*'),
+          supabase.from('classe_viii_saude_registros').select('*'),
+          supabase.from('classe_viii_remonta_registros').select('*'),
+          supabase.from('classe_ix_registros').select('*'),
+          supabase.from('passagem_registros').select('*'),
+          supabase.from('diaria_registros').select('*'),
+          supabase.from('verba_operacional_registros').select('*'),
+          supabase.from('material_consumo_registros').select('*'),
+          supabase.from('complemento_alimentacao_registros').select('*'),
+          supabase.from('servicos_terceiros_registros').select('*'),
+          supabase.from('concessionaria_registros').select('*'),
+          supabase.from('horas_voo_registros').select('*'),
+          supabase.from('material_permanente_registros').select('*'),
+          supabase.from('dor_registros').select('*'),
+          supabase.from('p_trab_ref_lpc').select('*'),
+          supabase.from('organizacoes_militares').select('*').eq('user_id', currentUserId),
+          supabase.from('diretrizes_custeio').select('*').eq('user_id', currentUserId),
+          supabase.from('diretrizes_equipamentos_classe_iii').select('*').eq('user_id', currentUserId),
+          supabase.from('diretrizes_operacionais').select('*').eq('user_id', currentUserId),
+          supabase.from('diretrizes_material_consumo').select('*').eq('user_id', currentUserId),
+          supabase.from('diretrizes_material_permanente').select('*').eq('user_id', currentUserId),
+          supabase.from('diretrizes_servicos_terceiros').select('*').eq('user_id', currentUserId),
+          supabase.from('diretrizes_concessionaria').select('*').eq('user_id', currentUserId),
+          supabase.from('diretrizes_passagens').select('*').eq('user_id', currentUserId),
+          supabase.from('diretrizes_classe_ii').select('*').eq('user_id', currentUserId),
+          supabase.from('diretrizes_classe_ix').select('*').eq('user_id', currentUserId),
         ]);
 
         exportData = {
@@ -273,42 +290,31 @@ const PTrabExportImportPage = () => {
           classe_viii_saude_registros: classeVIIISaude.data || [],
           classe_viii_remonta_registros: classeVIIIRemonta.data || [],
           classe_ix_registros: classeIX.data || [],
-          p_trab_ref_lpc: refLPC.data || [], // ALTERADO: Se for null, retorna array vazio
+          passagem_registros: passagem.data || [],
+          diaria_registros: diaria.data || [],
+          verba_operacional_registros: verbaOp.data || [],
+          material_consumo_registros: materialConsumo.data || [],
+          complemento_alimentacao_registros: complemento.data || [],
+          servicos_terceiros_registros: servicos.data || [],
+          concessionaria_registros: concessionaria.data || [],
+          horas_voo_registros: horasVoo.data || [],
+          material_permanente_registros: materialPermanente.data || [],
+          dor_registros: dor.data || [],
+          p_trab_ref_lpc: refLPC.data || [],
           organizacoes_militares: omsData.data || [],
-          diretrizes_custeio: diretrizesCusteio.data || [],
-          diretrizes_equipamentos_classe_iii: diretrizesEquipamentos.data || [],
+          diretrizes_custeio: custeio.data || [],
+          diretrizes_equipamentos_classe_iii: equipamentos.data || [],
+          diretrizes_operacionais: operacionais.data || [],
+          diretrizes_material_consumo: matConsumoDir.data || [],
+          diretrizes_material_permanente: matPermDir.data || [],
+          diretrizes_servicos_terceiros: servicosDir.data || [],
+          diretrizes_concessionaria: concessionariaDir.data || [],
+          diretrizes_passagens: passagensDir.data || [],
+          diretrizes_classe_ii: classeIIDir.data || [],
+          diretrizes_classe_ix: classeIXDir.data || [],
         };
         
-        // Cria um PTrab temporário para usar a função de nome de arquivo
-        const tempPTrab: Tables<'p_trab'> = {
-            id: 'backup',
-            numero_ptrab: 'Backup Completo',
-            nome_om: 'USER',
-            nome_operacao: 'Configurações',
-            periodo_inicio: new Date().toISOString().split('T')[0],
-            periodo_fim: new Date().toISOString().split('T')[0],
-            efetivo_empregado: 'N/A',
-            comando_militar_area: 'N/A',
-            status: 'arquivado',
-            user_id: currentUserId,
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
-            // Adicionar campos obrigatórios que podem estar faltando no tipo Tables<'p_trab'>
-            codug_om: null,
-            codug_rm_vinculacao: null,
-            nome_om_extenso: null,
-            nome_cmt_om: null,
-            local_om: null,
-            acoes: null,
-            rm_vinculacao: null,
-            rotulo_versao: null,
-            comentario: null,
-            share_token: 'temp',
-            shared_with: null,
-            origem: 'original',
-        } as Tables<'p_trab'>;
-        
-        fileName = `PTrab_Backup_Completo_${formatDateDDMMMAA(tempPTrab.updated_at)}.json`;
+        fileName = `PTrab_Backup_Completo_${formatDateDDMMMAA(new Date().toISOString())}.json`;
         exportTypeFinal = 'full_backup';
 
       } else {
@@ -316,7 +322,7 @@ const PTrabExportImportPage = () => {
       }
 
       const finalExportObject: ExportData = {
-        version: "1.0",
+        version: "1.1",
         timestamp: new Date().toISOString(),
         userId: currentUserId as string,
         type: exportTypeFinal,
@@ -324,10 +330,7 @@ const PTrabExportImportPage = () => {
       };
 
       const encryptedText = encryptData(finalExportObject, password);
-      
-      if (!encryptedText) {
-          throw new Error("Falha na criptografia. Verifique a senha.");
-      }
+      if (!encryptedText) throw new Error("Falha na criptografia.");
 
       const blob = new Blob([encryptedText], { type: 'application/json' });
       const url = URL.createObjectURL(blob);
@@ -339,7 +342,7 @@ const PTrabExportImportPage = () => {
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
 
-      toast.success("Exportação concluída e criptografada!");
+      toast.success("Exportação concluída!");
 
     } catch (error: any) {
       console.error("Erro na exportação:", error);
@@ -350,16 +353,12 @@ const PTrabExportImportPage = () => {
     }
   };
 
-  // =================================================================
-  // IMPORT LOGIC
-  // =================================================================
-
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
       setFileToImport(file);
       setImportSummary({
-        type: 'single_ptrab', // Assume single por padrão, será corrigido após descriptografia
+        type: 'single_ptrab',
         details: `Arquivo selecionado: ${file.name}`,
       });
     } else {
@@ -378,7 +377,6 @@ const PTrabExportImportPage = () => {
 
   const handleDecryptAndAnalyze = async (password: string) => {
     if (!fileToImport) return;
-
     setLoading(true);
     setShowImportPasswordDialog(false);
     setImportPassword(password);
@@ -386,27 +384,20 @@ const PTrabExportImportPage = () => {
     try {
       const fileContent = await fileToImport.text();
       const decrypted = decryptData(fileContent, password);
-
-      if (!decrypted) {
-        throw new Error("Senha incorreta ou arquivo corrompido.");
-      }
+      if (!decrypted) throw new Error("Senha incorreta ou arquivo corrompido.");
 
       const importedData = decrypted as ExportData;
       setDecryptedData(importedData);
 
       if (importedData.type === 'full_backup') {
-        // Backup Completo: Vai direto para a importação
         setImportSummary({
           type: 'full_backup',
           details: `Backup Completo de ${(importedData.data.p_trab as Tables<'p_trab'>[]).length} P Trabs e configurações globais.`,
         });
         await handleFinalImport(importedData);
-        
       } else if (importedData.type === 'single_ptrab') {
-        // P Trab Único: Precisa de análise de conflito
         const pTrab = importedData.data.p_trab as Tables<'p_trab'>;
         setImportedPTrab(pTrab);
-        
         setImportSummary({
           type: 'single_ptrab',
           details: `P Trab: ${pTrab.numero_ptrab} - ${pTrab.nome_operacao}`,
@@ -415,88 +406,55 @@ const PTrabExportImportPage = () => {
           omSigla: pTrab.nome_om,
         });
         
-        // 1. Verificar conflito de numeração
-        const isDuplicate = isPTrabNumberDuplicate(pTrab.numero_ptrab, existingPTrabNumbers);
-        
-        if (isDuplicate) {
-            // Cenário 2: Conflito - Abre diálogo de Sobrescrever/Criar Minuta
+        if (isPTrabNumberDuplicate(pTrab.numero_ptrab, existingPTrabNumbers)) {
             setShowConflictDialog(true);
         } else {
-            // Cenário 1: Sem conflito - Importa diretamente
             await handleFinalImport(importedData);
         }
       }
-
     } catch (error: any) {
-      console.error("Erro na importação/descriptografia:", error);
-      toast.error(error.message || "Erro ao importar arquivo. Verifique a senha.");
+      console.error("Erro na importação:", error);
+      toast.error(error.message || "Erro ao importar arquivo.");
     } finally {
       setLoading(false);
     }
   };
   
-  // --- Conflict Resolution Handlers ---
-  
-  // Opção 1: Sobrescrever (Apenas para P Trab Único com conflito)
   const handleOverwrite = () => {
     if (!decryptedData || !importedPTrab) return;
-    
-    // Sobrescrever significa que o ID do PTrab existente será usado para o UPDATE.
     const existingPTrab = pTrabs.find(p => p.numero_ptrab === importedPTrab.numero_ptrab);
-    
     if (!existingPTrab) {
-        toast.error("Erro interno: P Trab existente não encontrado para sobrescrever.");
-        setShowConflictDialog(false);
+        toast.error("P Trab existente não encontrado.");
         return;
     }
-    
-    // 1. Forçar a importação com o ID existente
     handleFinalImport(decryptedData, existingPTrab.id);
     setShowConflictDialog(false);
   };
   
-  // Opção 2: Iniciar Criação de Minuta (Abre o diálogo de numeração)
   const handleStartCreateNew = () => {
     if (!importedPTrab) return;
-    
-    // 1. Gera um novo número de Minuta sugerido
     const newMinutaNumber = generateUniqueMinutaNumber(existingPTrabNumbers);
-    
-    // 2. Abre o diálogo de numeração da minuta
     setShowConflictDialog(false);
-    setImportedPTrab(prev => prev ? { ...prev, numero_ptrab: newMinutaNumber } : null); // Atualiza o número sugerido no estado
+    setImportedPTrab(prev => prev ? { ...prev, numero_ptrab: newMinutaNumber } : null);
     setShowMinutaNumberDialog(true);
   };
   
-  // Opção 3: Confirmação da Minuta (Chamado pelo MinutaNumberDialog)
   const handleConfirmMinutaNumber = (finalMinutaNumber: string) => {
     if (!decryptedData || !importedPTrab) return;
-    
-    // 1. Atualiza o PTrab importado para ser uma Minuta com o número final
     const newPTrabAsMinuta = {
         ...importedPTrab,
         numero_ptrab: finalMinutaNumber,
         status: 'aberto',
         origem: 'importado',
     };
-    
-    // 2. Atualiza o PTrab dentro do objeto de dados descriptografados
     const updatedDecryptedData: ExportData = {
         ...decryptedData,
-        data: {
-            ...decryptedData.data,
-            p_trab: newPTrabAsMinuta,
-        }
+        data: { ...decryptedData.data, p_trab: newPTrabAsMinuta }
     };
-    
-    // 3. Inicia a importação final (sem ID de sobrescrita)
     handleFinalImport(updatedDecryptedData);
     setShowMinutaNumberDialog(false);
   };
 
-
-  // --- Final Import Logic ---
-  
   const handleFinalImport = async (data: ExportData, overwriteId?: string) => {
     setLoading(true);
     const currentUserId = await userId;
@@ -508,255 +466,150 @@ const PTrabExportImportPage = () => {
 
     try {
       if (data.type === 'full_backup') {
-        // Lógica de importação de backup completo (substituição de dados globais)
         await importFullBackup(data, currentUserId);
-        
       } else if (data.type === 'single_ptrab') {
-        // Lógica de importação de P Trab único
         await importSinglePTrab(data, currentUserId, overwriteId);
       }
-
-      toast.success("Importação concluída com sucesso!");
-      await loadPTrabsAndOMs(); // Recarrega a lista de P Trabs e OMs
+      toast.success("Importação concluída!");
+      await loadPTrabsAndOMs();
       setFileToImport(null);
       setImportSummary(null);
       setDecryptedData(null);
-      setImportPassword("");
-      
     } catch (error: any) {
       console.error("Erro na importação final:", error);
-      toast.error(error.message || "Erro ao salvar dados no banco.");
+      toast.error(error.message || "Erro ao salvar dados.");
     } finally {
       setLoading(false);
     }
   };
   
-  // Helper para importação de backup completo
   const importFullBackup = async (data: ExportData, currentUserId: string) => {
-    const { p_trab, organizacoes_militares, diretrizes_custeio, diretrizes_equipamentos_classe_iii } = data.data;
+    const { 
+        p_trab, organizacoes_militares, diretrizes_custeio, 
+        diretrizes_equipamentos_classe_iii, diretrizes_operacionais,
+        diretrizes_material_consumo, diretrizes_material_permanente,
+        diretrizes_servicos_terceiros, diretrizes_concessionaria,
+        diretrizes_passagens, diretrizes_classe_ii, diretrizes_classe_ix
+    } = data.data;
     
-    // 1. Limpar dados existentes (Apenas para tabelas globais do usuário)
-    await supabase.from('organizacoes_militares').delete().eq('user_id', currentUserId);
-    await supabase.from('diretrizes_custeio').delete().eq('user_id', currentUserId);
-    await supabase.from('diretrizes_equipamentos_classe_iii').delete().eq('user_id', currentUserId);
+    // Limpar dados globais existentes
+    const globalTables = [
+        'organizacoes_militares', 'diretrizes_custeio', 'diretrizes_equipamentos_classe_iii',
+        'diretrizes_operacionais', 'diretrizes_material_consumo', 'diretrizes_material_permanente',
+        'diretrizes_servicos_terceiros', 'diretrizes_concessionaria', 'diretrizes_passagens',
+        'diretrizes_classe_ii', 'diretrizes_classe_ix'
+    ];
     
-    // 2. Inserir novos dados globais (ajustando user_id)
-    if (organizacoes_militares && organizacoes_militares.length > 0) {
-        const newOms = organizacoes_militares.map(om => ({ ...om, user_id: currentUserId, id: undefined }));
-        await supabase.from('organizacoes_militares').insert(newOms as TablesInsert<'organizacoes_militares'>[]);
-    }
-    if (diretrizes_custeio && diretrizes_custeio.length > 0) {
-        const newDiretrizes = diretrizes_custeio.map(d => ({ ...d, user_id: currentUserId, id: undefined }));
-        await supabase.from('diretrizes_custeio').insert(newDiretrizes as TablesInsert<'diretrizes_custeio'>[]);
-    }
-    if (diretrizes_equipamentos_classe_iii && diretrizes_equipamentos_classe_iii.length > 0) {
-        const newEquipamentos = diretrizes_equipamentos_classe_iii.map(e => ({ ...e, user_id: currentUserId, id: undefined }));
-        await supabase.from('diretrizes_equipamentos_classe_iii').insert(newEquipamentos as TablesInsert<'diretrizes_equipamentos_classe_iii'>[]);
+    for (const table of globalTables) {
+        await supabase.from(table).delete().eq('user_id', currentUserId);
     }
     
-    // 3. Importar P Trabs (com lógica de conflito simplificada: se o número já existe, ele é ignorado)
+    // Inserir novos dados globais
+    const insertGlobal = async (table: string, items: any[] | undefined) => {
+        if (items && items.length > 0) {
+            const newItems = items.map(item => ({ ...item, user_id: currentUserId, id: undefined }));
+            await supabase.from(table).insert(newItems);
+        }
+    };
+
+    await insertGlobal('organizacoes_militares', organizacoes_militares);
+    await insertGlobal('diretrizes_custeio', diretrizes_custeio);
+    await insertGlobal('diretrizes_equipamentos_classe_iii', diretrizes_equipamentos_classe_iii);
+    await insertGlobal('diretrizes_operacionais', diretrizes_operacionais);
+    await insertGlobal('diretrizes_material_consumo', diretrizes_material_consumo);
+    await insertGlobal('diretrizes_material_permanente', diretrizes_material_permanente);
+    await insertGlobal('diretrizes_servicos_terceiros', diretrizes_servicos_terceiros);
+    await insertGlobal('diretrizes_concessionaria', diretrizes_concessionaria);
+    await insertGlobal('diretrizes_passagens', diretrizes_passagens);
+    await insertGlobal('diretrizes_classe_ii', diretrizes_classe_ii);
+    await insertGlobal('diretrizes_classe_ix', diretrizes_classe_ix);
+    
     const pTrabsOriginal = p_trab as Tables<'p_trab'>[];
-    
     for (const originalPTrab of pTrabsOriginal) {
-        const isDuplicate = isPTrabNumberDuplicate(originalPTrab.numero_ptrab, existingPTrabNumbers);
-        
-        if (!isDuplicate) {
-            // Prepara o PTrab para inserção (removendo campos de sistema)
+        if (!isPTrabNumberDuplicate(originalPTrab.numero_ptrab, existingPTrabNumbers)) {
             const { id: originalId, share_token, shared_with, created_at, updated_at, ...rest } = originalPTrab; 
-            
-            const ptrabToInsert: TablesInsert<'p_trab'> = { 
-                ...rest, 
-                user_id: currentUserId, 
-                shared_with: [], // Garante que shared_with é resetado
-                origem: 'importado',
-            } as TablesInsert<'p_trab'>;
-            
-            // Insere o PTrab
-            const { data: newPTrab, error: insertPTrabError } = await supabase
+            const { data: newPTrab, error } = await supabase
                 .from('p_trab')
-                .insert([ptrabToInsert])
+                .insert([{ ...rest, user_id: currentUserId, shared_with: [], origem: 'importado' }])
                 .select('id')
                 .single();
                 
-            if (insertPTrabError || !newPTrab) {
-                console.error(`Erro ao inserir PTrab ${originalPTrab.numero_ptrab}:`, insertPTrabError);
-                continue;
-            }
-            
-            // Clonar registros relacionados (Classe I, II, III, LPC)
-            // CORREÇÃO DO ERRO 2: Usar o ID original (originalId) e o novo ID (newPTrab.id)
-            await cloneImportedRecords(data, originalId, newPTrab.id);
+            if (newPTrab) await cloneImportedRecords(data, originalId, newPTrab.id);
         }
     }
-    
-    toast.success(`Backup completo importado! ${pTrabsOriginal.length} P Trabs processados.`);
   };
   
-  // Helper para importação de P Trab único
   const importSinglePTrab = async (data: ExportData, currentUserId: string, overwriteId?: string) => {
     const importedPTrab = data.data.p_trab as Tables<'p_trab'>;
-    
-    // 1. Preparar dados do PTrab
-    // FIX: Exclui id, share_token E shared_with
     const { id: originalId, created_at, updated_at, share_token, shared_with, ...restOfPTrab } = importedPTrab; 
     
-    // Determine the status for the new record
-    let newStatus: string;
-    
-    if (overwriteId) {
-        // If overwriting, use the status from the imported file
-        newStatus = importedPTrab.status;
-    } else {
-        // If inserting a new record:
-        const isMinuta = importedPTrab.numero_ptrab.startsWith("Minuta");
-        
-        if (isMinuta) {
-            // If it's a Minuta (either original or newly generated Minuta-N), start as 'aberto'
-            newStatus = 'aberto';
-        } else {
-            // If it has an official number:
-            // If the imported status is 'aprovado' or 'arquivado', set it to 'aprovado' 
-            // (treating it as finalized but allowing local re-archiving).
-            if (importedPTrab.status === 'aprovado' || importedPTrab.status === 'arquivado') {
-                newStatus = 'aprovado';
-            } else {
-                // Otherwise, use the imported status (e.g., 'aberto', 'em_andamento')
-                newStatus = importedPTrab.status;
-            }
-        }
+    let newStatus = importedPTrab.status;
+    if (!overwriteId) {
+        if (importedPTrab.numero_ptrab.startsWith("Minuta")) newStatus = 'aberto';
+        else if (['aprovado', 'arquivado'].includes(importedPTrab.status)) newStatus = 'aprovado';
     }
     
-    const ptrabDataToSave: TablesInsert<'p_trab'> | TablesUpdate<'p_trab'> = {
+    const ptrabDataToSave = {
         ...restOfPTrab,
         user_id: currentUserId,
         origem: overwriteId ? importedPTrab.origem : 'importado',
-        status: newStatus, // Use the determined status
-        shared_with: [], // GARANTE QUE O CAMPO É RESETADO
+        status: newStatus,
+        shared_with: [],
     };
     
     let finalPTrabId: string;
-    
     if (overwriteId) {
-        // UPDATE (Sobrescrever)
-        const { error: updateError } = await supabase
-            .from('p_trab')
-            .update(ptrabDataToSave as TablesUpdate<'p_trab'>)
-            .eq('id', overwriteId);
-        if (updateError) throw updateError;
+        await supabase.from('p_trab').update(ptrabDataToSave).eq('id', overwriteId);
         finalPTrabId = overwriteId;
-        
-        // Limpar registros antigos antes de clonar
         await clearRelatedRecords(finalPTrabId);
-        
     } else {
-        // INSERT (Novo P Trab)
-        const { data: newPTrab, error: insertError } = await supabase
-            .from('p_trab')
-            .insert([ptrabDataToSave as TablesInsert<'p_trab'>])
-            .select('id')
-            .single();
-            
-        if (insertError || !newPTrab) throw insertError;
+        const { data: newPTrab, error } = await supabase.from('p_trab').insert([ptrabDataToSave]).select('id').single();
+        if (error || !newPTrab) throw error;
         finalPTrabId = newPTrab.id;
     }
     
-    // 2. Clonar registros relacionados (Classe I, II, III, LPC)
     await cloneImportedRecords(data, originalId, finalPTrabId);
-    
-    toast.success(`P Trab ${importedPTrab.numero_ptrab} importado com sucesso!`);
   };
   
-  // Helper para limpar registros relacionados (usado em overwrite)
   const clearRelatedRecords = async (ptrabId: string) => {
-    await supabase.from('classe_i_registros').delete().eq('p_trab_id', ptrabId);
-    await supabase.from('classe_ii_registros').delete().eq('p_trab_id', ptrabId);
-    await supabase.from('classe_iii_registros').delete().eq('p_trab_id', ptrabId);
-    await supabase.from('p_trab_ref_lpc').delete().eq('p_trab_id', ptrabId);
-    // Adicionar outras classes conforme necessário
-    await supabase.from('classe_v_registros').delete().eq('p_trab_id', ptrabId);
-    await supabase.from('classe_vi_registros').delete().eq('p_trab_id', ptrabId);
-    await supabase.from('classe_vii_registros').delete().eq('p_trab_id', ptrabId);
-    await supabase.from('classe_viii_saude_registros').delete().eq('p_trab_id', ptrabId);
-    await supabase.from('classe_viii_remonta_registros').delete().eq('p_trab_id', ptrabId);
-    await supabase.from('classe_ix_registros').delete().eq('p_trab_id', ptrabId);
-  };
-
-  // Helper para clonar registros importados
-  const cloneImportedRecords = async (data: ExportData, originalPTrabId: string, newPTrabId: string) => {
-    const currentUserId = await userId;
-    
-    // Helper para filtrar e inserir registros de uma tabela
-    const insertFilteredRecords = async (tableName: keyof ExportData['data'], filterKey: string) => {
-        const records = (data.data[tableName] as any[] || []).filter(r => r[filterKey] === originalPTrabId);
-        
-        if (records.length > 0) {
-            const newRecords = records.map(r => {
-                const { id, created_at, updated_at, ...restOfRecord } = r;
-                return { 
-                    ...restOfRecord, 
-                    p_trab_id: newPTrabId,
-                    // Adiciona user_id para tabelas que o requerem (embora as tabelas de registro não precisem, é bom garantir)
-                    ...(tableName === 'organizacoes_militares' || tableName.startsWith('diretrizes') ? { user_id: currentUserId } : {})
-                };
-            });
-            
-            const { error: insertError } = await supabase
-                .from(tableName)
-                .insert(newRecords as TablesInsert<typeof tableName>[]);
-            
-            if (insertError) {
-                console.error(`Erro ao inserir registros de ${tableName}:`, insertError);
-                throw new Error(`Falha ao importar registros de ${tableName}.`);
-            }
-        }
-    };
-    
-    // 1. Classe I
-    await insertFilteredRecords('classe_i_registros', 'p_trab_id');
-    
-    // 2. Classe II
-    await insertFilteredRecords('classe_ii_registros', 'p_trab_id');
-    
-    // 3. Classe III
-    await insertFilteredRecords('classe_iii_registros', 'p_trab_id');
-    
-    // 4. Classe V
-    await insertFilteredRecords('classe_v_registros', 'p_trab_id');
-    
-    // 5. Classe VI
-    await insertFilteredRecords('classe_vi_registros', 'p_trab_id');
-    
-    // 6. Classe VII
-    await insertFilteredRecords('classe_vii_registros', 'p_trab_id');
-    
-    // 7. Classe VIII Saúde
-    await insertFilteredRecords('classe_viii_saude_registros', 'p_trab_id');
-    
-    // 8. Classe VIII Remonta
-    await insertFilteredRecords('classe_viii_remonta_registros', 'p_trab_id');
-    
-    // 9. Classe IX
-    await insertFilteredRecords('classe_ix_registros', 'p_trab_id');
-    
-    // 10. LPC
-    const lpcRecords = data.data.p_trab_ref_lpc || [];
-    for (const originalRefLPC of lpcRecords) {
-        if (originalRefLPC.p_trab_id === originalPTrabId) {
-            const { id, created_at, updated_at, ...restOfRefLPC } = originalRefLPC;
-            const newRefLPC = { ...restOfRefLPC, p_trab_id: newPTrabId };
-            const { error: insertError } = await supabase.from('p_trab_ref_lpc').insert([newRefLPC as TablesInsert<'p_trab_ref_lpc'>]);
-            if (insertError) {
-                console.error("Erro ao inserir LPC:", insertError);
-                throw new Error("Falha ao importar LPC.");
-            }
-        }
+    const tables = [
+        'classe_i_registros', 'classe_ii_registros', 'classe_iii_registros', 
+        'classe_v_registros', 'classe_vi_registros', 'classe_vii_registros', 
+        'classe_viii_saude_registros', 'classe_viii_remonta_registros', 
+        'classe_ix_registros', 'passagem_registros', 'diaria_registros', 
+        'verba_operacional_registros', 'material_consumo_registros', 
+        'complemento_alimentacao_registros', 'servicos_terceiros_registros', 
+        'concessionaria_registros', 'horas_voo_registros', 
+        'material_permanente_registros', 'dor_registros', 'p_trab_ref_lpc'
+    ];
+    for (const table of tables) {
+        await supabase.from(table).delete().eq('p_trab_id', ptrabId);
     }
   };
 
+  const cloneImportedRecords = async (data: ExportData, originalPTrabId: string, newPTrabId: string) => {
+    const tables = [
+        'classe_i_registros', 'classe_ii_registros', 'classe_iii_registros', 
+        'classe_v_registros', 'classe_vi_registros', 'classe_vii_registros', 
+        'classe_viii_saude_registros', 'classe_viii_remonta_registros', 
+        'classe_ix_registros', 'passagem_registros', 'diaria_registros', 
+        'verba_operacional_registros', 'material_consumo_registros', 
+        'complemento_alimentacao_registros', 'servicos_terceiros_registros', 
+        'concessionaria_registros', 'horas_voo_registros', 
+        'material_permanente_registros', 'dor_registros', 'p_trab_ref_lpc'
+    ];
 
-  // =================================================================
-  // RENDER
-  // =================================================================
+    for (const table of tables) {
+        const records = (data.data[table as keyof ExportData['data']] as any[] || []).filter(r => r.p_trab_id === originalPTrabId);
+        if (records.length > 0) {
+            const newRecords = records.map(r => {
+                const { id, created_at, updated_at, ...rest } = r;
+                return { ...rest, p_trab_id: newPTrabId };
+            });
+            await supabase.from(table).insert(newRecords);
+        }
+    }
+  };
 
   const selectedPTrab = pTrabs.find(p => p.id === selectedPTrabId);
   const isExportDisabled = exportType === 'single' && !selectedPTrabId;
@@ -780,49 +633,28 @@ const PTrabExportImportPage = () => {
             </CardDescription>
           </CardHeader>
           <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-8">
-            
-            {/* Coluna de Exportação */}
             <div className="space-y-4 border-r pr-4">
               <h3 className="text-lg font-semibold flex items-center gap-2">
                 <Upload className="h-4 w-4" />
                 Exportar Dados
               </h3>
-              
               <div className="space-y-2">
                 <Label>Tipo de Exportação</Label>
-                <Select
-                  value={exportType}
-                  onValueChange={(value: 'single' | 'full') => {
-                    setExportType(value);
-                    setSelectedPTrabId(null);
-                  }}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecione o tipo" />
-                  </SelectTrigger>
+                <Select value={exportType} onValueChange={(value: 'single' | 'full') => { setExportType(value); setSelectedPTrabId(null); }}>
+                  <SelectTrigger><SelectValue placeholder="Selecione o tipo" /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="single">P Trab Único</SelectItem>
                     <SelectItem value="full">Backup Completo (Todos os P Trabs e Configurações)</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
-
               {exportType === 'single' && (
                 <div className="space-y-2">
                   <Label>Selecione o P Trab</Label>
                   <Popover open={isPopoverOpen} onOpenChange={setIsPopoverOpen}>
                     <PopoverTrigger asChild>
-                      <Button
-                        variant="outline"
-                        role="combobox"
-                        aria-expanded={isPopoverOpen}
-                        className="w-full justify-between"
-                      >
-                        {selectedPTrab ? (
-                          <span className="truncate">{selectedPTrab.numero_ptrab} - {selectedPTrab.nome_operacao}</span>
-                        ) : (
-                          <span className="text-muted-foreground">Selecione um P Trab...</span>
-                        )}
+                      <Button variant="outline" role="combobox" className="w-full justify-between">
+                        {selectedPTrab ? <span className="truncate">{selectedPTrab.numero_ptrab} - {selectedPTrab.nome_operacao}</span> : <span className="text-muted-foreground">Selecione um P Trab...</span>}
                         <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                       </Button>
                     </PopoverTrigger>
@@ -833,24 +665,9 @@ const PTrabExportImportPage = () => {
                           <CommandEmpty>Nenhum P Trab encontrado.</CommandEmpty>
                           <CommandGroup>
                             {pTrabs.map((ptrab) => (
-                              <CommandItem
-                                key={ptrab.id}
-                                value={`${ptrab.numero_ptrab} ${ptrab.nome_operacao}`}
-                                onSelect={() => {
-                                  setSelectedPTrabId(ptrab.id);
-                                  setIsPopoverOpen(false);
-                                }}
-                              >
-                                <Check
-                                  className={cn(
-                                    "mr-2 h-4 w-4",
-                                    selectedPTrabId === ptrab.id ? "opacity-100" : "opacity-0"
-                                  )}
-                                />
-                                <div className="flex flex-col">
-                                  <span>{ptrab.numero_ptrab}</span>
-                                  <span className="text-xs text-muted-foreground">{ptrab.nome_operacao}</span>
-                                </div>
+                              <CommandItem key={ptrab.id} value={`${ptrab.numero_ptrab} ${ptrab.nome_operacao}`} onSelect={() => { setSelectedPTrabId(ptrab.id); setIsPopoverOpen(false); }}>
+                                <Check className={cn("mr-2 h-4 w-4", selectedPTrabId === ptrab.id ? "opacity-100" : "opacity-0")} />
+                                <div className="flex flex-col"><span>{ptrab.numero_ptrab}</span><span className="text-xs text-muted-foreground">{ptrab.nome_operacao}</span></div>
                               </CommandItem>
                             ))}
                           </CommandGroup>
@@ -860,60 +677,20 @@ const PTrabExportImportPage = () => {
                   </Popover>
                 </div>
               )}
-              
-              <Alert variant="default">
-                <Lock className="h-4 w-4" />
-                <AlertTitle>Criptografia Obrigatória</AlertTitle>
-                <AlertDescription>
-                  Todos os dados exportados são criptografados com uma senha de segurança.
-                </AlertDescription>
-              </Alert>
-
-              <Button
-                onClick={() => setShowPasswordDialog(true)}
-                disabled={loading || isExportDisabled}
-                className="w-full gap-2"
-              >
+              <Alert variant="default"><Lock className="h-4 w-4" /><AlertTitle>Criptografia Obrigatória</AlertTitle><AlertDescription>Todos os dados exportados são criptografados com uma senha.</AlertDescription></Alert>
+              <Button onClick={() => setShowPasswordDialog(true)} disabled={loading || isExportDisabled} className="w-full gap-2">
                 {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
                 {loading ? "Preparando..." : "Exportar Arquivo"}
               </Button>
             </div>
-
-            {/* Coluna de Importação */}
             <div className="space-y-4">
-              <h3 className="text-lg font-semibold flex items-center gap-2">
-                <Download className="h-4 w-4" />
-                Importar Dados
-              </h3>
-              
+              <h3 className="text-lg font-semibold flex items-center gap-2"><Download className="h-4 w-4" />Importar Dados</h3>
               <div className="space-y-2">
                 <Label htmlFor="import-file">Selecione o Arquivo (.json)</Label>
-                <Input
-                  id="import-file"
-                  type="file"
-                  accept=".json"
-                  onChange={handleFileChange}
-                  ref={fileInputRef}
-                  disabled={loading}
-                />
+                <Input id="import-file" type="file" accept=".json" onChange={handleFileChange} ref={fileInputRef} disabled={loading} />
               </div>
-              
-              {importSummary && (
-                <Alert variant="default">
-                  <FileText className="h-4 w-4" />
-                  <AlertTitle>Arquivo Carregado</AlertTitle>
-                  <AlertDescription className="text-sm">
-                    {importSummary.details}
-                  </AlertDescription>
-                </Alert>
-              )}
-
-              <Button
-                onClick={handleStartImport}
-                disabled={loading || !fileToImport}
-                className="w-full gap-2"
-                variant="secondary"
-              >
+              {importSummary && <Alert variant="default"><FileText className="h-4 w-4" /><AlertTitle>Arquivo Carregado</AlertTitle><AlertDescription className="text-sm">{importSummary.details}</AlertDescription></Alert>}
+              <Button onClick={handleStartImport} disabled={loading || !fileToImport} className="w-full gap-2" variant="secondary">
                 {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
                 {loading ? "Aguarde..." : "Iniciar Importação"}
               </Button>
@@ -921,47 +698,10 @@ const PTrabExportImportPage = () => {
           </CardContent>
         </Card>
       </div>
-      
-      {/* Diálogo de Senha de Exportação */}
-      <ExportPasswordDialog
-        open={showPasswordDialog}
-        onOpenChange={setShowPasswordDialog}
-        onConfirm={handleExport}
-        title="Senha de Criptografia"
-        description="Digite uma senha para criptografar o arquivo de exportação."
-        confirmButtonText="Criptografar e Baixar"
-      />
-      
-      {/* Diálogo de Senha de Importação */}
-      <ExportPasswordDialog
-        open={showImportPasswordDialog}
-        onOpenChange={setShowImportPasswordDialog}
-        onConfirm={handleDecryptAndAnalyze}
-        title="Senha de Descriptografia"
-        description="Digite a senha usada para criptografar o arquivo importado."
-        confirmButtonText="Descriptografar e Analisar"
-      />
-      
-      {/* Diálogo de Conflito (Cenário 2) */}
-      <ImportConflictDialog
-        open={showConflictDialog}
-        onOpenChange={setShowConflictDialog}
-        ptrabNumber={importedPTrab?.numero_ptrab || ''}
-        onOverwrite={handleOverwrite}
-        onStartCreateNew={handleStartCreateNew}
-      />
-      
-      {/* Diálogo de Numeração de Minuta (Após escolher 'Criar Minuta') */}
-      {importedPTrab && (
-        <MinutaNumberDialog
-          open={showMinutaNumberDialog}
-          onOpenChange={setShowMinutaNumberDialog}
-          suggestedNumber={importedPTrab.numero_ptrab} // O número já foi atualizado para a sugestão de minuta em handleStartCreateNew
-          originalNumber={importedPTrab.numero_ptrab}
-          existingNumbers={existingPTrabNumbers}
-          onConfirm={handleConfirmMinutaNumber}
-        />
-      )}
+      <ExportPasswordDialog open={showPasswordDialog} onOpenChange={setShowPasswordDialog} onConfirm={handleExport} title="Senha de Criptografia" description="Digite uma senha para criptografar o arquivo." confirmButtonText="Criptografar e Baixar" />
+      <ExportPasswordDialog open={showImportPasswordDialog} onOpenChange={setShowImportPasswordDialog} onConfirm={handleDecryptAndAnalyze} title="Senha de Descriptografia" description="Digite a senha usada para criptografar o arquivo." confirmButtonText="Descriptografar e Analisar" />
+      <ImportConflictDialog open={showConflictDialog} onOpenChange={setShowConflictDialog} ptrabNumber={importedPTrab?.numero_ptrab || ''} onOverwrite={handleOverwrite} onStartCreateNew={handleStartCreateNew} />
+      {importedPTrab && <MinutaNumberDialog open={showMinutaNumberDialog} onOpenChange={setShowMinutaNumberDialog} suggestedNumber={importedPTrab.numero_ptrab} originalNumber={importedPTrab.numero_ptrab} existingNumbers={existingPTrabNumbers} onConfirm={handleConfirmMinutaNumber} />}
     </div>
   );
 };
