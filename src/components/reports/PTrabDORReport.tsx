@@ -12,7 +12,7 @@ import { toast } from "sonner";
 interface PTrabDORReportProps {
   ptrabData: any;
   dorData: any;
-  selector?: React.ReactNode; // Prop para receber o seletor de documentos
+  selector?: React.ReactNode;
 }
 
 const PTrabDORReport: React.FC<PTrabDORReportProps> = ({ ptrabData, dorData, selector }) => {
@@ -48,8 +48,25 @@ const PTrabDORReport: React.FC<PTrabDORReportProps> = ({ ptrabData, dorData, sel
   const dataAtual = new Date().toLocaleDateString('pt-BR', { day: 'numeric', month: 'long', year: 'numeric' });
   const anoAtual = new Date().getFullYear();
 
-  const bodyStyle = { fontFamily: 'Calibri, sans-serif', fontSize: '12pt', color: 'black', lineHeight: '1.2' };
-  const headerTitleStyle = { backgroundColor: '#BFBFBF' };
+  // Estilos otimizados para impressão
+  const bodyStyle: React.CSSProperties = { 
+    fontFamily: 'Calibri, sans-serif', 
+    fontSize: '12pt', 
+    color: 'black', 
+    lineHeight: '1.2',
+    WebkitPrintColorAdjust: 'exact',
+    printColorAdjust: 'exact'
+  };
+
+  const headerTitleStyle: React.CSSProperties = { 
+    backgroundColor: '#BFBFBF',
+    WebkitPrintColorAdjust: 'exact',
+    printColorAdjust: 'exact'
+  };
+
+  const borderStyle = "border-[1px] border-black";
+  const borderBottomStyle = "border-b-[1px] border-black";
+  const borderRightStyle = "border-r-[1px] border-black";
 
   return (
     <div className="space-y-6">
@@ -81,8 +98,8 @@ const PTrabDORReport: React.FC<PTrabDORReportProps> = ({ ptrabData, dorData, sel
         style={bodyStyle}
       >
         {/* Cabeçalho do Documento */}
-        <div className="border border-black grid grid-cols-[180px_1fr_200px] items-stretch mb-4">
-          <div className="border-r border-black p-1 flex items-center justify-center text-center">
+        <div className={cn(borderStyle, "grid grid-cols-[180px_1fr_200px] items-stretch mb-4")}>
+          <div className={cn(borderRightStyle, "p-1 flex items-center justify-center text-center")}>
             <img 
               src="/logo_md.png" 
               alt="MD" 
@@ -90,7 +107,7 @@ const PTrabDORReport: React.FC<PTrabDORReportProps> = ({ ptrabData, dorData, sel
               onError={(e: any) => e.target.src = "https://upload.wikimedia.org/wikipedia/commons/thumb/b/bf/Coat_of_arms_of_Brazil.svg/100px-Coat_of_arms_of_Brazil.svg.png"}
             />
           </div>
-          <div className="border-r border-black p-1 flex flex-col items-center justify-center text-center font-bold uppercase text-[11pt]">
+          <div className={cn(borderRightStyle, "p-1 flex flex-col items-center justify-center text-center font-bold uppercase text-[11pt]")}>
             <p>Ministério da Defesa</p>
             <p>Exército Brasileiro</p>
             <p>{ptrabData.comando_militar_area}</p>
@@ -103,78 +120,78 @@ const PTrabDORReport: React.FC<PTrabDORReportProps> = ({ ptrabData, dorData, sel
         </div>
 
         {/* Seções do DOR */}
-        <div className="border border-black mb-4">
-          <div className="border-b border-black p-0.5 font-bold text-center uppercase" style={headerTitleStyle}>
+        <div className={cn(borderStyle, "mb-4")}>
+          <div className={cn(borderBottomStyle, "p-0.5 font-bold text-center uppercase")} style={headerTitleStyle}>
             DADOS DO ÓRGÃO REQUISITANTE
           </div>
-          <div className="border-b border-black py-0 px-2 font-bold">Órgão:</div>
-          <div className="border-b border-black py-0 px-2">{ptrabData.nome_om_extenso || ptrabData.nome_om}</div>
-          <div className="border-b border-black py-0 px-2 font-bold">Responsável pela Demanda:</div>
-          <div className="border-b border-black py-0 px-2">{ptrabData.nome_cmt_om || "Não informado"}</div>
+          <div className={cn(borderBottomStyle, "py-0 px-2 font-bold")}>Órgão:</div>
+          <div className={cn(borderBottomStyle, "py-0 px-2")}>{ptrabData.nome_om_extenso || ptrabData.nome_om}</div>
+          <div className={cn(borderBottomStyle, "py-0 px-2 font-bold")}>Responsável pela Demanda:</div>
+          <div className={cn(borderBottomStyle, "py-0 px-2")}>{ptrabData.nome_cmt_om || "Não informado"}</div>
           <div className="grid grid-cols-2">
-            <div className="py-0 px-2 border-r border-black"><b>E-mail:</b> {dorData.email}</div>
+            <div className={cn(borderRightStyle, "py-0 px-2")}><b>E-mail:</b> {dorData.email}</div>
             <div className="py-0 px-2"><b>Telefone:</b> {dorData.telefone}</div>
           </div>
         </div>
 
-        <div className="border border-black mb-4">
-          <div className="border-b border-black p-0.5 font-bold text-center uppercase" style={headerTitleStyle}>Anexos</div>
+        <div className={cn(borderStyle, "mb-4")}>
+          <div className={cn(borderBottomStyle, "p-0.5 font-bold text-center uppercase")} style={headerTitleStyle}>Anexos</div>
           <div className="py-0 px-2 text-center">{dorData.anexos}</div>
         </div>
 
-        <div className="border border-black mb-4">
-          <div className="border-b border-black py-0 px-2" style={headerTitleStyle}><b>Ação Orçamentária (AO):</b> {dorData.acao_orcamentaria}</div>
+        <div className={cn(borderStyle, "mb-4")}>
+          <div className={cn(borderBottomStyle, "py-0 px-2")} style={headerTitleStyle}><b>Ação Orçamentária (AO):</b> {dorData.acao_orcamentaria}</div>
           <div className="py-0 px-2"><b>Plano Orçamentário (PO):</b> {dorData.plano_orcamentario}</div>
         </div>
 
-        <div className="border border-black mb-4">
-          <div className="border-b border-black p-0.5 font-bold text-center uppercase" style={headerTitleStyle}>OBJETO DE REQUISIÇÃO</div>
-          <div className="py-0 px-2"><b>Evento:</b> {dorData.evento}</div>
-          <div className="border-t border-b border-black p-0.5 font-bold text-center uppercase" style={headerTitleStyle}>DESCRIÇÃO DO ITEM</div>
+        <div className={cn(borderStyle, "mb-4")}>
+          <div className={cn(borderBottomStyle, "p-0.5 font-bold text-center uppercase")} style={headerTitleStyle}>OBJETO DE REQUISIÇÃO</div>
+          <div className={cn(borderBottomStyle, "py-0 px-2")}><b>Evento:</b> {dorData.evento}</div>
+          <div className={cn(borderBottomStyle, "p-0.5 font-bold text-center uppercase")} style={headerTitleStyle}>DESCRIÇÃO DO ITEM</div>
           
-          <div className="grid grid-cols-[130px_50px_110px_1fr] border-b border-black font-bold text-center text-[10pt]">
-            <div className="border-r border-black py-0 px-1">UGE</div>
-            <div className="border-r border-black py-0 px-1">GND</div>
-            <div className="border-r border-black py-0 px-1">VALOR</div>
+          <div className={cn(borderBottomStyle, "grid grid-cols-[130px_50px_110px_1fr] font-bold text-center text-[10pt]")}>
+            <div className={cn(borderRightStyle, "py-0 px-1")}>UGE</div>
+            <div className={cn(borderRightStyle, "py-0 px-1")}>GND</div>
+            <div className={cn(borderRightStyle, "py-0 px-1")}>VALOR</div>
             <div className="py-0 px-1">Descrição</div>
           </div>
 
           {dorData.itens_dor?.map((item: any, idx: number) => (
-            <div key={idx} className={cn("grid grid-cols-[130px_50px_110px_1fr] text-[10pt] text-center", idx !== dorData.itens_dor.length - 1 && "border-b border-black")}>
-              <div className="border-r border-black py-0 px-1 flex flex-col items-center justify-center leading-tight">
+            <div key={idx} className={cn("grid grid-cols-[130px_50px_110px_1fr] text-[10pt] text-center", idx !== dorData.itens_dor.length - 1 && borderBottomStyle)}>
+              <div className={cn(borderRightStyle, "py-0 px-1 flex flex-col items-center justify-center leading-tight")}>
                 <span>{item.uge_name || item.uge || "N/I"}</span>
                 {(item.uge_code || item.ug) && (
                   <span className="font-normal">({formatCodug(item.uge_code || item.ug)})</span>
                 )}
               </div>
-              <div className="border-r border-black py-0 px-1 flex items-center justify-center">{item.gnd}</div>
-              <div className="border-r border-black py-0 px-1 flex items-center justify-center">{formatNumber(item.valor_num)}</div>
+              <div className={cn(borderRightStyle, "py-0 px-1 flex items-center justify-center")}>{item.gnd}</div>
+              <div className={cn(borderRightStyle, "py-0 px-1 flex items-center justify-center")}>{formatNumber(item.valor_num)}</div>
               <div className="py-0 px-1 uppercase flex items-center justify-center">{item.descricao}</div>
             </div>
           ))}
         </div>
 
-        <div className="border border-black mb-4">
-          <div className="border-b border-black p-0.5 font-bold text-center uppercase" style={headerTitleStyle}>FINALIDADE</div>
+        <div className={cn(borderStyle, "mb-4")}>
+          <div className={cn(borderBottomStyle, "p-0.5 font-bold text-center uppercase")} style={headerTitleStyle}>FINALIDADE</div>
           <div className="p-1 px-2 text-justify whitespace-pre-wrap">{dorData.finalidade}</div>
         </div>
 
-        <div className="border border-black mb-4">
-          <div className="border-b border-black p-0.5 font-bold text-center uppercase" style={headerTitleStyle}>MOTIVAÇÃO</div>
+        <div className={cn(borderStyle, "mb-4")}>
+          <div className={cn(borderBottomStyle, "p-0.5 font-bold text-center uppercase")} style={headerTitleStyle}>MOTIVAÇÃO</div>
           <div className="p-1 px-2 text-justify whitespace-pre-wrap">{dorData.motivacao}</div>
         </div>
 
-        <div className="border border-black mb-4">
-          <div className="border-b border-black p-0.5 font-bold text-center uppercase" style={headerTitleStyle}>CONSEQUÊNCIA DO NÃO ATENDIMENTO</div>
+        <div className={cn(borderStyle, "mb-4")}>
+          <div className={cn(borderBottomStyle, "p-0.5 font-bold text-center uppercase")} style={headerTitleStyle}>CONSEQUÊNCIA DO NÃO ATENDIMENTO</div>
           <div className="p-1 px-2 text-justify whitespace-pre-wrap">{dorData.consequencia}</div>
         </div>
 
-        <div className="border border-black mb-4">
-          <div className="border-b border-black p-0.5 font-bold text-center uppercase" style={headerTitleStyle}>OBSERVAÇÕES GERAIS</div>
+        <div className={cn(borderStyle, "mb-4")}>
+          <div className={cn(borderBottomStyle, "p-0.5 font-bold text-center uppercase")} style={headerTitleStyle}>OBSERVAÇÕES GERAIS</div>
           <div className="p-1 px-2 text-justify whitespace-pre-wrap">{dorData.observacoes}</div>
         </div>
 
-        <div className="mt-4 border border-black p-1 flex flex-col items-center min-h-[150px] justify-between text-center">
+        <div className={cn(borderStyle, "mt-4 p-1 flex flex-col items-center min-h-[150px] justify-between text-center")}>
           <div className="pt-1">
             <p>{ptrabData.local_om || "Local não informado"}, {dataAtual}.</p>
           </div>
