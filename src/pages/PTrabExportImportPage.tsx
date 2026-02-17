@@ -476,8 +476,8 @@ const PTrabExportImportPage = () => {
           </CardContent>
         </Card>
       </div>
-      <ExportPasswordDialog open={showPasswordDialog} onOpenChange={setShowPasswordDialog} onConfirm={handleExport} title="Senha de Criptografia" description="Digite uma senha para criptografar o arquivo." confirmButtonText="Criptografar e Baixar" />
-      <ExportPasswordDialog open={showImportPasswordDialog} onOpenChange={setShowImportPasswordDialog} onConfirm={handleDecryptAndAnalyze} title="Senha de Descriptografia" description="Digite a senha usada para criptografar o arquivo." confirmButtonText="Descriptografar e Analisar" />
+      <ExportPasswordDialog open={showPasswordDialog} onOpenChange={setShowPasswordDialog} onConfirm={handleExport} title="Senha de Criptografia" description="Digite uma senha para criptografar o arquivo." confirmButtonText="Criptografar e Baixar" autoComplete="new-password" />
+      <ExportPasswordDialog open={showImportPasswordDialog} onOpenChange={setShowImportPasswordDialog} onConfirm={handleDecryptAndAnalyze} title="Senha de Descriptografia" description="Digite a senha usada para criptografar o arquivo." confirmButtonText="Descriptografar e Analisar" autoComplete="current-password" />
       <ImportConflictDialog open={showConflictDialog} onOpenChange={setShowConflictDialog} ptrabNumber={importedPTrab?.numero_ptrab || ''} onOverwrite={handleOverwrite} onStartCreateNew={handleStartCreateNew} />
       {importedPTrab && <MinutaNumberDialog open={showMinutaNumberDialog} onOpenChange={setShowMinutaNumberDialog} suggestedNumber={importedPTrab.numero_ptrab} originalNumber={importedPTrab.numero_ptrab} existingNumbers={existingPTrabNumbers} onConfirm={handleConfirmMinutaNumber} />}
     </div>

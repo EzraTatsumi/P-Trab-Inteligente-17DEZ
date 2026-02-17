@@ -65,10 +65,10 @@ export const ExportPasswordDialog: React.FC<ExportPasswordDialogProps> = ({
               <Input
                 id="export-password"
                 type={showPassword ? "text" : "password"}
-                placeholder="Digite a senha para criptografia"
+                placeholder="Digite a senha"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="pr-12" // Aumentado para evitar sobreposição
+                className="pr-12"
                 minLength={8}
                 required
                 autoFocus
