@@ -1,18 +1,18 @@
-import { useState } from "react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Lock, Eye, EyeOff } from "lucide-react";
+"use client";
+
+import React, { useState } from 'react';
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
+  DialogFooter,
+  DialogDescription,
 } from "@/components/ui/dialog";
-import { toast } from "sonner";
-import { useFormNavigation } from "@/hooks/useFormNavigation"; // Importar o hook
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Eye, EyeOff, Lock } from "lucide-react";
 
 interface ExportPasswordDialogProps {
   open: boolean;
@@ -20,42 +20,32 @@ interface ExportPasswordDialogProps {
   onConfirm: (password: string) => void;
   title: string;
   description: string;
-  confirmButtonText?: string; // Novo prop
+  confirmButtonText: string;
 }
 
-export const ExportPasswordDialog = ({
+export const ExportPasswordDialog: React.FC<ExportPasswordDialogProps> = ({
   open,
   onOpenChange,
   onConfirm,
   title,
   description,
-  confirmButtonText = "Confirmar Exportação", // Valor padrão
-}: ExportPasswordDialogProps) => {
+  confirmButtonText,
+}) => {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const { handleEnterToNextField } = useFormNavigation(); // Usar o hook
 
-  const handleConfirm = () => {
-    if (password.length < 8) {
-      toast.error("A senha de segurança deve ter no mínimo 8 caracteres.");
-      return;
-    }
+  const handleConfirm = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (password.length < 8) return;
     onConfirm(password);
-    setPassword(""); // Limpa a senha após a confirmação
-  };
-
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter' && password.length >= 8) {
-      e.preventDefault();
-      handleConfirm();
-    } else {
-      // Permite a navegação padrão do formulário para outros campos se houver
-      handleEnterToNextField(e);
-    }
+    setPassword("");
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={(val) => {
+      if (!val) setPassword("");
+      onOpenChange(val);
+    }}>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
@@ -66,9 +56,9 @@ export const ExportPasswordDialog = ({
             {description}
           </DialogDescription>
         </DialogHeader>
-        <div className="grid gap-4 py-4">
+        <form onSubmit={handleConfirm} className="grid gap-4 py-4">
           <div className="space-y-2">
-            <Label htmlFor="export-password">Senha de Segurança (Mín. 8 caracteres)</Label>
+            <Label htmlFor="export-password">Senha (mínimo 8 caracteres)</Label>
             <div className="relative">
               <Input
                 id="export-password"
@@ -76,33 +66,33 @@ export const ExportPasswordDialog = ({
                 placeholder="Digite a senha para criptografia"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
+                className="pr-12" // Aumentado para evitar sobreposição
                 minLength={8}
                 required
-                className="pr-10"
-                onKeyDown={handleKeyDown} // Adicionar o handler de keydown
+                autoFocus
               />
               <Button
                 type="button"
                 variant="ghost"
                 size="icon"
-                className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
-                onMouseDown={() => setShowPassword(true)}
-                onMouseUp={() => setShowPassword(false)}
-                tabIndex={-1}
+                className="absolute right-0 top-0 h-full w-12 hover:bg-muted rounded-r-md"
+                onClick={() => setShowPassword(!showPassword)}
+                title={showPassword ? "Ocultar senha" : "Mostrar senha"}
               >
-                {showPassword ? <EyeOff className="h-4 w-4 text-muted-foreground" /> : <Eye className="h-4 w-4 text-muted-foreground" />}
+                {showPassword ? (
+                  <EyeOff className="h-4 w-4 text-muted-foreground" />
+                ) : (
+                  <Eye className="h-4 w-4 text-muted-foreground" />
+                )}
               </Button>
             </div>
           </div>
-        </div>
-        <DialogFooter>
-          <Button onClick={handleConfirm} disabled={password.length < 8}>
-            {confirmButtonText}
-          </Button>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
-            Cancelar
-          </Button>
-        </DialogFooter>
+          <DialogFooter>
+            <Button type="submit" disabled={password.length < 8}>
+              {confirmButtonText}
+            </Button>
+          </DialogFooter>
+        </form>
       </DialogContent>
     </Dialog>
   );
