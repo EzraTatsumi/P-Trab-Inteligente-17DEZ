@@ -59,8 +59,9 @@ Os arquivos fonte da documentação estão localizados em `src/docs/`:
 
 Para reportar falhas, sugerir melhorias ou solicitar suporte técnico:
 
-*   **Desenvolvedor Responsável:** [Seu Nome/Organização]
-*   **E-mail:** suporte@ptrabinteligente.eb.mil.br
+*   **Desenvolvedor Responsável:** Ezra Tatsumi Kimura de Moraes
+*   **Contato Telefônico: (12) 99628-6303 - Whatsapp**
+*   **E-mail:** ezratatsumi@hotmail.com
 *   **Feedback:** Utilize o botão "Reportar Falha" dentro da Central de Ajuda no app.
 
 ---
