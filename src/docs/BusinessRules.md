@@ -1,33 +1,123 @@
-# Regras de Negócio e Cálculo
+# Regras de Negócio e Cálculo (Diretrizes COLOG/COTER)
 
-Este documento detalha as diretrizes de custeio e fórmulas de cálculo do sistema.
+Este documento detalha as regras de cálculo e as diretrizes de custeio implementadas no sistema PTrab Inteligente, garantindo a conformidade com as normas do COLOG e COTER.
 
-## Classe I - Subsistência
-A Classe I (Alimentação) é calculada com base no efetivo, dias de operação e valores de etapa (QS/QR).
-- **Complemento:** `Efetivo x Nr Refeições x (Valor Etapa / 3) x Dias`.
-- **Etapa Solicitada:** Calculada automaticamente para períodos superiores a 30 dias, descontando os dias de guarnição.
+## 1. Classe I - Subsistência (Alimentação)
 
-## Classes de Manutenção (II, V, VI, VII, VIII, IX)
-Cobre a manutenção de materiais e equipamentos.
-- **Cálculo Base:** `Quantidade x Valor Mnt/Dia x Dias Operação`.
-- **Classe IX:** Inclui adicional de acionamento mensal para viaturas.
+A Classe I é dividida em Quantitativo de Subsistência (QS) e Quantitativo de Rancho (QR), ambos alocados na Natureza de Despesa (ND) **33.90.30**.
 
-## Material de Consumo (GND 3)
-Itens de uso imediato alocados na ND 33.90.30.
-- **Organização:** Agrupados por subitens da ND (Expediente, Limpeza, etc.).
-- **Cálculo:** `Quantidade x Valor Unitário`. Os valores podem ser importados via PNCP ou Excel.
+### 1.1. Fórmulas de Cálculo
 
-## Material Permanente (GND 4)
-Equipamentos e materiais de vida útil longa alocados na ND 44.90.52.
-- **Investimento:** Diferenciado do custeio para fins de teto orçamentário.
-- **Cálculo:** `Quantidade x Valor Unitário`.
+O cálculo é baseado no efetivo empregado, nos dias de operação, no número de refeições intermediárias (Ref Int) e nos valores de etapa (QS e QR) definidos na Diretriz de Custeio.
 
-## Resumo de Custos e Crédito
-O sistema consolida todos os lançamentos em um painel gerencial.
-- **GND 3 vs GND 4:** Separação automática para controle de limites.
-- **Gestão de Saldo:** Ao informar o crédito disponível, o sistema exibe o saldo restante. Valores negativos (excesso) são destacados em vermelho.
-- **Rateio por OM:** Demonstra quanto de recurso cada Organização Militar receberá no Plano de Trabalho.
+**Variáveis:**
+- `Efetivo`: Número de militares empregados.
+- `Dias Operação`: Duração total da atividade.
+- `Nr Ref Int`: Número de refeições intermediárias (1, 2 ou 3).
+- `Valor Etapa QS`: Valor da etapa QS (Diretriz de Custeio).
+- `Valor Etapa QR`: Valor da etapa QR (Diretriz de Custeio).
 
-## Combustíveis (Classe III)
-- **Margem:** Aplicação de 30% de margem de segurança sobre o consumo estimado.
-- **Preços:** Referência baseada na tabela LPC ou consulta em tempo real.
+**Cálculo de Dias de Etapa Solicitada (Dias Etapa Solicitada):**
+Este valor representa os dias de etapa completa solicitada (além do complemento).
+1. `Ciclos Completos = FLOOR(Dias Operação / 30)`
+2. `Dias Restantes = Dias Operação MOD 30`
+3. Se `Dias Restantes > 22` e `Dias Operação >= 30`:
+   `Dias Etapa Solicitada = (Dias Restantes - 22) + (Ciclos Completos * 8)`
+4. Se `Dias Restantes <= 22` e `Dias Operação >= 30`:
+   `Dias Etapa Solicitada = Ciclos Completos * 8`
+5. Se `Dias Operação < 30`:
+   `Dias Etapa Solicitada = 0`
+
+**Cálculo do Complemento (Refeições Intermediárias):**
+O complemento é o valor destinado às refeições intermediárias.
+- `Valor Complemento = Efetivo x MIN(Nr Ref Int, 3) x (Valor Etapa / 3) x Dias Operação`
+
+**Cálculo da Etapa Solicitada (Etapa Completa):**
+- `Valor Etapa Solicitada = Efetivo x Valor Etapa x Dias Etapa Solicitada`
+
+**Total QS (Quantitativo de Subsistência):**
+- `Total QS = Valor Complemento (QS) + Valor Etapa Solicitada (QS)`
+- **Destino:** OM Fornecedora (RM ou OM de Apoio).
+
+**Total QR (Quantitativo de Rancho):**
+- `Total QR = Valor Complemento (QR) + Valor Etapa Solicitada (QR)`
+- **Destino:** OM de Destino (OM Detentora do PTrab).
+
+**Total Geral Classe I:** `Total QS + Total QR`
+
+---
+
+## 2. Classes II, V, VI, VII, VIII (Saúde/Remonta) - Material e Serviço
+
+Estas classes cobrem a manutenção de material e são alocadas entre **ND 33.90.30 (Material)** e **ND 33.90.39 (Serviço)**.
+
+### 2.1. Fórmulas de Cálculo (Classes II, V, VI, VII, VIII - Saúde)
+
+O cálculo é baseado em um valor de manutenção por dia (`Valor Mnt/Dia`) definido na Diretriz de Custeio (ou valor unitário para Classe VIII - Saúde).
+
+**Cálculo do Valor Total por Item:**
+- `Valor Item = Quantidade x Valor Mnt/Dia x Dias Operação` (Para Classes II, V, VI, VII)
+- `Valor Item = Quantidade x Valor Unitário` (Para Classe VIII - Saúde, se aplicável)
+
+**Cálculo do Valor Total por Categoria:**
+- `Total Categoria = SOMA(Valor Item)` para todos os itens daquela categoria.
+
+### 2.2. Alocação de Natureza de Despesa (ND)
+
+O valor total da categoria é dividido conforme a alocação manual do usuário:
+
+- `ND 33.90.39 (Serviço)`: Valor inserido pelo usuário (máximo: `Total Categoria`).
+- `ND 33.90.30 (Material)`: `Total Categoria - ND 33.90.39`.
+
+**Regra de Negócio:** A soma de ND 30 e ND 39 deve ser exatamente igual ao `Total Categoria`.
+
+---
+
+## 3. Classe IX - Motomecanização (Manutenção e Acionamento)
+
+A Classe IX cobre os custos de manutenção e acionamento de viaturas, alocados entre **ND 33.90.30 (Material)** e **ND 33.90.39 (Serviço)**.
+
+### 3.1. Fórmulas de Cálculo
+
+O cálculo combina um custo base diário e um custo de acionamento mensal.
+
+**Variáveis:**
+- `Nr Vtr`: Quantidade de viaturas.
+- `Dias Operação`: Duração total da atividade.
+- `Valor Mnt/Dia`: Valor de manutenção diária (Diretriz de Custeio).
+- `Valor Acionamento/Mês`: Valor de acionamento mensal (Diretriz de Custeio).
+
+**Cálculo do Custo Base:**
+- `Custo Base = Nr Vtr x Valor Mnt/Dia x Dias Operação`
+
+**Cálculo do Custo de Acionamento:**
+- `Nr Meses = CEIL(Dias Operação / 30)`
+- `Custo Acionamento = Nr Vtr x Valor Acionamento/Mês x Nr Meses`
+
+**Total Categoria:**
+- `Total Categoria = Custo Base + Custo Acionamento`
+
+### 3.2. Alocação de Natureza de Despesa (ND)
+
+Segue a mesma regra das Classes II, V, VI, VII e VIII (Saúde): divisão manual entre ND 30 e ND 39.
+
+---
+
+## 4. Classe III - Combustíveis e Lubrificantes
+
+A Classe III é alocada na ND **33.90.30**. O valor do Combustível é alocado na coluna **COMBUSTÍVEL** do PTrab, e o valor do Lubrificante é alocado na coluna **NATUREZA DE DESPESA (33.90.30)**.
+
+### 4.1. Fórmulas de Cálculo de Combustível (ND 33.90.30 - Coluna Combustível)
+
+**Aplicação da Margem de Segurança:**
+- `Total Litros = Litros Sem Margem x 1.30` (Margem de 30% para segurança/imprevistos).
+
+**Valor Total Combustível:**
+- `Valor Total = Total Litros x Preço Unitário (LPC)`
+
+### 4.2. Fórmulas de Cálculo de Lubrificante (ND 33.90.30 - Coluna ND)
+
+O cálculo de lubrificante é feito separadamente e alocado na coluna **NATUREZA DE DESPESA (33.90.30)**.
+
+**Valor Total Lubrificante:**
+- `Valor Total = Litros Lubrificante x Preço Lubrificante (R$/L)`
