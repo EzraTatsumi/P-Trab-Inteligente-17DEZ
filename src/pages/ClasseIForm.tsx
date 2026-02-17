@@ -597,7 +597,7 @@ export default function ClasseIForm() {
                 const { error: updateError } = await supabase.from("classe_i_registros").update(dataToSave).eq("id", id);
                 if (updateError) throw updateError;
             } else {
-                const { error: insertError } = await supabase.from("classe_i_registros").insert([dataToSave]);
+                const { error: insertError = null } = await supabase.from("classe_i_registros").insert([dataToSave]);
                 if (insertError) throw insertError;
             }
         }
@@ -690,7 +690,7 @@ export default function ClasseIForm() {
             categoria: 'RACAO_OPERACIONAL',
             organizacao: registro.organizacao,
             ug: registro.ug,
-            dias_operacao: registro.dias_operacao,
+            dias_operacao: registro.diasOperacao,
             efetivo: registro.efetivo || 0,
             fase_atividade: registro.faseAtividade || "",
             quantidade_r2: registro.quantidadeR2,
