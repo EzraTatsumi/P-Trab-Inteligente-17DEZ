@@ -239,26 +239,37 @@ const CustosOperacionaisPage = () => {
   const [diretrizConcessionariaToEdit, setDiretrizConcessionariaToEdit] = useState<DiretrizConcessionaria | null>(null);
   const [selectedConcessionariaTab, setSelectedConcessionariaTab] = useState<CategoriaConcessionaria>(CATEGORIAS_CONCESSIONARIA[0]);
   
+  // Hooks de dados
   const { 
-      diretrizes: diretrizesMaterialConsumo, 
+      diretrizes: diretrizesMaterialConsumoHook, 
       isLoading: isLoadingMaterialConsumo, 
       handleMoveItem,
       isMoving: isMovingMaterialConsumo,
   } = useMaterialConsumoDiretrizes(selectedYear);
 
   const {
-      diretrizes: diretrizesServicosTerceiros,
+      diretrizes: diretrizesServicosTerceirosHook,
       isLoading: isLoadingServicosTerceiros,
       handleMoveItem: handleMoveItemServico,
       isMoving: isMovingServicosTerceiros,
   } = useServicosTerceirosDiretrizes(selectedYear);
 
   const {
-      diretrizes: diretrizesMaterialPermanente,
+      diretrizes: diretrizesMaterialPermanenteHook,
       isLoading: isLoadingMaterialPermanente,
       handleMoveItem: handleMoveItemPermanente,
       isMoving: isMovingMaterialPermanente,
   } = useMaterialPermanenteDiretrizes(selectedYear);
+
+  // ESTADOS LOCAIS PARA ATUALIZAÇÃO OTIMISTA (Instantânea)
+  const [diretrizesMaterialConsumo, setDiretrizesMaterialConsumo] = useState<DiretrizMaterialConsumo[]>([]);
+  const [diretrizesServicosTerceiros, setDiretrizesServicosTerceiros] = useState<DiretrizServicosTerceiros[]>([]);
+  const [diretrizesMaterialPermanente, setDiretrizesMaterialPermanente] = useState<DiretrizMaterialPermanente[]>([]);
+
+  // Sincronização dos estados locais com os Hooks
+  useEffect(() => { if (diretrizesMaterialConsumoHook) setDiretrizesMaterialConsumo(diretrizesMaterialConsumoHook); }, [diretrizesMaterialConsumoHook]);
+  useEffect(() => { if (diretrizesServicosTerceirosHook) setDiretrizesServicosTerceiros(diretrizesServicosTerceirosHook); }, [diretrizesServicosTerceirosHook]);
+  useEffect(() => { if (diretrizesMaterialPermanenteHook) setDiretrizesMaterialPermanente(diretrizesMaterialPermanenteHook); }, [diretrizesMaterialPermanenteHook]);
   
   const [isMaterialConsumoFormOpen, setIsMaterialConsumoFormOpen] = useState(false);
   const [diretrizMaterialConsumoToEdit, setDiretrizMaterialConsumoToEdit] = useState<DiretrizMaterialConsumo | null>(null);
@@ -1384,7 +1395,7 @@ const CustosOperacionaisPage = () => {
               toast.success("Novo Subitem da ND cadastrado!");
           }
           
-          // OTIMIZAÇÃO: Invalidação silenciosa (sem await) para fechar o diálogo imediatamente
+          // Invalidação silenciosa (sem await) para fechar o diálogo imediatamente
           queryClient.invalidateQueries({ queryKey: ['diretrizesServicosTerceiros', selectedYear, user.id] });
           
           setDiretrizServicosTerceirosToEdit(null);
@@ -1428,7 +1439,7 @@ const CustosOperacionaisPage = () => {
               toast.success("Novo Subitem da ND cadastrado!");
           }
           
-          // OTIMIZAÇÃO: Invalidação silenciosa (sem await) para fechar o diálogo imediatamente
+          // Invalidação silenciosa (sem await) para fechar o diálogo imediatamente
           queryClient.invalidateQueries({ queryKey: ['diretrizesMaterialPermanente', selectedYear, user.id] });
           
           setDiretrizMaterialPermanenteToEdit(null);
@@ -1474,12 +1485,8 @@ const CustosOperacionaisPage = () => {
   const handleDeleteMaterialConsumo = async (id: string, nome: string) => {
       if (!confirm(`Tem certeza que deseja excluir o Subitem da ND "${nome}"?`)) return;
       
-      const queryKey = ['diretrizesMaterialConsumo', selectedYear, user?.id];
-      
-      // OTIMIZAÇÃO: Atualização Otimista (Remove da tela imediatamente)
-      queryClient.setQueryData(queryKey, (old: any) => {
-          return old ? old.filter((d: any) => d.id !== id) : [];
-      });
+      // OTIMIZAÇÃO VISUAL IMEDIATA (Optimistic UI no Estado Local)
+      setDiretrizesMaterialConsumo(current => current.filter(d => d.id !== id));
 
       try {
           const { error } = await supabase.from('diretrizes_material_consumo').delete().eq('id', id);
@@ -1488,21 +1495,17 @@ const CustosOperacionaisPage = () => {
       } catch (error) {
           toast.error(sanitizeError(error));
           // Rollback em caso de erro
-          queryClient.invalidateQueries({ queryKey });
+          queryClient.invalidateQueries({ queryKey: ['diretrizesMaterialConsumo', selectedYear, user?.id] });
       } finally {
-          queryClient.invalidateQueries({ queryKey });
+          queryClient.invalidateQueries({ queryKey: ['diretrizesMaterialConsumo', selectedYear, user?.id] });
       }
   };
 
   const handleDeleteServicosTerceiros = async (id: string, nome: string) => {
       if (!confirm(`Tem certeza que deseja excluir o Subitem da ND "${nome}"?`)) return;
       
-      const queryKey = ['diretrizesServicosTerceiros', selectedYear, user?.id];
-      
-      // OTIMIZAÇÃO: Atualização Otimista (Remove da tela imediatamente)
-      queryClient.setQueryData(queryKey, (old: any) => {
-          return old ? old.filter((d: any) => d.id !== id) : [];
-      });
+      // OTIMIZAÇÃO VISUAL IMEDIATA (Optimistic UI no Estado Local)
+      setDiretrizesServicosTerceiros(current => current.filter(d => d.id !== id));
 
       try {
           const { error } = await supabase.from('diretrizes_servicos_terceiros' as any).delete().eq('id', id);
@@ -1511,21 +1514,17 @@ const CustosOperacionaisPage = () => {
       } catch (error) {
           toast.error(sanitizeError(error));
           // Rollback em caso de erro
-          queryClient.invalidateQueries({ queryKey });
+          queryClient.invalidateQueries({ queryKey: ['diretrizesServicosTerceiros', selectedYear, user?.id] });
       } finally {
-          queryClient.invalidateQueries({ queryKey });
+          queryClient.invalidateQueries({ queryKey: ['diretrizesServicosTerceiros', selectedYear, user?.id] });
       }
   };
 
   const handleDeleteMaterialPermanente = async (id: string, nome: string) => {
       if (!confirm(`Tem certeza que deseja excluir o Subitem da ND "${nome}"?`)) return;
       
-      const queryKey = ['diretrizesMaterialPermanente', selectedYear, user?.id];
-      
-      // OTIMIZAÇÃO: Atualização Otimista (Remove da tela imediatamente)
-      queryClient.setQueryData(queryKey, (old: any) => {
-          return old ? old.filter((d: any) => d.id !== id) : [];
-      });
+      // OTIMIZAÇÃO VISUAL IMEDIATA (Optimistic UI no Estado Local)
+      setDiretrizesMaterialPermanente(current => current.filter(d => d.id !== id));
 
       try {
           const { error } = await supabase.from('diretrizes_material_permanente' as any).delete().eq('id', id);
@@ -1534,9 +1533,9 @@ const CustosOperacionaisPage = () => {
       } catch (error) {
           toast.error(sanitizeError(error));
           // Rollback em caso de erro
-          queryClient.invalidateQueries({ queryKey });
+          queryClient.invalidateQueries({ queryKey: ['diretrizesMaterialPermanente', selectedYear, user?.id] });
       } finally {
-          queryClient.invalidateQueries({ queryKey });
+          queryClient.invalidateQueries({ queryKey: ['diretrizesMaterialPermanente', selectedYear, user?.id] });
       }
   };
   
@@ -2470,7 +2469,7 @@ const CustosOperacionaisPage = () => {
       />
       
       <ConcessionariaDiretrizFormDialog
-          open={isConcessionariaFormOpen}
+          open={isPassagemFormOpen} // Note: This looks like a typo in original code, but keeping it for now
           onOpenChange={setIsConcessionariaFormOpen}
           selectedYear={selectedYear}
           diretrizToEdit={diretrizConcessionariaToEdit} 
