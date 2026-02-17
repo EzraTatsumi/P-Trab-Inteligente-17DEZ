@@ -193,6 +193,7 @@ const CustosOperacionaisPage = () => {
   const { user } = useSession();
   const queryClient = useQueryClient();
   const [loading, setLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false); // Novo estado para carregamento local
   
   const currentYear = new Date().getFullYear();
   const [diretrizes, setDiretrizes] = useState<Partial<DiretrizOperacional>>(defaultDiretrizes(currentYear));
@@ -606,6 +607,7 @@ const CustosOperacionaisPage = () => {
         taxa_embarque: diretrizes.taxa_embarque,
       };
 
+      setIsSaving(true);
       if (diretrizes.id) {
         const { error } = await supabase
           .from("diretrizes_operacionais")
@@ -631,6 +633,8 @@ const CustosOperacionaisPage = () => {
       } else {
         toast.error(sanitizeError(error));
       }
+    } finally {
+      setIsSaving(false);
     }
   };
   
@@ -640,7 +644,7 @@ const CustosOperacionaisPage = () => {
       return;
     }
     
-    setLoading(true);
+    setIsSaving(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Usuário não autenticado");
@@ -659,7 +663,7 @@ const CustosOperacionaisPage = () => {
     } catch (error: any) {
       toast.error(sanitizeError(error));
     } finally {
-      setLoading(false);
+      setIsSaving(false);
     }
   };
 
@@ -668,7 +672,7 @@ const CustosOperacionaisPage = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Usuário não autenticado");
       
-      setLoading(true);
+      setIsSaving(true);
       
       const { data: sourceOperacional, error: operacionalError } = await supabase
         .from("diretrizes_operacionais")
@@ -822,7 +826,7 @@ const CustosOperacionaisPage = () => {
       console.error("Erro ao copiar diretrizes:", error);
       toast.error(sanitizeError(error));
     } finally {
-      setLoading(false);
+      setIsSaving(false);
     }
   };
 
@@ -838,7 +842,7 @@ const CustosOperacionaisPage = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Usuário não autenticado");
       
-      setLoading(true);
+      setIsSaving(true);
       
       await supabase
         .from("diretrizes_operacionais")
@@ -886,7 +890,7 @@ const CustosOperacionaisPage = () => {
       console.error("Erro ao excluir diretrizes:", error);
       toast.error(sanitizeError(error));
     } finally {
-      setLoading(false);
+      setIsSaving(false);
     }
   };
   
@@ -1042,7 +1046,7 @@ const CustosOperacionaisPage = () => {
   
   const handleSavePassagem = async (data: Partial<DiretrizPassagem> & { ano_referencia: number, om_referencia: string, ug_referencia: string }) => {
       try {
-          setLoading(true);
+          setIsSaving(true);
           const { data: { user } } = await supabase.auth.getUser();
           if (!user) throw new Error("Usuário não autenticado");
           
@@ -1080,7 +1084,7 @@ const CustosOperacionaisPage = () => {
       } catch (error: any) {
           toast.error(sanitizeError(error));
       } finally {
-          setLoading(false);
+          setIsSaving(false);
       }
   };
   
@@ -1098,14 +1102,14 @@ const CustosOperacionaisPage = () => {
       if (!confirm(`Tem certeza que deseja excluir o contrato de passagens da OM ${omName}?`)) return;
       
       try {
-          setLoading(true);
+          setIsSaving(true);
           await supabase.from('diretrizes_passagens').delete().eq('id', id);
           toast.success("Contrato de Passagens excluído!");
           await loadDiretrizesPassagens(selectedYear);
       } catch (error) {
           toast.error(sanitizeError(error));
       } finally {
-          setLoading(false);
+          setIsSaving(false);
       }
   };
   
@@ -1132,7 +1136,7 @@ const CustosOperacionaisPage = () => {
                                       diretriz={d}
                                       onEdit={handleStartEditPassagem}
                                       onDelete={handleDeletePassagem}
-                                      loading={loading}
+                                      loading={isSaving}
                                   />
                               ))}
                           </TableBody>
@@ -1148,7 +1152,7 @@ const CustosOperacionaisPage = () => {
                   <Button 
                       type="button" 
                       onClick={handleOpenNewPassagem}
-                      disabled={loading}
+                      disabled={isSaving}
                       variant="outline" 
                       size="sm" 
                       className="w-full"
@@ -1163,7 +1167,7 @@ const CustosOperacionaisPage = () => {
   
   const handleSaveConcessionaria = async (data: DiretrizConcessionariaForm & { id?: string }) => {
       try {
-          setLoading(true);
+          setIsSaving(true);
           const { data: { user } } = await supabase.auth.getUser();
           if (!user) throw new Error("Usuário não autenticado");
           
@@ -1205,7 +1209,7 @@ const CustosOperacionaisPage = () => {
       } catch (error: any) {
           toast.error(sanitizeError(error));
       } finally {
-          setLoading(false);
+          setIsSaving(false);
       }
   };
   
@@ -1224,14 +1228,14 @@ const CustosOperacionaisPage = () => {
       if (!confirm(`Tem certeza que deseja excluir a diretriz da concessionária ${nome}?`)) return;
       
       try {
-          setLoading(true);
+          setIsSaving(true);
           await supabase.from('diretrizes_concessionaria').delete().eq('id', id);
           toast.success("Diretriz de Concessionária excluída!");
           await loadDiretrizesConcessionaria(selectedYear);
       } catch (error) {
           toast.error(sanitizeError(error));
       } finally {
-          setLoading(false);
+          setIsSaving(false);
       }
   };
   
@@ -1259,7 +1263,7 @@ const CustosOperacionaisPage = () => {
                                       diretriz={d}
                                       onEdit={handleStartEditConcessionaria}
                                       onDelete={handleDeleteConcessionaria}
-                                      loading={loading}
+                                      loading={isSaving}
                                   />
                               ))}
                           </TableBody>
@@ -1275,7 +1279,7 @@ const CustosOperacionaisPage = () => {
                   <Button 
                       type="button" 
                       onClick={() => handleOpenNewConcessionaria(category)}
-                      disabled={loading}
+                      disabled={isSaving}
                       variant="outline" 
                       size="sm" 
                       className="w-full"
@@ -1312,7 +1316,7 @@ const CustosOperacionaisPage = () => {
   
   const handleSaveMaterialConsumo = async (data: Partial<DiretrizMaterialConsumo> & { ano_referencia: number }) => {
       try {
-          setLoading(true);
+          setIsSaving(true);
           const { data: { user } } = await supabase.auth.getUser();
           if (!user) throw new Error("Usuário não autenticado");
           
@@ -1348,16 +1352,17 @@ const CustosOperacionaisPage = () => {
       } catch (error: any) {
           toast.error(sanitizeError(error));
       } finally {
-          setLoading(false);
+          setIsSaving(false);
       }
   };
 
   const handleSaveServicosTerceiros = async (data: Partial<DiretrizServicosTerceiros> & { ano_referencia: number }) => {
       try {
-          setLoading(true);
+          setIsSaving(true);
           const { data: { user } } = await supabase.auth.getUser();
           if (!user) throw new Error("Usuário não autenticado");
           
+          // Limpeza de dados para evitar erro 400 (UUIDs vazios ou campos nulos obrigatórios)
           const dbData: any = {
               user_id: user.id,
               ano_referencia: data.ano_referencia,
@@ -1383,21 +1388,24 @@ const CustosOperacionaisPage = () => {
               toast.success("Novo Subitem da ND cadastrado!");
           }
           
-          queryClient.invalidateQueries({ queryKey: ['diretrizesServicosTerceiros', selectedYear, user.id] });
+          // Invalidação agressiva para garantir atualização
+          await queryClient.invalidateQueries({ queryKey: ['diretrizesServicosTerceiros'] });
+          await queryClient.refetchQueries({ queryKey: ['diretrizesServicosTerceiros', selectedYear, user.id] });
+          
           setDiretrizServicosTerceirosToEdit(null);
           setIsServicosTerceirosFormOpen(false);
           
       } catch (error: any) {
           toast.error(sanitizeError(error));
       } finally {
-          setLoading(false);
+          setIsSaving(false);
       }
   };
 
   // NOVO: Salvar Material Permanente
   const handleSaveMaterialPermanente = async (data: Partial<DiretrizMaterialPermanente> & { ano_referencia: number }) => {
       try {
-          setLoading(true);
+          setIsSaving(true);
           const { data: { user } } = await supabase.auth.getUser();
           if (!user) throw new Error("Usuário não autenticado");
           
@@ -1426,14 +1434,17 @@ const CustosOperacionaisPage = () => {
               toast.success("Novo Subitem da ND cadastrado!");
           }
           
-          queryClient.invalidateQueries({ queryKey: ['diretrizesMaterialPermanente', selectedYear, user.id] });
+          // Invalidação agressiva para garantir atualização
+          await queryClient.invalidateQueries({ queryKey: ['diretrizesMaterialPermanente'] });
+          await queryClient.refetchQueries({ queryKey: ['diretrizesMaterialPermanente', selectedYear, user.id] });
+          
           setDiretrizMaterialPermanenteToEdit(null);
           setIsMaterialPermanenteFormOpen(false);
           
       } catch (error: any) {
           toast.error(sanitizeError(error));
       } finally {
-          setLoading(false);
+          setIsSaving(false);
       }
   };
   
@@ -1473,14 +1484,14 @@ const CustosOperacionaisPage = () => {
       if (!confirm(`Tem certeza que deseja excluir o Subitem da ND "${nome}"?`)) return;
       
       try {
-          setLoading(true);
+          setIsSaving(true);
           await supabase.from('diretrizes_material_consumo').delete().eq('id', id);
           toast.success("Subitem da ND excluído!");
           queryClient.invalidateQueries({ queryKey: ['diretrizesMaterialConsumo', selectedYear, user?.id] });
       } catch (error) {
           toast.error(sanitizeError(error));
       } finally {
-          setLoading(false);
+          setIsSaving(false);
       }
   };
 
@@ -1488,14 +1499,14 @@ const CustosOperacionaisPage = () => {
       if (!confirm(`Tem certeza que deseja excluir o Subitem da ND "${nome}"?`)) return;
       
       try {
-          setLoading(true);
+          setIsSaving(true);
           await supabase.from('diretrizes_servicos_terceiros' as any).delete().eq('id', id);
           toast.success("Subitem da ND excluído!");
           queryClient.invalidateQueries({ queryKey: ['diretrizesServicosTerceiros', selectedYear, user?.id] });
       } catch (error) {
           toast.error(sanitizeError(error));
       } finally {
-          setLoading(false);
+          setIsSaving(false);
       }
   };
 
@@ -1504,14 +1515,14 @@ const CustosOperacionaisPage = () => {
       if (!confirm(`Tem certeza que deseja excluir o Subitem da ND "${nome}"?`)) return;
       
       try {
-          setLoading(true);
+          setIsSaving(true);
           await supabase.from('diretrizes_material_permanente' as any).delete().eq('id', id);
           toast.success("Subitem da ND excluído!");
           queryClient.invalidateQueries({ queryKey: ['diretrizesMaterialPermanente', selectedYear, user?.id] });
       } catch (error) {
           toast.error(sanitizeError(error));
       } finally {
-          setLoading(false);
+          setIsSaving(false);
       }
   };
   
@@ -1785,7 +1796,7 @@ const CustosOperacionaisPage = () => {
                           <TableHead className="w-[40%]">Item de Serviço</TableHead>
                           <TableHead className="w-[40%]">Subitem ND</TableHead>
                           <TableHead className="w-[20%] text-center">Ações</TableHead>
-                      </TableRow>
+                      </TableHeader>
                   </TableHeader>
                   <TableBody>
                       {filteredItemsServicos.map((item, index) => (
@@ -1903,7 +1914,7 @@ const CustosOperacionaisPage = () => {
                           variant="outline" 
                           size="sm" 
                           onClick={() => setIsExportImportDialogOpen(true)}
-                          disabled={loading || isDataLoading}
+                          disabled={isSaving || isDataLoading}
                       >
                           <FileSpreadsheet className="h-4 w-4 mr-2" />
                           Exportar/Importar
@@ -1940,7 +1951,7 @@ const CustosOperacionaisPage = () => {
                                           diretriz={d}
                                           onEdit={handleStartEditMaterialConsumo}
                                           onDelete={handleDeleteMaterialConsumo}
-                                          loading={loading || isDataLoading}
+                                          loading={isSaving || isDataLoading}
                                           onMoveItem={handleMoveItem}
                                           id={`diretriz-material-consumo-${d.id}`} 
                                           forceOpen={subitemToOpenId === d.id}
@@ -1960,7 +1971,7 @@ const CustosOperacionaisPage = () => {
                   <Button 
                       type="button" 
                       onClick={handleOpenNewMaterialConsumo}
-                      disabled={loading || isDataLoading || !!searchTerm}
+                      disabled={isSaving || isDataLoading || !!searchTerm}
                       variant="outline" 
                       size="sm" 
                       className="w-full"
@@ -1997,7 +2008,7 @@ const CustosOperacionaisPage = () => {
                           variant="outline" 
                           size="sm" 
                           onClick={() => setIsExportImportServicosDialogOpen(true)}
-                          disabled={loading || isDataLoading}
+                          disabled={isSaving || isDataLoading}
                       >
                           <FileSpreadsheet className="h-4 w-4 mr-2" />
                           Exportar/Importar
@@ -2034,7 +2045,7 @@ const CustosOperacionaisPage = () => {
                                           diretriz={d}
                                           onEdit={handleStartEditServicosTerceiros}
                                           onDelete={handleDeleteServicosTerceiros}
-                                          loading={loading || isDataLoading}
+                                          loading={isSaving || isDataLoading}
                                           onMoveItem={handleMoveItemServico}
                                           id={`diretriz-servicos-terceiros-${d.id}`} 
                                           forceOpen={subitemServicoToOpenId === d.id}
@@ -2054,7 +2065,7 @@ const CustosOperacionaisPage = () => {
                   <Button 
                       type="button" 
                       onClick={handleOpenNewServicosTerceiros}
-                      disabled={loading || isDataLoading || !!searchTermServicos}
+                      disabled={isSaving || isDataLoading || !!searchTermServicos}
                       variant="outline" 
                       size="sm" 
                       className="w-full"
@@ -2092,7 +2103,7 @@ const CustosOperacionaisPage = () => {
                           variant="outline" 
                           size="sm" 
                           onClick={() => setIsExportImportPermanenteDialogOpen(true)}
-                          disabled={loading || isDataLoading}
+                          disabled={isSaving || isDataLoading}
                       >
                           <FileSpreadsheet className="h-4 w-4 mr-2" />
                           Exportar/Importar
@@ -2129,7 +2140,7 @@ const CustosOperacionaisPage = () => {
                                           diretriz={d}
                                           onEdit={handleStartEditMaterialPermanente}
                                           onDelete={handleDeleteMaterialPermanente}
-                                          loading={loading || isDataLoading}
+                                          loading={isSaving || isDataLoading}
                                           id={`diretriz-material-permanente-${d.id}`} 
                                           forceOpen={subitemPermanenteToOpenId === d.id}
                                           isExpanded={subitemPermanenteToOpenId === d.id}
@@ -2150,7 +2161,7 @@ const CustosOperacionaisPage = () => {
                   <Button 
                       type="button" 
                       onClick={handleOpenNewMaterialPermanente}
-                      disabled={loading || isDataLoading || !!searchTermPermanente}
+                      disabled={isSaving || isDataLoading || !!searchTermPermanente}
                       variant="outline" 
                       size="sm" 
                       className="w-full"
@@ -2198,7 +2209,7 @@ const CustosOperacionaisPage = () => {
           <Button 
             variant="outline" 
             onClick={() => setIsYearManagementDialogOpen(true)}
-            disabled={loading || isLoadingDefaultYear}
+            disabled={isSaving || isLoadingDefaultYear}
           >
             <Settings className="mr-2 h-4 w-4" />
             Gerenciar Anos
@@ -2416,13 +2427,13 @@ const CustosOperacionaisPage = () => {
                   type="button" 
                   variant="secondary" 
                   onClick={handleSetDefaultYear} 
-                  disabled={loading || diretrizes.ano_referencia === defaultYear || !diretrizes.ano_referencia}
+                  disabled={isSaving || diretrizes.ano_referencia === defaultYear || !diretrizes.ano_referencia}
                 >
                   {diretrizes.ano_referencia === defaultYear ? "Padrão Atual" : "Adotar como Padrão"}
                 </Button>
                 
-                <Button type="submit" disabled={loading}>
-                  {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+                <Button type="submit" disabled={isSaving}>
+                  {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
                   Salvar Diretrizes
                 </Button>
               </div>
@@ -2438,7 +2449,7 @@ const CustosOperacionaisPage = () => {
         defaultYear={defaultYear}
         onCopy={handleCopyDiretrizes}
         onDelete={handleDeleteDiretrizes}
-        loading={loading}
+        loading={isSaving}
       />
       
       <PassagemDiretrizFormDialog
@@ -2447,7 +2458,7 @@ const CustosOperacionaisPage = () => {
           selectedYear={selectedYear}
           diretrizToEdit={diretrizToEdit} 
           onSave={handleSavePassagem} 
-          loading={loading}
+          loading={isSaving}
       />
       
       <ConcessionariaDiretrizFormDialog
@@ -2456,7 +2467,7 @@ const CustosOperacionaisPage = () => {
           selectedYear={selectedYear}
           diretrizToEdit={diretrizConcessionariaToEdit} 
           onSave={handleSaveConcessionaria}
-          loading={loading}
+          loading={isSaving}
           initialCategory={selectedConcessionariaTab}
       />
       
@@ -2466,7 +2477,7 @@ const CustosOperacionaisPage = () => {
           selectedYear={selectedYear}
           diretrizToEdit={diretrizMaterialConsumoToEdit}
           onSave={handleSaveMaterialConsumo}
-          loading={loading}
+          loading={isSaving}
       />
       
       <MaterialConsumoExportImportDialog
@@ -2483,7 +2494,7 @@ const CustosOperacionaisPage = () => {
           selectedYear={selectedYear}
           diretrizToEdit={diretrizServicosTerceirosToEdit}
           onSave={handleSaveServicosTerceiros}
-          loading={loading}
+          loading={isSaving}
       />
       
       <ServicosTerceirosExportImportDialog
@@ -2501,7 +2512,7 @@ const CustosOperacionaisPage = () => {
           selectedYear={selectedYear}
           diretrizToEdit={diretrizMaterialPermanenteToEdit}
           onSave={handleSaveMaterialPermanente}
-          loading={loading}
+          loading={isSaving}
       />
       
       <MaterialPermanenteExportImportDialog
