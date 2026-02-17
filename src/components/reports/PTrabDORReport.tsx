@@ -114,7 +114,8 @@ const PTrabDORReport: React.FC<PTrabDORReportProps> = ({ ptrabData, dorData, sel
             <p>{ptrabData.nome_om_extenso || ptrabData.nome_om}</p>
           </div>
           <div className="p-1 flex flex-col items-center justify-center text-center font-bold text-[11pt]">
-            <p>DOR nº {dorData.numero_dor || '___'} / {anoAtual}</p>
+            <p>Documento de Oficialização da Requisição – DOR</p>
+            <p className="mt-1">nº {dorData.numero_dor || '___'} / {anoAtual}</p>
             <p className="mt-2">{new Date(dorData.created_at).toLocaleDateString('pt-BR')}</p>
           </div>
         </div>
