@@ -266,10 +266,33 @@ const CustosOperacionaisPage = () => {
   const [diretrizesServicosTerceiros, setDiretrizesServicosTerceiros] = useState<DiretrizServicosTerceiros[]>([]);
   const [diretrizesMaterialPermanente, setDiretrizesMaterialPermanente] = useState<DiretrizMaterialPermanente[]>([]);
 
-  // Sincronização dos estados locais com os Hooks
-  useEffect(() => { if (diretrizesMaterialConsumoHook) setDiretrizesMaterialConsumo(diretrizesMaterialConsumoHook); }, [diretrizesMaterialConsumoHook]);
-  useEffect(() => { if (diretrizesServicosTerceirosHook) setDiretrizesServicosTerceiros(diretrizesServicosTerceirosHook); }, [diretrizesServicosTerceirosHook]);
-  useEffect(() => { if (diretrizesMaterialPermanenteHook) setDiretrizesMaterialPermanente(diretrizesMaterialPermanenteHook); }, [diretrizesMaterialPermanenteHook]);
+  // Sincronização dos estados locais com os Hooks (com proteção contra loops infinitos)
+  useEffect(() => { 
+    if (diretrizesMaterialConsumoHook && !isMovingMaterialConsumo) {
+      setDiretrizesMaterialConsumo(current => {
+        if (JSON.stringify(current) === JSON.stringify(diretrizesMaterialConsumoHook)) return current;
+        return diretrizesMaterialConsumoHook;
+      });
+    }
+  }, [diretrizesMaterialConsumoHook, isMovingMaterialConsumo]);
+
+  useEffect(() => { 
+    if (diretrizesServicosTerceirosHook && !isMovingServicosTerceiros) {
+      setDiretrizesServicosTerceiros(current => {
+        if (JSON.stringify(current) === JSON.stringify(diretrizesServicosTerceirosHook)) return current;
+        return diretrizesServicosTerceirosHook;
+      });
+    }
+  }, [diretrizesServicosTerceirosHook, isMovingServicosTerceiros]);
+
+  useEffect(() => { 
+    if (diretrizesMaterialPermanenteHook && !isMovingMaterialPermanente) {
+      setDiretrizesMaterialPermanente(current => {
+        if (JSON.stringify(current) === JSON.stringify(diretrizesMaterialPermanenteHook)) return current;
+        return diretrizesMaterialPermanenteHook;
+      });
+    }
+  }, [diretrizesMaterialPermanenteHook, isMovingMaterialPermanente]);
   
   const [isMaterialConsumoFormOpen, setIsMaterialConsumoFormOpen] = useState(false);
   const [diretrizMaterialConsumoToEdit, setDiretrizMaterialConsumoToEdit] = useState<DiretrizMaterialConsumo | null>(null);
@@ -337,7 +360,7 @@ const CustosOperacionaisPage = () => {
         };
         checkAuthAndLoadYears();
     }
-  }, [isLoadingDefaultYear, defaultYearData]);
+  }, [isLoadingDefaultYear, defaultYearData?.year, defaultYearData?.defaultYear]);
 
   useEffect(() => {
     if (selectedYear) {
@@ -975,7 +998,7 @@ const CustosOperacionaisPage = () => {
   const renderDiariaTable = () => {
     const handleDiariaChange = (rankKey: string, destination: 'bsb' | 'capitais' | 'demais', rawValue: string) => {
       const fieldKey = `diaria_${rankKey}_${destination}` as keyof DiretrizOperacional;
-      handleDiariaChange(rankKey, destination, rawValue);
+      handleCurrencyChange(fieldKey, rawValue);
     };
     
     const getDiariaProps = (rankKey: string, destination: 'bsb' | 'capitais' | 'demais') => {
