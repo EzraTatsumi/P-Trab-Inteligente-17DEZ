@@ -101,7 +101,7 @@ const MaterialPermanenteForm = () => {
     const [hasEfetivo, setHasEfetivo] = useState(true);
     const [diasOperacao, setDiasOperacao] = useState<number>(0);
     const [omDestino, setOmDestino] = useState({ nome: "", ug: "", id: "" });
-    const [categoria, setCategoria] = useState("Material Permanente");
+    const [categoria] = useState("Material Permanente");
 
     const [selectedItems, setSelectedItems] = useState<ItemAquisicaoPermanente[]>([]);
     const [isSelectorOpen, setIsSelectorOpen] = useState(false);
@@ -383,8 +383,8 @@ const MaterialPermanenteForm = () => {
         toast.success("Justificativa salva para o item.");
     };
 
-    const handleSaveBulkJustificativas = (data: any) => {
-        setSelectedItems(prev => prev.map(i => ({ ...i, justificativa: data })));
+    const handleSaveBulkJustificativas = (justificationData: any) => {
+        setSelectedItems(prev => prev.map(i => ({ ...i, justificativa: justificationData })));
         toast.success("Justificativas atualizadas em massa.");
     };
 
@@ -601,7 +601,7 @@ const MaterialPermanenteForm = () => {
             </div>
             <MaterialPermanenteItemSelectorDialog open={isSelectorOpen} onOpenChange={setIsSelectorOpen} selectedYear={selectedYear} initialItems={selectedItems} onSelect={(items) => { setSelectedItems(items.map(item => ({ ...item, quantidade: item.quantidade || 1 }))); }} onAddDiretriz={() => navigate('/config/custos-operacionais')} categoria="Material Permanente" />
             <MaterialPermanenteJustificativaDialog open={justificativaDialogOpen} onOpenChange={setJustificativaDialogOpen} itemName={itemForJustificativa?.descricao_reduzida || itemForJustificativa?.descricao_item || ""} data={itemForJustificativa?.justificativa || {}} diasOperacao={diasOperacao} faseAtividade={faseAtividade} onSave={handleSaveJustificativa} />
-            <MaterialPermanenteBulkJustificativaDialog open={isBulkJustificativaOpen} onOpenChange={setIsBulkJustificativaOpen} items={selectedItems} onSave={(data) => handleSaveBulkJustificativas(selectedItems.map(i => ({ ...i, justificativa: data })))} />
+            <MaterialPermanenteBulkJustificativaDialog open={isBulkJustificativaOpen} onOpenChange={setIsBulkJustificativaOpen} items={selectedItems} onSave={(data) => handleSaveBulkJustificativas(data)} />
             <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}><AlertDialogContent><AlertDialogHeader><AlertDialogTitle className="text-destructive">Confirmar Exclusão</AlertDialogTitle><AlertDialogDescription>Deseja excluir o registro de Material Permanente da OM {recordToDelete?.organizacao}?</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogAction onClick={() => recordToDelete && deleteMutation.mutate([recordToDelete.id])} className="bg-destructive">Excluir</AlertDialogAction><AlertDialogCancel>Cancelar</AlertDialogCancel></AlertDialogFooter></AlertDialogContent></AlertDialog>
         </div>
     );

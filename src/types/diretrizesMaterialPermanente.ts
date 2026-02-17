@@ -1,4 +1,27 @@
-import { ItemAquisicao } from "./diretrizesMaterialConsumo";
+import { Json } from "@/integrations/supabase/types";
+
+export interface ItemAquisicaoPermanente {
+    id: string;
+    descricao_item: string;
+    descricao_reduzida: string;
+    valor_unitario: number;
+    numero_pregao: string;
+    uasg: string;
+    codigo_catmat: string;
+    quantidade?: number;
+    valor_total?: number;
+    nd?: string;
+    nr_subitem?: string;
+    nome_subitem?: string;
+    justificativa?: {
+        grupo?: string;
+        proposito?: string;
+        destinacao?: string;
+        local?: string;
+        finalidade?: string;
+        motivo?: string;
+    };
+}
 
 export interface DiretrizMaterialPermanente {
     id: string;
@@ -7,14 +30,18 @@ export interface DiretrizMaterialPermanente {
     nr_subitem: string;
     nome_subitem: string;
     descricao_subitem: string | null;
-    itens_aquisicao: ItemAquisicao[];
+    itens_aquisicao: ItemAquisicaoPermanente[];
     ativo: boolean;
     created_at: string;
     updated_at: string;
 }
 
-export interface ItemAquisicaoPermanente extends ItemAquisicao {
-    // Pode ser estendido se necessário, mas por enquanto usa a mesma estrutura
+export interface ConsolidatedPermanenteRecord {
+    groupKey: string;
+    organizacao: string;
+    ug: string;
+    records: any[];
+    totalGeral: number;
 }
 
 export interface StagingRowPermanente {
