@@ -17,7 +17,7 @@ interface MaterialPermanenteExportImportDialogProps {
     onOpenChange: (open: boolean) => void;
     selectedYear: number;
     diretrizes: DiretrizMaterialPermanente[];
-    onImportSuccess: () => void;
+    onImportSuccess: (newItems?: DiretrizMaterialPermanente[]) => void;
 }
 
 type ImportStep = 'select_file' | 'processing' | 'review';
@@ -106,8 +106,8 @@ const MaterialPermanenteExportImportDialog: React.FC<MaterialPermanenteExportImp
         if (importSummary.totalValid === 0 || !user?.id) return;
         setIsProcessing(true);
         try {
-            await persistMaterialPermanenteImport(stagedData, selectedYear, user.id);
-            onImportSuccess(); 
+            const newItems = await persistMaterialPermanenteImport(stagedData, selectedYear, user.id);
+            onImportSuccess(newItems); 
             toast.success("Importação concluída!");
             handleOpenChangeWrapper(false);
         } catch (error: any) {

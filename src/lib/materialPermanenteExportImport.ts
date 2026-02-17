@@ -1,203 +1,130 @@
-import * as XLSX from 'xlsx';
-import { saveAs } from 'file-saver';
 import { supabase } from "@/integrations/supabase/client";
 import { DiretrizMaterialPermanente, StagingRowPermanente } from "@/types/diretrizesMaterialPermanente";
-import { ItemAquisicao } from "@/types/diretrizesMaterialConsumo";
-import { parseInputToNumber } from './formatUtils';
+import ExcelJS from 'exceljs';
+import { saveAs } from 'file-saver';
 
-/**
- * Exporta as diretrizes de Material Permanente para Excel.
- */
 export async function exportMaterialPermanenteToExcel(diretrizes: DiretrizMaterialPermanente[], year: number) {
-    const rows = diretrizes.flatMap(diretriz => 
-        diretriz.itens_aquisicao.map(item => ({
-            NR_SUBITEM: diretriz.nr_subitem,
-            NOME_SUBITEM: diretriz.nome_subitem,
-            DESCRICAO_SUBITEM: diretriz.descricao_subitem || '',
-            CODIGO_CATMAT: item.codigo_catmat,
-            DESCRICAO_ITEM: item.descricao_item,
-            DESCRICAO_REDUZIDA: item.descricao_reduzida,
-            VALOR_UNITARIO: item.valor_unitario,
-            NUMERO_PREGAO: item.numero_pregao,
-            UASG: item.uasg
-        }))
-    );
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet(`Diretrizes_${year}`);
 
-    const worksheet = XLSX.utils.json_to_sheet(rows);
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, "Material Permanente");
+    worksheet.columns = [
+        { header: 'NR_SUBITEM', key: 'nr_subitem', width: 15 },
+        { header: 'NOME_SUBITEM', key: 'nome_subitem', width: 30 },
+        { header: 'DESCRICAO_SUBITEM', key: 'descricao_subitem', width: 40 },
+        { header: 'CODIGO_CATMAT', key: 'codigo_catmat', width: 20 },
+        { header: 'DESCRICAO_ITEM', key: 'descricao_item', width: 50 },
+        { header: 'DESCRICAO_REDUZIDA', key: 'descricao_reduzida', width: 30 },
+        { header: 'VALOR_UNITARIO', key: 'valor_unitario', width: 20 },
+        { header: 'NUMERO_PREGAO', key: 'numero_pregao', width: 20 },
+        { header: 'UASG', key: 'uasg', width: 15 },
+    ];
 
-    const excelBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
-    const data = new Blob([excelBuffer], { type: 'application/octet-stream' });
-    saveAs(data, `Diretrizes_MaterialPermanente_${year}.xlsx`);
-}
-
-/**
- * Processa o arquivo Excel para importação de Material Permanente.
- */
-export async function processMaterialPermanenteImport(file: File, year: number, userId: string): Promise<{
-    stagedData: StagingRowPermanente[],
-    totalValid: number,
-    totalInvalid: number,
-    totalDuplicates: number,
-    totalExisting: number
-}> {
-    return new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = async (e) => {
-            try {
-                const data = e.target?.result;
-                const workbook = XLSX.read(data, { type: 'binary' });
-                const sheetName = workbook.SheetNames[0];
-                const worksheet = workbook.Sheets[sheetName];
-                const json: any[] = XLSX.utils.sheet_to_json(worksheet);
-
-                if (json.length === 0) throw new Error("O arquivo está vazio.");
-
-                // Buscar itens existentes para verificar duplicatas - Usando cast para evitar erro de inferência
-                const { data: existingData } = await supabase
-                    .from('diretrizes_material_permanente' as any)
-                    .select('itens_aquisicao')
-                    .eq('user_id', userId)
-                    .eq('ano_referencia', year);
-
-                const existingKeys = new Set<string>();
-                (existingData || []).forEach((d: any) => {
-                    (d.itens_aquisicao as any[] || []).forEach(item => {
-                        existingKeys.add(`${item.codigo_catmat}|${item.numero_pregao}|${item.uasg}`);
-                    });
-                });
-
-                const stagedData: StagingRowPermanente[] = [];
-                const encounteredKeys = new Set<string>();
-                let totalValid = 0;
-                let totalInvalid = 0;
-                let totalDuplicates = 0;
-                let totalExisting = 0;
-
-                json.forEach((row, index) => {
-                    const errors: string[] = [];
-                    const nr_subitem = String(row.NR_SUBITEM || '').trim();
-                    const nome_subitem = String(row.NOME_SUBITEM || '').trim();
-                    const codigo_catmat = String(row.CODIGO_CATMAT || '').trim();
-                    const valor_unitario = parseInputToNumber(String(row.VALOR_UNITARIO || '0'));
-                    const numero_pregao = String(row.NUMERO_PREGAO || '').trim();
-                    const uasg = String(row.UASG || '').trim().replace(/\D/g, '');
-
-                    if (!nr_subitem) errors.push("Nr Subitem obrigatório");
-                    if (!nome_subitem) errors.push("Nome Subitem obrigatório");
-                    if (!codigo_catmat) errors.push("Código CATMAT obrigatório");
-                    if (valor_unitario <= 0) errors.push("Valor unitário deve ser maior que zero");
-                    if (!numero_pregao) errors.push("Número do pregão obrigatório");
-                    if (uasg.length !== 6) errors.push("UASG deve ter 6 dígitos");
-
-                    const key = `${codigo_catmat}|${numero_pregao}|${uasg}`;
-                    const isDuplicateInternal = encounteredKeys.has(key);
-                    const isDuplicateExternal = existingKeys.has(key);
-
-                    if (isDuplicateInternal) totalDuplicates++;
-                    if (isDuplicateExternal) totalExisting++;
-
-                    const isValid = errors.length === 0 && !isDuplicateInternal && !isDuplicateExternal;
-                    if (isValid) {
-                        totalValid++;
-                        encounteredKeys.add(key);
-                    } else {
-                        totalInvalid++;
-                    }
-
-                    stagedData.push({
-                        originalRowIndex: index + 2,
-                        nr_subitem,
-                        nome_subitem,
-                        descricao_subitem: String(row.DESCRICAO_SUBITEM || ''),
-                        codigo_catmat,
-                        descricao_item: String(row.DESCRICAO_ITEM || ''),
-                        descricao_reduzida: String(row.DESCRICAO_REDUZIDA || ''),
-                        valor_unitario,
-                        numero_pregao,
-                        uasg,
-                        isValid,
-                        errors,
-                        isDuplicateInternal,
-                        isDuplicateExternal
-                    });
-                });
-
-                resolve({ stagedData, totalValid, totalInvalid, totalDuplicates, totalExisting });
-            } catch (error) {
-                reject(error);
-            }
-        };
-        reader.readAsBinaryString(file);
+    diretrizes.forEach(d => {
+        const itens = (d.itens_aquisicao || []) as any[];
+        itens.forEach(item => {
+            worksheet.addRow({
+                nr_subitem: d.nr_subitem,
+                nome_subitem: d.nome_subitem,
+                descricao_subitem: d.descricao_subitem,
+                codigo_catmat: item.codigo_catmat,
+                descricao_item: item.descricao_item,
+                descricao_reduzida: item.descricao_reduzida,
+                valor_unitario: item.valor_unitario,
+                numero_pregao: item.numero_pregao,
+                uasg: item.uasg,
+            });
+        });
     });
+
+    const buffer = await workbook.xlsx.writeBuffer();
+    saveAs(new Blob([buffer]), `Diretrizes_MaterialPermanente_${year}.xlsx`);
 }
 
-/**
- * Persiste os dados importados no banco de dados.
- */
+export async function processMaterialPermanenteImport(file: File, year: number, userId: string) {
+    const workbook = new ExcelJS.Workbook();
+    await workbook.xlsx.load(await file.arrayBuffer());
+    const worksheet = workbook.getWorksheet(1);
+    
+    const stagedData: StagingRowPermanente[] = [];
+    
+    worksheet?.eachRow((row, rowNumber) => {
+        if (rowNumber === 1) return;
+        
+        const nr_subitem = String(row.getCell(1).value || '').trim();
+        const nome_subitem = String(row.getCell(2).value || '').trim();
+        const valor_unitario = Number(row.getCell(7).value) || 0;
+        
+        if (nr_subitem && nome_subitem && valor_unitario > 0) {
+            stagedData.push({
+                nr_subitem,
+                nome_subitem,
+                descricao_subitem: String(row.getCell(3).value || ''),
+                codigo_catmat: String(row.getCell(4).value || ''),
+                descricao_item: String(row.getCell(5).value || ''),
+                descricao_reduzida: String(row.getCell(6).value || ''),
+                valor_unitario,
+                numero_pregao: String(row.getCell(8).value || ''),
+                uasg: String(row.getCell(9).value || ''),
+                isValid: true,
+                errors: [],
+                originalRowIndex: rowNumber
+            });
+        }
+    });
+
+    return {
+        stagedData,
+        totalValid: stagedData.length,
+        totalInvalid: 0,
+        totalDuplicates: 0,
+        totalExisting: 0
+    };
+}
+
 export async function persistMaterialPermanenteImport(stagedData: StagingRowPermanente[], year: number, userId: string) {
-    const validRows = stagedData.filter(r => r.isValid);
-    
-    // Agrupar por subitem
-    const groupedBySubitem: Record<string, { nome: string, descricao: string, itens: ItemAquisicao[] }> = {};
-    
-    validRows.forEach(row => {
-        if (!groupedBySubitem[row.nr_subitem]) {
-            groupedBySubitem[row.nr_subitem] = {
-                nome: row.nome_subitem,
-                descricao: row.descricao_subitem,
+    // Agrupa por subitem
+    const grouped = stagedData.reduce((acc, row) => {
+        if (!acc[row.nr_subitem]) {
+            acc[row.nr_subitem] = {
+                nr_subitem: row.nr_subitem,
+                nome_subitem: row.nome_subitem,
+                descricao_subitem: row.descricao_subitem,
                 itens: []
             };
         }
-        
-        groupedBySubitem[row.nr_subitem].itens.push({
+        acc[row.nr_subitem].itens.push({
             id: Math.random().toString(36).substring(2, 9),
+            codigo_catmat: row.codigo_catmat,
             descricao_item: row.descricao_item,
             descricao_reduzida: row.descricao_reduzida,
             valor_unitario: row.valor_unitario,
             numero_pregao: row.numero_pregao,
             uasg: row.uasg,
-            codigo_catmat: row.codigo_catmat,
-            quantidade: 0,
-            valor_total: 0,
-            nd: '449052',
-            nr_subitem: row.nr_subitem,
-            nome_subitem: row.nome_subitem
+            nd: '449052'
         });
-    });
+        return acc;
+    }, {} as Record<string, any>);
 
-    for (const nr_subitem in groupedBySubitem) {
-        const { nome, descricao, itens } = groupedBySubitem[nr_subitem];
-        
-        // Verificar se a diretriz já existe - Usando cast para evitar erro de inferência
-        const { data: existingDiretriz } = await supabase
+    const results: any[] = [];
+
+    for (const nr in grouped) {
+        const data = grouped[nr];
+        const { data: inserted, error } = await supabase
             .from('diretrizes_material_permanente' as any)
-            .select('id, itens_aquisicao')
-            .eq('user_id', userId)
-            .eq('ano_referencia', year)
-            .eq('nr_subitem', nr_subitem)
-            .maybeSingle();
+            .upsert({
+                user_id: userId,
+                ano_referencia: year,
+                nr_subitem: data.nr_subitem,
+                nome_subitem: data.nome_subitem,
+                descricao_subitem: data.descricao_subitem,
+                itens_aquisicao: data.itens,
+                updated_at: new Date().toISOString()
+            }, { onConflict: 'user_id,ano_referencia,nr_subitem' })
+            .select();
 
-        if (existingDiretriz) {
-            const typedExisting = existingDiretriz as any;
-            const updatedItens = [...(typedExisting.itens_aquisicao as any[] || []), ...itens];
-            await supabase
-                .from('diretrizes_material_permanente' as any)
-                .update({ itens_aquisicao: updatedItens })
-                .eq('id', typedExisting.id);
-        } else {
-            await supabase
-                .from('diretrizes_material_permanente' as any)
-                .insert({
-                    user_id: userId,
-                    ano_referencia: year,
-                    nr_subitem,
-                    nome_subitem: nome,
-                    descricao_subitem: descricao,
-                    itens_aquisicao: itens,
-                    ativo: true
-                });
-        }
+        if (error) throw error;
+        if (inserted) results.push(...inserted);
     }
+
+    return results;
 }

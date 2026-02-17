@@ -17,7 +17,7 @@ interface ServicosTerceirosExportImportDialogProps {
     onOpenChange: (open: boolean) => void;
     selectedYear: number;
     diretrizes: DiretrizServicosTerceiros[];
-    onImportSuccess: () => void;
+    onImportSuccess: (newItems?: DiretrizServicosTerceiros[]) => void;
 }
 
 type ImportStep = 'select_file' | 'processing' | 'review';
@@ -62,7 +62,7 @@ const ServicosTerceirosExportImportDialog: React.FC<ServicosTerceirosExportImpor
         setIsProcessing(true);
         try {
             await exportServicosTerceirosToExcel(diretrizes, selectedYear);
-            toast.success("Exportação concluída!", { description: `Arquivo Diretrizes_ServicosTerceiros_${selectedYear}.xlsx baixado.` });
+            toast.success("Exportação concluída!");
         } catch (error) {
             console.error("Erro na exportação:", error);
             toast.error("Falha ao exportar dados para Excel.");
@@ -107,7 +107,7 @@ const ServicosTerceirosExportImportDialog: React.FC<ServicosTerceirosExportImpor
             setStep('review');
         } catch (error: any) {
             console.error("Erro no processamento:", error);
-            toast.error("Falha ao processar o arquivo.", { description: error.message || "Verifique o formato do arquivo." });
+            toast.error("Falha ao processar o arquivo.");
             setStep('select_file');
         } finally {
             setIsProcessing(false);
@@ -115,20 +115,16 @@ const ServicosTerceirosExportImportDialog: React.FC<ServicosTerceirosExportImpor
     }, [selectedFile, selectedYear, user?.id]);
 
     const handleConfirmImport = useCallback(async () => {
-        if (importSummary.totalValid === 0) {
+        if (importSummary.totalValid === 0 || !user?.id) {
             toast.error("Nenhuma linha válida para importação.");
             return;
         }
         
-        if (!confirm(`Atenção: Você está prestes a mesclar ${importSummary.totalValid} itens válidos às diretrizes de Serviços de Terceiros do ano ${selectedYear}. Deseja continuar?`)) {
-            return;
-        }
-
         setIsProcessing(true);
         try {
-            await persistServicosTerceirosImport(stagedData, selectedYear, user!.id);
-            onImportSuccess(); 
-            toast.success("Importação concluída!", { description: `As diretrizes de Serviços de Terceiros para o ano ${selectedYear} foram atualizadas.` });
+            const newItems = await persistServicosTerceirosImport(stagedData, selectedYear, user.id);
+            onImportSuccess(newItems); 
+            toast.success("Importação concluída!");
             handleOpenChangeWrapper(false);
         } catch (error: any) {
             console.error("Erro na persistência:", error);

@@ -534,13 +534,27 @@ const CustosOperacionaisPage = () => {
       }
   };
 
-  const handleServicosTerceirosImportSuccess = () => {
+  const handleServicosTerceirosImportSuccess = (newItems?: DiretrizServicosTerceiros[]) => {
+      if (newItems && newItems.length > 0) {
+          setDiretrizesServicosTerceiros(prev => {
+              const filtered = prev.filter(p => !newItems.find(n => n.id === p.id));
+              return [...filtered, ...newItems].sort((a, b) => a.nr_subitem.localeCompare(b.nr_subitem));
+          });
+          toast.success(`${newItems.length} subitens de serviços atualizados!`);
+      }
       if (user?.id && selectedYear > 0) {
           queryClient.invalidateQueries({ queryKey: ['diretrizesServicosTerceiros', selectedYear, user.id] });
       }
   };
 
-  const handleMaterialPermanenteImportSuccess = () => {
+  const handleMaterialPermanenteImportSuccess = (newItems?: DiretrizMaterialPermanente[]) => {
+      if (newItems && newItems.length > 0) {
+          setDiretrizesMaterialPermanente(prev => {
+              const filtered = prev.filter(p => !newItems.find(n => n.id === p.id));
+              return [...filtered, ...newItems].sort((a, b) => a.nr_subitem.localeCompare(b.nr_subitem));
+          });
+          toast.success(`${newItems.length} subitens permanentes atualizados!`);
+      }
       if (user?.id && selectedYear > 0) {
           queryClient.invalidateQueries({ queryKey: ['diretrizesMaterialPermanente', selectedYear, user.id] });
       }
@@ -1806,8 +1820,7 @@ const CustosOperacionaisPage = () => {
                           <TableHead className="w-[40%]">Item de Serviço</TableHead>
                           <TableHead className="w-[40%]">Subitem ND</TableHead>
                           <TableHead className="w-[20%] text-center">Ações</TableHead>
-                      </TableRow>
-                  </TableHeader>
+                      </TableHeader>
                   <TableBody>
                       {filteredItemsServicos.map((item, index) => (
                           <TableRow key={`${item.diretrizId}-${index}`}>
@@ -2469,7 +2482,7 @@ const CustosOperacionaisPage = () => {
       />
       
       <ConcessionariaDiretrizFormDialog
-          open={isPassagemFormOpen} // Note: This looks like a typo in original code, but keeping it for now
+          open={isConcessionariaFormOpen}
           onOpenChange={setIsConcessionariaFormOpen}
           selectedYear={selectedYear}
           diretrizToEdit={diretrizConcessionariaToEdit} 
