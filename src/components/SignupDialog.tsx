@@ -46,7 +46,7 @@ const signupSchema = z.object({
   email: z.string().email("E-mail inválido."),
   nome_completo: z.string().min(5, "Nome completo é obrigatório."),
   nome_guerra: z.string().min(2, "Nome de Guerra é obrigatório."),
-  posto_graduacao: z.enum(MILITARY_RANKS as [string, ...string[]], { message: "Posto/Graduação é obrigatório." }),
+  posto_graduacao: z.enum(MILITARY_RANKS as unknown as [string, ...string[]], { message: "Posto/Graduação é obrigatório." }),
   sigla_om: z.string().min(2, "Sigla da OM é obrigatória."),
   funcao_om: z.string().min(2, "Função na OM é obrigatória."),
   telefone: z.string().regex(/^\(?\d{2}\)?\s?\d{9}$/, "Telefone inválido (Ex: (99) 999999999).").optional().or(z.literal('')),
