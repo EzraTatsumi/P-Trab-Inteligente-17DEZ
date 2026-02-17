@@ -201,7 +201,7 @@ const PTrabDORReport: React.FC<PTrabDORReportProps> = ({ ptrabData, dorData, sel
           </div>
           <div className="pb-2">
             <p className="font-bold uppercase">{ptrabData.nome_cmt_om || "NOME DO ORDENADOR DE DESPESAS"}</p>
-            <p>{ptrabData.nome_om_extenso || ptrabData.nome_om}</p>
+            <p>Comandante da {ptrabData.nome_om_extenso || ptrabData.nome_om}</p>
           </div>
         </div>
       </div>

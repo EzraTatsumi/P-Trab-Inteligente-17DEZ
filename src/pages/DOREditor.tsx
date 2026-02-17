@@ -770,7 +770,7 @@ const DOREditor = () => {
 
             <div className="text-center pb-2">
               <p className="font-bold uppercase">{ptrab?.nome_cmt_om || "NOME DO ORDENADOR DE DESPESAS"}</p>
-              <p>{ptrab?.nome_om_extenso || `Ordenador de Despesas da ${ptrab?.nome_om}`}</p>
+              <p>Comandante da {ptrab?.nome_om_extenso || ptrab?.nome_om}</p>
             </div>
           </div>
 
