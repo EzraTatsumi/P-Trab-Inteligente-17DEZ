@@ -193,7 +193,7 @@ const CustosOperacionaisPage = () => {
   const { user } = useSession();
   const queryClient = useQueryClient();
   const [loading, setLoading] = useState(true);
-  const [isSaving, setIsSaving] = useState(false); // Novo estado para carregamento local
+  const [isSaving, setIsSaving] = useState(false); 
   
   const currentYear = new Date().getFullYear();
   const [diretrizes, setDiretrizes] = useState<Partial<DiretrizOperacional>>(defaultDiretrizes(currentYear));
@@ -253,7 +253,6 @@ const CustosOperacionaisPage = () => {
       isMoving: isMovingServicosTerceiros,
   } = useServicosTerceirosDiretrizes(selectedYear);
 
-  // NOVO: Hook para Material Permanente
   const {
       diretrizes: diretrizesMaterialPermanente,
       isLoading: isLoadingMaterialPermanente,
@@ -270,7 +269,6 @@ const CustosOperacionaisPage = () => {
   const [subitemServicoToOpenId, setSubitemServicoToOpenId] = useState<string | null>(null);
   const [isExportImportServicosDialogOpen, setIsExportImportServicosDialogOpen] = useState(false);
 
-  // NOVO: Estados para Material Permanente
   const [isMaterialPermanenteFormOpen, setIsMaterialPermanenteFormOpen] = useState(false);
   const [diretrizMaterialPermanenteToEdit, setDiretrizMaterialPermanenteToEdit] = useState<DiretrizMaterialPermanente | null>(null);
   const [searchTermPermanente, setSearchTermPermanente] = useState("");
@@ -789,7 +787,6 @@ const CustosOperacionaisPage = () => {
           if (insertServicosError) throw insertServicosError;
       }
 
-      // NOVO: Copiar Material Permanente
       const { data: sourcePermanente, error: permanenteError } = await supabase
         .from("diretrizes_material_permanente" as any)
         .select("nr_subitem, nome_subitem, descricao_subitem, itens_aquisicao, ativo")
@@ -1362,7 +1359,6 @@ const CustosOperacionaisPage = () => {
           const { data: { user } } = await supabase.auth.getUser();
           if (!user) throw new Error("Usuário não autenticado");
           
-          // Limpeza de dados para evitar erro 400 (UUIDs vazios ou campos nulos obrigatórios)
           const dbData: any = {
               user_id: user.id,
               ano_referencia: data.ano_referencia,
@@ -1388,10 +1384,7 @@ const CustosOperacionaisPage = () => {
               toast.success("Novo Subitem da ND cadastrado!");
           }
           
-          // Invalidação agressiva para garantir atualização
-          await queryClient.invalidateQueries({ queryKey: ['diretrizesServicosTerceiros'] });
-          await queryClient.refetchQueries({ queryKey: ['diretrizesServicosTerceiros', selectedYear, user.id] });
-          
+          queryClient.invalidateQueries({ queryKey: ['diretrizesServicosTerceiros', selectedYear, user.id] });
           setDiretrizServicosTerceirosToEdit(null);
           setIsServicosTerceirosFormOpen(false);
           
@@ -1402,7 +1395,6 @@ const CustosOperacionaisPage = () => {
       }
   };
 
-  // NOVO: Salvar Material Permanente
   const handleSaveMaterialPermanente = async (data: Partial<DiretrizMaterialPermanente> & { ano_referencia: number }) => {
       try {
           setIsSaving(true);
@@ -1434,10 +1426,7 @@ const CustosOperacionaisPage = () => {
               toast.success("Novo Subitem da ND cadastrado!");
           }
           
-          // Invalidação agressiva para garantir atualização
-          await queryClient.invalidateQueries({ queryKey: ['diretrizesMaterialPermanente'] });
-          await queryClient.refetchQueries({ queryKey: ['diretrizesMaterialPermanente', selectedYear, user.id] });
-          
+          queryClient.invalidateQueries({ queryKey: ['diretrizesMaterialPermanente', selectedYear, user.id] });
           setDiretrizMaterialPermanenteToEdit(null);
           setIsMaterialPermanenteFormOpen(false);
           
@@ -1458,7 +1447,6 @@ const CustosOperacionaisPage = () => {
       setIsServicosTerceirosFormOpen(true);
   };
 
-  // NOVO: Editar Material Permanente
   const handleStartEditMaterialPermanente = (diretriz: DiretrizMaterialPermanente) => {
       setDiretrizMaterialPermanenteToEdit(diretriz);
       setIsMaterialPermanenteFormOpen(true);
@@ -1474,7 +1462,6 @@ const CustosOperacionaisPage = () => {
       setIsServicosTerceirosFormOpen(true);
   };
 
-  // NOVO: Novo Material Permanente
   const handleOpenNewMaterialPermanente = () => {
       setDiretrizMaterialPermanenteToEdit(null);
       setIsMaterialPermanenteFormOpen(true);
@@ -1510,7 +1497,6 @@ const CustosOperacionaisPage = () => {
       }
   };
 
-  // NOVO: Excluir Material Permanente
   const handleDeleteMaterialPermanente = async (id: string, nome: string) => {
       if (!confirm(`Tem certeza que deseja excluir o Subitem da ND "${nome}"?`)) return;
       
@@ -1556,7 +1542,6 @@ const CustosOperacionaisPage = () => {
     });
   }, [diretrizesServicosTerceiros]);
 
-  // NOVO: Indexar Material Permanente
   const indexedItemsPermanente = useMemo<IndexedItemPermanente[]>(() => {
     if (!diretrizesMaterialPermanente) return [];
     
@@ -1612,7 +1597,6 @@ const CustosOperacionaisPage = () => {
     });
   }, [searchTermServicos, indexedItemsServicos]);
 
-  // NOVO: Filtrar Material Permanente
   const filteredItemsPermanente = useMemo(() => {
     if (!searchTermPermanente) return [];
     const lowerCaseSearch = searchTermPermanente.toLowerCase().trim();
@@ -1665,7 +1649,6 @@ const CustosOperacionaisPage = () => {
       setSearchTermServicos("");
   };
 
-  // NOVO: Ir para Subitem Permanente
   const handleGoToSubitemPermanente = (diretrizId: string) => {
       handleCollapseChange('material_permanente_detalhe', true);
       setSubitemPermanenteToOpenId(diretrizId);
@@ -1833,7 +1816,6 @@ const CustosOperacionaisPage = () => {
       );
   };
 
-  // NOVO: Resultados da busca para Material Permanente
   const renderSearchResultsPermanente = () => {
       if (searchTermPermanente.length < 3) {
           return (
@@ -2087,7 +2069,6 @@ const CustosOperacionaisPage = () => {
       );
   };
 
-  // NOVO: Renderizar seção de Material Permanente
   const renderMaterialPermanenteSection = () => {
       const isDataLoading = isLoadingMaterialPermanente || isMovingMaterialPermanente;
       
@@ -2340,7 +2321,6 @@ const CustosOperacionaisPage = () => {
                     </Collapsible>
                   </div>
 
-                  {/* NOVO: Collapsible para Material Permanente */}
                   <div ref={el => collapsibleRefs.current['material_permanente_detalhe'] = el} className="border-b pb-4 last:border-b-0 last:pb-0">
                     <Collapsible 
                       open={fieldCollapseState['material_permanente_detalhe']} 
@@ -2505,7 +2485,6 @@ const CustosOperacionaisPage = () => {
           onImportSuccess={handleServicosTerceirosImportSuccess}
       />
 
-      {/* NOVO: Diálogos para Material Permanente */}
       <MaterialPermanenteDiretrizFormDialog
           open={isMaterialPermanenteFormOpen}
           onOpenChange={setIsMaterialPermanenteFormOpen}
