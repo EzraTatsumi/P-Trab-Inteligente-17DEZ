@@ -1384,7 +1384,7 @@ const CustosOperacionaisPage = () => {
               toast.success("Novo Subitem da ND cadastrado!");
           }
           
-          // Invalidação silenciosa (sem await) para fechar o diálogo imediatamente
+          // OTIMIZAÇÃO: Invalidação silenciosa (sem await) para fechar o diálogo imediatamente
           queryClient.invalidateQueries({ queryKey: ['diretrizesServicosTerceiros', selectedYear, user.id] });
           
           setDiretrizServicosTerceirosToEdit(null);
@@ -1428,7 +1428,7 @@ const CustosOperacionaisPage = () => {
               toast.success("Novo Subitem da ND cadastrado!");
           }
           
-          // Invalidação silenciosa (sem await) para fechar o diálogo imediatamente
+          // OTIMIZAÇÃO: Invalidação silenciosa (sem await) para fechar o diálogo imediatamente
           queryClient.invalidateQueries({ queryKey: ['diretrizesMaterialPermanente', selectedYear, user.id] });
           
           setDiretrizMaterialPermanenteToEdit(null);
@@ -1474,45 +1474,69 @@ const CustosOperacionaisPage = () => {
   const handleDeleteMaterialConsumo = async (id: string, nome: string) => {
       if (!confirm(`Tem certeza que deseja excluir o Subitem da ND "${nome}"?`)) return;
       
+      const queryKey = ['diretrizesMaterialConsumo', selectedYear, user?.id];
+      
+      // OTIMIZAÇÃO: Atualização Otimista (Remove da tela imediatamente)
+      queryClient.setQueryData(queryKey, (old: any) => {
+          return old ? old.filter((d: any) => d.id !== id) : [];
+      });
+
       try {
-          setIsSaving(true);
-          await supabase.from('diretrizes_material_consumo').delete().eq('id', id);
+          const { error } = await supabase.from('diretrizes_material_consumo').delete().eq('id', id);
+          if (error) throw error;
           toast.success("Subitem da ND excluído!");
-          queryClient.invalidateQueries({ queryKey: ['diretrizesMaterialConsumo', selectedYear, user?.id] });
       } catch (error) {
           toast.error(sanitizeError(error));
+          // Rollback em caso de erro
+          queryClient.invalidateQueries({ queryKey });
       } finally {
-          setIsSaving(false);
+          queryClient.invalidateQueries({ queryKey });
       }
   };
 
   const handleDeleteServicosTerceiros = async (id: string, nome: string) => {
       if (!confirm(`Tem certeza que deseja excluir o Subitem da ND "${nome}"?`)) return;
       
+      const queryKey = ['diretrizesServicosTerceiros', selectedYear, user?.id];
+      
+      // OTIMIZAÇÃO: Atualização Otimista (Remove da tela imediatamente)
+      queryClient.setQueryData(queryKey, (old: any) => {
+          return old ? old.filter((d: any) => d.id !== id) : [];
+      });
+
       try {
-          setIsSaving(true);
-          await supabase.from('diretrizes_servicos_terceiros' as any).delete().eq('id', id);
+          const { error } = await supabase.from('diretrizes_servicos_terceiros' as any).delete().eq('id', id);
+          if (error) throw error;
           toast.success("Subitem da ND excluído!");
-          queryClient.invalidateQueries({ queryKey: ['diretrizesServicosTerceiros', selectedYear, user?.id] });
       } catch (error) {
           toast.error(sanitizeError(error));
+          // Rollback em caso de erro
+          queryClient.invalidateQueries({ queryKey });
       } finally {
-          setIsSaving(false);
+          queryClient.invalidateQueries({ queryKey });
       }
   };
 
   const handleDeleteMaterialPermanente = async (id: string, nome: string) => {
       if (!confirm(`Tem certeza que deseja excluir o Subitem da ND "${nome}"?`)) return;
       
+      const queryKey = ['diretrizesMaterialPermanente', selectedYear, user?.id];
+      
+      // OTIMIZAÇÃO: Atualização Otimista (Remove da tela imediatamente)
+      queryClient.setQueryData(queryKey, (old: any) => {
+          return old ? old.filter((d: any) => d.id !== id) : [];
+      });
+
       try {
-          setIsSaving(true);
-          await supabase.from('diretrizes_material_permanente' as any).delete().eq('id', id);
+          const { error } = await supabase.from('diretrizes_material_permanente' as any).delete().eq('id', id);
+          if (error) throw error;
           toast.success("Subitem da ND excluído!");
-          queryClient.invalidateQueries({ queryKey: ['diretrizesMaterialPermanente', selectedYear, user?.id] });
       } catch (error) {
           toast.error(sanitizeError(error));
+          // Rollback em caso de erro
+          queryClient.invalidateQueries({ queryKey });
       } finally {
-          setIsSaving(false);
+          queryClient.invalidateQueries({ queryKey });
       }
   };
   
