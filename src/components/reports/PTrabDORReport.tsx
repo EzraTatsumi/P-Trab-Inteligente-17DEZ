@@ -8,6 +8,7 @@ import { formatNumber, formatCodug } from "@/lib/formatUtils";
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import { toast } from "sonner";
+import { exportDORToWord } from "@/lib/wordExportUtils";
 
 interface PTrabDORReportProps {
   ptrabData: any;
@@ -41,8 +42,14 @@ const PTrabDORReport: React.FC<PTrabDORReportProps> = ({ ptrabData, dorData, sel
     pdf.save(`DOR_${dorData.numero_dor || 'SN'}_${ptrabData.nome_om}.pdf`);
   };
 
-  const handleExportWord = () => {
-    toast.info("A exportação para Word do DOR está em desenvolvimento.");
+  const handleExportWord = async () => {
+    try {
+      await exportDORToWord(ptrabData, dorData);
+      toast.success("Documento Word gerado com sucesso!");
+    } catch (error) {
+      console.error("Erro ao exportar para Word:", error);
+      toast.error("Falha ao gerar documento Word.");
+    }
   };
 
   const dataAtual = new Date().toLocaleDateString('pt-BR', { day: 'numeric', month: 'long', year: 'numeric' });
