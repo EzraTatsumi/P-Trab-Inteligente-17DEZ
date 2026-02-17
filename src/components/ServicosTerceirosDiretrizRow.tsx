@@ -16,6 +16,8 @@ interface ServicosTerceirosDiretrizRowProps {
     onMoveItem: (item: ItemAquisicaoServico, sourceDiretrizId: string, targetDiretrizId: string) => void;
     id: string;
     forceOpen: boolean;
+    isExpanded?: boolean;
+    onToggleExpand?: () => void;
 }
 
 const ServicosTerceirosDiretrizRow: React.FC<ServicosTerceirosDiretrizRowProps> = ({
@@ -26,14 +28,20 @@ const ServicosTerceirosDiretrizRow: React.FC<ServicosTerceirosDiretrizRowProps> 
     onMoveItem,
     id,
     forceOpen,
+    isExpanded,
+    onToggleExpand,
 }) => {
-    const [isOpen, setIsOpen] = useState(false);
+    const [internalIsOpen, setInternalIsOpen] = useState(false);
     const [isDragOver, setIsDragOver] = useState(false);
+    
+    const isOpen = isExpanded !== undefined ? isExpanded : internalIsOpen;
+    const toggleOpen = onToggleExpand || (() => setInternalIsOpen(!internalIsOpen));
+    
     const expandTimerRef = useRef<number | null>(null); 
     
     useEffect(() => {
         if (forceOpen && !isOpen) {
-            setIsOpen(true);
+            toggleOpen();
         }
     }, [forceOpen]);
     
@@ -59,7 +67,7 @@ const ServicosTerceirosDiretrizRow: React.FC<ServicosTerceirosDiretrizRowProps> 
         try {
             const { item, sourceDiretrizId } = JSON.parse(data) as { item: ItemAquisicaoServico, sourceDiretrizId: string };
             if (sourceDiretrizId === diretriz.id) return;
-            setIsOpen(true); 
+            if (!isOpen) toggleOpen(); 
             onMoveItem(item, sourceDiretrizId, diretriz.id);
         } catch (error) {
             console.error("Erro ao processar dados de drop:", error);
@@ -69,7 +77,7 @@ const ServicosTerceirosDiretrizRow: React.FC<ServicosTerceirosDiretrizRowProps> 
     const handleDragEnterTrigger = (e: React.DragEvent<HTMLTableRowElement>) => {
         if (!e.dataTransfer.types.includes("application/json") || isOpen || expandTimerRef.current) return;
         expandTimerRef.current = setTimeout(() => {
-            setIsOpen(true);
+            if (!isOpen) toggleOpen();
             expandTimerRef.current = null;
         }, 300) as unknown as number;
     };
@@ -86,7 +94,7 @@ const ServicosTerceirosDiretrizRow: React.FC<ServicosTerceirosDiretrizRowProps> 
             <TableRow 
                 id={id}
                 className={cn("hover:bg-muted/50 transition-colors cursor-pointer", isOpen && "bg-muted/50")}
-                onClick={() => setIsOpen(!isOpen)}
+                onClick={toggleOpen}
                 onDragEnter={handleDragEnterTrigger}
                 onDragLeave={handleDragLeaveTrigger}
             >
