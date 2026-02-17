@@ -1820,7 +1820,8 @@ const CustosOperacionaisPage = () => {
                           <TableHead className="w-[40%]">Item de Serviço</TableHead>
                           <TableHead className="w-[40%]">Subitem ND</TableHead>
                           <TableHead className="w-[20%] text-center">Ações</TableHead>
-                      </TableHeader>
+                      </TableRow>
+                  </TableHeader>
                   <TableBody>
                       {filteredItemsServicos.map((item, index) => (
                           <TableRow key={`${item.diretrizId}-${index}`}>
