@@ -134,7 +134,6 @@ Os itens operacionais abrangem diversas naturezas de despesa e seguem regras esp
 
 ### 5.2. Passagens (ND 33.90.33)
 - **Cálculo:** Baseado em trechos pré-cadastrados na diretriz ou inserção manual de valores de mercado.
-- **Regra:** O sistema permite selecionar trechos de ida e volta, aplicando o valor unitário da diretriz multiplicado pela quantidade de passagens.
 
 ### 5.3. Verba Operacional e Suprimento de Fundos
 - **Cálculo:** `Quantidade de Equipes x Valor Diário da Diretriz x Dias de Operação`.
@@ -147,28 +146,29 @@ Os itens operacionais abrangem diversas naturezas de despesa e seguem regras esp
 ### 5.5. Complemento de Alimentação (ND 33.90.30 / 33.90.39)
 - **Finalidade:** Aquisição de gêneros para reforço calórico ou água mineral.
 - **Cálculo:** `Efetivo x Dias de Operação x Valor Teto Per Capita (Diretriz Operacional)`.
-- **Regra:** O valor total solicitado não pode ultrapassar o teto calculado pelo sistema.
 
 ### 5.6. Horas de Voo - AvEx (ND 33.90.30 / 33.90.39)
 - **Cálculo:** `Quantidade de Horas x Valor da Hora de Voo (por modelo de aeronave)`.
-- **Alocação:** 
-    - **ND 30:** Combustível de Aviação (QAV).
-    - **ND 39:** Manutenção e serviços associados.
 
 ### 5.7. Pagamento de Concessionárias (ND 33.90.39)
 - **Finalidade:** Custear despesas de água, energia e esgoto em locais de apoio.
 - **Cálculo:** `Efetivo x Dias de Operação x Consumo Estimado (Pessoa/Dia) x Tarifa Local`.
 
 ### 5.8. Serviços de Terceiros e Locações (ND 33.90.39)
-Este formulário é destinado à contratação de serviços especializados e locação de infraestrutura temporária.
+- **Categorias:** Locação de viaturas, máquinas, estruturas, serviços técnicos, manutenção e apoio.
+- **Lógica:** Seleção de subitem da ND 39 e detalhamento do planejamento (unidade, quantidade, valor).
 
-#### 5.8.1. Categorias de Serviços
-- **Locação de Viaturas:** Administrativas, operacionais ou blindadas.
-- **Locação de Máquinas e Equipamentos:** Tratores, motoniveladoras, etc.
-- **Locação de Estruturas:** Tendas, banheiros químicos, containers e geradores.
-- **Serviços Técnicos Profissionais:** Consultorias, instrutoria ou serviços especializados.
-- **Manutenção e Conservação:** De bens móveis ou imóveis durante a operação.
-- **Serviços de Apoio:** Limpeza, vigilância ou apoio logístico terceirizado.
+### 5.9. Material de Consumo (ND 33.90.30)
+Este formulário é destinado à aquisição de materiais que se esgotam pelo uso ou possuem vida útil curta (inferior a dois anos).
+
+#### 5.9.1. Funcionalidades e Regras
+- **Alocação:** Exclusivamente na **ND 33.90.30 (GND 3)**.
+- **Cálculo:** `Quantidade x Valor Unitário`.
+- **Catálogo CATMAT:** Integração com o catálogo local para busca de descrições padronizadas por código.
+- **Integração PNCP:** 
+    - **Estatísticas de Preço:** Busca em tempo real a média, mediana, valor mínimo e máximo praticados no mercado nacional para o item selecionado.
+    - **Busca de ARP:** Localiza Atas de Registro de Preços vigentes para facilitar a instrução do processo de aquisição.
+- **Agrupamento:** Permite organizar os itens por "Nome do Grupo" e "Finalidade", facilitando a visualização no relatório e no DOR.
 
 ---
 
