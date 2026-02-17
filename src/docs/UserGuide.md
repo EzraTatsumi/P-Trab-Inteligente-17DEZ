@@ -30,11 +30,34 @@ Permite combinar os registros de múltiplos P Trabs de origem em um único P Tra
 - **Status:** Indica o estado atual (Aberto, Em Andamento, Aprovado, Arquivado).
 - **Preencher (Botão):** Navega para a tela de edição de classes logísticas e operacionais.
 - **Preencher DOR (Botão):** Abre o editor de Documento de Oficialização de Demanda.
-- **Visualizar Impressão (Ação):** Abre a tela de relatórios (PDF e Excel).
+- **Visualizar Impressão (Ação):** Abre o **Gerenciador de Impressão** para o P Trab selecionado.
 - **Clonar P Trab (Ação):** Cria uma cópia exata do P Trab.
 - **Aprovar (Botão):** Atribui o número oficial e altera o status para "Aprovado".
 
-## 3. Colaboração e Compartilhamento
+---
+
+## 3. Gerenciador de Impressão (PTrabReportManager)
+
+Esta tela permite gerar e exportar os documentos oficiais do Plano de Trabalho em formatos padronizados.
+
+### Seleção de Relatório
+No topo da página, você pode alternar entre diferentes visões do P Trab:
+
+- **Relatório Logístico:** Consolida as Classes I, II, III, V, VI, VII, VIII e IX.
+- **Ração Operacional:** Detalhamento específico dos quantitativos de R2 e R3 (Classe I).
+- **Relatório Operacional:** Consolida Diárias, Passagens, Verba Operacional, Suprimento de Fundos, Complemento de Alimentação, Serviços e Concessionárias.
+- **Material Permanente:** Relatório exclusivo para itens de ND 52 (Investimento).
+- **Horas de Voo:** Detalhamento das horas voadas por aeronave da AvEx.
+- **DOR (Documento de Oficialização de Demanda):** Gera o documento formal para o setor de aquisições, baseado nos agrupamentos realizados no editor de DOR.
+
+### Funcionalidades de Exportação
+- **Exportar para PDF:** Gera um documento pronto para impressão ou assinatura digital, seguindo o layout oficial.
+- **Exportar para Excel:** Gera uma planilha com todos os dados, permitindo manipulações externas ou integração com outros sistemas do Exército.
+- **Visualização Prévia:** O sistema exibe uma prévia fiel do documento na tela antes da exportação.
+
+---
+
+## 4. Colaboração e Compartilhamento
 
 O sistema permite o compartilhamento seguro de P Trabs para edição colaborativa.
 
@@ -46,13 +69,13 @@ Permite colar o link de compartilhamento recebido para solicitar acesso.
 
 ---
 
-## 4. Assistente Dyad (IA)
+## 5. Assistente Dyad (IA)
 
 O Assistente Dyad é um chatbot de Inteligência Artificial integrado que pode ajudar com dúvidas sobre a usabilidade e regras de negócio.
 
 ---
 
-## 5. Configurações
+## 6. Configurações
 
 Acessível pelo ícone de engrenagem (Settings) na tela de Gerenciamento de Planos de Trabalho.
 
@@ -63,12 +86,11 @@ Permite atualizar informações pessoais e OM de vinculação.
 Permite configurar os valores e fatores de cálculo utilizados pelo sistema.
 
 - **Diretriz de Custeio Logístico:** Define valores de etapa (Classe I), manutenção (Classes II a IX) e consumos de equipamentos.
-- **Diretriz de Custos Operacionais:** Define os valores de diárias (por localidade), teto de complemento de alimentação, valores de hora de voo por aeronave e trechos de passagens aéreas.
+- **Diretriz de Custos Operacionais:** Define os valores de diárias, teto de complemento, horas de voo e trechos de passagens.
 
 #### Importação e Exportação de Diretrizes
-Para facilitar a padronização entre diferentes usuários ou realizar backups:
-- **Exportar Diretrizes:** Gera um arquivo JSON contendo todas as configurações de valores do ano selecionado.
-- **Importar Diretrizes:** Permite carregar um arquivo JSON de diretrizes. O sistema atualizará os valores para o ano correspondente, facilitando a replicação de tabelas de custos oficiais.
+- **Exportar Diretrizes:** Gera um arquivo JSON com as configurações do ano.
+- **Importar Diretrizes:** Carrega configurações de um arquivo JSON externo.
 
 ### Relação de OM (Página)
 Gerencia a lista de Organizações Militares (OM) e seus respectivos CODUGs.
@@ -78,7 +100,7 @@ Permite gerenciar backups e transferências de dados de Planos de Trabalho compl
 
 ---
 
-## 6. Formulários de Classes (PTrabForm)
+## 7. Formulários de Classes (PTrabForm)
 
 ### Resumo de Custos (Card)
 Exibe o custo total calculado para o P Trab.
@@ -92,6 +114,6 @@ Todos os formulários seguem um fluxo padronizado: Dados da Organização, Confi
 
 ---
 
-## 7. Editor de DOR (Documento de Oficialização de Demanda)
+## 8. Editor de DOR (Documento de Oficialização de Demanda)
 
 O Editor de DOR permite formalizar as necessidades levantadas no P Trab para o setor de aquisições.
