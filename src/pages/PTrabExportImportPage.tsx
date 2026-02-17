@@ -50,7 +50,7 @@ interface ExportData {
   type: 'full_backup' | 'single_ptrab';
   data: {
     p_trab: any; // Pode ser array ou objeto único
-    [key: string]: any[]; // Todas as outras tabelas como arrays
+    [key: string]: any; // Alterado de any[] para any para evitar conflito com p_trab
   };
 }
 
@@ -328,7 +328,7 @@ const PTrabExportImportPage = () => {
         const items = data.data[table];
         if (items && items.length > 0) {
             await (supabase.from(table as any)).delete().eq('user_id', currentUserId);
-            const newItems = items.map(item => ({ ...item, user_id: currentUserId, id: undefined }));
+            const newItems = items.map((item: any) => ({ ...item, user_id: currentUserId, id: undefined }));
             await (supabase.from(table as any)).insert(newItems);
         }
     }
@@ -469,7 +469,7 @@ const PTrabExportImportPage = () => {
               </div>
               {importSummary && <Alert variant="default"><FileText className="h-4 w-4" /><AlertTitle>Arquivo Carregado</AlertTitle><AlertDescription className="text-sm">{importSummary.details}</AlertDescription></Alert>}
               <Button onClick={() => setShowImportPasswordDialog(true)} disabled={loading || !fileToImport} className="w-full gap-2" variant="secondary">
-                {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+                {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="mr-2 h-4 w-4" />}
                 {loading ? "Aguarde..." : "Iniciar Importação"}
               </Button>
             </div>
