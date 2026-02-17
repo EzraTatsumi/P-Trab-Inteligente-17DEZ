@@ -12,39 +12,36 @@ O **PTrab Inteligente** é uma plataforma web moderna desenvolvida para revoluci
 
 ## 🚀 Funcionalidades Principais
 
-### 📊 Gestão de Planejamento
-* **Cálculo Automatizado:** Regras complexas de custeio (GND 3 e 4) aplicadas automaticamente conforme diretrizes vigentes.
-* **Visão Global e por OM:** Acompanhamento de saldos e despesas consolidadas ou detalhadas por Organização Militar participante.
-* **Controle de Crédito:** Monitoramento em tempo real de teto orçamentário e saldo disponível para evitar extrapolação de recursos.
-
-### 📝 Editor de Documentos (DOR)
-* **WYSIWYG Realista:** Editor visual para o Documento de Oficialização de Demanda com formatação em tempo real.
-* **Impressão de Alta Fidelidade:** Geração de PDFs e planilhas Excel com cabeçalhos oficiais e brasões, garantindo padronização.
-* **Integração de Dados:** Sincronização direta entre os lançamentos do PTrab e os grupos de despesa do DOR.
-
-### ⚡ Performance e Usabilidade
-* **Optimistic UI:** Interface reativa que permite edição e exclusão de itens com resposta instantânea.
-* **Integração PNCP:** Busca em tempo real de estatísticas de preço e Atas de Registro de Preços (ARP) via API do Governo Federal.
-* **Gestão de Diretrizes:** Sistema flexível de importação e exportação de tabelas de custos anuais.
+*   **Cálculo Automatizado:** Regras complexas de custeio (GND 3 e 4) aplicadas automaticamente.
+*   **Editor de Documentos (DOR):** Geração de PDFs oficiais e planilhas Excel padronizadas.
+*   **Integração PNCP:** Estatísticas de preço e busca de ARPs em tempo real.
+*   **Colaboração Segura:** Compartilhamento de PTrabs entre usuários com controle de acesso.
 
 ---
 
-## 📚 Central de Documentação
+## 📖 Como acessar a Documentação?
 
-Para aprofundamento técnico e funcional, consulte os documentos detalhados:
+A documentação completa está disponível de duas formas:
 
-| Documento | Descrição |
+### 1. Dentro do Aplicativo (Para o Usuário Final)
+Ao navegar no sistema, clique no ícone de **Interrogação (Ajuda)** localizado na barra de ferramentas da tela principal (Gerenciador de PTrabs). Isso abrirá a **Central de Ajuda**, onde você encontrará:
+*   Guia do Usuário interativo.
+*   Regras de Negócio detalhadas.
+*   Informações de Segurança e Arquitetura.
+
+### 2. No Repositório (Para Desenvolvedores)
+Os arquivos fonte da documentação estão localizados em `src/docs/`:
+
+| Documento | Link Direto |
 | :--- | :--- |
-| [**📘 Guia do Usuário**](src/docs/UserGuide.md) | Manual completo de uso das telas, fluxos e gerenciador de impressão. |
-| [**🏗️ Arquitetura**](src/docs/Architecture.md) | Detalhes da Stack, estrutura de pastas e decisões técnicas. |
-| [**📐 Regras de Negócio**](src/docs/BusinessRules.md) | Fórmulas de cálculo, diretrizes COLOG/COTER e lógica orçamentária. |
-| [**🔒 Segurança**](src/docs/SecurityCompliance.md) | Conformidade com RLS, criptografia e proteção de dados sensíveis. |
+| **📘 Guia do Usuário** | [Visualizar](./src/docs/UserGuide.md) |
+| **📐 Regras de Negócio** | [Visualizar](./src/docs/BusinessRules.md) |
+| **🏗️ Arquitetura** | [Visualizar](./src/docs/Architecture.md) |
+| **🔒 Segurança** | [Visualizar](./src/docs/SecurityCompliance.md) |
 
 ---
 
 ## 🛠️ Tech Stack
-
-O projeto utiliza uma arquitetura moderna focada em performance e segurança:
 
 <div align="center">
 
@@ -58,16 +55,22 @@ O projeto utiliza uma arquitetura moderna focada em performance e segurança:
 
 ---
 
+## 📞 Contato e Suporte
+
+Para reportar falhas, sugerir melhorias ou solicitar suporte técnico:
+
+*   **Desenvolvedor Responsável:** [Seu Nome/Organização]
+*   **E-mail:** suporte@ptrabinteligente.eb.mil.br
+*   **Feedback:** Utilize o botão "Reportar Falha" dentro da Central de Ajuda no app.
+
+---
+
 ## 📂 Estrutura do Projeto
 
 ```bash
 src/
-├── components/        # Componentes UI reutilizáveis (Botões, Cards, Dialogs)
-│   ├── ui/            # Componentes base (shadcn/ui)
-│   └── ...
-├── docs/              # Documentação técnica e funcional (Markdown)
-├── pages/             # Páginas principais e rotas da aplicação
-├── hooks/             # Hooks customizados para lógica de estado e navegação
-├── lib/               # Utilitários de formatação, cálculos e exportação
-├── integrations/      # Cliente Supabase, APIs externas e tipos gerados
-└── types/             # Definições globais de tipos TypeScript
+├── components/        # Componentes UI e Central de Ajuda
+├── docs/              # Arquivos Markdown da documentação
+├── pages/             # Telas da aplicação
+├── lib/               # Lógica de cálculo e utilitários
+└── integrations/      # Conexão com Supabase e APIs
