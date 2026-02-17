@@ -10,11 +10,7 @@ import {
   BorderStyle, 
   AlignmentType, 
   VerticalAlign,
-  ImageRun,
-  Header,
-  Footer,
-  PageNumber,
-  NumberFormat
+  ShadingType
 } from "docx";
 import { saveAs } from "file-saver";
 import { formatNumber, formatCodug } from "./formatUtils";
@@ -29,24 +25,24 @@ export async function exportDORToWord(ptrabData: any, dorData: any) {
 
   // Configurações de borda padrão
   const standardBorder = { style: BorderStyle.SINGLE, size: 1, color: "000000" };
-  const noBorder = { style: BorderStyle.NONE, size: 0, color: "FFFFFF" };
 
-  // Função auxiliar para criar células de tabela com formatação padrão
+  // Função auxiliar para criar células de tabela com formatação precisa
   const createCell = (text: string, options: any = {}) => {
     return new TableCell({
       children: [new Paragraph({
         children: [new TextRun({ 
-          text, 
+          text: text || "", 
           bold: options.bold || false, 
           size: options.size || 22, // 11pt
+          color: options.color || "000000",
           allCaps: options.upper || false
         })],
         alignment: options.align || AlignmentType.LEFT,
-        spacing: { before: 40, after: 40 }
+        spacing: { before: 60, after: 60 }
       })],
-      shading: options.bg ? { fill: options.bg, type: "solid", color: "auto" } : undefined,
+      shading: options.bg ? { fill: options.bg, type: ShadingType.CLEAR, color: "auto" } : undefined,
       verticalAlign: VerticalAlign.CENTER,
-      borders: options.borders || {
+      borders: {
         top: standardBorder,
         bottom: standardBorder,
         left: standardBorder,
@@ -63,46 +59,48 @@ export async function exportDORToWord(ptrabData: any, dorData: any) {
     rows: [
       new TableRow({
         children: [
-          // Espaço para Logo (Placeholder ou texto se não conseguir carregar)
+          // Coluna 1: Logo (EB)
           new TableCell({
-            width: { size: 20, type: WidthType.PERCENTAGE },
+            width: { size: 15, type: WidthType.PERCENTAGE },
             children: [new Paragraph({ 
-              text: "EB", 
+              children: [new TextRun({ text: "EB", bold: true, size: 24 })],
               alignment: AlignmentType.CENTER,
-              spacing: { before: 200, after: 200 }
             })],
             verticalAlign: VerticalAlign.CENTER,
+            borders: { top: standardBorder, bottom: standardBorder, left: standardBorder, right: standardBorder }
           }),
-          // Texto Central
+          // Coluna 2: Texto Central
           new TableCell({
             width: { size: 50, type: WidthType.PERCENTAGE },
             children: [
               new Paragraph({
                 children: [
                   new TextRun({ text: "MINISTÉRIO DA DEFESA", bold: true, size: 22 }),
-                  new TextRun({ text: "\nEXÉRCITO BRASILEIRO", bold: true, size: 22, break: 1 }),
-                  new TextRun({ text: `\n${ptrabData.comando_militar_area}`, bold: true, size: 22, break: 1 }),
-                  new TextRun({ text: `\n${ptrabData.nome_om_extenso || ptrabData.nome_om}`, bold: true, size: 22, break: 1 }),
+                  new TextRun({ text: "EXÉRCITO BRASILEIRO", bold: true, size: 22, break: 1 }),
+                  new TextRun({ text: ptrabData.comando_militar_area, bold: true, size: 22, break: 1 }),
+                  new TextRun({ text: ptrabData.nome_om_extenso || ptrabData.nome_om, bold: true, size: 22, break: 1 }),
                 ],
                 alignment: AlignmentType.CENTER,
               })
             ],
             verticalAlign: VerticalAlign.CENTER,
+            borders: { top: standardBorder, bottom: standardBorder, left: standardBorder, right: standardBorder }
           }),
-          // Número do DOR
+          // Coluna 3: Número do DOR
           new TableCell({
-            width: { size: 30, type: WidthType.PERCENTAGE },
+            width: { size: 35, type: WidthType.PERCENTAGE },
             children: [
               new Paragraph({
                 children: [
-                  new TextRun({ text: "Documento de Oficialização da Requisição – DOR", bold: true, size: 22 }),
-                  new TextRun({ text: `\nnº ${dorData.numero_dor || '___'} / ${anoAtual}`, bold: true, size: 22, break: 1 }),
-                  new TextRun({ text: `\n${dataDocumento}`, size: 22, break: 1 }),
+                  new TextRun({ text: "Documento de Oficialização da Requisição – DOR", bold: true, size: 20 }),
+                  new TextRun({ text: `nº ${dorData.numero_dor || '___'} / ${anoAtual}`, bold: true, size: 22, break: 1 }),
+                  new TextRun({ text: dataDocumento, size: 22, break: 1 }),
                 ],
                 alignment: AlignmentType.CENTER,
               })
             ],
             verticalAlign: VerticalAlign.CENTER,
+            borders: { top: standardBorder, bottom: standardBorder, left: standardBorder, right: standardBorder }
           }),
         ],
       }),
@@ -113,15 +111,15 @@ export async function exportDORToWord(ptrabData: any, dorData: any) {
   const orgaoTable = new Table({
     width: { size: 100, type: WidthType.PERCENTAGE },
     rows: [
-      new TableRow({ children: [createCell("DADOS DO ÓRGÃO REQUISITANTE", { bold: true, align: AlignmentType.CENTER, bg: "BFBFBF", colSpan: 2 })] }),
+      new TableRow({ children: [createCell("DADOS DO ÓRGÃO REQUISITANTE", { bold: true, align: AlignmentType.CENTER, bg: "000000", color: "FFFFFF", colSpan: 2 })] }),
       new TableRow({ children: [createCell("Órgão:", { bold: true, colSpan: 2 })] }),
       new TableRow({ children: [createCell(ptrabData.nome_om_extenso || ptrabData.nome_om, { colSpan: 2 })] }),
       new TableRow({ children: [createCell("Responsável pela Demanda:", { bold: true, colSpan: 2 })] }),
       new TableRow({ children: [createCell(ptrabData.nome_cmt_om || "Não informado", { colSpan: 2 })] }),
       new TableRow({
         children: [
-          createCell(`E-mail: ${dorData.email || ""}`, { bold: false, width: 50 }),
-          createCell(`Telefone: ${dorData.telefone || ""}`, { bold: false, width: 50 }),
+          createCell(`E-mail: ${dorData.email || ""}`, { width: 50 }),
+          createCell(`Telefone: ${dorData.telefone || ""}`, { width: 50 }),
         ]
       }),
     ],
@@ -129,9 +127,9 @@ export async function exportDORToWord(ptrabData: any, dorData: any) {
 
   // 3. Itens de Custo
   const itemsRows = [
-    new TableRow({ children: [createCell("OBJETO DE REQUISIÇÃO", { bold: true, align: AlignmentType.CENTER, bg: "BFBFBF", colSpan: 4 })] }),
+    new TableRow({ children: [createCell("OBJETO DE REQUISIÇÃO", { bold: true, align: AlignmentType.CENTER, bg: "000000", color: "FFFFFF", colSpan: 4 })] }),
     new TableRow({ children: [createCell(`Evento: ${dorData.evento || ""}`, { colSpan: 4 })] }),
-    new TableRow({ children: [createCell("DESCRIÇÃO DO ITEM", { bold: true, align: AlignmentType.CENTER, bg: "BFBFBF", colSpan: 4 })] }),
+    new TableRow({ children: [createCell("DESCRIÇÃO DO ITEM", { bold: true, align: AlignmentType.CENTER, bg: "000000", color: "FFFFFF", colSpan: 4 })] }),
     new TableRow({
       children: [
         createCell("UGE", { bold: true, align: AlignmentType.CENTER, width: 25 }),
@@ -158,17 +156,17 @@ export async function exportDORToWord(ptrabData: any, dorData: any) {
     rows: itemsRows,
   });
 
-  // 4. Seções de Texto (Finalidade, Motivação, etc)
+  // 4. Seções de Texto
   const createSectionTable = (title: string, content: string) => {
     return new Table({
       width: { size: 100, type: WidthType.PERCENTAGE },
       rows: [
-        new TableRow({ children: [createCell(title, { bold: true, align: AlignmentType.CENTER, bg: "BFBFBF" })] }),
+        new TableRow({ children: [createCell(title, { bold: true, align: AlignmentType.CENTER, bg: "000000", color: "FFFFFF" })] }),
         new TableRow({ children: [new TableCell({
           children: [new Paragraph({
-            children: [new TextRun({ text: content || "", size: 24 })],
+            children: [new TextRun({ text: content || "", size: 22 })],
             alignment: AlignmentType.JUSTIFY,
-            spacing: { before: 120, after: 120 }
+            spacing: { before: 100, after: 100 }
           })],
           borders: { top: standardBorder, bottom: standardBorder, left: standardBorder, right: standardBorder }
         })] }),
@@ -182,53 +180,53 @@ export async function exportDORToWord(ptrabData: any, dorData: any) {
       {
         properties: {
           page: {
-            margin: { top: 1440, right: 1440, bottom: 1440, left: 1440 }, // 1 inch = 1440 twips
+            margin: { top: 1134, right: 1134, bottom: 1134, left: 1134 }, // ~2cm
           },
         },
         children: [
           mainHeaderTable,
-          new Paragraph({ text: "", spacing: { before: 200 } }),
+          new Paragraph({ text: "", spacing: { before: 150 } }),
           orgaoTable,
-          new Paragraph({ text: "", spacing: { before: 200 } }),
+          new Paragraph({ text: "", spacing: { before: 150 } }),
           new Table({
             width: { size: 100, type: WidthType.PERCENTAGE },
             rows: [
-              new TableRow({ children: [createCell("ANEXOS", { bold: true, align: AlignmentType.CENTER, bg: "BFBFBF" })] }),
+              new TableRow({ children: [createCell("ANEXOS", { bold: true, align: AlignmentType.CENTER, bg: "000000", color: "FFFFFF" })] }),
               new TableRow({ children: [createCell(dorData.anexos || "----", { align: AlignmentType.CENTER })] }),
             ]
           }),
-          new Paragraph({ text: "", spacing: { before: 200 } }),
+          new Paragraph({ text: "", spacing: { before: 150 } }),
           new Table({
             width: { size: 100, type: WidthType.PERCENTAGE },
             rows: [
-              new TableRow({ children: [createCell(`Ação Orçamentária (AO): ${dorData.acao_orcamentaria || ""}`, { bold: true, bg: "BFBFBF" })] }),
+              new TableRow({ children: [createCell(`Ação Orçamentária (AO): ${dorData.acao_orcamentaria || ""}`, { bold: true, bg: "000000", color: "FFFFFF" })] }),
               new TableRow({ children: [createCell(`Plano Orçamentário (PO): ${dorData.plano_orcamentario || ""}`, { bold: true })] }),
             ]
           }),
-          new Paragraph({ text: "", spacing: { before: 200 } }),
+          new Paragraph({ text: "", spacing: { before: 150 } }),
           itemsTable,
-          new Paragraph({ text: "", spacing: { before: 200 } }),
+          new Paragraph({ text: "", spacing: { before: 150 } }),
           createSectionTable("FINALIDADE", dorData.finalidade),
-          new Paragraph({ text: "", spacing: { before: 200 } }),
+          new Paragraph({ text: "", spacing: { before: 150 } }),
           createSectionTable("MOTIVAÇÃO", dorData.motivacao),
-          new Paragraph({ text: "", spacing: { before: 200 } }),
+          new Paragraph({ text: "", spacing: { before: 150 } }),
           createSectionTable("CONSEQUÊNCIA DO NÃO ATENDIMENTO", dorData.consequencia),
-          new Paragraph({ text: "", spacing: { before: 200 } }),
+          new Paragraph({ text: "", spacing: { before: 150 } }),
           createSectionTable("OBSERVAÇÕES GERAIS", dorData.observacoes),
           new Paragraph({ text: "", spacing: { before: 400 } }),
           
           // Bloco de Assinatura
           new Paragraph({
-            children: [new TextRun({ text: `${ptrabData.local_om || "Local não informado"}, ${dataAtual}.`, size: 24 })],
+            children: [new TextRun({ text: `${ptrabData.local_om || "Local não informado"}, ${dataAtual}.`, size: 22 })],
             alignment: AlignmentType.CENTER,
           }),
           new Paragraph({ text: "", spacing: { before: 400 } }),
           new Paragraph({
-            children: [new TextRun({ text: ptrabData.nome_cmt_om || "NOME DO ORDENADOR DE DESPESAS", bold: true, size: 24, allCaps: true })],
+            children: [new TextRun({ text: ptrabData.nome_cmt_om || "NOME DO ORDENADOR DE DESPESAS", bold: true, size: 22, allCaps: true })],
             alignment: AlignmentType.CENTER,
           }),
           new Paragraph({
-            children: [new TextRun({ text: `Comandante da ${ptrabData.nome_om_extenso || ptrabData.nome_om}`, size: 24 })],
+            children: [new TextRun({ text: `Comandante da ${ptrabData.nome_om_extenso || ptrabData.nome_om}`, size: 22 })],
             alignment: AlignmentType.CENTER,
           }),
         ],
