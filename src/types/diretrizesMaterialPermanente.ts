@@ -1,21 +1,20 @@
 import { ItemAquisicao } from "./diretrizesMaterialConsumo";
 
-export interface ItemAquisicaoPermanente extends ItemAquisicao {
-    unidade_medida?: string;
-    justificativa?: Record<string, any>;
-}
-
 export interface DiretrizMaterialPermanente {
     id: string;
     user_id: string;
     ano_referencia: number;
     nr_subitem: string;
     nome_subitem: string;
-    descricao_subitem?: string;
-    itens_aquisicao: ItemAquisicaoPermanente[];
+    descricao_subitem: string | null;
+    itens_aquisicao: ItemAquisicao[];
     ativo: boolean;
-    created_at?: string;
-    updated_at?: string;
+    created_at: string;
+    updated_at: string;
+}
+
+export interface ItemAquisicaoPermanente extends ItemAquisicao {
+    // Pode ser estendido se necessário, mas por enquanto usa a mesma estrutura
 }
 
 export interface StagingRowPermanente {
@@ -33,12 +32,4 @@ export interface StagingRowPermanente {
     errors: string[];
     isDuplicateInternal: boolean;
     isDuplicateExternal: boolean;
-}
-
-export interface ConsolidatedPermanenteRecord {
-    groupKey: string;
-    organizacao: string;
-    ug: string;
-    records: any[];
-    totalGeral: number;
 }

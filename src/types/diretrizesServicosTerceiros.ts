@@ -1,22 +1,14 @@
-import { Json } from "@/integrations/supabase/types";
-
 export interface ItemAquisicaoServico {
     id: string;
     descricao_item: string;
-    descricao_reduzida: string | null;
-    codigo_catmat: string;
-    codigo_catser?: string; // Adicionado para compatibilidade com serviços
+    descricao_reduzida: string;
     valor_unitario: number;
-    unidade_medida: string;
     numero_pregao: string;
     uasg: string;
-    nd: string; // '30' ou '39'
-    // Campos injetados para controle de UI
-    quantidade?: number;
-    valor_total?: number;
-    periodo?: number; // Adicionado para controle de tempo/frequência
-    nr_subitem?: string;
-    nome_subitem?: string;
+    codigo_catmat: string;
+    nd: string;
+    nome_reduzido?: string;
+    unidade_medida?: string;
 }
 
 export interface DiretrizServicosTerceiros {
@@ -30,10 +22,4 @@ export interface DiretrizServicosTerceiros {
     ativo: boolean;
     created_at: string;
     updated_at: string;
-}
-
-// Estrutura do JSONB na tabela de registros
-export interface DetalhesPlanejamentoServico {
-    itens_selecionados: ItemAquisicaoServico[];
-    parametros_adicionais?: Record<string, any>;
 }
