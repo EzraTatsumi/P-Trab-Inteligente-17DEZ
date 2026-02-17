@@ -102,54 +102,32 @@ Permite ao usuário colar um link de compartilhamento para solicitar acesso a um
 Acessível pelo botão "Preencher" na tela principal.
 
 ### Resumo de Custos (Card)
-Exibe o custo total calculado para cada aba (Logística, Operacional, etc.) e o saldo em relação ao crédito disponível (GND 3 e GND 4).
+Exibe o custo total calculado para o P Trab, permitindo o monitoramento em tempo real do orçamento.
 
-- **Informar Crédito (Botão):** Abre um diálogo para inserir os valores de crédito orçamentário disponíveis para GND 3 e GND 4.
+- **Visão Global:** Mostra o total acumulado de todas as classes e itens operacionais, dividido por GND 3 (Custeio) e GND 4 (Investimento).
+- **Visão por OM:** Permite alternar para uma visualização que detalha quanto cada Organização Militar participante está consumindo do orçamento total.
+- **Informar Crédito (Botão):** Abre um diálogo para inserir os valores de crédito orçamentário disponíveis (GND 3 e GND 4). O sistema calculará automaticamente o saldo restante.
 
 ### Fluxo de Lançamento de Necessidades (5 Passos)
 
-Todos os formulários de classes logísticas (I, II, III, V, VI, VII, VIII, IX) seguem um fluxo de trabalho padronizado para garantir a rastreabilidade e a conformidade.
+Todos os formulários de classes logísticas e operacionais seguem um fluxo de trabalho padronizado.
 
 #### 6.1. Dados da Organização
-Nesta seção, você define a OM (Organização Militar) que está solicitando o recurso e a OM que irá fornecer o material (se aplicável, como na Classe I).
+Define a OM solicitante e os parâmetros temporais (dias de operação).
 
-- **OM Solicitante:** A OM detentora do P Trab.
-- **OM Fornecedora (Classe I):** A OM (geralmente RM) que fornecerá a alimentação (QS).
-- **Dias de Operação e Fase:** Define o período e a fase da atividade para o cálculo.
-
-#### 6.2. Configurar Itens por Categoria e Alocação de Recursos
-Esta é a seção central para o cálculo das necessidades.
-
-- **Seleção de Itens:** Você seleciona os itens de material ou equipamento necessários (ex: Ração Quente, Fuzil, Gerador, Viatura).
-- **Integração PNCP:** Em itens operacionais e materiais, você pode buscar Atas de Registro de Preços vigentes no Portal Nacional de Contratações Públicas informando a UASG ou o código CATMAT.
-- **Cálculo Automático:** O sistema aplica as fórmulas de cálculo (baseadas nas Diretrizes de Custeio) para determinar o **Valor Total** da necessidade.
-- **Alocação ND 30 / ND 39 (Classes II, V, VI, VII, VIII, IX):** O Valor Total é dividido manualmente entre a Natureza de Despesa 33.90.30 (Material) e 33.90.39 (Serviço). A soma deve ser igual ao Valor Total calculado.
-- **Particularidade Classe III (Combustível):**
-    - **Consulta LPC:** Permite buscar o preço do litro de combustível (Diesel/Gasolina) em tempo real via API externa (ANP) ou inserir manualmente.
-    - **Lubrificantes:** O cálculo de lubrificante é feito separadamente, com base no consumo por litro de combustível e no preço do lubrificante.
+#### 6.2. Configurar Itens e Alocação
+- **Material Permanente:** Utilize este formulário para itens de ND 52. Você pode buscar especificações e preços no PNCP.
+- **Cálculo Automático:** O sistema multiplica a quantidade pelo valor unitário.
+- **Integração PNCP:** Facilita a busca de Atas de Registro de Preços vigentes.
 
 #### 6.3. Itens Adicionados
-Exibe uma lista de todos os registros de necessidades que foram salvos para o P Trab na classe atual. Você pode editar ou excluir registros nesta lista.
+Lista de registros salvos para edição ou exclusão.
 
 #### 6.4. OMs Cadastradas
-Exibe a lista de Organizações Militares cadastradas no sistema, facilitando a consulta de CODUGs e RMs.
+Consulta rápida de CODUGs e RMs.
 
-#### 6.5. Memórias de Cálculo Detalhadas
-Após salvar um registro, o sistema gera automaticamente a memória de cálculo completa, detalhando a fórmula utilizada, os valores de entrada e o resultado final.
-
-- **Customização:** Você pode optar por substituir a memória de cálculo automática por um detalhamento customizado, se necessário.
-- **Conformidade:** Este detalhamento é crucial para a rastreabilidade e auditoria do P Trab.
-
-### Abas de Classes (Logística)
-
-- **Classe I - Subsistência:** Abre o formulário para calcular as necessidades de alimentação (QS e QR).
-- **Classe II - Material de Intendência:** Abre o formulário para calcular as necessidades de manutenção de material de intendência.
-- **Classe III - Combustíveis e Lubrificantes:** Abre o formulário para calcular as necessidades de combustível e lubrificante.
-- **Classe V - Armamento:** Abre o formulário para calcular as necessidades de manutenção de armamento.
-- **Classe VI - Material de Engenharia:** Abre o formulário para calcular as necessidades de manutenção de material de engenharia.
-- **Classe VII - Comunicações e Informática:** Abre o formulário para calcular as necessidades de manutenção de material de comunicações e informática.
-- **Classe VIII - Material de Saúde e Remonta/Veterinária:** Abre o formulário para calcular as necessidades de saúde (KPSI/KPT) e remonta (animais).
-- **Classe IX - Material de Motomecanização:** Abre o formulário para calcular os custos de manutenção e acionamento de viaturas.
+#### 6.5. Memórias de Cálculo
+Detalhamento automático de como o valor final foi atingido, essencial para auditoria.
 
 ## 7. Editor de DOR (Documento de Oficialização de Demanda)
 

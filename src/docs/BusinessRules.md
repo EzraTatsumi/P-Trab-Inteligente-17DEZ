@@ -137,44 +137,35 @@ Os itens operacionais abrangem diversas naturezas de despesa e seguem regras esp
 
 ### 5.3. Verba Operacional e Suprimento de Fundos
 - **Cálculo:** `Quantidade de Equipes x Valor Diário da Diretriz x Dias de Operação`.
-- **Alocação:** Dividida entre ND 30 (Material) e ND 39 (Serviço) conforme a necessidade da equipe.
 
-### 5.4. Complemento de Alimentação
-- **Finalidade:** Aquisição de gêneros para reforço calórico ou água mineral.
-- **Cálculo:** Baseado no efetivo e dias de operação, respeitando o teto per capita definido na diretriz.
-
-### 5.5. Horas de Voo (AvEx)
-- **Cálculo:** `Quantidade de Horas x Valor da Hora de Voo (por modelo de aeronave)`.
-- **Alocação:** Geralmente alocado em ND 30 (Combustível de Aviação) e ND 39 (Manutenção/Serviços).
-
-### 5.6. Material de Consumo e Permanente
-- **Cálculo:** Baseado em cotações de mercado ou Atas de Registro de Preços (ARP) via PNCP.
-- **Alocação:** ND 30 (Consumo) ou ND 52 (Equipamentos e Material Permanente).
-
-### 5.7. Pagamento de Concessionárias
-- **Finalidade:** Custear despesas de água, energia e esgoto em locais de apoio.
-- **Cálculo:** Baseado no consumo estimado por pessoa/dia e tarifas locais.
-
-### 5.8. Serviços de Terceiros e Locações (ND 33.90.39)
-Este formulário é destinado à contratação de serviços especializados e locação de infraestrutura temporária.
-
-#### 5.8.1. Categorias de Serviços
-O sistema organiza os serviços em categorias baseadas nos subitens da ND 39:
-- **Locação de Viaturas:** Administrativas, operacionais ou blindadas.
-- **Locação de Máquinas e Equipamentos:** Tratores, motoniveladoras, etc.
-- **Locação de Estruturas:** Tendas, banheiros químicos, containers e geradores.
-- **Serviços Técnicos Profissionais:** Consultorias, instrutoria ou serviços especializados.
-- **Manutenção e Conservação:** De bens móveis ou imóveis durante a operação.
-- **Serviços de Apoio:** Limpeza, vigilância ou apoio logístico terceirizado.
-
-#### 5.8.2. Lógica de Lançamento
-- **Catálogo de Subitens:** O usuário seleciona o subitem específico (ex: 33.90.39.48 - Locação de Máquinas).
-- **Detalhamento do Planejamento:** Inclui a descrição do serviço, unidade de medida (diária, mês, serviço global), quantidade e valor unitário.
-- **Integração PNCP:** Permite importar preços de referência de Atas de Registro de Preços vigentes para garantir a vantajosidade da estimativa.
+### 5.4. Material Permanente (ND 44.90.52)
+O Material Permanente refere-se a equipamentos com vida útil superior a dois anos (Investimento).
+- **Alocação:** Exclusivamente na **ND 44.90.52 (GND 4)**.
+- **Cálculo:** `Quantidade x Valor Unitário`.
+- **Referência de Preço:** Deve ser baseada em Atas de Registro de Preços (ARP) ou cotações de mercado, preferencialmente via integração PNCP.
 
 ---
 
-## 6. DOR (Documento de Oficialização de Demanda)
+## 6. Resumo de Custos e Monitoramento de Crédito
+
+O sistema realiza a consolidação automática de todos os lançamentos para fornecer uma visão clara do impacto orçamentário.
+
+### 6.1. Visão Global
+Soma todos os registros do PTrab, independentemente da OM, dividindo-os por Natureza de Despesa e Grupo de Natureza de Despesa (GND):
+- **GND 3 (Custeio):** Soma de ND 14, 15, 30, 33 e 39.
+- **GND 4 (Investimento):** Soma de ND 52.
+
+### 6.2. Visão por OM
+Agrupa os custos com base na **OM Solicitante** (Organizacao) definida em cada registro. Isso permite identificar quanto cada unidade participante da operação está "custando" ou quanto de recurso deve ser descentralizado para cada uma.
+
+### 6.3. Lógica de Saldo de Crédito
+- `Saldo GND 3 = Crédito GND 3 Informado - Total Calculado (ND 14+15+30+33+39)`
+- `Saldo GND 4 = Crédito GND 4 Informado - Total Calculado (ND 52)`
+- **Alerta Visual:** O sistema destaca em vermelho caso o custo calculado ultrapasse o crédito informado pelo usuário.
+
+---
+
+## 7. DOR (Documento de Oficialização de Demanda)
 
 O DOR é um documento de planejamento que consolida as necessidades para fins de contratação.
 - **Regra de Agrupamento:** Permite agrupar itens de diferentes classes por finalidade comum.
@@ -182,7 +173,7 @@ O DOR é um documento de planejamento que consolida as necessidades para fins de
 
 ---
 
-## 7. Consolidação de PTrabs
+## 8. Consolidação de PTrabs
 
 A consolidação permite somar os registros de múltiplos PTrabs em um novo documento.
 - **Rastreabilidade:** O sistema mantém o histórico dos PTrabs de origem no campo de comentários do novo PTrab consolidado.
