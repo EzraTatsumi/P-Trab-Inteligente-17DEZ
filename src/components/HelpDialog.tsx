@@ -1,105 +1,124 @@
-"use client";
-
 import React, { useState, useEffect } from 'react';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { HelpCircle, BookOpen, Scale, Loader2 } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import ReactMarkdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
+import { HelpCircle, Code, FileText, Loader2, BookOpen, ShieldCheck, Bug } from "lucide-react";
+import { MarkdownAccordion } from './MarkdownAccordion';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { FeedbackDialog } from './FeedbackDialog';
 
-const HelpDialog = () => {
-  const [userGuide, setUserGuide] = useState("");
-  const [businessRules, setBusinessRules] = useState("");
-  const [loading, setLoading] = useState(false);
+// Importar o conteúdo dos arquivos Markdown como strings
+import architectureContent from '@/docs/Architecture.md?raw';
+import businessRulesContent from '@/docs/BusinessRules.md?raw';
+import userGuideContent from '@/docs/UserGuide.md?raw';
+import securityComplianceContent from '@/docs/SecurityCompliance.md?raw';
 
-  const loadDocs = async () => {
-    setLoading(true);
-    try {
-      // Busca os arquivos markdown. Adicionamos um timestamp para evitar cache do navegador.
-      const cacheBuster = `?t=${new Date().getTime()}`;
-      
-      const [guideRes, rulesRes] = await Promise.all([
-        fetch(`/src/docs/userguide.md${cacheBuster}`),
-        fetch(`/src/docs/BusinessRules.md${cacheBuster}`)
-      ]);
-
-      if (guideRes.ok) {
-        const text = await guideRes.text();
-        setUserGuide(text);
-      }
-      
-      if (rulesRes.ok) {
-        const text = await rulesRes.text();
-        setBusinessRules(text);
-      }
-    } catch (error) {
-      console.error("Erro ao carregar documentos de ajuda:", error);
-    } finally {
-      setLoading(false);
+export const HelpDialog: React.FC = () => {
+  const [open, setOpen] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [showFeedbackDialog, setShowFeedbackDialog] = useState(false);
+  
+  // Simular um pequeno atraso para garantir que o conteúdo seja carregado
+  useEffect(() => {
+    if (open) {
+      setLoading(true);
+      const timer = setTimeout(() => {
+        setLoading(false);
+      }, 100);
+      return () => clearTimeout(timer);
     }
-  };
+  }, [open]);
 
   return (
-    <Dialog onOpenChange={(open) => open && loadDocs()}>
-      <DialogTrigger asChild>
-        <Button variant="outline" size="icon" className="rounded-full shadow-md">
-          <HelpCircle className="h-5 w-5 text-primary" />
-        </Button>
-      </DialogTrigger>
-      <DialogContent className="max-w-4xl max-h-[85vh] overflow-hidden flex flex-col">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2 text-2xl">
-            <HelpCircle className="h-6 w-6 text-primary" />
-            Central de Ajuda e Regras
-          </DialogTitle>
-        </DialogHeader>
-
-        {loading ? (
-          <div className="flex-1 flex items-center justify-center">
-            <Loader2 className="h-8 w-8 animate-spin text-primary" />
-          </div>
-        ) : (
-          <Tabs defaultValue="guide" className="flex-1 flex flex-col overflow-hidden">
-            <TabsList className="grid w-full grid-cols-2 mb-4">
-              <TabsTrigger value="guide" className="flex items-center gap-2">
+    <>
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogTrigger asChild>
+          <Button variant="outline" size="icon" title="Ajuda e Documentação">
+            <HelpCircle className="h-4 w-4" />
+          </Button>
+        </DialogTrigger>
+        <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col p-0">
+          <DialogHeader className="p-6 pb-0">
+            <DialogTitle className="flex items-center gap-2">
+              <HelpCircle className="h-6 w-6 text-primary" />
+              Ajuda e Documentação
+            </DialogTitle>
+          </DialogHeader>
+          
+          <Tabs defaultValue="user-guide" className="flex flex-col flex-1 overflow-hidden">
+            <TabsList className="mx-6 mt-4 grid grid-cols-4 w-[calc(100%-3rem)]">
+              <TabsTrigger value="user-guide" className="flex items-center gap-2">
                 <BookOpen className="h-4 w-4" />
-                Guia do Usuário
+                Guia
               </TabsTrigger>
-              <TabsTrigger value="rules" className="flex items-center gap-2">
-                <Scale className="h-4 w-4" />
-                Regras de Negócio
+              <TabsTrigger value="business-rules" className="flex items-center gap-2">
+                <FileText className="h-4 w-4" />
+                Regras
+              </TabsTrigger>
+              <TabsTrigger value="security" className="flex items-center gap-2">
+                <ShieldCheck className="h-4 w-4" />
+                Segurança
+              </TabsTrigger>
+              <TabsTrigger value="architecture" className="flex items-center gap-2">
+                <Code className="h-4 w-4" />
+                Arquitetura
               </TabsTrigger>
             </TabsList>
 
-            <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar">
-              <TabsContent value="guide" className="mt-0 focus-visible:ring-0">
-                <div className="prose prose-sm dark:prose-invert max-w-none pb-6">
-                  <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                    {userGuide || "Carregando guia..."}
-                  </ReactMarkdown>
+            <div className="flex-1 overflow-hidden px-6 pb-6 pt-4">
+              {loading ? (
+                <div className="flex items-center justify-center h-64">
+                  <Loader2 className="h-6 w-6 animate-spin text-primary" />
+                  <span className="ml-2 text-muted-foreground">Carregando documentação...</span>
                 </div>
-              </TabsContent>
-
-              <TabsContent value="rules" className="mt-0 focus-visible:ring-0">
-                <div className="prose prose-sm dark:prose-invert max-w-none pb-6">
-                  <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                    {businessRules || "Carregando regras..."}
-                  </ReactMarkdown>
-                </div>
-              </TabsContent>
+              ) : (
+                <>
+                  <TabsContent value="user-guide" className="mt-0 h-full">
+                    <ScrollArea className="h-[calc(90vh-200px)] w-full pr-4">
+                      <MarkdownAccordion content={userGuideContent} />
+                    </ScrollArea>
+                  </TabsContent>
+                  <TabsContent value="business-rules" className="mt-0 h-full">
+                    <ScrollArea className="h-[calc(90vh-200px)] w-full pr-4">
+                      <MarkdownAccordion content={businessRulesContent} />
+                    </ScrollArea>
+                  </TabsContent>
+                  <TabsContent value="security" className="mt-0 h-full">
+                    <ScrollArea className="h-[calc(90vh-200px)] w-full pr-4">
+                      <MarkdownAccordion content={securityComplianceContent} />
+                    </ScrollArea>
+                  </TabsContent>
+                  <TabsContent value="architecture" className="mt-0 h-full">
+                    <ScrollArea className="h-[calc(90vh-200px)] w-full pr-4">
+                      <MarkdownAccordion content={architectureContent} />
+                    </ScrollArea>
+                  </TabsContent>
+                </>
+              )}
             </div>
           </Tabs>
-        )}
-      </DialogContent>
-    </Dialog>
+          
+          <DialogFooter className="p-4 border-t">
+            <Button 
+                variant="destructive" 
+                onClick={() => {
+                    setOpen(false); // Fecha o diálogo de ajuda
+                    setShowFeedbackDialog(true); // Abre o diálogo de feedback
+                }}
+                className="flex items-center gap-2"
+            >
+                <Bug className="h-4 w-4" />
+                Reportar Falha / Sugerir Melhoria
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      
+      {/* Diálogo de Feedback (fora do HelpDialog) */}
+      <FeedbackDialog 
+        open={showFeedbackDialog} 
+        onOpenChange={setShowFeedbackDialog} 
+      />
+    </>
   );
 };
-
-export default HelpDialog;
