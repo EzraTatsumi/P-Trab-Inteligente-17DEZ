@@ -1,14 +1,20 @@
 export interface ItemAquisicaoServico {
     id: string;
     descricao_item: string;
-    descricao_reduzida: string;
+    descricao_reduzida?: string;
+    nome_reduzido?: string;
+    unidade_medida?: string;
     valor_unitario: number;
     numero_pregao: string;
     uasg: string;
-    codigo_catmat: string;
-    nd: string;
-    nome_reduzido?: string;
-    unidade_medida?: string;
+    codigo_catmat?: string;
+    codigo_catser?: string;
+    nd?: string;
+    natureza_despesa?: '33' | '39';
+    // Propriedades adicionadas para uso no planejamento (P Trab)
+    quantidade?: number;
+    periodo?: number;
+    valor_total?: number;
 }
 
 export interface DiretrizServicosTerceiros {
