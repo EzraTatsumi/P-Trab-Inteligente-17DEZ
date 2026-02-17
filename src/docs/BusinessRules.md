@@ -134,15 +134,41 @@ Os itens operacionais abrangem diversas naturezas de despesa e seguem regras esp
 
 ### 5.2. Passagens (ND 33.90.33)
 - **Cálculo:** Baseado em trechos pré-cadastrados na diretriz ou inserção manual de valores de mercado.
+- **Regra:** O sistema permite selecionar trechos de ida e volta, aplicando o valor unitário da diretriz multiplicado pela quantidade de passagens.
 
 ### 5.3. Verba Operacional e Suprimento de Fundos
 - **Cálculo:** `Quantidade de Equipes x Valor Diário da Diretriz x Dias de Operação`.
+- **Alocação:** Dividida entre ND 30 (Material) e ND 39 (Serviço) conforme a necessidade da equipe.
 
 ### 5.4. Material Permanente (ND 44.90.52)
-O Material Permanente refere-se a equipamentos com vida útil superior a dois anos (Investimento).
 - **Alocação:** Exclusivamente na **ND 44.90.52 (GND 4)**.
 - **Cálculo:** `Quantidade x Valor Unitário`.
-- **Referência de Preço:** Deve ser baseada em Atas de Registro de Preços (ARP) ou cotações de mercado, preferencialmente via integração PNCP.
+
+### 5.5. Complemento de Alimentação (ND 33.90.30 / 33.90.39)
+- **Finalidade:** Aquisição de gêneros para reforço calórico ou água mineral.
+- **Cálculo:** `Efetivo x Dias de Operação x Valor Teto Per Capita (Diretriz Operacional)`.
+- **Regra:** O valor total solicitado não pode ultrapassar o teto calculado pelo sistema.
+
+### 5.6. Horas de Voo - AvEx (ND 33.90.30 / 33.90.39)
+- **Cálculo:** `Quantidade de Horas x Valor da Hora de Voo (por modelo de aeronave)`.
+- **Alocação:** 
+    - **ND 30:** Combustível de Aviação (QAV).
+    - **ND 39:** Manutenção e serviços associados.
+
+### 5.7. Pagamento de Concessionárias (ND 33.90.39)
+- **Finalidade:** Custear despesas de água, energia e esgoto em locais de apoio.
+- **Cálculo:** `Efetivo x Dias de Operação x Consumo Estimado (Pessoa/Dia) x Tarifa Local`.
+
+### 5.8. Serviços de Terceiros e Locações (ND 33.90.39)
+Este formulário é destinado à contratação de serviços especializados e locação de infraestrutura temporária.
+
+#### 5.8.1. Categorias de Serviços
+- **Locação de Viaturas:** Administrativas, operacionais ou blindadas.
+- **Locação de Máquinas e Equipamentos:** Tratores, motoniveladoras, etc.
+- **Locação de Estruturas:** Tendas, banheiros químicos, containers e geradores.
+- **Serviços Técnicos Profissionais:** Consultorias, instrutoria ou serviços especializados.
+- **Manutenção e Conservação:** De bens móveis ou imóveis durante a operação.
+- **Serviços de Apoio:** Limpeza, vigilância ou apoio logístico terceirizado.
 
 ---
 
@@ -156,12 +182,7 @@ Soma todos os registros do PTrab, independentemente da OM, dividindo-os por Natu
 - **GND 4 (Investimento):** Soma de ND 52.
 
 ### 6.2. Visão por OM
-Agrupa os custos com base na **OM Solicitante** (Organizacao) definida em cada registro. Isso permite identificar quanto cada unidade participante da operação está "custando" ou quanto de recurso deve ser descentralizado para cada uma.
-
-### 6.3. Lógica de Saldo de Crédito
-- `Saldo GND 3 = Crédito GND 3 Informado - Total Calculado (ND 14+15+30+33+39)`
-- `Saldo GND 4 = Crédito GND 4 Informado - Total Calculado (ND 52)`
-- **Alerta Visual:** O sistema destaca em vermelho caso o custo calculado ultrapasse o crédito informado pelo usuário.
+Agrupa os custos com base na **OM Solicitante** (Organizacao) definida em cada registro.
 
 ---
 
@@ -169,11 +190,11 @@ Agrupa os custos com base na **OM Solicitante** (Organizacao) definida em cada r
 
 O DOR é um documento de planejamento que consolida as necessidades para fins de contratação.
 - **Regra de Agrupamento:** Permite agrupar itens de diferentes classes por finalidade comum.
-- **Justificativa:** Exige o preenchimento obrigatório de Motivação, Finalidade e Consequência para conformidade com a legislação de licitações.
+- **Justificativa:** Exige o preenchimento obrigatório de Motivação, Finalidade e Consequência.
 
 ---
 
 ## 8. Consolidação de PTrabs
 
 A consolidação permite somar os registros de múltiplos PTrabs em um novo documento.
-- **Rastreabilidade:** O sistema mantém o histórico dos PTrabs de origem no campo de comentários do novo PTrab consolidado.
+- **Rastreabilidade:** O sistema mantém o histórico dos PTrabs de origem no campo de comentários.
