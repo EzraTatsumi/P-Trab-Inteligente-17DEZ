@@ -137,6 +137,40 @@ Os itens operacionais abrangem diversas naturezas de despesa e seguem regras esp
 
 ### 5.3. Verba Operacional e Suprimento de Fundos
 - **Cálculo:** `Quantidade de Equipes x Valor Diário da Diretriz x Dias de Operação`.
+- **Alocação:** Dividida entre ND 30 (Material) e ND 39 (Serviço) conforme a necessidade da equipe.
+
+### 5.4. Complemento de Alimentação
+- **Finalidade:** Aquisição de gêneros para reforço calórico ou água mineral.
+- **Cálculo:** Baseado no efetivo e dias de operação, respeitando o teto per capita definido na diretriz.
+
+### 5.5. Horas de Voo (AvEx)
+- **Cálculo:** `Quantidade de Horas x Valor da Hora de Voo (por modelo de aeronave)`.
+- **Alocação:** Geralmente alocado em ND 30 (Combustível de Aviação) e ND 39 (Manutenção/Serviços).
+
+### 5.6. Material de Consumo e Permanente
+- **Cálculo:** Baseado em cotações de mercado ou Atas de Registro de Preços (ARP) via PNCP.
+- **Alocação:** ND 30 (Consumo) ou ND 52 (Equipamentos e Material Permanente).
+
+### 5.7. Pagamento de Concessionárias
+- **Finalidade:** Custear despesas de água, energia e esgoto em locais de apoio.
+- **Cálculo:** Baseado no consumo estimado por pessoa/dia e tarifas locais.
+
+### 5.8. Serviços de Terceiros e Locações (ND 33.90.39)
+Este formulário é destinado à contratação de serviços especializados e locação de infraestrutura temporária.
+
+#### 5.8.1. Categorias de Serviços
+O sistema organiza os serviços em categorias baseadas nos subitens da ND 39:
+- **Locação de Viaturas:** Administrativas, operacionais ou blindadas.
+- **Locação de Máquinas e Equipamentos:** Tratores, motoniveladoras, etc.
+- **Locação de Estruturas:** Tendas, banheiros químicos, containers e geradores.
+- **Serviços Técnicos Profissionais:** Consultorias, instrutoria ou serviços especializados.
+- **Manutenção e Conservação:** De bens móveis ou imóveis durante a operação.
+- **Serviços de Apoio:** Limpeza, vigilância ou apoio logístico terceirizado.
+
+#### 5.8.2. Lógica de Lançamento
+- **Catálogo de Subitens:** O usuário seleciona o subitem específico (ex: 33.90.39.48 - Locação de Máquinas).
+- **Detalhamento do Planejamento:** Inclui a descrição do serviço, unidade de medida (diária, mês, serviço global), quantidade e valor unitário.
+- **Integração PNCP:** Permite importar preços de referência de Atas de Registro de Preços vigentes para garantir a vantajosidade da estimativa.
 
 ---
 
