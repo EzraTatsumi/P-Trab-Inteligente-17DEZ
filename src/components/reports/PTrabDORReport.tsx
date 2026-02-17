@@ -67,6 +67,9 @@ const PTrabDORReport: React.FC<PTrabDORReportProps> = ({ ptrabData, dorData, sel
   const borderStyle = "border-[1px] border-black";
   const borderBottomStyle = "border-b-[1px] border-black";
   const borderRightStyle = "border-r-[1px] border-black";
+  
+  // Classe para evitar quebra de página dentro de um elemento
+  const avoidBreakClass = "break-inside-avoid page-break-inside-avoid";
 
   return (
     <div className="space-y-6">
@@ -98,7 +101,7 @@ const PTrabDORReport: React.FC<PTrabDORReportProps> = ({ ptrabData, dorData, sel
         style={bodyStyle}
       >
         {/* Cabeçalho do Documento */}
-        <div className={cn(borderStyle, "grid grid-cols-[180px_1fr_200px] items-stretch mb-4")}>
+        <div className={cn(borderStyle, avoidBreakClass, "grid grid-cols-[180px_1fr_200px] items-stretch mb-4")}>
           <div className={cn(borderRightStyle, "p-1 flex items-center justify-center text-center")}>
             <img 
               src="/logo_md.png" 
@@ -121,7 +124,7 @@ const PTrabDORReport: React.FC<PTrabDORReportProps> = ({ ptrabData, dorData, sel
         </div>
 
         {/* Seções do DOR */}
-        <div className={cn(borderStyle, "mb-4")}>
+        <div className={cn(borderStyle, avoidBreakClass, "mb-4")}>
           <div className={cn(borderBottomStyle, "p-0.5 font-bold text-center uppercase")} style={headerTitleStyle}>
             DADOS DO ÓRGÃO REQUISITANTE
           </div>
@@ -135,17 +138,17 @@ const PTrabDORReport: React.FC<PTrabDORReportProps> = ({ ptrabData, dorData, sel
           </div>
         </div>
 
-        <div className={cn(borderStyle, "mb-4")}>
+        <div className={cn(borderStyle, avoidBreakClass, "mb-4")}>
           <div className={cn(borderBottomStyle, "p-0.5 font-bold text-center uppercase")} style={headerTitleStyle}>Anexos</div>
           <div className="py-0 px-2 text-center">{dorData.anexos}</div>
         </div>
 
-        <div className={cn(borderStyle, "mb-4")}>
+        <div className={cn(borderStyle, avoidBreakClass, "mb-4")}>
           <div className={cn(borderBottomStyle, "py-0 px-2")} style={headerTitleStyle}><b>Ação Orçamentária (AO):</b> {dorData.acao_orcamentaria}</div>
           <div className="py-0 px-2"><b>Plano Orçamentário (PO):</b> {dorData.plano_orcamentario}</div>
         </div>
 
-        <div className={cn(borderStyle, "mb-4")}>
+        <div className={cn(borderStyle, avoidBreakClass, "mb-4")}>
           <div className={cn(borderBottomStyle, "p-0.5 font-bold text-center uppercase")} style={headerTitleStyle}>OBJETO DE REQUISIÇÃO</div>
           <div className={cn(borderBottomStyle, "py-0 px-2")}><b>Evento:</b> {dorData.evento}</div>
           <div className={cn(borderBottomStyle, "p-0.5 font-bold text-center uppercase")} style={headerTitleStyle}>DESCRIÇÃO DO ITEM</div>
@@ -172,27 +175,27 @@ const PTrabDORReport: React.FC<PTrabDORReportProps> = ({ ptrabData, dorData, sel
           ))}
         </div>
 
-        <div className={cn(borderStyle, "mb-4")}>
+        <div className={cn(borderStyle, avoidBreakClass, "mb-4")}>
           <div className={cn(borderBottomStyle, "p-0.5 font-bold text-center uppercase")} style={headerTitleStyle}>FINALIDADE</div>
           <div className="p-1 px-2 text-justify whitespace-pre-wrap">{dorData.finalidade}</div>
         </div>
 
-        <div className={cn(borderStyle, "mb-4")}>
+        <div className={cn(borderStyle, avoidBreakClass, "mb-4")}>
           <div className={cn(borderBottomStyle, "p-0.5 font-bold text-center uppercase")} style={headerTitleStyle}>MOTIVAÇÃO</div>
           <div className="p-1 px-2 text-justify whitespace-pre-wrap">{dorData.motivacao}</div>
         </div>
 
-        <div className={cn(borderStyle, "mb-4")}>
+        <div className={cn(borderStyle, avoidBreakClass, "mb-4")}>
           <div className={cn(borderBottomStyle, "p-0.5 font-bold text-center uppercase")} style={headerTitleStyle}>CONSEQUÊNCIA DO NÃO ATENDIMENTO</div>
           <div className="p-1 px-2 text-justify whitespace-pre-wrap">{dorData.consequencia}</div>
         </div>
 
-        <div className={cn(borderStyle, "mb-4")}>
+        <div className={cn(borderStyle, avoidBreakClass, "mb-4")}>
           <div className={cn(borderBottomStyle, "p-0.5 font-bold text-center uppercase")} style={headerTitleStyle}>OBSERVAÇÕES GERAIS</div>
           <div className="p-1 px-2 text-justify whitespace-pre-wrap">{dorData.observacoes}</div>
         </div>
 
-        <div className={cn(borderStyle, "mt-4 p-1 flex flex-col items-center min-h-[150px] justify-between text-center")}>
+        <div className={cn(borderStyle, avoidBreakClass, "mt-4 p-1 flex flex-col items-center min-h-[150px] justify-between text-center")}>
           <div className="pt-1">
             <p>{ptrabData.local_om || "Local não informado"}, {dataAtual}.</p>
           </div>
