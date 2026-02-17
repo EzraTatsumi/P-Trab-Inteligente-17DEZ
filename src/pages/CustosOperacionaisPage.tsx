@@ -1384,7 +1384,9 @@ const CustosOperacionaisPage = () => {
               toast.success("Novo Subitem da ND cadastrado!");
           }
           
+          // Invalidação silenciosa (sem await) para fechar o diálogo imediatamente
           queryClient.invalidateQueries({ queryKey: ['diretrizesServicosTerceiros', selectedYear, user.id] });
+          
           setDiretrizServicosTerceirosToEdit(null);
           setIsServicosTerceirosFormOpen(false);
           
@@ -1426,7 +1428,9 @@ const CustosOperacionaisPage = () => {
               toast.success("Novo Subitem da ND cadastrado!");
           }
           
+          // Invalidação silenciosa (sem await) para fechar o diálogo imediatamente
           queryClient.invalidateQueries({ queryKey: ['diretrizesMaterialPermanente', selectedYear, user.id] });
+          
           setDiretrizMaterialPermanenteToEdit(null);
           setIsMaterialPermanenteFormOpen(false);
           
