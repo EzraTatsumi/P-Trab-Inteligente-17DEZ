@@ -8,26 +8,25 @@ import { Card } from "@/components/ui/card";
 import { Save, Package, Loader2, Trash2, ChevronDown, ChevronUp } from "lucide-react";
 import { VehicleGroup, calculateVehicleGroupTotals } from "@/lib/vehicleGroupUtils";
 import { ItemAquisicaoServico } from "@/types/diretrizesServicosTerceiros";
-import { formatCurrency, formatCodug, formatPregao } from "@/lib/formatUtils";
+import { formatCurrency, formatPregao } from "@/lib/formatUtils";
 import { toast } from "sonner";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { cn } from "@/lib/utils";
 
 interface VehicleGroupFormProps {
     initialGroup?: VehicleGroup;
     onSave: (group: VehicleGroup) => void;
     onCancel: () => void;
     isSaving: boolean;
-    onOpenItemSelector: (currentItems: ItemAquisicaoServico[]) => void; 
+    onOpenItemSelector: (currentItems: ItemAquisicaoServico[]) => void;
     selectedItemsFromSelector: ItemAquisicaoServico[] | null;
     onClearSelectedItems: () => void;
 }
 
-const VehicleGroupForm: React.FC<VehicleGroupFormProps> = ({ 
-    initialGroup, 
-    onSave, 
-    onCancel, 
+const VehicleGroupForm: React.FC<VehicleGroupFormProps> = ({
+    initialGroup,
+    onSave,
+    onCancel,
     isSaving,
     onOpenItemSelector,
     selectedItemsFromSelector,
@@ -53,7 +52,7 @@ const VehicleGroupForm: React.FC<VehicleGroupFormProps> = ({
                         quantidade: 1,
                         periodo: 1,
                         valor_total: selectedItem.valor_unitario,
-                    };
+                    } as any;
                 }
             });
             
@@ -61,24 +60,29 @@ const VehicleGroupForm: React.FC<VehicleGroupFormProps> = ({
             onClearSelectedItems();
             setExpandedSubitems({}); 
         }
-    }, [selectedItemsFromSelector]);
+    }, [selectedItemsFromSelector, items, onClearSelectedItems]);
 
     const totals = useMemo(() => calculateVehicleGroupTotals(items), [items]);
-    
+
     const groupedItems = useMemo(() => {
         const groups: Record<string, { nr: string, nome: string, items: ItemAquisicaoServico[], total: number }> = {};
         items.forEach(item => {
-            const key = `${item.nr_subitem}-${item.nome_subitem}`;
+            // Cast para any para acessar propriedades injetadas dinamicamente
+            const itemAny = item as any;
+            const nr = itemAny.nr_subitem || 'N/A';
+            const nome = itemAny.nome_subitem || 'Sem Subitem';
+            const key = `${nr}-${nome}`;
+            
             if (!groups[key]) {
-                groups[key] = { nr: item.nr_subitem || '', nome: item.nome_subitem || '', items: [], total: 0 };
+                groups[key] = { nr, nome, items: [], total: 0 };
             }
             groups[key].items.push(item);
-            const period = (item as any).periodo || 0;
+            const period = itemAny.periodo || 0;
             groups[key].total += (item.quantidade || 0) * period * item.valor_unitario;
         });
         return Object.values(groups).sort((a, b) => a.nr.localeCompare(b.nr));
     }, [items]);
-    
+
     const handleQuantityChange = (itemId: string, val: string) => {
         const qty = parseInt(val) || 0;
         setItems(prev => prev.map(item => item.id === itemId ? { ...item, quantidade: qty } : item));
@@ -86,7 +90,7 @@ const VehicleGroupForm: React.FC<VehicleGroupFormProps> = ({
 
     const handlePeriodChange = (itemId: string, val: string) => {
         const period = parseFloat(val.replace(',', '.')) || 0;
-        setItems(prev => prev.map(item => item.id === itemId ? { ...item, periodo: period } : item));
+        setItems(prev => prev.map(item => item.id === itemId ? { ...item, periodo: period } as any : item));
     };
 
     const handleSaveClick = () => {
@@ -191,7 +195,7 @@ const VehicleGroupForm: React.FC<VehicleGroupFormProps> = ({
                                                             <p className="text-[10px] text-muted-foreground">Pregão: {formatPregao(item.numero_pregao)}</p>
                                                         </TableCell>
                                                         <TableCell className="text-right text-xs text-muted-foreground">
-                                                            {formatCurrency(item.valor_unitario)} / {item.unidade_medida || 'UN'}
+                                                            {formatCurrency(item.valor_unitario)} / {(item as any).unidade_medida || 'UN'}
                                                         </TableCell>
                                                         <TableCell>
                                                             <Input 
