@@ -10,7 +10,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { sanitizeError } from "@/lib/errorUtils";
 import { useFormNavigation } from "@/hooks/useFormNavigation";
-import { RefLPC, RefLPCForm, RefLPCSource } from "@/types/refLPC";
+import { RefLPC, RefLPCForm } from "@/types/refLPC";
 import { getPreviousWeekRange, formatDateDDMMMAA, formatCurrencyInput, numberToRawDigits } from "@/lib/formatUtils";
 import { fetchFuelPrice } from "@/integrations/supabase/api";
 
@@ -151,6 +151,10 @@ export const RefLPCFormSection = ({ ptrabId, refLPC, onUpdate }: RefLPCFormSecti
     try {
       const { start, end } = getPreviousWeekRange();
       
+      // Formata as datas para yyyy-MM-dd removendo a parte do tempo (T...)
+      const formattedStart = start.includes('T') ? start.split('T')[0] : start;
+      const formattedEnd = end.includes('T') ? end.split('T')[0] : end;
+      
       const [dieselResult, gasolinaResult] = await Promise.all([
         fetchFuelPrice('diesel'),
         fetchFuelPrice('gasolina'),
@@ -158,8 +162,8 @@ export const RefLPCFormSection = ({ ptrabId, refLPC, onUpdate }: RefLPCFormSecti
       
       setFormLPC(prev => ({
         ...prev,
-        data_inicio_consulta: start,
-        data_fim_consulta: end,
+        data_inicio_consulta: formattedStart,
+        data_fim_consulta: formattedEnd,
         ambito: 'Nacional',
         nome_local: 'ANP - Média Nacional',
         // Salva como string de dígitos brutos
