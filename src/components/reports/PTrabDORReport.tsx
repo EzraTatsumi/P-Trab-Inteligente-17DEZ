@@ -73,6 +73,15 @@ const PTrabDORReport: React.FC<PTrabDORReportProps> = ({ ptrabData, dorData, sel
 
   return (
     <div className="space-y-6">
+      <style>{`
+        @media print {
+          @page {
+            size: A4 portrait;
+            margin: 20mm;
+          }
+        }
+      `}</style>
+
       {/* Barra de Ações Padronizada */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-muted/30 p-4 rounded-xl border border-border print:hidden">
         <div className="flex items-center gap-3">

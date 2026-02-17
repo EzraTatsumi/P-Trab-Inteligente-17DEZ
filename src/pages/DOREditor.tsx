@@ -355,7 +355,7 @@ const DOREditor = () => {
           @page {
             margin-top: 25mm;
             margin-bottom: 20mm;
-            size: A4;
+            size: A4 portrait;
           }
           .continuation-header {
             position: fixed;
