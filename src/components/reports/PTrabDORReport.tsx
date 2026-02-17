@@ -2,7 +2,7 @@
 
 import React, { useRef } from 'react';
 import { Button } from "@/components/ui/button";
-import { Printer, Download, FileSpreadsheet } from "lucide-react";
+import { Printer, Download, FileText } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatNumber, formatCodug } from "@/lib/formatUtils";
 import jsPDF from 'jspdf';
@@ -41,8 +41,8 @@ const PTrabDORReport: React.FC<PTrabDORReportProps> = ({ ptrabData, dorData, sel
     pdf.save(`DOR_${dorData.numero_dor || 'SN'}_${ptrabData.nome_om}.pdf`);
   };
 
-  const handleExportExcel = () => {
-    toast.info("A exportação para Excel do DOR está em desenvolvimento.");
+  const handleExportWord = () => {
+    toast.info("A exportação para Word do DOR está em desenvolvimento.");
   };
 
   const dataAtual = new Date().toLocaleDateString('pt-BR', { day: 'numeric', month: 'long', year: 'numeric' });
@@ -84,9 +84,9 @@ const PTrabDORReport: React.FC<PTrabDORReportProps> = ({ ptrabData, dorData, sel
             <Download className="mr-2 h-4 w-4" />
             Exportar PDF
           </Button>
-          <Button onClick={handleExportExcel} variant="outline">
-            <FileSpreadsheet className="mr-2 h-4 w-4" />
-            Exportar Excel
+          <Button onClick={handleExportWord} variant="outline">
+            <FileText className="mr-2 h-4 w-4" />
+            Exportar Word
           </Button>
           <Button onClick={handlePrint} variant="default">
             <Printer className="mr-2 h-4 w-4" />
