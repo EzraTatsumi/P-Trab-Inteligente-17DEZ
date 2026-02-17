@@ -27,7 +27,8 @@ import {
     Bus,
     ArrowDownUp,
     ChevronDown,
-    HandPlatter
+    HandPlatter,
+    ClipboardList
 } from "lucide-react";
 import { useFormNavigation } from "@/hooks/useFormNavigation";
 import { useMilitaryOrganizations } from "@/hooks/useMilitaryOrganizations";
@@ -113,7 +114,6 @@ interface ItemAquisicaoServicoExt extends ItemAquisicaoServico {
     has_daily_limit?: boolean;
     daily_limit_km?: number | "";
     natureza_despesa?: '33' | '39';
-    // Propriedades garantidas pela interface base mas explicitadas aqui para clareza
     quantidade?: number;
     periodo?: number;
 }
@@ -810,7 +810,7 @@ const ServicosTerceirosForm = () => {
                 efetivo: (isSatelital || isLocacaoEstruturas || isServicoGrafico || (isOutros && !hasEfetivo)) ? 0 : efetivo,
                 fase_atividade: faseAtividade,
                 categoria: activeTab,
-                detalhes_planejamento: { itens_selecionados: itemsForCalc, tipo_anv, capacidade, velocidade_cruzeiro: velocidadeCruzeiro, distancia_percorrer: distanciaPercorrer, tipo_equipamento: tipoEquipamento, proposito, itinerario, distancia_itinerario: distanciaItinerario, distancia_percorrida_dia: distanciaPercorridaDia, numero_viagens: numeroViagens, nome_servico_outros: nomeServicoOutros, tipo_contrato_outros: tipoContratoOutros, has_efetivo: hasEfetivo },
+                detalhes_planejamento: { itens_selecionados: itemsForCalc, tipo_anv: tipoAnv, capacidade, velocidade_cruzeiro: velocidadeCruzeiro, distancia_percorrer: distanciaPercorrer, tipo_equipamento: tipoEquipamento, proposito, itinerario, distancia_itinerario: distanciaItinerario, distancia_percorrida_dia: distanciaPercorridaDia, numero_viagens: numeroViagens, nome_servico_outros: nomeServicoOutros, tipo_contrato_outros: tipoContratoOutros, has_efetivo: hasEfetivo },
                 valor_total: totalGeral,
                 valor_nd_30: totalND30,
                 valor_nd_39: totalND39,
@@ -869,7 +869,7 @@ const ServicosTerceirosForm = () => {
             const { totalND30, totalND39, totalGeral } = calculateServicoTotals(details.itens_selecionados || [], trips);
             const stagedItem: PendingServicoItem = { tempId: reg.id, dbId: reg.id, organizacao: reg.organizacao, ug: reg.ug, om_detentora: reg.om_detentora || '', ug_detentora: reg.ug_detentora || '', dias_operacao: reg.dias_operacao, efetivo: reg.efetivo || 0, fase_atividade: reg.fase_atividade || '', categoria: reg.categoria as CategoriaServico, detalhes_planejamento: details, valor_total: totalGeral, valor_nd_30: totalND30, valor_nd_39: totalND39 };
             setPendingItems([stagedItem]);
-            setLastStagedState({ omFavorecidaId: omFav?.id || "", faseAtividade: reg.fase_atividade, efetivo: reg.efetivo, hasEfetivo: details.has_efetivo !== undefined ? details.has_efetivo : true, diasOperacao: reg.dias_operacao, omDestinoId: omDest?.id || "", categoria: reg.categoria, itemsKey: (details.itens_selecionados || []).map((i: any) => `${i.id}-${i.quantidade}-${i.periodo || 1}-${i.sub_categoria || 'none'}-${i.natureza_despesa || '39'}`).sort().join('|'), naturezaDespesaOutros: reg.categoria === 'outros' ? (details.itens_selecionados?.[0]?.natureza_despesa || '39') : undefined, tipoContratoOutros: reg.categoria === 'outros' ? (details.tipo_contrato_outros || "contratacao") : undefined });
+            setLastStagedState({ omFavorecidaId: omFav?.id || "", faseAtividade: reg.fase_atividade, efetivo: reg.efetivo, hasEfetivo: details.has_efetivo !== undefined ? details.has_efetivo : true, diasOperacao: reg.dias_operacao, omDestinoId: omDest?.id || "", categoria: reg.categoria, itemsKey: (details.itens_selecionados || []).map((i: any) => `${i.id}-${i.quantidade}-${(i as any).periodo || 1}-${i.sub_categoria || 'none'}-${i.natureza_despesa || '39'}`).sort().join('|'), naturezaDespesaOutros: reg.categoria === 'outros' ? (details.itens_selecionados?.[0]?.natureza_despesa || '39') : undefined, tipoContratoOutros: reg.categoria === 'outros' ? (details.tipo_contrato_outros || "contratacao") : undefined });
         }
         toast.info("Modo Edição ativado. Altere os dados e clique em 'Recalcular/Revisar Lote'.");
         window.scrollTo({ top: 0, behavior: 'smooth' });
