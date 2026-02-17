@@ -18,13 +18,12 @@ export const HelpDialog: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [showFeedbackDialog, setShowFeedbackDialog] = useState(false);
   
-  // Simular um pequeno atraso para garantir que o conteúdo seja carregado
   useEffect(() => {
     if (open) {
       setLoading(true);
       const timer = setTimeout(() => {
         setLoading(false);
-      }, 100);
+      }, 150);
       return () => clearTimeout(timer);
     }
   }, [open]);
@@ -33,15 +32,15 @@ export const HelpDialog: React.FC = () => {
     <>
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogTrigger asChild>
-          <Button variant="outline" size="icon" title="Ajuda e Documentação">
+          <Button variant="outline" size="icon" title="Ajuda e Documentação" className="rounded-full shadow-sm">
             <HelpCircle className="h-4 w-4" />
           </Button>
         </DialogTrigger>
         <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col p-0">
           <DialogHeader className="p-6 pb-0">
-            <DialogTitle className="flex items-center gap-2">
+            <DialogTitle className="flex items-center gap-2 text-2xl">
               <HelpCircle className="h-6 w-6 text-primary" />
-              Ajuda e Documentação
+              Central de Ajuda
             </DialogTitle>
           </DialogHeader>
           
@@ -74,22 +73,22 @@ export const HelpDialog: React.FC = () => {
               ) : (
                 <>
                   <TabsContent value="user-guide" className="mt-0 h-full">
-                    <ScrollArea className="h-[calc(90vh-200px)] w-full pr-4">
+                    <ScrollArea className="h-[calc(90vh-220px)] w-full pr-4">
                       <MarkdownAccordion content={userGuideContent} />
                     </ScrollArea>
                   </TabsContent>
                   <TabsContent value="business-rules" className="mt-0 h-full">
-                    <ScrollArea className="h-[calc(90vh-200px)] w-full pr-4">
+                    <ScrollArea className="h-[calc(90vh-220px)] w-full pr-4">
                       <MarkdownAccordion content={businessRulesContent} />
                     </ScrollArea>
                   </TabsContent>
                   <TabsContent value="security" className="mt-0 h-full">
-                    <ScrollArea className="h-[calc(90vh-200px)] w-full pr-4">
+                    <ScrollArea className="h-[calc(90vh-220px)] w-full pr-4">
                       <MarkdownAccordion content={securityComplianceContent} />
                     </ScrollArea>
                   </TabsContent>
                   <TabsContent value="architecture" className="mt-0 h-full">
-                    <ScrollArea className="h-[calc(90vh-200px)] w-full pr-4">
+                    <ScrollArea className="h-[calc(90vh-220px)] w-full pr-4">
                       <MarkdownAccordion content={architectureContent} />
                     </ScrollArea>
                   </TabsContent>
@@ -98,12 +97,12 @@ export const HelpDialog: React.FC = () => {
             </div>
           </Tabs>
           
-          <DialogFooter className="p-4 border-t">
+          <DialogFooter className="p-4 border-t bg-muted/30">
             <Button 
                 variant="destructive" 
                 onClick={() => {
-                    setOpen(false); // Fecha o diálogo de ajuda
-                    setShowFeedbackDialog(true); // Abre o diálogo de feedback
+                    setOpen(false);
+                    setShowFeedbackDialog(true);
                 }}
                 className="flex items-center gap-2"
             >
@@ -114,7 +113,6 @@ export const HelpDialog: React.FC = () => {
         </DialogContent>
       </Dialog>
       
-      {/* Diálogo de Feedback (fora do HelpDialog) */}
       <FeedbackDialog 
         open={showFeedbackDialog} 
         onOpenChange={setShowFeedbackDialog} 
