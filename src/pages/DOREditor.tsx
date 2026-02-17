@@ -178,8 +178,8 @@ const DOREditor = () => {
 
         const dors = await refreshDorList();
 
-        if (dors && dors.length > 0) {
-          applyDorData(dors[0]);
+        if (dors && (dors as any[]).length > 0) {
+          applyDorData((dors as any[])[0]);
         } else {
           const opName = pData.nome_operacao || "";
           const formattedOp = opName.toLowerCase().startsWith("operação") ? opName : `Operação ${opName}`;
@@ -237,8 +237,8 @@ const DOREditor = () => {
       toast.success("Documento excluído com sucesso.");
       const dors = await refreshDorList();
       
-      if (dors && dors.length > 0) {
-        applyDorData(dors[0]);
+      if (dors && (dors as any[]).length > 0) {
+        applyDorData((dors as any[])[0]);
       } else {
         handleCreateNewDor();
       }
@@ -315,7 +315,7 @@ const DOREditor = () => {
       if (error) throw error;
       
       toast.success("DOR salvo com sucesso!");
-      setSelectedDorId(data.id);
+      setSelectedDorId((data as any).id);
       await refreshDorList();
     } catch (error: any) {
       toast.error("Erro ao salvar: " + error.message);
@@ -669,7 +669,7 @@ const DOREditor = () => {
                   <div className="p-2 text-center print:hidden border-t border-black bg-slate-50">
                     <Button 
                       variant="ghost" 
-                      size="xs" 
+                      size="sm" 
                       onClick={() => setIsImporterOpen(true)}
                       className="text-primary hover:text-primary/80 font-sans text-[10px] uppercase font-bold"
                     >

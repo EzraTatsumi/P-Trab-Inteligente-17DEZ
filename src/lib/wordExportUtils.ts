@@ -59,7 +59,7 @@ export async function exportDORToWord(ptrabData: any, dorData: any) {
     
     return text.split('\n').map(line => new Paragraph({
       children: [new TextRun({ text: line, size })],
-      alignment: AlignmentType.JUSTIFY,
+      alignment: AlignmentType.JUSTIFIED,
       spacing: { before: 40, after: 40 }
     }));
   };
@@ -176,8 +176,7 @@ export async function exportDORToWord(ptrabData: any, dorData: any) {
         new TableRow({ children: [new TableCell({
           children: createMultiLineParagraphs(content),
           borders: { top: standardBorder, bottom: standardBorder, left: standardBorder, right: standardBorder },
-          verticalAlign: VerticalAlign.CENTER,
-          spacing: { before: 100, after: 100 }
+          verticalAlign: VerticalAlign.CENTER
         })] }),
       ],
     });
