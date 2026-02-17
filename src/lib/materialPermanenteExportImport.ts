@@ -21,7 +21,8 @@ export async function exportMaterialPermanenteToExcel(diretrizes: DiretrizMateri
     ];
 
     diretrizes.forEach(d => {
-        d.itens_aquisicao.forEach(item => {
+        const itens = (d.itens_aquisicao || []) as any[];
+        itens.forEach(item => {
             worksheet.addRow({
                 nr_subitem: d.nr_subitem,
                 nome_subitem: d.nome_subitem,
@@ -130,7 +131,7 @@ export async function persistMaterialPermanenteImport(stagedData: StagingRowPerm
 
     const toUpsert = Array.from(subitemsMap.values());
     
-    // Busca itens existentes para mesclar se o subitem já existir
+    // Busca diretrizes existentes para mesclar se o subitem já existir
     const { data: existingDiretrizes } = await supabase
         .from('diretrizes_material_permanente' as any)
         .select('*')
@@ -138,7 +139,8 @@ export async function persistMaterialPermanenteImport(stagedData: StagingRowPerm
         .eq('ano_referencia', year);
 
     const finalUpsert = toUpsert.map(newItem => {
-        const existing = existingItems?.find((e: any) => e.nr_subitem === newItem.nr_subitem);
+        // CORREÇÃO: Usando a variável correta 'existingDiretrizes'
+        const existing = (existingDiretrizes as any[])?.find(e => e.nr_subitem === newItem.nr_subitem);
         if (existing) {
             return {
                 ...existing,

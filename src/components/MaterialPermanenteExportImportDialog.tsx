@@ -95,6 +95,7 @@ const MaterialPermanenteExportImportDialog: React.FC<MaterialPermanenteExportImp
             });
             setStep('review');
         } catch (error: any) {
+            console.error("Erro ao processar arquivo:", error);
             toast.error("Falha ao processar o arquivo.");
             setStep('select_file');
         } finally {
@@ -111,7 +112,8 @@ const MaterialPermanenteExportImportDialog: React.FC<MaterialPermanenteExportImp
             toast.success("Importação concluída!");
             handleOpenChangeWrapper(false);
         } catch (error: any) {
-            toast.error("Falha ao salvar as diretrizes.");
+            console.error("Erro na persistência (Material Permanente):", error);
+            toast.error("Falha ao salvar as diretrizes. Verifique o console para detalhes.");
         } finally {
             setIsProcessing(false);
         }
