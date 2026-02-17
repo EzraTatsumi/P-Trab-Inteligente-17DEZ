@@ -4,10 +4,10 @@ export const useFormNavigation = () => {
   const handleEnterToNextField = (event: React.KeyboardEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     if (event.key === 'Enter') {
       event.preventDefault(); // Previne o comportamento padrão (ex: submissão do formulário)
-      const form = event.currentTarget.form;
+      const form = (event.currentTarget as HTMLInputElement).form;
       if (form) {
         // Se o campo atual for um input de senha, submete o formulário diretamente
-        if (event.currentTarget.type === 'password') {
+        if ((event.currentTarget as HTMLInputElement).type === 'password') {
           const submitButton = form.querySelector('button[type="submit"]') as HTMLButtonElement;
           if (submitButton) {
             submitButton.click();
@@ -33,7 +33,7 @@ export const useFormNavigation = () => {
           )
         ) as HTMLElement[];
         
-        const currentElementIndex = focusableElements.indexOf(event.currentTarget);
+        const currentElementIndex = focusableElements.indexOf(event.currentTarget as HTMLElement);
         
         if (currentElementIndex > -1 && currentElementIndex < focusableElements.length - 1) {
           focusableElements[currentElementIndex + 1].focus();

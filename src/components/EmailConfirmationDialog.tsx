@@ -1,3 +1,5 @@
+"use client";
+
 import React from 'react';
 import {
   Dialog,
@@ -8,8 +10,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { MailCheck, AlertCircle, ArrowLeft, Loader2 } from "lucide-react";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Loader2, Mail, AlertTriangle } from "lucide-react";
 
 interface EmailConfirmationDialogProps {
   open: boolean;
@@ -32,52 +33,39 @@ export const EmailConfirmationDialog: React.FC<EmailConfirmationDialogProps> = (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2 text-primary">
-            <MailCheck className="h-5 w-5" />
+          <DialogTitle className="flex items-center gap-2">
+            <Mail className="h-5 w-5 text-primary" />
             Confirme seu E-mail
           </DialogTitle>
           <DialogDescription>
-            Por favor, verifique se o endereço abaixo está correto antes de finalizar o cadastro.
+            Verifique com atenção se o endereço abaixo está correto.
           </DialogDescription>
         </DialogHeader>
         
-        <div className="grid gap-4 py-4">
-          <Alert variant="default" className="bg-blue-50 border-blue-200">
-            <AlertCircle className="h-4 w-4 text-blue-700" />
-            <AlertTitle className="text-blue-700">E-mail para Cadastro</AlertTitle>
-            <AlertDescription className="text-lg font-bold text-blue-900 break-all">
-              {email}
-            </AlertDescription>
-          </Alert>
-          
-          <p className="text-sm text-muted-foreground">
-            Um link de confirmação será enviado para este endereço. Você não poderá fazer login até confirmá-lo.
-          </p>
+        <div className="flex flex-col items-center justify-center py-6 px-4 bg-slate-50 rounded-lg border border-dashed border-slate-300 space-y-3">
+          <p className="text-xl font-bold text-primary break-all text-center">{email}</p>
+          <div className="flex items-start gap-2 text-amber-600 bg-amber-50 p-2 rounded text-xs">
+            <AlertTriangle className="h-4 w-4 shrink-0" />
+            <p>Se o e-mail estiver incorreto, você não receberá o link de ativação e não conseguirá acessar o sistema.</p>
+          </div>
         </div>
-        
-        <DialogFooter className="flex flex-col sm:flex-row sm:justify-between gap-2">
-          {/* Botão de Confirmação (Ação Primária) - Movido para a esquerda */}
+
+        <DialogFooter className="flex flex-col sm:flex-row gap-2 mt-4">
+          <Button 
+            variant="outline" 
+            onClick={onBack} 
+            disabled={loading} 
+            className="w-full sm:flex-1"
+          >
+            Voltar e Corrigir
+          </Button>
           <Button 
             onClick={onConfirm} 
-            disabled={loading}
-            className="w-full sm:w-auto order-1 sm:order-none"
+            disabled={loading} 
+            className="w-full sm:flex-1 bg-green-600 hover:bg-green-700"
           >
-            {loading ? (
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            ) : (
-              "Confirmar e Cadastrar"
-            )}
-          </Button>
-          {/* Botão de Voltar (Ação Secundária) - Movido para a direita */}
-          <Button 
-            type="button" 
-            variant="outline" 
-            onClick={onBack}
-            disabled={loading}
-            className="w-full sm:w-auto order-2 sm:order-none"
-          >
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Voltar e Corrigir
+            {loading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+            Está Correto, Enviar
           </Button>
         </DialogFooter>
       </DialogContent>
