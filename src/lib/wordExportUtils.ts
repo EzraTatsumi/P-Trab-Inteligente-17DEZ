@@ -16,7 +16,7 @@ import { saveAs } from "file-saver";
 import { formatNumber, formatCodug } from "./formatUtils";
 
 /**
- * Gera e faz o download de um arquivo Word (.docx) para o DOR.
+ * Gera e faz o download de um arquivo Word (.docx) para o DOR com alta fidelidade visual.
  */
 export async function exportDORToWord(ptrabData: any, dorData: any) {
   const anoAtual = new Date().getFullYear();
@@ -51,6 +51,17 @@ export async function exportDORToWord(ptrabData: any, dorData: any) {
       width: options.width ? { size: options.width, type: WidthType.PERCENTAGE } : undefined,
       columnSpan: options.colSpan || 1,
     });
+  };
+
+  // Função para processar textos com múltiplas linhas (preservando quebras)
+  const createMultiLineParagraphs = (text: string, size: number = 22) => {
+    if (!text) return [new Paragraph({ text: "" })];
+    
+    return text.split('\n').map(line => new Paragraph({
+      children: [new TextRun({ text: line, size })],
+      alignment: AlignmentType.JUSTIFY,
+      spacing: { before: 40, after: 40 }
+    }));
   };
 
   // 1. Cabeçalho Principal (Logo + Texto + Número)
@@ -111,7 +122,7 @@ export async function exportDORToWord(ptrabData: any, dorData: any) {
   const orgaoTable = new Table({
     width: { size: 100, type: WidthType.PERCENTAGE },
     rows: [
-      new TableRow({ children: [createCell("DADOS DO ÓRGÃO REQUISITANTE", { bold: true, align: AlignmentType.CENTER, bg: "000000", color: "FFFFFF", colSpan: 2 })] }),
+      new TableRow({ children: [createCell("DADOS DO ÓRGÃO REQUISITANTE", { bold: true, align: AlignmentType.CENTER, bg: "BFBFBF", colSpan: 2 })] }),
       new TableRow({ children: [createCell("Órgão:", { bold: true, colSpan: 2 })] }),
       new TableRow({ children: [createCell(ptrabData.nome_om_extenso || ptrabData.nome_om, { colSpan: 2 })] }),
       new TableRow({ children: [createCell("Responsável pela Demanda:", { bold: true, colSpan: 2 })] }),
@@ -127,9 +138,9 @@ export async function exportDORToWord(ptrabData: any, dorData: any) {
 
   // 3. Itens de Custo
   const itemsRows = [
-    new TableRow({ children: [createCell("OBJETO DE REQUISIÇÃO", { bold: true, align: AlignmentType.CENTER, bg: "000000", color: "FFFFFF", colSpan: 4 })] }),
+    new TableRow({ children: [createCell("OBJETO DE REQUISIÇÃO", { bold: true, align: AlignmentType.CENTER, bg: "BFBFBF", colSpan: 4 })] }),
     new TableRow({ children: [createCell(`Evento: ${dorData.evento || ""}`, { colSpan: 4 })] }),
-    new TableRow({ children: [createCell("DESCRIÇÃO DO ITEM", { bold: true, align: AlignmentType.CENTER, bg: "000000", color: "FFFFFF", colSpan: 4 })] }),
+    new TableRow({ children: [createCell("DESCRIÇÃO DO ITEM", { bold: true, align: AlignmentType.CENTER, bg: "BFBFBF", colSpan: 4 })] }),
     new TableRow({
       children: [
         createCell("UGE", { bold: true, align: AlignmentType.CENTER, width: 25 }),
@@ -156,23 +167,52 @@ export async function exportDORToWord(ptrabData: any, dorData: any) {
     rows: itemsRows,
   });
 
-  // 4. Seções de Texto
+  // 4. Seções de Texto (Finalidade, Motivação, etc)
   const createSectionTable = (title: string, content: string) => {
     return new Table({
       width: { size: 100, type: WidthType.PERCENTAGE },
       rows: [
-        new TableRow({ children: [createCell(title, { bold: true, align: AlignmentType.CENTER, bg: "000000", color: "FFFFFF" })] }),
+        new TableRow({ children: [createCell(title, { bold: true, align: AlignmentType.CENTER, bg: "BFBFBF" })] }),
         new TableRow({ children: [new TableCell({
-          children: [new Paragraph({
-            children: [new TextRun({ text: content || "", size: 22 })],
-            alignment: AlignmentType.JUSTIFY,
-            spacing: { before: 100, after: 100 }
-          })],
-          borders: { top: standardBorder, bottom: standardBorder, left: standardBorder, right: standardBorder }
+          children: createMultiLineParagraphs(content),
+          borders: { top: standardBorder, bottom: standardBorder, left: standardBorder, right: standardBorder },
+          verticalAlign: VerticalAlign.CENTER,
+          spacing: { before: 100, after: 100 }
         })] }),
       ],
     });
   };
+
+  // 5. Quadro de Assinatura
+  const signatureTable = new Table({
+    width: { size: 100, type: WidthType.PERCENTAGE },
+    rows: [
+      new TableRow({
+        children: [
+          new TableCell({
+            children: [
+              new Paragraph({
+                children: [new TextRun({ text: `${ptrabData.local_om || "Local não informado"}, ${dataAtual}.`, size: 22 })],
+                alignment: AlignmentType.CENTER,
+                spacing: { before: 200, after: 400 }
+              }),
+              new Paragraph({
+                children: [new TextRun({ text: ptrabData.nome_cmt_om || "NOME DO ORDENADOR DE DESPESAS", bold: true, size: 22, allCaps: true })],
+                alignment: AlignmentType.CENTER,
+              }),
+              new Paragraph({
+                children: [new TextRun({ text: `Comandante da ${ptrabData.nome_om_extenso || ptrabData.nome_om}`, size: 22 })],
+                alignment: AlignmentType.CENTER,
+                spacing: { after: 200 }
+              }),
+            ],
+            borders: { top: standardBorder, bottom: standardBorder, left: standardBorder, right: standardBorder },
+            verticalAlign: VerticalAlign.CENTER,
+          })
+        ]
+      })
+    ]
+  });
 
   // Montagem do Documento
   const doc = new Document({
@@ -191,7 +231,7 @@ export async function exportDORToWord(ptrabData: any, dorData: any) {
           new Table({
             width: { size: 100, type: WidthType.PERCENTAGE },
             rows: [
-              new TableRow({ children: [createCell("ANEXOS", { bold: true, align: AlignmentType.CENTER, bg: "000000", color: "FFFFFF" })] }),
+              new TableRow({ children: [createCell("ANEXOS", { bold: true, align: AlignmentType.CENTER, bg: "BFBFBF" })] }),
               new TableRow({ children: [createCell(dorData.anexos || "----", { align: AlignmentType.CENTER })] }),
             ]
           }),
@@ -199,7 +239,7 @@ export async function exportDORToWord(ptrabData: any, dorData: any) {
           new Table({
             width: { size: 100, type: WidthType.PERCENTAGE },
             rows: [
-              new TableRow({ children: [createCell(`Ação Orçamentária (AO): ${dorData.acao_orcamentaria || ""}`, { bold: true, bg: "000000", color: "FFFFFF" })] }),
+              new TableRow({ children: [createCell(`Ação Orçamentária (AO): ${dorData.acao_orcamentaria || ""}`, { bold: true, bg: "BFBFBF" })] }),
               new TableRow({ children: [createCell(`Plano Orçamentário (PO): ${dorData.plano_orcamentario || ""}`, { bold: true })] }),
             ]
           }),
@@ -213,22 +253,8 @@ export async function exportDORToWord(ptrabData: any, dorData: any) {
           createSectionTable("CONSEQUÊNCIA DO NÃO ATENDIMENTO", dorData.consequencia),
           new Paragraph({ text: "", spacing: { before: 150 } }),
           createSectionTable("OBSERVAÇÕES GERAIS", dorData.observacoes),
-          new Paragraph({ text: "", spacing: { before: 400 } }),
-          
-          // Bloco de Assinatura
-          new Paragraph({
-            children: [new TextRun({ text: `${ptrabData.local_om || "Local não informado"}, ${dataAtual}.`, size: 22 })],
-            alignment: AlignmentType.CENTER,
-          }),
-          new Paragraph({ text: "", spacing: { before: 400 } }),
-          new Paragraph({
-            children: [new TextRun({ text: ptrabData.nome_cmt_om || "NOME DO ORDENADOR DE DESPESAS", bold: true, size: 22, allCaps: true })],
-            alignment: AlignmentType.CENTER,
-          }),
-          new Paragraph({
-            children: [new TextRun({ text: `Comandante da ${ptrabData.nome_om_extenso || ptrabData.nome_om}`, size: 22 })],
-            alignment: AlignmentType.CENTER,
-          }),
+          new Paragraph({ text: "", spacing: { before: 200 } }),
+          signatureTable
         ],
       },
     ],
