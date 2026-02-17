@@ -528,7 +528,7 @@ export default function ClasseIForm() {
             etapa_qs: calculos.etapaQS,
             total_qs: calculos.totalQS,
             complemento_qr: calculos.complementoQR,
-            etapa_qr: calculos.etapaQR,
+            etapa_qr: calculos.etapa_qr,
             total_qr: calculos.totalQR,
             total_geral: totalGeral,
             total_unidades: 0,
@@ -1153,7 +1153,6 @@ export default function ClasseIForm() {
                               <SelectContent className="bg-background">
                                 <SelectItem value="1">1 refeição</SelectItem>
                                 <SelectItem value="2">2 refeições</SelectItem>
-                                <SelectItem value="3">3 refeições</SelectItem>
                               </SelectContent>
                             </Select>
                           </div>
