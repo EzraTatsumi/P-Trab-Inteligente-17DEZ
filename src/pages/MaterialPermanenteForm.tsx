@@ -73,7 +73,7 @@ interface MaterialPermanenteDBRecord {
 
 interface PendingPermanenteItem {
     tempId: string;
-    dbIds?: string[]; // Alterado para suportar múltiplos IDs na edição
+    dbIds?: string[]; 
     organizacao: string;
     ug: string;
     om_detentora: string;
@@ -110,7 +110,7 @@ const MaterialPermanenteForm = () => {
     
     const [pendingItems, setPendingItems] = useState<PendingPermanenteItem[]>([]);
     const [lastStagedState, setLastStagedState] = useState<any>(null);
-    const [editingIds, setEditingIds] = useState<string[]>([]); // Alterado para array
+    const [editingIds, setEditingIds] = useState<string[]>([]); 
     const [activeCompositionId, setActiveCompositionId] = useState<string | null>(null);
     
     const [editingMemoriaId, setEditingMemoriaId] = useState<string | null>(null);
@@ -207,7 +207,6 @@ const MaterialPermanenteForm = () => {
     // --- MUTATIONS ---
     const saveMutation = useMutation({
         mutationFn: async (itemsToSave: PendingPermanenteItem[]) => {
-            // Deletar registros antigos se estiver editando
             const idsToDelete = itemsToSave.flatMap(i => i.dbIds || []).filter(Boolean);
             if (idsToDelete.length > 0) {
                 await supabase.from('material_permanente_registros' as any).delete().in('id', idsToDelete);
@@ -334,7 +333,6 @@ const MaterialPermanenteForm = () => {
         const omDestData = { nome: firstReg.om_detentora || "", ug: firstReg.ug_detentora || "", id: omDest?.id || "" };
         setOmDestino(omDestData);
         
-        // Extrair todos os itens de todos os registros do grupo
         const allItems = group.records.flatMap(reg => {
             const details = reg.detalhes_planejamento;
             return details?.item_unico ? [details.item_unico] : (details?.itens_selecionados || []);
@@ -568,25 +566,18 @@ const MaterialPermanenteForm = () => {
                                 <section className="space-y-4 border-b pb-6">
                                     <h3 className="text-xl font-bold flex items-center gap-2"><Sparkles className="h-5 w-5 text-accent" />OMs Cadastradas ({consolidatedRegistros.length})</h3>
                                     {consolidatedRegistros.map((group) => (
-                                        <Card key={group.groupKey} className="p-5 bg-primary/5 border-primary/20 shadow-sm hover:shadow-md transition-shadow">
-                                            <div className="flex items-center justify-between mb-4 border-b border-primary/10 pb-3">
-                                                <div className="flex flex-col">
-                                                    <h3 className="font-bold text-lg text-primary flex items-center gap-2">
-                                                        {group.organizacao}
-                                                        <Badge variant="secondary" className="text-[10px] font-bold">UG: {formatCodug(group.ug)}</Badge>
-                                                    </h3>
-                                                    <p className="text-xs text-muted-foreground">Total de {group.records.length} item(ns) planejados</p>
-                                                </div>
+                                        <Card key={group.groupKey} className="p-4 bg-primary/5 border-primary/20">
+                                            <div className="flex items-center justify-between mb-3 border-b pb-2">
+                                                <h3 className="font-bold text-lg text-primary flex items-center gap-2">
+                                                    {group.organizacao} (UG: {formatCodug(group.ug)})
+                                                </h3>
                                                 <div className="flex items-center gap-4">
-                                                    <div className="text-right">
-                                                        <p className="text-[10px] uppercase font-bold text-muted-foreground leading-none mb-1">Valor Total Consolidado</p>
-                                                        <span className="font-extrabold text-2xl text-primary">{formatCurrency(group.totalGeral)}</span>
-                                                    </div>
-                                                    <div className="flex gap-1 shrink-0 border-l pl-4 ml-2">
+                                                    <span className="font-extrabold text-xl text-primary">{formatCurrency(group.totalGeral)}</span>
+                                                    <div className="flex gap-1 shrink-0">
                                                         <Button 
                                                             variant="ghost" 
                                                             size="icon" 
-                                                            className="h-9 w-9 text-primary hover:bg-primary/10" 
+                                                            className="h-8 w-8 text-primary hover:bg-primary/10" 
                                                             onClick={() => handleEditGroup(group)} 
                                                             disabled={!isPTrabEditable || pendingItems.length > 0}
                                                             title="Editar todos os itens desta OM"
@@ -596,7 +587,7 @@ const MaterialPermanenteForm = () => {
                                                         <Button 
                                                             variant="ghost" 
                                                             size="icon" 
-                                                            className="h-9 w-9 text-destructive hover:bg-destructive/10" 
+                                                            className="h-8 w-8 text-destructive hover:bg-destructive/10" 
                                                             onClick={() => { setGroupToDelete(group); setShowDeleteDialog(true); }} 
                                                             disabled={!isPTrabEditable}
                                                             title="Excluir todos os itens desta OM"
@@ -606,31 +597,16 @@ const MaterialPermanenteForm = () => {
                                                     </div>
                                                 </div>
                                             </div>
-                                            
                                             <div className="space-y-2">
-                                                <div className="grid grid-cols-12 gap-2 px-2 text-[10px] font-bold uppercase text-muted-foreground mb-1">
-                                                    <div className="col-span-6">Descrição do Material</div>
-                                                    <div className="col-span-2 text-center">Fase</div>
-                                                    <div className="col-span-1 text-center">Qtd</div>
-                                                    <div className="col-span-3 text-right">Valor Total</div>
-                                                </div>
                                                 {group.records.map((reg: MaterialPermanenteDBRecord) => {
                                                     const item = reg.detalhes_planejamento?.item_unico || reg.detalhes_planejamento?.itens_selecionados?.[0];
                                                     return (
-                                                        <div key={reg.id} className="grid grid-cols-12 gap-2 items-center p-2 bg-background rounded border border-primary/5 text-xs hover:border-primary/20 transition-colors">
-                                                            <div className="col-span-6 flex items-center gap-2">
-                                                                <ChevronRight className="h-3 w-3 text-primary/40" />
-                                                                <span className="font-medium truncate">{item?.descricao_reduzida || item?.descricao_item || "Material Permanente"}</span>
+                                                        <div key={reg.id} className="flex items-center justify-between p-2 bg-background rounded border border-primary/10 text-xs">
+                                                            <div className="flex flex-col">
+                                                                <span className="font-medium">{item?.descricao_reduzida || item?.descricao_item || "Material Permanente"}</span>
+                                                                <span className="text-[10px] text-muted-foreground">Fase: {reg.fase_atividade} | Qtd: {item?.quantidade || 0} un</span>
                                                             </div>
-                                                            <div className="col-span-2 text-center">
-                                                                <Badge variant="outline" className="text-[9px] h-5 px-1.5">{reg.fase_atividade}</Badge>
-                                                            </div>
-                                                            <div className="col-span-1 text-center font-semibold">
-                                                                {item?.quantidade || 0}
-                                                            </div>
-                                                            <div className="col-span-3 text-right font-bold text-foreground">
-                                                                {formatCurrency(Number(reg.valor_total))}
-                                                            </div>
+                                                            <span className="font-bold text-foreground">{formatCurrency(Number(reg.valor_total))}</span>
                                                         </div>
                                                     );
                                                 })}
@@ -672,17 +648,17 @@ const MaterialPermanenteForm = () => {
             <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
                 <AlertDialogContent>
                     <AlertDialogHeader>
-                        <AlertDialogTitle className="text-destructive">Confirmar Exclusão em Massa</AlertDialogTitle>
+                        <AlertDialogTitle className="text-destructive">Confirmar Exclusão</AlertDialogTitle>
                         <AlertDialogDescription>
-                            Deseja excluir **TODOS os {groupToDelete?.records.length} registros** de Material Permanente da OM {groupToDelete?.organizacao}? Esta ação não pode ser desfeita.
+                            Deseja excluir todos os registros de Material Permanente da OM {groupToDelete?.organizacao}?
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
                         <AlertDialogAction 
                             onClick={() => groupToDelete && deleteMutation.mutate(groupToDelete.records.map(r => r.id))} 
-                            className="bg-destructive hover:bg-destructive/90"
+                            className="bg-destructive"
                         >
-                            Excluir Tudo
+                            Excluir
                         </AlertDialogAction>
                         <AlertDialogCancel>Cancelar</AlertDialogCancel>
                     </AlertDialogFooter>
