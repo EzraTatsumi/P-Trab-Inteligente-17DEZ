@@ -136,35 +136,28 @@ const PriceSearchForm: React.FC<PriceSearchFormProps> = ({ onPriceSelect, isInsp
                     <div className="grid grid-cols-4 gap-4">
                         <FormField control={form.control} name="codigoItem" render={({ field }) => (
                             <FormItem className="col-span-4 md:col-span-2">
-                                <FormLabel>{mode === 'material' ? 'Cód. CATMAT *' : 'Cód. CATSER *'}</FormLabel>
-                                <div className="flex gap-2 items-center">
-                                    <FormControl>
-                                        <Input {...field} onChange={handleCodeChange} placeholder={mode === 'material' ? "Ex: 604269" : "Ex: 17639"} maxLength={9} disabled={isSearching} />
-                                    </FormControl>
-                                    {mode === 'material' ? (
-                                        <Button 
-                                            type="button" 
-                                            variant="outline" 
-                                            size="sm" 
-                                            onClick={() => setIsCatmatCatalogOpen(true)} 
-                                            disabled={isSearching} 
-                                            className="h-8 px-2 text-[10px]"
-                                        >
-                                            <BookOpen className="h-3 w-3 mr-1" /> CATMAT
-                                        </Button>
-                                    ) : (
-                                        <Button 
-                                            type="button" 
-                                            variant="outline" 
-                                            size="sm" 
-                                            onClick={() => setIsCatserCatalogOpen(true)} 
-                                            disabled={isSearching} 
-                                            className="h-8 px-2 text-[10px]"
-                                        >
-                                            <BookOpen className="h-3 w-3 mr-1" /> CATSER
-                                        </Button>
-                                    )}
-                                </div>
+                                <FormLabel className="flex items-center justify-between">
+                                    <span>Código {mode === 'material' ? 'CATMAT' : 'CATSER'} *</span>
+                                    <Button 
+                                        type="button" 
+                                        variant="ghost" 
+                                        className="text-xs p-0 h-auto text-primary hover:bg-transparent hover:text-primary/80" 
+                                        onClick={() => mode === 'material' ? setIsCatmatCatalogOpen(true) : setIsCatserCatalogOpen(true)}
+                                        disabled={isSearching}
+                                    >
+                                        <BookOpen className="h-3 w-3 mr-1" /> 
+                                        Catálogo {mode === 'material' ? 'CATMAT' : 'CATSER'}
+                                    </Button>
+                                </FormLabel>
+                                <FormControl>
+                                    <Input 
+                                        {...field} 
+                                        onChange={handleCodeChange} 
+                                        placeholder={`Digite o código ${mode === 'material' ? 'CATMAT' : 'CATSER'}...`} 
+                                        maxLength={9} 
+                                        disabled={isSearching} 
+                                    />
+                                </FormControl>
                                 <FormMessage />
                             </FormItem>
                         )} />
