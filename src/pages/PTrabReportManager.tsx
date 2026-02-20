@@ -23,7 +23,7 @@ import {
 } from "@/lib/classeIUtils";
 import { generateClasseIIMemoriaCalculo as generateClasseIIUtility } from "@/lib/classeIIUtils";
 import { generateCategoryMemoriaCalculo as generateClasseVUtility } from "@/lib/classeVUtils";
-import { generateCategoryMemoriaCalculo as generateClasseVIUtility } from "@/lib/classeVIUtils";
+import { generateCategoryMemoriaCalculo as generateClasseVIUtility } from "@/lib/classeVIUtility";
 import { generateCategoryMemoriaCalculo as generateClasseVIIUtility } from "@/lib/classeVIIUtils";
 import { generateCategoryMemoriaCalculo as generateClasseVIIIUtility } from "@/lib/classeVIIIUtils";
 import { generateCategoryMemoriaCalculo as generateClasseIXUtility, calculateItemTotalClasseIX as calculateItemTotalClasseIXUtility } from "@/lib/classeIXUtils";
@@ -42,7 +42,7 @@ import {
   generateSuprimentoFundosMemoriaCalculo as generateSuprimentoFundosMemoriaCalculoUtility,
 } from "@/lib/suprimentoFundosUtils"; 
 import { 
-  generatePassagemMemoriaCalculo,
+  generatePassagemMemoriaCalculo as generatePassagemMemoriaCalculoUtility,
   PassagemRegistro as PassagemRegistroType, 
 } from "@/lib/passagemUtils"; 
 import { 
@@ -335,7 +335,7 @@ export const generateDiariaMemoriaCalculo = (registro: any, diretrizesOp: any): 
 
 export const generateVerbaOperacionalMemoriaCalculo = (registro: any): string => registro.detalhamento_customizado || generateVerbaOperacionalMemoriaCalculoUtility(registro);
 export const generateSuprimentoFundosMemoriaCalculo = (registro: any): string => registro.detalhamento_customizado || generateSuprimentoFundosMemoriaCalculoUtility(registro);
-export const generatePassagemMemoriaCalculo = (registro: any): string => registro.detalhamento_customizado || generatePassagemMemoriaCalculo(registro);
+export const generatePassagemMemoriaCalculo = (registro: any): string => registro.detalhamento_customizado || generatePassagemMemoriaCalculoUtility(registro);
 export const generateConcessionariaMemoriaCalculo = (registro: any): string => registro.detalhamento_customizado || generateConcessionariaMemoriaCalculoUtility(registro);
 export const generateMaterialConsumoMemoriaCalculo = (registro: any): string => registro.detalhamento_customizado || generateMaterialConsumoMemoriaCalculoUtility(registro, registro);
 export const generateComplementoMemoriaCalculo = (registro: any, subType?: 'QS' | 'QR'): string => {
