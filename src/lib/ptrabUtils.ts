@@ -87,84 +87,51 @@ export async function fetchPTrabRecords<T extends PTrabLinkedTableName>(tableNam
 }
 
 /**
- * Busca os totais de múltiplos PTrabs de uma vez para otimização de performance.
+ * Busca os totais de múltiplos PTrabs de uma vez usando a função RPC no banco.
  */
 export async function fetchBatchPTrabTotals(ptrabIds: string[]) {
   if (ptrabIds.length === 0) return {};
 
-  const tables = [
-    { name: 'classe_i_registros', fields: 'p_trab_id, total_qs, total_qr, quantidade_r2, quantidade_r3' },
-    { name: 'classe_ii_registros', fields: 'p_trab_id, valor_total' },
-    { name: 'classe_iii_registros', fields: 'p_trab_id, valor_total' },
-    { name: 'classe_v_registros', fields: 'p_trab_id, valor_total' },
-    { name: 'classe_vi_registros', fields: 'p_trab_id, valor_total' },
-    { name: 'classe_vii_registros', fields: 'p_trab_id, valor_total' },
-    { name: 'classe_viii_saude_registros', fields: 'p_trab_id, valor_total' },
-    { name: 'classe_viii_remonta_registros', fields: 'p_trab_id, valor_total' },
-    { name: 'classe_ix_registros', fields: 'p_trab_id, valor_total' },
-    { name: 'diaria_registros', fields: 'p_trab_id, valor_nd_15, valor_nd_30' },
-    { name: 'verba_operacional_registros', fields: 'p_trab_id, valor_nd_30, valor_nd_39' },
-    { name: 'passagem_registros', fields: 'p_trab_id, valor_nd_33' },
-    { name: 'concessionaria_registros', fields: 'p_trab_id, valor_nd_39' },
-    { name: 'horas_voo_registros', fields: 'p_trab_id, valor_nd_30, valor_nd_39, quantidade_hv' },
-    { name: 'material_consumo_registros', fields: 'p_trab_id, valor_nd_30, valor_nd_39' },
-    { name: 'complemento_alimentacao_registros', fields: 'p_trab_id, valor_total' },
-    { name: 'servicos_terceiros_registros', fields: 'p_trab_id, valor_total' },
-    { name: 'material_permanente_registros', fields: 'p_trab_id, valor_total' },
-  ];
-
-  const results = await Promise.all(
-    tables.map(table => 
-      (supabase.from(table.name as any) as any)
-        .select(table.fields)
-        .in('p_trab_id', ptrabIds)
-    )
-  );
-
-  const totalsMap: Record<string, any> = {};
-  ptrabIds.forEach(id => {
-    totalsMap[id] = {
-      totalLogistica: 0,
-      totalOperacional: 0,
-      totalMaterialPermanente: 0,
-      quantidadeRacaoOp: 0,
-      quantidadeHorasVoo: 0
-    };
-  });
-
-  results.forEach((res, index) => {
-    if (res.error || !res.data) return;
-    const tableName = tables[index].name;
-    
-    res.data.forEach((record: any) => {
-      const pid = record.p_trab_id;
-      if (!totalsMap[pid]) return;
-
-      if (tableName === 'classe_i_registros') {
-        totalsMap[pid].totalLogistica += (record.total_qs || 0) + (record.total_qr || 0);
-        totalsMap[pid].quantidadeRacaoOp += (record.quantidade_r2 || 0) + (record.quantidade_r3 || 0);
-      } else if (['classe_ii_registros', 'classe_iii_registros', 'classe_v_registros', 'classe_vi_registros', 'classe_vii_registros', 'classe_viii_saude_registros', 'classe_viii_remonta_registros', 'classe_ix_registros'].includes(tableName)) {
-        totalsMap[pid].totalLogistica += (record.valor_total || 0);
-      } else if (tableName === 'material_permanente_registros') {
-        totalsMap[pid].totalMaterialPermanente += (record.valor_total || 0);
-      } else if (tableName === 'horas_voo_registros') {
-        totalsMap[pid].totalOperacional += (record.valor_nd_30 || 0) + (record.valor_nd_39 || 0);
-        totalsMap[pid].quantidadeHorasVoo += (record.quantidade_hv || 0);
-      } else if (tableName === 'diaria_registros') {
-        totalsMap[pid].totalOperacional += (record.valor_nd_15 || 0) + (record.valor_nd_30 || 0);
-      } else if (tableName === 'verba_operacional_registros' || tableName === 'material_consumo_registros') {
-        totalsMap[pid].totalOperacional += (record.valor_nd_30 || 0) + (record.valor_nd_39 || 0);
-      } else if (tableName === 'passagem_registros') {
-        totalsMap[pid].totalOperacional += (record.valor_nd_33 || 0);
-      } else if (tableName === 'concessionaria_registros') {
-        totalsMap[pid].totalOperacional += (record.valor_nd_39 || 0);
-      } else if (tableName === 'complemento_alimentacao_registros' || tableName === 'servicos_terceiros_registros') {
-        totalsMap[pid].totalOperacional += (record.valor_total || 0);
-      }
+  try {
+    // Chama a função RPC que você criou no Supabase
+    const { data, error } = await supabase.rpc('get_ptrab_totals_batch' as any, { 
+      p_ptrab_ids: ptrabIds 
     });
-  });
 
-  return totalsMap;
+    if (error) throw error;
+
+    const totalsMap: Record<string, any> = {};
+    
+    // Inicializa o mapa com zeros para garantir que todos os IDs tenham dados
+    ptrabIds.forEach(id => {
+      totalsMap[id] = {
+        totalLogistica: 0,
+        totalOperacional: 0,
+        totalMaterialPermanente: 0,
+        quantidadeRacaoOp: 0,
+        quantidadeHorasVoo: 0
+      };
+    });
+
+    // Preenche com os dados retornados do banco
+    if (data && Array.isArray(data)) {
+      data.forEach((row: any) => {
+        totalsMap[row.ptrab_id] = {
+          totalLogistica: Number(row.total_logistica || 0),
+          totalOperacional: Number(row.total_operacional || 0),
+          totalMaterialPermanente: Number(row.total_material_permanente || 0),
+          quantidadeRacaoOp: Number(row.quantidade_racao_op || 0),
+          quantidadeHorasVoo: Number(row.quantidade_horas_voo || 0)
+        };
+      });
+    }
+
+    return totalsMap;
+  } catch (error) {
+    console.error("Erro ao buscar totais via RPC:", error);
+    // Fallback silencioso para não quebrar a UI
+    return {};
+  }
 }
 
 /**
