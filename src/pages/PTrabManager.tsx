@@ -875,9 +875,9 @@ const PTrabManager = () => {
   };
 
   const cloneRelatedRecords = async (originalPTrabId: string, newPTrabId: string) => {
-    const cloneClassRecords = async <T extends PTrabLinkedTableName>(
+    const cloneClassRecords = async <T extends string>(
         tableName: T, 
-        jsonbFields: (keyof Tables<T>)[] | null, 
+        jsonbFields: string[] | null, 
         numericFields: string[]
     ) => {
         const { data: originalRecords, error: fetchError } = await (supabase.from(tableName as any) as any).select('*').eq("p_trab_id", originalPTrabId);
@@ -892,8 +892,8 @@ const PTrabManager = () => {
             
             if (jsonbFields) {
                 jsonbFields.forEach(field => {
-                    if (newRecord[field as string]) {
-                        newRecord[field as string] = JSON.parse(JSON.stringify(newRecord[field as string]));
+                    if (newRecord[field]) {
+                        newRecord[field] = JSON.parse(JSON.stringify(newRecord[field]));
                     }
                 });
             }
@@ -1012,15 +1012,15 @@ const PTrabManager = () => {
                     const newRecord: any = { 
                         ...restOfRecord, 
                         p_trab_id: newPTrabId, 
-                        ...(record.hasOwnProperty('itens_equipamentos') && { itens_equipamentos: JSON.parse(JSON.stringify(record.itens_equipamentos)) }), 
-                        ...(record.hasOwnProperty('itens_saude') && { itens_saude: JSON.parse(JSON.stringify(record.itens_saude)) }), 
-                        ...(record.hasOwnProperty('itens_remonta') && { itens_remonta: JSON.parse(JSON.stringify(record.itens_remonta)) }), 
-                        ...(record.hasOwnProperty('itens_motomecanizacao') && { itens_motomecanizacao: JSON.parse(JSON.stringify(record.itens_motomecanizacao)) }), 
-                        ...(record.hasOwnProperty('quantidades_por_posto') && { quantidades_por_posto: JSON.parse(JSON.stringify(record.quantidades_por_posto)) }), 
-                        ...(record.hasOwnProperty('itens_aquisicao') && { itens_aquisicao: JSON.parse(JSON.stringify(record.itens_aquisicao)) }),
-                        ...(record.hasOwnProperty('detalhes_planejamento') && { detalhes_planejamento: JSON.parse(JSON.stringify(record.detalhes_planejamento)) }),
-                        ...(record.hasOwnProperty('itens_dor') && { itens_dor: JSON.parse(JSON.stringify(record.itens_dor)) }),
-                        ...(record.hasOwnProperty('grupos_dor') && { grupos_dor: JSON.parse(JSON.stringify(record.grupos_dor)) })
+                        ...((record as any).hasOwnProperty('itens_equipamentos') && { itens_equipamentos: JSON.parse(JSON.stringify(record.itens_equipamentos)) }), 
+                        ...((record as any).hasOwnProperty('itens_saude') && { itens_saude: JSON.parse(JSON.stringify(record.itens_saude)) }), 
+                        ...((record as any).hasOwnProperty('itens_remonta') && { itens_remonta: JSON.parse(JSON.stringify(record.itens_remonta)) }), 
+                        ...((record as any).hasOwnProperty('itens_motomecanizacao') && { itens_motomecanizacao: JSON.parse(JSON.stringify(record.itens_motomecanizacao)) }), 
+                        ...((record as any).hasOwnProperty('quantidades_por_posto') && { quantidades_por_posto: JSON.parse(JSON.stringify(record.quantidades_por_posto)) }), 
+                        ...((record as any).hasOwnProperty('itens_aquisicao') && { itens_aquisicao: JSON.parse(JSON.stringify(record.itens_aquisicao)) }),
+                        ...((record as any).hasOwnProperty('detalhes_planejamento') && { detalhes_planejamento: JSON.parse(JSON.stringify(record.detalhes_planejamento)) }),
+                        ...((record as any).hasOwnProperty('itens_dor') && { itens_dor: JSON.parse(JSON.stringify(record.itens_dor)) }),
+                        ...((record as any).hasOwnProperty('grupos_dor') && { grupos_dor: JSON.parse(JSON.stringify(record.grupos_dor)) })
                     };
                     return newRecord;
                 });
