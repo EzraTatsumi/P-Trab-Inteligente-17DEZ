@@ -12,22 +12,21 @@ const Toaster = ({ ...props }: ToasterProps) => {
     <Sonner
       theme={theme as ToasterProps["theme"]}
       className="toaster group"
-      richColors={false} // Força explicitamente a desativação das cores vibrantes
+      richColors={false}
       toastOptions={{
         classNames: {
-          // Base do toast: fundo branco e texto azul
+          // Usando a cor marinho escura (#0f172a) para o texto, combinando com os botões do app
           toast:
-            "group toast group-[.toaster]:bg-white group-[.toaster]:text-blue-700 group-[.toaster]:border-border group-[.toaster]:shadow-lg font-sans border",
+            "group toast group-[.toaster]:bg-white group-[.toaster]:text-[#0f172a] group-[.toaster]:border-border group-[.toaster]:shadow-lg font-sans border",
           description: "group-[.toast]:text-muted-foreground",
           actionButton:
             "group-[.toast]:bg-primary group-[.toast]:text-primary-foreground",
           cancelButton:
             "group-[.toast]:bg-muted group-[.toast]:text-muted-foreground",
-          // Forçamos o mesmo estilo para todos os tipos, anulando qualquer cor nativa
-          success: "group-[.toaster]:bg-white group-[.toaster]:text-blue-700",
-          error: "group-[.toaster]:bg-white group-[.toaster]:text-blue-700",
-          info: "group-[.toaster]:bg-white group-[.toaster]:text-blue-700",
-          warning: "group-[.toaster]:bg-white group-[.toaster]:text-blue-700",
+          success: "group-[.toaster]:bg-white group-[.toaster]:text-[#0f172a]",
+          error: "group-[.toaster]:bg-white group-[.toaster]:text-[#0f172a]",
+          info: "group-[.toaster]:bg-white group-[.toaster]:text-[#0f172a]",
+          warning: "group-[.toaster]:bg-white group-[.toaster]:text-[#0f172a]",
         },
       }}
       {...props}
