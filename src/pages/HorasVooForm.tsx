@@ -41,7 +41,7 @@ import { cn } from "@/lib/utils";
 import CurrencyInput from "@/components/CurrencyInput";
 import { ConsolidatedHorasVooMemoria } from "@/components/ConsolidatedHorasVooMemoria"; 
 import { TipoAnvSelect } from "@/components/TipoAnvSelect";
-import { Switch } from "@/components/ui/switch"; // Importando Switch
+import { Switch } from "@/components/ui/switch";
 
 // Tipos de dados
 type HorasVooRegistroDB = Tables<'horas_voo_registros'>; 
@@ -80,7 +80,7 @@ interface HorasVooFormState extends HorasVooFormType {
     ug_destino: string; // UG Detentora
     dias_operacao: number;
     fase_atividade: string;
-    isCoterResponsibility: boolean; // NOVO: Responsabilidade do COTER
+    isCoterResponsibility: boolean;
 }
 
 const initialFormState: HorasVooFormState = {
@@ -90,10 +90,10 @@ const initialFormState: HorasVooFormState = {
     ug_destino: "",
     dias_operacao: 0,
     fase_atividade: "",
-    isCoterResponsibility: true, // NOVO: Padrão é A CARGO DO COTER
+    isCoterResponsibility: true,
     
     // Campos específicos de HV
-    codug_destino: "DMAvEx/COLOG Gestor (160.504)", // Valor padrão preenchido
+    codug_destino: "DMAvEx/COLOG Gestor (160.504)",
     municipio: "",
     quantidade_hv: 0,
     tipo_anv: "",
@@ -104,7 +104,6 @@ const initialFormState: HorasVooFormState = {
 
 // Helper function to compare form data structures
 const compareFormData = (data1: HorasVooFormState, data2: HorasVooFormState) => {
-    // Compare todos os campos relevantes
     if (
         data1.dias_operacao !== data2.dias_operacao ||
         data1.om_favorecida !== data2.om_favorecida ||
@@ -112,9 +111,7 @@ const compareFormData = (data1: HorasVooFormState, data2: HorasVooFormState) => 
         data1.om_destino !== data2.om_destino ||
         data1.ug_destino !== data2.ug_destino ||
         data1.fase_atividade !== data2.fase_atividade ||
-        data1.isCoterResponsibility !== data2.isCoterResponsibility || // NOVO
-        
-        // Campos específicos de HV
+        data1.isCoterResponsibility !== data2.isCoterResponsibility ||
         data1.codug_destino !== data2.codug_destino ||
         data1.municipio !== data2.municipio ||
         data1.quantidade_hv !== data2.quantidade_hv ||
@@ -125,10 +122,8 @@ const compareFormData = (data1: HorasVooFormState, data2: HorasVooFormState) => 
     ) {
         return true;
     }
-    
     return false;
 };
-
 
 const HorasVooForm = () => {
     const navigate = useNavigate();
@@ -142,36 +137,27 @@ const HorasVooForm = () => {
     const [showDeleteDialog, setShowDeleteDialog] = useState(false);
     const [registroToDelete, setRegistroToDelete] = useState<HorasVooRegistroDB | null>(null);
     
-    // NOVO ESTADO: Armazena o grupo completo a ser excluído/substituído
     const [groupToDelete, setGroupToDelete] = useState<ConsolidatedHorasVoo | null>(null); 
     const [groupToReplace, setGroupToReplace] = useState<ConsolidatedHorasVoo | null>(null); 
     
-    // ESTADOS DE EDIÇÃO DE MEMÓRIA
     const [editingMemoriaId, setEditingMemoriaId] = useState<string | null>(null);
     const [memoriaEdit, setMemoriaEdit] = useState<string>("");
     
-    // NOVO ESTADO: Array de registros calculados, mas não salvos
     const [pendingRegistros, setPendingRegistros] = useState<CalculatedHorasVoo[]>([]);
-    
-    // NOVO ESTADO: Armazena o último formData que gerou um item em pendingRegistros
     const [lastStagedFormData, setLastStagedFormData] = useState<HorasVooFormState | null>(null);
     
-    // Estado para rastrear o ID da OM Favorecida e OM Destino
     const [selectedOmFavorecidaId, setSelectedOmFavorecidaId] = useState<string | undefined>(undefined);
     const [selectedOmDestinoId, setSelectedOmDestinoId] = useState<string | undefined>(undefined);
     
-    // ESTADOS PARA INPUT DE MOEDA (RAW DIGITS)
     const [rawND30Input, setRawND30Input] = useState(numberToRawDigits(initialFormState.valor_nd_30));
     const [rawND39Input, setRawND39Input] = useState(numberToRawDigits(initialFormState.valor_nd_39));
     
-    // Dados mestres
     const { data: ptrabData, isLoading: isLoadingPTrab } = useQuery<PTrabData>({
         queryKey: ['ptrabData', ptrabId],
         queryFn: () => fetchPTrabData(ptrabId!),
         enabled: !!ptrabId,
     });
 
-    // Registros de Horas de Voo
     const { data: registros, isLoading: isLoadingRegistros } = useQuery<HorasVooRegistroDB[]>({
         queryKey: ['horasVooRegistros', ptrabId],
         queryFn: () => fetchPTrabRecords('horas_voo_registros', ptrabId!),
@@ -179,12 +165,10 @@ const HorasVooForm = () => {
         select: (data) => data.sort((a, b) => a.organizacao.localeCompare(b.organizacao)),
     });
     
-    // NOVO MEMO: Consolida os registros por lote de solicitação
     const consolidatedRegistros = useMemo<ConsolidatedHorasVoo[]>(() => {
         if (!registros) return [];
 
         const groups = registros.reduce((acc, registro) => {
-            // Chave de consolidação: todos os campos que definem o lote de solicitação
             const key = [
                 registro.organizacao,
                 registro.ug,
@@ -218,11 +202,9 @@ const HorasVooForm = () => {
             return acc;
         }, {} as Record<string, ConsolidatedHorasVoo>);
 
-        // Ordenar por OM
         return Object.values(groups).sort((a, b) => a.organizacao.localeCompare(b.organizacao));
     }, [registros]);
     
-    // NOVO MEMO: Calcula a quantidade total de HV por grupo consolidado
     const totalHvByGroup = useMemo(() => {
         return consolidatedRegistros.reduce((acc, group) => {
             const totalHv = group.records.reduce((sum, record) => sum + Number(record.quantidade_hv || 0), 0);
@@ -233,9 +215,6 @@ const HorasVooForm = () => {
     
     const { data: oms, isLoading: isLoadingOms } = useMilitaryOrganizations();
     
-    // --- Mutations ---
-
-    // 1. Mutation for saving multiple new records (INSERT)
     const insertMutation = useMutation({
         mutationFn: async (newRecords: CalculatedHorasVoo[]) => {
             const recordsToInsert: TablesInsert<'horas_voo_registros'>[] = newRecords.map(r => ({
@@ -246,17 +225,14 @@ const HorasVooForm = () => {
                 ug_detentora: r.ug_detentora,
                 dias_operacao: r.dias_operacao,
                 fase_atividade: r.fase_atividade,
-                
                 codug_destino: r.codug_destino,
                 municipio: r.municipio,
                 quantidade_hv: r.quantidade_hv,
                 tipo_anv: r.tipo_anv,
                 amparo: r.amparo,
-                
                 valor_nd_30: r.valor_nd_30,
                 valor_nd_39: r.valor_nd_39,
                 valor_total: r.valor_total,
-                
                 detalhamento: r.detalhamento,
                 detalhamento_customizado: r.detalhamento_customizado,
             }));
@@ -266,7 +242,6 @@ const HorasVooForm = () => {
                 .insert(recordsToInsert);
 
             if (error) throw error;
-            
             return recordsToInsert;
         },
         onSuccess: () => {
@@ -275,8 +250,6 @@ const HorasVooForm = () => {
             setLastStagedFormData(null);
             queryClient.invalidateQueries({ queryKey: ['horasVooRegistros', ptrabId] });
             queryClient.invalidateQueries({ queryKey: ['ptrabTotals', ptrabId] });
-            
-            // O RESET COMPLETO OCORRE AQUI, APÓS O SALVAMENTO NO DB
             resetForm();
         },
         onError: (error) => { 
@@ -284,17 +257,14 @@ const HorasVooForm = () => {
         }
     });
 
-    // 2. Mutation for replacing an entire group of records (UPDATE/REPLACE)
     const replaceGroupMutation = useMutation({
         mutationFn: async ({ oldIds, newRecords }: { oldIds: string[], newRecords: CalculatedHorasVoo[] }) => {
-            // 1. Delete old records
             const { error: deleteError } = await supabase
                 .from('horas_voo_registros')
                 .delete()
                 .in('id', oldIds);
             if (deleteError) throw deleteError;
             
-            // 2. Insert new records
             const recordsToInsert: TablesInsert<'horas_voo_registros'>[] = newRecords.map(r => ({
                 p_trab_id: r.p_trab_id,
                 organizacao: r.organizacao,
@@ -303,17 +273,14 @@ const HorasVooForm = () => {
                 ug_detentora: r.ug_detentora,
                 dias_operacao: r.dias_operacao,
                 fase_atividade: r.fase_atividade,
-                
                 codug_destino: r.codug_destino,
                 municipio: r.municipio,
                 quantidade_hv: r.quantidade_hv,
                 tipo_anv: r.tipo_anv,
                 amparo: r.amparo,
-                
                 valor_nd_30: r.valor_nd_30,
                 valor_nd_39: r.valor_nd_39,
                 valor_total: r.valor_total,
-                
                 detalhamento: r.detalhamento,
                 detalhamento_customizado: r.detalhamento_customizado,
             }));
@@ -338,7 +305,6 @@ const HorasVooForm = () => {
         }
     });
 
-    // 3. Mutation for deleting a group of records
     const handleDeleteMutation = useMutation({
         mutationFn: async (recordIds: string[]) => {
             const { error } = await supabase
@@ -360,26 +326,23 @@ const HorasVooForm = () => {
         }
     });
     
-    // Efeito de inicialização da OM Favorecida (do PTrab)
     useEffect(() => {
         if (ptrabData && !editingId) {
-            // Preenchimento automático da OM Favorecida com dados do PTrab
             const omFavorecida = oms?.find(om => om.nome_om === ptrabData.nome_om && om.codug_om === ptrabData.codug_om);
             
             if (omFavorecida) {
                 setSelectedOmFavorecidaId(omFavorecida.id);
-                setSelectedOmDestinoId(omFavorecida.id); // Sincroniza OM Detentora
+                setSelectedOmDestinoId(omFavorecida.id);
                 setFormData(prev => ({
                     ...initialFormState,
                     om_favorecida: omFavorecida.nome_om,
                     ug_favorecida: omFavorecida.codug_om,
-                    om_destino: omFavorecida.nome_om, // Preenchimento automático
-                    ug_destino: omFavorecida.codug_om, // Preenchimento automático
-                    dias_operacao: 1, // Valor padrão
+                    om_destino: omFavorecida.nome_om,
+                    ug_destino: omFavorecida.codug_om,
+                    dias_operacao: 1,
                 }));
             }
         } else if (ptrabData && editingId) {
-            // Modo Edição: Preencher OMs
             const omFavorecida = oms?.find(om => om.nome_om === formData.om_favorecida && om.codug_om === formData.ug_favorecida);
             setSelectedOmFavorecidaId(omFavorecida?.id);
             
@@ -388,11 +351,6 @@ const HorasVooForm = () => {
         }
     }, [ptrabData, oms, editingId]);
     
-    // =================================================================
-    // CÁLCULOS E MEMÓRIA (MEMOIZED)
-    // =================================================================
-    
-    // Handler unificado para CurrencyInput
     const handleCurrencyChange = (field: 'valor_nd_30' | 'valor_nd_39', numericValue: number, rawDigits: string) => {
         if (field === 'valor_nd_30') {
             setRawND30Input(rawDigits);
@@ -411,12 +369,10 @@ const HorasVooForm = () => {
             };
         }
         
-        // Se for responsabilidade do COTER, os valores são zero para o cálculo
         const valor_nd_30 = formData.isCoterResponsibility ? 0 : formData.valor_nd_30;
         const valor_nd_39 = formData.isCoterResponsibility ? 0 : formData.valor_nd_39;
 
         try {
-            // Dias de operação é fixo em 1 para o cálculo, já que o campo foi removido da UI
             const dataForCalculation = { 
                 ...formData, 
                 dias_operacao: 1,
@@ -425,7 +381,6 @@ const HorasVooForm = () => {
             }; 
             const { valor_total } = calculateHorasVooTotals(dataForCalculation);
             
-            // Cria um registro temporário para gerar a memória
             const tempRegistro: HorasVooRegistro = {
                 id: 'temp',
                 p_trab_id: ptrabId!,
@@ -433,7 +388,7 @@ const HorasVooForm = () => {
                 ug: formData.ug_favorecida,
                 om_detentora: formData.om_destino,
                 ug_detentora: formData.ug_destino,
-                dias_operacao: 1, // Usar 1
+                dias_operacao: 1,
                 fase_atividade: formData.fase_atividade,
                 codug_destino: formData.codug_destino,
                 municipio: formData.municipio,
@@ -464,10 +419,8 @@ const HorasVooForm = () => {
         }
     }, [formData, ptrabId]);
     
-    // NOVO MEMO: Verifica se o formulário está "sujo" (diferente do lastStagedFormData)
     const isFormDirty = useMemo(() => {
         if (pendingRegistros.length > 0 && lastStagedFormData) {
-            // Ignoramos dias_operacao na comparação, pois ele foi fixado em 1
             const { dias_operacao: d1, ...rest1 } = formData;
             const { dias_operacao: d2, ...rest2 } = lastStagedFormData;
             
@@ -476,30 +429,24 @@ const HorasVooForm = () => {
         return false;
     }, [formData, pendingRegistros.length, lastStagedFormData]);
     
-    // NOVO: Cálculo do total de todos os itens pendentes
     const totalPendingRegistros = useMemo(() => {
         return pendingRegistros.reduce((sum, item) => sum + item.valor_total, 0);
     }, [pendingRegistros]);
     
-    // =================================================================
-    // HANDLERS DE AÇÃO
-    // =================================================================
-
     const resetForm = () => {
         setEditingId(null);
         setGroupToReplace(null);
-        setFormData(prev => ({
+        
+        // Limpar seletores de OM para permitir que o useEffect de inicialização 
+        // ou a ação do usuário limpe os campos visualmente
+        setSelectedOmFavorecidaId(undefined);
+        setSelectedOmDestinoId(undefined);
+        
+        setFormData({
             ...initialFormState,
-            // Manter a OM Favorecida (do PTrab)
-            om_favorecida: prev.om_favorecida,
-            ug_favorecida: prev.ug_favorecida,
-            // OM Detentora e Dias de Operação são fixos/removidos, mas mantemos o estado para DB
-            om_destino: prev.om_favorecida, // Volta para a OM Favorecida
-            ug_destino: prev.ug_favorecida, // Volta para a UG Favorecida
-            dias_operacao: 1, // Fixo
-            fase_atividade: prev.fase_atividade,
-            isCoterResponsibility: initialFormState.isCoterResponsibility, // Resetar para padrão COTER
-        }));
+            // Resetar tudo para o estado inicial, incluindo OMs e quantidades
+        });
+        
         setEditingMemoriaId(null); 
         setMemoriaEdit("");
         setLastStagedFormData(null); 
@@ -514,7 +461,6 @@ const HorasVooForm = () => {
         setLastStagedFormData(null);
         setEditingId(null);
         setGroupToReplace(null);
-        // Não chama resetForm() aqui, apenas limpa a lista pendente
     };
 
     const handleEdit = (group: ConsolidatedHorasVoo) => {
@@ -523,25 +469,19 @@ const HorasVooForm = () => {
             return;
         }
         
-        // Limpa estados pendentes
         setPendingRegistros([]);
         setLastStagedFormData(null);
         
-        // Define o modo edição
-        setEditingId(group.records[0].id); // Usa o ID do primeiro registro para controle de UI
-        setGroupToReplace(group); // Armazena o grupo original para substituição
+        setEditingId(group.records[0].id);
+        setGroupToReplace(group);
         
-        // 1. Configurar OM Favorecida e OM Destino
         const omFavorecidaToEdit = oms?.find(om => om.nome_om === group.organizacao && om.codug_om === group.ug);
         setSelectedOmFavorecidaId(omFavorecidaToEdit?.id);
         
         const omDestinoToEdit = oms?.find(om => om.nome_om === group.om_detentora && om.codug_om === group.ug_detentora);
         setSelectedOmDestinoId(omDestinoToEdit?.id);
         
-        // 2. Populate formData com os dados do PRIMEIRO registro do grupo (para edição)
         const firstRecord = group.records[0];
-        
-        // Determina se the registro original tinha valores zero (indicando COTER)
         const isCoter = firstRecord.valor_nd_30 === 0 && firstRecord.valor_nd_39 === 0;
 
         const newFormData: HorasVooFormState = {
@@ -549,29 +489,24 @@ const HorasVooForm = () => {
             ug_favorecida: group.ug, 
             om_destino: group.om_detentora,
             ug_destino: group.ug_detentora,
-            dias_operacao: group.dias_operacao, // Mantém o valor original do DB
+            dias_operacao: group.dias_operacao,
             fase_atividade: group.fase_atividade || "",
-            isCoterResponsibility: isCoter, // Define o estado do switch
+            isCoterResponsibility: isCoter,
             
-            // Campos específicos de HV (do primeiro registro)
             codug_destino: firstRecord.codug_destino,
             municipio: firstRecord.municipio,
             quantidade_hv: firstRecord.quantidade_hv,
             tipo_anv: firstRecord.tipo_anv,
             amparo: firstRecord.amparo || "",
-            // Se for COTER, mantemos 0 no formData, senão, mantemos o valor original
             valor_nd_30: firstRecord.valor_nd_30,
             valor_nd_39: firstRecord.valor_nd_39,
         };
         setFormData(newFormData);
         
-        // 3. Inicializar inputs de moeda com os valores do registro
         setRawND30Input(numberToRawDigits(firstRecord.valor_nd_30));
         setRawND39Input(numberToRawDigits(firstRecord.valor_nd_39));
         
-        // 4. Gerar os itens pendentes (staging) imediatamente com os dados originais
         const newPendingItems: CalculatedHorasVoo[] = group.records.map(registro => {
-            // Recalcula usando os valores do registro (que podem ser 0 se for COTER)
             const { valor_total } = calculateHorasVooTotals(registro);
             
             const calculatedFormData: HorasVooRegistro = {
@@ -582,7 +517,7 @@ const HorasVooForm = () => {
             let memoria = generateHorasVooMemoriaCalculo(calculatedFormData);
             
             return {
-                tempId: registro.id, // Usamos o ID real do DB como tempId para rastreamento
+                tempId: registro.id,
                 p_trab_id: ptrabId!,
                 organizacao: registro.organizacao, 
                 ug: registro.ug, 
@@ -611,26 +546,22 @@ const HorasVooForm = () => {
         });
         
         setPendingRegistros(newPendingItems);
-        setLastStagedFormData(newFormData); // Marca o formulário como staged (limpo)
+        setLastStagedFormData(newFormData);
         
         toast.info("Modo Edição ativado. Altere os dados na Seção 2 e clique em 'Recalcular/Revisar Lote'.");
-        
         window.scrollTo({ top: 0, behavior: 'smooth' });
     };
 
     const handleConfirmDelete = (group: ConsolidatedHorasVoo) => {
-        // Usamos o primeiro registro apenas para exibir o nome da OM no diálogo
         setRegistroToDelete(group.records[0]); 
-        setGroupToDelete(group); // Armazena o grupo completo para exclusão
+        setGroupToDelete(group);
         setShowDeleteDialog(true);
     };
 
-    // Adiciona o item calculado à lista pendente OU prepara a atualização (staging)
     const handleStageCalculation = (e: React.FormEvent) => {
         e.preventDefault();
         
         try {
-            // 1. Validação básica
             const diasOperacao = 1; 
             
             if (formData.quantidade_hv <= 0) {
@@ -646,12 +577,10 @@ const HorasVooForm = () => {
                 throw new Error("Preencha todos os campos de Horas de Voo (Município, CODUG, Tipo Anv).");
             }
             
-            // Se não for COTER, exige que pelo menos um valor seja preenchido
             if (!formData.isCoterResponsibility && (formData.valor_nd_30 + formData.valor_nd_39 <= 0)) {
                 throw new Error("No modo manual, o valor total (ND 30 + ND 39) deve ser maior que zero.");
             }
             
-            // 2. Determinar valores para o registro (0 se for COTER)
             const valor_nd_30_final = formData.isCoterResponsibility ? 0 : formData.valor_nd_30;
             const valor_nd_39_final = formData.isCoterResponsibility ? 0 : formData.valor_nd_39;
 
@@ -665,30 +594,24 @@ const HorasVooForm = () => {
             const { valor_total } = calculateHorasVooTotals(dataToCalculate);
             
             const calculatedFormData: HorasVooRegistro = {
-                id: crypto.randomUUID(), // ID temporário para gerar memória
+                id: crypto.randomUUID(),
                 p_trab_id: ptrabId!,
                 organizacao: formData.om_favorecida, 
                 ug: formData.ug_favorecida, 
-                dias_operacao: diasOperacao, // Usar 1
+                dias_operacao: diasOperacao,
                 fase_atividade: formData.fase_atividade,
-                
                 om_detentora: formData.om_destino,
                 ug_detentora: formData.ug_destino,
-                
                 codug_destino: formData.codug_destino,
                 municipio: formData.municipio,
                 quantidade_hv: formData.quantidade_hv,
                 tipo_anv: formData.tipo_anv,
                 amparo: formData.amparo,
-                
                 valor_nd_30: valor_nd_30_final,
                 valor_nd_39: valor_nd_39_final,
                 valor_total: valor_total,
-                
                 detalhamento: `Horas de Voo (${formData.tipo_anv}) para ${formData.municipio}`, 
                 detalhamento_customizado: null, 
-                
-                // Campos obrigatórios do tipo DB
                 created_at: new Date().toISOString(),
                 updated_at: new Date().toISOString(),
             } as HorasVooRegistro;
@@ -700,11 +623,10 @@ const HorasVooForm = () => {
                 p_trab_id: ptrabId!,
                 organizacao: formData.om_favorecida, 
                 ug: formData.ug_favorecida, 
-                dias_operacao: diasOperacao, // Usar 1
+                dias_operacao: diasOperacao,
                 fase_atividade: formData.fase_atividade,
                 om_detentora: formData.om_destino,
                 ug_detentora: formData.ug_destino,
-                
                 codug_destino: formData.codug_destino,
                 municipio: formData.municipio,
                 quantidade_hv: formData.quantidade_hv,
@@ -712,11 +634,9 @@ const HorasVooForm = () => {
                 amparo: formData.amparo,
                 valor_nd_30: valor_nd_30_final,
                 valor_nd_39: valor_nd_39_final,
-                
                 valor_total: valor_total,
                 detalhamento: calculatedFormData.detalhamento, 
                 detalhamento_customizado: null, 
-                
                 totalGeral: valor_total,
                 memoria_calculo_display: memoria, 
                 om_favorecida: formData.om_favorecida,
@@ -724,9 +644,6 @@ const HorasVooForm = () => {
             } as CalculatedHorasVoo;
             
             if (editingId) {
-                // MODO EDIÇÃO: Geramos o novo registro e o colocamos em pendingRegistros
-                
-                // Preserva a memória customizada do registro original, se existir
                 let memoriaCustomizadaTexto: string | null = null;
                 if (groupToReplace) {
                     const originalRecord = groupToReplace.records.find(r => r.id === editingId);
@@ -735,27 +652,21 @@ const HorasVooForm = () => {
                     }
                 }
                 
-                // Aplicamos a memória customizada ao item
                 if (memoriaCustomizadaTexto) {
                     newPendingItem.tempId = editingId; 
                     newPendingItem.detalhamento_customizado = memoriaCustomizadaTexto;
                 }
                 
-                setPendingRegistros([newPendingItem]); // Armazena o novo lote completo (apenas 1 item)
-                setLastStagedFormData(formData); // Marca o formulário como staged
+                setPendingRegistros([newPendingItem]);
+                setLastStagedFormData(formData);
                 
                 toast.info("Cálculo atualizado. Revise e confirme a atualização na Seção 3.");
                 window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' }); 
                 return;
             }
             
-            // MODO ADIÇÃO: Adicionar o item gerado à lista pendente
             setPendingRegistros(prev => [...prev, newPendingItem]);
-            
             toast.info(`Item de Horas de Voo adicionado à lista pendente.`);
-            
-            // Atualiza o lastStagedFormData para o estado atual do formulário (que acabou de ser calculado)
-            // O formulário (formData) NÃO É RESETADO AQUI.
             setLastStagedFormData(formData);
             
         } catch (err: any) {
@@ -763,31 +674,23 @@ const HorasVooForm = () => {
         }
     };
     
-    // Salva todos os itens pendentes no DB
     const handleSavePendingRegistros = () => {
         if (pendingRegistros.length === 0) {
             toast.warning("Nenhum item pendente para salvar.");
             return;
         }
-        
         insertMutation.mutate(pendingRegistros);
     };
     
-    // Confirma a atualização do item estagiado no DB
     const handleCommitStagedUpdate = () => {
         if (!editingId || !groupToReplace) {
             toast.error("Erro: Dados de atualização incompletos.");
             return;
         }
-        
-        // 1. IDs dos registros antigos para deletar
         const oldIds = groupToReplace.records.map(r => r.id);
-        
-        // 2. Novos registros (pendingRegistros) para inserir
         replaceGroupMutation.mutate({ oldIds, newRecords: pendingRegistros });
     };
     
-    // Remove item da lista pendente
     const handleRemovePending = (tempId: string) => {
         setPendingRegistros(prev => {
             const newPending = prev.filter(p => p.tempId !== tempId);
@@ -799,32 +702,30 @@ const HorasVooForm = () => {
         toast.info("Item removido da lista pendente.");
     };
     
-    // Handler para a OM Favorecida (OM do PTrab)
     const handleOmFavorecidaChange = (omData: OMData | undefined) => {
         if (omData) {
             setSelectedOmFavorecidaId(omData.id);
-            setSelectedOmDestinoId(omData.id); // Sincroniza OM Detentora
+            setSelectedOmDestinoId(omData.id);
             setFormData(prev => ({
                 ...prev,
                 om_favorecida: omData.nome_om,
                 ug_favorecida: omData.codug_om,
-                om_destino: omData.nome_om, // Preenchimento automático
-                ug_destino: omData.codug_om, // Preenchimento automático
+                om_destino: omData.nome_om,
+                ug_destino: omData.codug_om,
             }));
         } else {
             setSelectedOmFavorecidaId(undefined);
-            setSelectedOmDestinoId(undefined); // Limpa OM Detentora
+            setSelectedOmDestinoId(undefined);
             setFormData(prev => ({
                 ...prev,
                 om_favorecida: "",
                 ug_favorecida: "",
-                om_destino: "", // Limpa OM Detentora
-                ug_destino: "", // Limpa UG Detentora
+                om_destino: "",
+                ug_destino: "",
             }));
         }
     };
     
-    // Handler para a OM Detentora do Recurso
     const handleOmDestinoChange = (omData: OMData | undefined) => {
         if (omData) {
             setSelectedOmDestinoId(omData.id);
@@ -850,23 +751,18 @@ const HorasVooForm = () => {
         }));
     };
     
-    // Handler para o Switch do COTER
     const handleCoterResponsibilityChange = (checked: boolean) => {
         setFormData(prev => ({
             ...prev,
             isCoterResponsibility: checked,
-            // Se voltar para COTER, zera os valores de input
             valor_nd_30: checked ? 0 : prev.valor_nd_30,
             valor_nd_39: checked ? 0 : prev.valor_nd_39,
         }));
-        // Zera os inputs de moeda para refletir o estado
         if (checked) {
             setRawND30Input(numberToRawDigits(0));
             setRawND39Input(numberToRawDigits(0));
         }
     };
-    
-    // --- Lógica de Edição de Memória ---
     
     const handleIniciarEdicaoMemoria = (group: ConsolidatedHorasVoo, memoriaCompleta: string) => {
         const firstRecordId = group.records[0].id;
@@ -923,10 +819,6 @@ const HorasVooForm = () => {
         }
     };
     
-    // =================================================================
-    // RENDERIZAÇÃO
-    // =================================================================
-
     const isGlobalLoading = isLoadingPTrab || isLoadingRegistros || isLoadingOms;
     const isSaving = insertMutation.isPending || replaceGroupMutation.isPending || handleDeleteMutation.isPending;
 
@@ -941,28 +833,24 @@ const HorasVooForm = () => {
 
     const isPTrabEditable = ptrabData?.status !== 'aprovado' && ptrabData?.status !== 'arquivado';
     
-    // Lógica de abertura da Seção 2: Depende apenas da OM Favorecida e Fase da Atividade
     const isBaseFormReady = formData.om_favorecida.length > 0 && 
                             formData.ug_favorecida.length > 0 && 
                             formData.fase_atividade.length > 0;
 
-    // Verifica se os campos numéricos da Solicitação estão preenchidos
     const isSolicitationDataReady = formData.dias_operacao > 0 &&
                                     formData.quantidade_hv > 0 &&
-                                    formData.om_destino.length > 0 && // Ainda necessário para o DB
-                                    formData.ug_destino.length > 0 && // Ainda necessário para o DB
+                                    formData.om_destino.length > 0 && 
+                                    formData.ug_destino.length > 0 && 
                                     formData.codug_destino.length > 0 &&
                                     formData.municipio.length > 0 &&
                                     formData.tipo_anv.length > 0 &&
-                                    (formData.isCoterResponsibility || (formData.valor_nd_30 + formData.valor_nd_39 > 0)); // Se for COTER, não precisa de valor > 0
+                                    (formData.isCoterResponsibility || (formData.valor_nd_30 + formData.valor_nd_39 > 0));
 
     const isCalculationReady = isBaseFormReady && isSolicitationDataReady;
     
-    // Lógica para a Seção 3
     const itemsToDisplay = pendingRegistros;
     const isStagingUpdate = !!editingId && pendingRegistros.length > 0;
     
-    // Display do valor total
     const totalDisplay = (formData.isCoterResponsibility && calculos.totalGeral === 0) 
         ? "A CARGO DO COTER" 
         : formatCurrency(calculos.totalGeral);
@@ -987,14 +875,12 @@ const HorasVooForm = () => {
                     <CardContent>
                         <form onSubmit={handleStageCalculation} className="space-y-8">
                             
-                            {/* SEÇÃO 1: DADOS DA ORGANIZAÇÃO */}
                             <section className="space-y-4 border-b pb-6">
                                 <h3 className="text-lg font-semibold flex items-center gap-2">
                                     1. Dados da Organização
                                 </h3>
                                 
                                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                    {/* OM FAVORECIDA (Preenchimento automático do PTrab) */}
                                     <div className="space-y-2 col-span-1">
                                         <Label htmlFor="om_favorecida">OM Favorecida *</Label>
                                         <OmSelector
@@ -1027,7 +913,6 @@ const HorasVooForm = () => {
                                 </div>
                             </section>
 
-                            {/* SEÇÃO 2: CONFIGURAR ITEM (DADOS DE HV) */}
                             {isBaseFormReady && (
                                 <section className="space-y-4 border-b pb-6">
                                     <h3 className="text-lg font-semibold flex items-center gap-2">
@@ -1037,17 +922,14 @@ const HorasVooForm = () => {
                                     <Card className="mt-6 bg-muted/50 rounded-lg p-4">
                                         
                                         <Card className="rounded-lg p-4 bg-background">
-                                            {/* Campos de Período, OM Detentora e Detalhes de HV em um único grid */}
                                             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                                                 
-                                                {/* Separador visual */}
                                                 <div className="col-span-4">
                                                     <h4 className="font-semibold text-base mb-4">
                                                         Detalhes da Solicitação de Horas de Voo
                                                     </h4>
                                                 </div>
                                                 
-                                                {/* CODUG Destino */}
                                                 <div className="space-y-2 col-span-1">
                                                     <Label htmlFor="codug_destino">OM Gestora (CODUG) *</Label>
                                                     <Input
@@ -1061,7 +943,6 @@ const HorasVooForm = () => {
                                                     />
                                                 </div>
                                                 
-                                                {/* Município */}
                                                 <div className="space-y-2 col-span-2">
                                                     <Label htmlFor="municipio">Município *</Label>
                                                     <Input
@@ -1075,7 +956,6 @@ const HorasVooForm = () => {
                                                     />
                                                 </div>
                                                 
-                                                {/* Tipo de Aeronave */}
                                                 <div className="space-y-2 col-span-1">
                                                     <Label htmlFor="tipo_anv">Tipo de Anv *</Label>
                                                     <TipoAnvSelect
@@ -1085,7 +965,6 @@ const HorasVooForm = () => {
                                                     />
                                                 </div>
                                                 
-                                                {/* Quantidade de HV */}
                                                 <div className="space-y-2 col-span-1">
                                                     <Label htmlFor="quantidade_hv">Quantidade de HV *</Label>
                                                     <Input
@@ -1104,7 +983,6 @@ const HorasVooForm = () => {
                                                     />
                                                 </div>
                                                 
-                                                {/* Amparo */}
                                                 <div className="space-y-2 col-span-3">
                                                     <Label htmlFor="amparo">Amparo Legal/Diretriz</Label>
                                                     <Input
@@ -1117,10 +995,8 @@ const HorasVooForm = () => {
                                                     />
                                                 </div>
                                                 
-                                                {/* NOVO LAYOUT DE 3 COLUNAS PARA VALORES E SWITCH */}
                                                 <div className="col-span-4 grid grid-cols-3 gap-4">
                                                     
-                                                    {/* ND 30 */}
                                                     <div className="space-y-2 col-span-1">
                                                         <Label htmlFor="valor_nd_30">Valor ND 33.90.30 *</Label>
                                                         <div className="relative">
@@ -1141,7 +1017,6 @@ const HorasVooForm = () => {
                                                         </div>
                                                     </div>
                                                     
-                                                    {/* ND 39 */}
                                                     <div className="space-y-2 col-span-1">
                                                         <Label htmlFor="valor_nd_39">Valor ND 33.90.39 *</Label>
                                                         <div className="relative">
@@ -1162,7 +1037,6 @@ const HorasVooForm = () => {
                                                         </div>
                                                     </div>
                                                     
-                                                    {/* SWITCH COTER */}
                                                     <div className="space-y-2 col-span-1 flex flex-col justify-end">
                                                         <Label className="text-sm font-medium leading-none mb-2">
                                                             Responsável pelo Cálculo dos Custos
@@ -1190,7 +1064,6 @@ const HorasVooForm = () => {
                                             </span>
                                         </div>
                                         
-                                        {/* BOTÕES DE AÇÃO */}
                                         <div className="flex justify-end gap-3 pt-4">
                                             <Button 
                                                 type="submit" 
@@ -1207,14 +1080,12 @@ const HorasVooForm = () => {
                                 </section>
                             )}
 
-                            {/* SEÇÃO 3: ITENS ADICIONADOS (PENDENTES / REVISÃO DE ATUALIZAÇÃO) */}
                             {itemsToDisplay.length > 0 && (
                                 <section className="space-y-4 border-b pb-6">
                                     <h3 className="text-lg font-semibold flex items-center gap-2">
                                         3. {editingId ? "Revisão de Atualização" : "Itens Adicionados"} ({itemsToDisplay.length} {itemsToDisplay.length === 1 ? 'item' : 'itens'})
                                     </h3>
                                     
-                                    {/* Alerta de Validação Final (Modo Novo Registro) */}
                                     {!editingId && isFormDirty && (
                                         <Alert variant="destructive">
                                             <AlertCircle className="h-4 w-4" />
@@ -1224,7 +1095,6 @@ const HorasVooForm = () => {
                                         </Alert>
                                     )}
                                     
-                                    {/* Alerta de Validação Final (Apenas em modo de edição) */}
                                     {editingId && isFormDirty && (
                                         <Alert variant="destructive">
                                             <AlertCircle className="h-4 w-4" />
@@ -1238,10 +1108,6 @@ const HorasVooForm = () => {
                                         {itemsToDisplay.map((item) => {
                                             const totalND30 = item.valor_nd_30;
                                             const totalND39 = item.valor_nd_39;
-                                            
-                                            const diasText = item.dias_operacao === 1 ? "dia" : "dias";
-                                            const isOmDestinoDifferent = item.om_favorecida !== item.om_detentora || item.ug_favorecida !== item.ug_detentora;
-                                            
                                             const isCoter = totalND30 === 0 && totalND39 === 0;
 
                                             return (
@@ -1275,7 +1141,6 @@ const HorasVooForm = () => {
                                                             </div>
                                                         </div>
                                                         
-                                                        {/* Detalhes da Solicitação */}
                                                         <div className="grid grid-cols-2 gap-4 text-xs pt-1">
                                                             <div className="space-y-1">
                                                                 <p className="font-medium">OM Favorecida:</p>
@@ -1311,7 +1176,6 @@ const HorasVooForm = () => {
                                         })}
                                     </div>
                                     
-                                    {/* VALOR TOTAL DA OM (PENDENTE / STAGING) */}
                                     <Card className="bg-gray-100 shadow-inner">
                                         <CardContent className="p-4 flex justify-between items-center">
                                             <span className="font-bold text-base uppercase">
@@ -1361,7 +1225,6 @@ const HorasVooForm = () => {
                                 </section>
                             )}
 
-                            {/* SEÇÃO 4: REGISTROS SALVOS (OMs Cadastradas) */}
                             {consolidatedRegistros && consolidatedRegistros.length > 0 && (
                                 <section className="space-y-4 mt-8">
                                     <h3 className="text-xl font-bold flex items-center gap-2">
@@ -1373,21 +1236,11 @@ const HorasVooForm = () => {
                                         const totalOM = group.totalGeral;
                                         const totalND30Consolidado = group.totalND30;
                                         const totalND39Consolidado = group.totalND39;
-                                        
                                         const omName = group.organizacao;
                                         const ug = group.ug;
                                         const faseAtividade = group.fase_atividade || 'Não Definida';
-                                        
-                                        const diasOperacaoConsolidado = group.dias_operacao;
-                                        const diasText = diasOperacaoConsolidado === 1 ? 'dia' : 'dias';
-                                        
                                         const isDifferentOm = group.om_detentora !== group.organizacao || group.ug_detentora !== group.ug;
-                                        const omDestino = group.om_detentora;
-                                        const ugDestino = group.ug_detentora;
-                                        
                                         const isCoter = totalND30Consolidado === 0 && totalND39Consolidado === 0;
-                                        
-                                        // Quantidade total de HV para este grupo
                                         const totalHv = totalHvByGroup[group.groupKey] || 0;
 
                                         return (
@@ -1401,7 +1254,6 @@ const HorasVooForm = () => {
                                                     </span>
                                                 </div>
                                                 
-                                                {/* CORPO CONSOLIDADO */}
                                                 <div className="space-y-3">
                                                     <Card 
                                                         key={group.groupKey} 
@@ -1423,14 +1275,13 @@ const HorasVooForm = () => {
                                                                 <span className="font-extrabold text-xl text-foreground">
                                                                     {isCoter ? "A CARGO DO COTER" : formatCurrency(totalOM)}
                                                                 </span>
-                                                                {/* Botões de Ação */}
                                                                 <div className="flex gap-1 shrink-0">
                                                                     <Button
                                                                         type="button" 
                                                                         variant="ghost"
                                                                         size="icon"
                                                                         className="h-8 w-8"
-                                                                        onClick={() => handleEdit(group)} // Passa o grupo consolidado
+                                                                        onClick={() => handleEdit(group)}
                                                                         disabled={!isPTrabEditable || isSaving || pendingRegistros.length > 0}
                                                                     >
                                                                         <Pencil className="h-4 w-4" />
@@ -1439,7 +1290,7 @@ const HorasVooForm = () => {
                                                                         type="button" 
                                                                         variant="ghost"
                                                                         size="icon"
-                                                                        onClick={() => handleConfirmDelete(group)} // Passa o grupo consolidado
+                                                                        onClick={() => handleConfirmDelete(group)}
                                                                         className="h-8 w-8 text-destructive hover:bg-destructive/10"
                                                                         disabled={!isPTrabEditable || isSaving}
                                                                     >
@@ -1449,23 +1300,19 @@ const HorasVooForm = () => {
                                                             </div>
                                                         </div>
                                                         
-                                                        {/* Detalhes da Alocação */}
                                                         <div className="pt-2 border-t mt-2">
-                                                            {/* OM Gestora (Sempre visível, vermelha se diferente) */}
                                                             <div className="flex justify-between text-xs">
                                                                 <span className="text-muted-foreground">OM Gestora:</span>
                                                                 <span className={cn("font-medium", isDifferentOm && "text-red-600")}>
                                                                     {group.records[0].codug_destino}
                                                                 </span>
                                                             </div>
-                                                            {/* ND 33.90.30 */}
                                                             <div className="flex justify-between text-xs">
                                                                 <span className="text-muted-foreground">ND 33.90.30:</span>
                                                                 <span className="text-green-600">
                                                                     {totalND30Consolidado === 0 ? (isCoter ? "A cargo do COTER" : formatCurrency(totalND30Consolidado)) : formatCurrency(totalND30Consolidado)}
                                                                 </span>
                                                             </div>
-                                                            {/* ND 33.90.39 */}
                                                             <div className="flex justify-between text-xs">
                                                                 <span className="text-muted-foreground">ND 33.90.39:</span>
                                                                 <span className="text-green-600">
@@ -1481,7 +1328,6 @@ const HorasVooForm = () => {
                                 </section>
                             )}
 
-                            {/* SEÇÃO 5: MEMÓRIAS DE CÁLCULOS DETALHADAS */}
                             {consolidatedRegistros && consolidatedRegistros.length > 0 && (
                                 <div className="space-y-4 mt-8">
                                     <h3 className="text-xl font-bold flex items-center gap-2">
@@ -1509,7 +1355,6 @@ const HorasVooForm = () => {
                     </CardContent>
                 </Card>
                 
-                {/* Diálogo de Confirmação de Exclusão */}
                 <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
                     <AlertDialogContent>
                         <AlertDialogHeader>
