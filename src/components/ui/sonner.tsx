@@ -12,13 +12,12 @@ const Toaster = ({ ...props }: ToasterProps) => {
     <Sonner
       theme={theme as ToasterProps["theme"]}
       className="toaster group"
-      richColors={true}
+      // richColors removido para evitar cores automáticas vibrantes
       toastOptions={{
         classNames: {
-          // REMOVIDO: group-[.toaster]:bg-background group-[.toaster]:text-foreground
-          // Isso permite que o richColors do Sonner assuma o controle das cores de fundo e texto.
+          // Forçamos o fundo branco (bg-background) e o texto azul (text-blue-700)
           toast:
-            "group toast group-[.toaster]:border-border group-[.toaster]:shadow-lg font-sans",
+            "group toast group-[.toaster]:bg-background group-[.toaster]:text-blue-700 group-[.toaster]:border-border group-[.toaster]:shadow-lg font-sans border",
           description: "group-[.toast]:text-muted-foreground",
           actionButton:
             "group-[.toast]:bg-primary group-[.toast]:text-primary-foreground",
