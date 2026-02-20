@@ -7,17 +7,23 @@ export const calculateMaterialPermanenteTotals = (items: any[]) => {
 
 /**
  * Gera a memória de cálculo para Material Permanente.
- * Renomeada para generateMaterialPermanenteMemoriaCalculo para satisfazer as importações do projeto.
  */
 export const generateMaterialPermanenteMemoriaCalculo = (registro: any, item: any) => {
     if (!item) return "";
 
-    // Extração da justificativa
-    const { grupo, proposito, destinacao, local, finalidade, motivo } = item.justificativa || {};
-    const diasStr = `${registro.dias_operacao} ${registro.dias_operacao === 1 ? 'dia' : 'dias'}`;
-    const fase = registro.fase_atividade || '[Fase]';
+    // Extração da justificativa com fallbacks seguros para evitar placeholders
+    const j = item.justificativa || {};
+    const grupo = j.grupo || item.descricao_reduzida || item.descricao_item || "[Item]";
+    const proposito = j.proposito || "atender às necessidades da operação";
+    const destinacao = j.destinacao || "";
+    const local = j.local || "no local da atividade";
+    const finalidade = j.finalidade || "cumprir a missão delegada";
+    const motivo = j.motivo || "da necessidade técnica/operacional identificada";
     
-    const justificativa = `Aquisição de ${grupo || '[Grupo]'} para atender ${proposito || '[Propósito]'} ${destinacao || '[Destinação]'}, ${local || '[Local]'}, a fim de ${finalidade || '[Finalidade]'}, durante ${diasStr} de ${fase}. Justifica-se essa aquisição ${motivo || '[Motivo]'}.`;
+    const diasStr = `${registro.dias_operacao || 1} ${registro.dias_operacao === 1 ? 'dia' : 'dias'}`;
+    const fase = registro.fase_atividade || 'Operação';
+    
+    const justificativa = `Aquisição de ${grupo} para atender ${proposito} ${destinacao}, ${local}, a fim de ${finalidade}, durante ${diasStr} de ${fase}. Justifica-se essa aquisição pela ${motivo}.`;
 
     const valorUnitario = Number(item.valor_unitario || 0);
     const quantidade = Number(item.quantidade || 0);

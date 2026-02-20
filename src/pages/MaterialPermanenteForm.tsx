@@ -53,7 +53,6 @@ import MaterialPermanenteJustificativaDialog from "@/components/MaterialPermanen
 import MaterialPermanenteBulkJustificativaDialog from "@/components/MaterialPermanenteBulkJustificativaDialog";
 import { Collapsible, CollapsibleContent } from "@/components/ui/collapsible";
 
-// Interface para os registros vindos do banco de dados
 interface MaterialPermanenteDBRecord {
     id: string;
     organizacao: string;
@@ -94,7 +93,6 @@ const MaterialPermanenteForm = () => {
     const { user } = useSession();
     const { data: oms } = useMilitaryOrganizations();
 
-    // --- ESTADOS DO FORMULÁRIO ---
     const [omFavorecida, setOmFavorecida] = useState({ nome: "", ug: "", id: "" });
     const [faseAtividade, setFaseAtividade] = useState("");
     const [efetivo, setEfetivo] = useState<number>(0);
@@ -110,7 +108,6 @@ const MaterialPermanenteForm = () => {
     const [pendingItems, setPendingItems] = useState<PendingPermanenteItem[]>([]);
     const [lastStagedState, setLastStagedState] = useState<any>(null);
     const [editingId, setEditingId] = useState<string | null>(null);
-    const [activeCompositionId, setActiveCompositionId] = useState<string | null>(null);
     
     const [editingMemoriaId, setEditingMemoriaId] = useState<string | null>(null);
     const [memoriaEdit, setMemoriaEdit] = useState("");
@@ -122,7 +119,6 @@ const MaterialPermanenteForm = () => {
     const [itemForJustificativa, setItemForJustificativa] = useState<ItemAquisicaoPermanente | null>(null);
     const [expandedJustifications, setExpandedJustifications] = useState<Record<string, boolean>>({});
 
-    // --- DATA FETCHING ---
     const { data: ptrabData, isLoading: isLoadingPTrab } = useQuery<PTrabData>({
         queryKey: ['ptrabData', ptrabId],
         queryFn: () => fetchPTrabData(ptrabId!),
@@ -179,7 +175,6 @@ const MaterialPermanenteForm = () => {
         return [...registros].sort((a, b) => a.organizacao.localeCompare(b.organizacao));
     }, [registros]);
 
-    // --- CÁLCULOS ---
     const totalLote = useMemo(() => {
         return selectedItems.reduce((acc, item) => acc + ((item.quantidade || 0) * item.valor_unitario), 0);
     }, [selectedItems]);
@@ -203,30 +198,29 @@ const MaterialPermanenteForm = () => {
         return currentItemsKey !== lastStagedState.itemsKey;
     }, [omFavorecida, faseAtividade, efetivo, hasEfetivo, diasOperacao, omDestino, selectedItems, lastStagedState, pendingItems]);
 
-    // --- MUTATIONS ---
     const saveMutation = useMutation({
         mutationFn: async (itemsToSave: PendingPermanenteItem[]) => {
             const idsToDelete = itemsToSave.map(i => i.dbId).filter(Boolean) as string[];
             if (idsToDelete.length > 0) {
                 await supabase.from('material_permanente_registros' as any).delete().in('id', idsToDelete);
             }
-            const records = itemsToSave.flatMap(lote => {
-                const items = lote.detalhes_planejamento?.itens_selecionados || [];
-                return items.map((item: any) => ({
-                    p_trab_id: ptrabId,
-                    organizacao: lote.organizacao,
-                    ug: lote.ug,
-                    om_detentora: lote.om_detentora,
-                    ug_detentora: lote.ug_detentora,
-                    dias_operacao: lote.dias_operacao,
-                    efetivo: lote.efetivo,
-                    fase_atividade: lote.fase_atividade,
-                    categoria: lote.categoria,
-                    detalhes_planejamento: { item_unico: item, has_efetivo: lote.detalhes_planejamento.has_efetivo } as any,
-                    valor_total: (item.quantidade || 1) * item.valor_unitario,
-                    valor_nd_52: (item.quantidade || 1) * item.valor_unitario,
-                }));
-            });
+            
+            // CONSOLIDAÇÃO: Salva um registro por lote (PendingPermanenteItem)
+            const records = itemsToSave.map(lote => ({
+                p_trab_id: ptrabId,
+                organizacao: lote.organizacao,
+                ug: lote.ug,
+                om_detentora: lote.om_detentora,
+                ug_detentora: lote.ug_detentora,
+                dias_operacao: lote.dias_operacao,
+                efetivo: lote.efetivo,
+                fase_atividade: lote.fase_atividade,
+                categoria: lote.categoria,
+                detalhes_planejamento: lote.detalhes_planejamento,
+                valor_total: lote.valor_total,
+                valor_nd_52: lote.valor_nd_52,
+            }));
+            
             const { error } = await supabase.from('material_permanente_registros' as any).insert(records);
             if (error) throw error;
         },
@@ -253,7 +247,6 @@ const MaterialPermanenteForm = () => {
         onError: (err) => toast.error("Erro ao excluir: " + err.message)
     });
 
-    // --- HANDLERS ---
     const resetForm = () => {
         setPendingItems([]);
         setLastStagedState(null);
@@ -263,7 +256,6 @@ const MaterialPermanenteForm = () => {
         setDiasOperacao(0);
         setFaseAtividade("");
         setEditingId(null);
-        setActiveCompositionId(null);
         setExpandedJustifications({});
     };
 
@@ -277,11 +269,13 @@ const MaterialPermanenteForm = () => {
     const handleAddToPending = () => {
         if (selectedItems.length === 0) { toast.warning("Selecione pelo menos um item."); return; }
         if (diasOperacao <= 0) { toast.warning("Informe o período da operação."); return; }
+        
         const itemsWithoutJustification = selectedItems.filter(item => !item.justificativa || !Object.values(item.justificativa).some(v => v && v.toString().trim() !== ""));
         if (itemsWithoutJustification.length > 0) { toast.error("Todos os itens devem possuir uma justificativa preenchida."); return; }
-        const compositionId = editingId || activeCompositionId || crypto.randomUUID();
-        if (!editingId && !activeCompositionId) setActiveCompositionId(compositionId);
+        
+        const compositionId = editingId || crypto.randomUUID();
         const { totalGeral } = calculateMaterialPermanenteTotals(selectedItems);
+        
         const newItem: PendingPermanenteItem = {
             tempId: compositionId,
             dbId: editingId || undefined,
@@ -297,6 +291,7 @@ const MaterialPermanenteForm = () => {
             valor_total: totalGeral,
             valor_nd_52: totalGeral,
         };
+        
         setPendingItems([newItem]);
         setLastStagedState({
             omFavorecidaId: omFavorecida.id,
@@ -313,7 +308,6 @@ const MaterialPermanenteForm = () => {
 
     const handleEdit = (reg: MaterialPermanenteDBRecord) => {
         setEditingId(reg.id);
-        setActiveCompositionId(reg.id);
         const omFav = oms?.find(om => om.nome_om === reg.organizacao && om.codug_om === reg.ug);
         const omFavData = { nome: reg.organizacao, ug: reg.ug, id: omFav?.id || "" };
         setOmFavorecida(omFavData);
@@ -323,10 +317,12 @@ const MaterialPermanenteForm = () => {
         const omDest = oms?.find(om => om.nome_om === reg.om_detentora && om.codug_om === reg.ug_detentora);
         const omDestData = { nome: reg.om_detentora || "", ug: reg.ug_detentora || "", id: omDest?.id || "" };
         setOmDestino(omDestData);
+        
         const details = reg.detalhes_planejamento;
-        const items = details?.item_unico ? [details.item_unico] : (details?.itens_selecionados || []);
+        const items = details?.itens_selecionados || (details?.item_unico ? [details.item_unico] : []);
         setSelectedItems(items);
         setHasEfetivo(details?.has_efetivo !== false);
+        
         const { totalGeral } = calculateMaterialPermanenteTotals(items);
         const newItem: PendingPermanenteItem = {
             tempId: reg.id,
@@ -356,8 +352,17 @@ const MaterialPermanenteForm = () => {
         window.scrollTo({ top: 0, behavior: 'smooth' });
     };
 
-    const handleSaveMemoria = async (id: string) => {
-        const { error } = await supabase.from('material_permanente_registros' as any).update({ detalhamento_customizado: memoriaEdit }).eq('id', id);
+    const handleSaveMemoria = async (registroId: string, itemId: string) => {
+        const registro = registros?.find(r => r.id === registroId);
+        if (!registro) return;
+
+        const items = registro.detalhes_planejamento?.itens_selecionados || (registro.detalhes_planejamento?.item_unico ? [registro.detalhes_planejamento.item_unico] : []);
+        const updatedItems = items.map((i: any) => i.id === itemId ? { ...i, detalhamento_customizado: memoriaEdit } : i);
+        
+        const { error } = await supabase.from('material_permanente_registros' as any)
+            .update({ detalhes_planejamento: { ...registro.detalhes_planejamento, itens_selecionados: updatedItems } })
+            .eq('id', registroId);
+
         if (error) toast.error("Erro ao salvar memória.");
         else {
             toast.success("Memória atualizada.");
@@ -366,8 +371,17 @@ const MaterialPermanenteForm = () => {
         }
     };
 
-    const handleRestoreMemoria = async (id: string) => {
-        await supabase.from('material_permanente_registros' as any).update({ detalhamento_customizado: null }).eq('id', id);
+    const handleRestoreMemoria = async (registroId: string, itemId: string) => {
+        const registro = registros?.find(r => r.id === registroId);
+        if (!registro) return;
+
+        const items = registro.detalhes_planejamento?.itens_selecionados || (registro.detalhes_planejamento?.item_unico ? [registro.detalhes_planejamento.item_unico] : []);
+        const updatedItems = items.map((i: any) => i.id === itemId ? { ...i, detalhamento_customizado: null } : i);
+        
+        await supabase.from('material_permanente_registros' as any)
+            .update({ detalhes_planejamento: { ...registro.detalhes_planejamento, itens_selecionados: updatedItems } })
+            .eq('id', registroId);
+
         toast.success("Memória restaurada.");
         queryClient.invalidateQueries({ queryKey: ['materialPermanenteRegistros', ptrabId] });
     };
@@ -393,9 +407,15 @@ const MaterialPermanenteForm = () => {
     };
 
     const getJustificativaText = (item: any, dias: number, fase: string) => {
-        const { grupo, proposito, destinacao, local, finalidade, motivo } = item.justificativa || {};
+        const j = item.justificativa || {};
+        const grupo = j.grupo || item.descricao_reduzida || item.descricao_item || "[Item]";
+        const proposito = j.proposito || "[Propósito]";
+        const destinacao = j.destinacao || "";
+        const local = j.local || "[Local]";
+        const finalidade = j.finalidade || "[Finalidade]";
+        const motivo = j.motivo || "[Motivo]";
         const diasStr = `${dias} ${dias === 1 ? 'dia' : 'dias'}`;
-        return `Aquisição de ${grupo || '[Grupo]'} para atender ${proposito || '[Propósito]'} ${destinacao || '[Destinação]'}, ${local || '[Local]'}, a fim de ${finalidade || '[Finalidade]'}, durante ${diasStr} de ${fase || '[Fase]'}. Justifica-se essa aquisição ${motivo || '[Motivo]'}.`;
+        return `Aquisição de ${grupo} para atender ${proposito} ${destinacao}, ${local}, a fim de ${finalidade}, durante ${diasStr} de ${fase || '[Fase]'}. Justifica-se essa aquisição ${motivo}.`;
     };
 
     if (isLoadingPTrab || isLoadingRegistros) return <div className="min-h-screen flex items-center justify-center"><Loader2 className="animate-spin" /></div>;
@@ -555,8 +575,8 @@ const MaterialPermanenteForm = () => {
                                             <div className="space-y-3">
                                                 {group.records.map((reg: MaterialPermanenteDBRecord) => {
                                                     const isDifferentOm = reg.om_detentora?.trim() !== reg.organizacao?.trim();
-                                                    const item = reg.detalhes_planejamento?.item_unico || reg.detalhes_planejamento?.itens_selecionados?.[0];
-                                                    const totalQty = item?.quantidade || 0;
+                                                    const items = reg.detalhes_planejamento?.itens_selecionados || (reg.detalhes_planejamento?.item_unico ? [reg.detalhes_planejamento.item_unico] : []);
+                                                    const totalQty = items.reduce((acc: number, i: any) => acc + (i.quantidade || 0), 0);
                                                     return (
                                                         <Card key={reg.id} className="p-3 bg-background border">
                                                             <div className="flex items-center justify-between">
@@ -579,7 +599,7 @@ const MaterialPermanenteForm = () => {
                                         const items = reg.detalhes_planejamento?.itens_selecionados || (reg.detalhes_planejamento?.item_unico ? [reg.detalhes_planejamento.item_unico] : []);
                                         return items.map((item: any) => (
                                             <MaterialPermanenteMemoria 
-                                                key={`mem-${reg.id}-${item.id}`}
+                                                key={`mem-${reg.id}-${item.id || item.codigo_item}`}
                                                 registro={reg}
                                                 item={item}
                                                 isPTrabEditable={isPTrabEditable}
