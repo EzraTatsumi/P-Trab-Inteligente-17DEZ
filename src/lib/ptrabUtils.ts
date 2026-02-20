@@ -95,8 +95,8 @@ export async function fetchPTrabRecords<T extends PTrabLinkedTableName>(tableNam
  * Busca as diretrizes operacionais (custos operacionais e diárias) para o ano de referência fornecido.
  * @param year O ano de referência para buscar a diretriz.
  */
-export async function fetchDiretrizesOperacionais(year: number): Promise<DiretrizOperacional> {
-    if (!year) throw new Error("Ano de referência não fornecido.");
+export async function fetchDiretrizesOperacionais(year: number): Promise<DiretrizOperacional | null> {
+    if (!year) return null;
     
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error("Usuário não autenticado.");
@@ -111,14 +111,11 @@ export async function fetchDiretrizesOperacionais(year: number): Promise<Diretri
         
     if (error) {
         console.error("Erro ao buscar diretriz operacional:", error);
-        throw new Error(`Falha ao buscar diretrizes operacionais para o ano ${year}.`);
+        return null;
     }
     
-    if (!data) {
-        throw new Error(`Diretrizes Operacionais não encontradas para o ano ${year}. Por favor, cadastre-as em 'Configurações > Custos Operacionais'.`);
-    }
-    
-    return data as DiretrizOperacional;
+    // Retornamos null se não encontrar, em vez de lançar erro, para não quebrar a aplicação
+    return data as DiretrizOperacional | null;
 }
 
 /**
