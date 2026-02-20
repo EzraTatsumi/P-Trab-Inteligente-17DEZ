@@ -98,7 +98,9 @@ type PTrabLinkedTableName =
     'classe_v_registros' | 'classe_vi_registros' | 'classe_vii_registros' | 
     'classe_viii_saude_registros' | 'classe_viii_remonta_registros' | 
     'classe_ix_registros' | 'p_trab_ref_lpc' | 'passagem_registros' | 
-    'diaria_registros' | 'verba_operacional_registros' | 'concessionaria_registros' | 'horas_voo_registros' | 'material_consumo_registros' | 'complemento_alimentacao_registros';
+    'diaria_registros' | 'verba_operacional_registros' | 'concessionaria_registros' | 
+    'horas_voo_registros' | 'material_consumo_registros' | 'complemento_alimentacao_registros' |
+    'material_permanente_registros' | 'servicos_terceiros_registros' | 'dor_registros';
 
 // Lista de Comandos Militares de Área (CMA)
 const COMANDOS_MILITARES_AREA = [
@@ -134,6 +136,7 @@ const statusConfig = {
 const PTrabManager = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+  const pTrabsList = useRef<PTrab[]>([]);
   const [pTrabs, setPTrabs] = useState<PTrab[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -645,7 +648,7 @@ const PTrabManager = () => {
   const handleSaveComentario = async () => {
     if (!ptrabComentario) return;
     try {
-      const { error } = await supabase.from('p_trab').update({ comentario: comentarioText || null }).eq('id', ptrabComentario.id);
+      const { error } = await supabase('p_trab').update({ comentario: comentarioText || null }).eq('id', ptrabComentario.id);
       if (error) throw error;
       toast.success("Comentário salvo com sucesso!");
       setShowComentarioDialog(false);
@@ -872,7 +875,11 @@ const PTrabManager = () => {
   };
 
   const cloneRelatedRecords = async (originalPTrabId: string, newPTrabId: string) => {
-    const cloneClassRecords = async <T extends PTrabLinkedTableName>(tableName: T, jsonbField: keyof Tables<T> | null, numericFields: string[]) => {
+    const cloneClassRecords = async <T extends PTrabLinkedTableName>(
+        tableName: T, 
+        jsonbFields: (keyof Tables<T>)[] | null, 
+        numericFields: string[]
+    ) => {
         const { data: originalRecords, error: fetchError } = await (supabase.from(tableName) as any).select('*').eq("p_trab_id", originalPTrabId);
         if (fetchError) {
             console.error(`Erro ao carregar registros da ${tableName}:`, fetchError);
@@ -882,8 +889,18 @@ const PTrabManager = () => {
         const newRecords = (typedRecords || []).map(record => {
             const { id, created_at, updated_at, ...restOfRecord } = record as any; 
             const newRecord: Record<string, any> = { ...restOfRecord, p_trab_id: newPTrabId };
-            if (jsonbField && newRecord[jsonbField as string]) newRecord[jsonbField as string] = JSON.parse(JSON.stringify(newRecord[jsonbField as string]));
-            numericFields.forEach(field => { if (newRecord[field] === null || newRecord[field] === undefined) newRecord[field] = 0; });
+            
+            if (jsonbFields) {
+                jsonbFields.forEach(field => {
+                    if (newRecord[field as string]) {
+                        newRecord[field as string] = JSON.parse(JSON.stringify(newRecord[field as string]));
+                    }
+                });
+            }
+            
+            numericFields.forEach(field => { 
+                if (newRecord[field] === null || newRecord[field] === undefined) newRecord[field] = 0; 
+            });
             return newRecord;
         });
         if (newRecords.length > 0) {
@@ -913,7 +930,7 @@ const PTrabManager = () => {
     }
     
     const genericNumericFields = ['dias_operacao', 'valor_total', 'valor_nd_30', 'valor_nd_39', 'efetivo'];
-    await cloneClassRecords('classe_ii_registros', 'itens_equipamentos', genericNumericFields);
+    await cloneClassRecords('classe_ii_registros', ['itens_equipamentos'], genericNumericFields);
     const classeIIINumericFields = ['dias_operacao', 'preco_litro', 'quantidade', 'total_litros', 'valor_total', 'consumo_lubrificante_litro', 'preco_lubrificante', 'valor_nd_30', 'valor_nd_39'];
     const { data: originalClasseIIIRecords, error: fetchClasseIIIError } = await supabase.from("classe_iii_registros").select("*").eq("p_trab_id", originalPTrabId);
     if (fetchClasseIIIError) console.error("Erro ao carregar registros da Classe III:", fetchClasseIIIError);
@@ -930,25 +947,30 @@ const PTrabManager = () => {
       }
     }
     
-    await cloneClassRecords('classe_v_registros', 'itens_equipamentos', genericNumericFields);
-    await cloneClassRecords('classe_vi_registros', 'itens_equipamentos', genericNumericFields);
-    await cloneClassRecords('classe_vii_registros', 'itens_equipamentos', genericNumericFields);
-    await cloneClassRecords('classe_viii_saude_registros', 'itens_saude', genericNumericFields);
-    await cloneClassRecords('classe_viii_remonta_registros', 'itens_remonta', [...genericNumericFields, 'quantidade_animais']);
-    await cloneClassRecords('classe_ix_registros', 'itens_motomecanizacao', genericNumericFields);
+    await cloneClassRecords('classe_v_registros', ['itens_equipamentos'], genericNumericFields);
+    await cloneClassRecords('classe_vi_registros', ['itens_equipamentos'], genericNumericFields);
+    await cloneClassRecords('classe_vii_registros', ['itens_equipamentos'], genericNumericFields);
+    await cloneClassRecords('classe_viii_saude_registros', ['itens_saude'], genericNumericFields);
+    await cloneClassRecords('classe_viii_remonta_registros', ['itens_remonta'], [...genericNumericFields, 'quantidade_animais']);
+    await cloneClassRecords('classe_ix_registros', ['itens_motomecanizacao'], genericNumericFields);
     const { data: originalRefLPC } = await supabase.from("p_trab_ref_lpc").select("*").eq("p_trab_id", originalPTrabId).maybeSingle();
     if (originalRefLPC) {
       const { id, created_at, updated_at, ...restOfRefLPC } = originalRefLPC;
       const newRefLPCData = { ...restOfRefLPC, p_trab_id: newPTrabId, preco_diesel: restOfRefLPC.preco_diesel ?? 0, preco_gasolina: restOfRefLPC.preco_gasolina ?? 0 };
       await supabase.from("p_trab_ref_lpc").insert([newRefLPCData as TablesInsert<'p_trab_ref_lpc'>]);
     }
-    await cloneClassRecords('diaria_registros', 'quantidades_por_posto', ['dias_operacao', 'quantidade', 'nr_viagens', 'valor_nd_15', 'valor_nd_30', 'valor_total']);
+    await cloneClassRecords('diaria_registros', ['quantidades_por_posto'], ['dias_operacao', 'quantidade', 'nr_viagens', 'valor_nd_15', 'valor_nd_30', 'valor_total']);
     await cloneClassRecords('verba_operacional_registros', null, ['dias_operacao', 'quantidade_equipes', 'valor_total_solicitado', 'valor_nd_30', 'valor_nd_39']);
     await cloneClassRecords('passagem_registros', null, ['dias_operacao', 'efetivo', 'quantidade_passagens', 'valor_nd_33', 'valor_total', 'valor_unitario']);
     await cloneClassRecords('concessionaria_registros', null, ['dias_operacao', 'efetivo', 'consumo_pessoa_dia', 'valor_unitario', 'valor_total', 'valor_nd_39']);
     await cloneClassRecords('horas_voo_registros', null, ['dias_operacao', 'quantidade_hv', 'valor_nd_30', 'valor_nd_39', 'valor_total']);
-    await cloneClassRecords('material_consumo_registros', 'itens_aquisicao', ['dias_operacao', 'efetivo', 'valor_total', 'valor_nd_30', 'valor_nd_39']);
-    await cloneClassRecords('complemento_alimentacao_registros', 'itens_aquisicao', ['dias_operacao', 'efetivo', 'valor_total', 'valor_nd_30', 'valor_nd_39']);
+    await cloneClassRecords('material_consumo_registros', ['itens_aquisicao'], ['dias_operacao', 'efetivo', 'valor_total', 'valor_nd_30', 'valor_nd_39']);
+    await cloneClassRecords('complemento_alimentacao_registros', ['itens_aquisicao'], ['dias_operacao', 'efetivo', 'valor_total', 'valor_nd_30', 'valor_nd_39']);
+    
+    // NOVAS TABELAS CLONADAS
+    await cloneClassRecords('material_permanente_registros', ['detalhes_planejamento'], ['dias_operacao', 'efetivo', 'valor_total', 'valor_nd_52']);
+    await cloneClassRecords('servicos_terceiros_registros', ['detalhes_planejamento'], ['dias_operacao', 'efetivo', 'valor_total', 'valor_nd_30', 'valor_nd_39']);
+    await cloneClassRecords('dor_registros', ['itens_dor', 'grupos_dor'], []);
   };
 
   const needsNumbering = (ptrab: PTrab) => ptrab.numero_ptrab.startsWith("Minuta") && (ptrab.status === 'aberto' || ptrab.status === 'em_andamento');
@@ -979,7 +1001,7 @@ const PTrabManager = () => {
         const { data: newPTrab, error: insertError = null } = await supabase.from("p_trab").insert([newPTrabData]).select('id').single();
         if (insertError || !newPTrab) throw insertError;
         const newPTrabId = newPTrab.id;
-        const tablesToConsolidate: PTrabLinkedTableName[] = ['classe_i_registros', 'classe_ii_registros', 'classe_iii_registros', 'classe_v_registros', 'classe_vi_registros', 'classe_vii_registros', 'classe_viii_saude_registros', 'classe_viii_remonta_registros', 'classe_ix_registros', 'diaria_registros', 'verba_operacional_registros', 'passagem_registros', 'concessionaria_registros', 'horas_voo_registros', 'material_consumo_registros', 'complemento_alimentacao_registros'];
+        const tablesToConsolidate: PTrabLinkedTableName[] = ['classe_i_registros', 'classe_ii_registros', 'classe_iii_registros', 'classe_v_registros', 'classe_vi_registros', 'classe_vii_registros', 'classe_viii_saude_registros', 'classe_viii_remonta_registros', 'classe_ix_registros', 'diaria_registros', 'verba_operacional_registros', 'passagem_registros', 'concessionaria_registros', 'horas_voo_registros', 'material_consumo_registros', 'complemento_alimentacao_registros', 'material_permanente_registros', 'servicos_terceiros_registros', 'dor_registros'];
         for (const tableName of tablesToConsolidate) {
             const { data: records, error: recordsError } = await (supabase.from(tableName) as any).select('*').in('p_trab_id', selectedPTrabsToConsolidate);
             if (recordsError) continue;
@@ -987,7 +1009,19 @@ const PTrabManager = () => {
             if (typedRecords && typedRecords.length > 0) {
                 const newRecords = typedRecords.map(record => {
                     const { id, created_at, updated_at, ...restOfRecord } = record as any;
-                    const newRecord: TablesInsert<typeof tableName> = { ...restOfRecord, p_trab_id: newPTrabId, ...(record.hasOwnProperty('itens_equipamentos') && { itens_equipamentos: JSON.parse(JSON.stringify((record as any).itens_equipamentos)) }), ...(record.hasOwnProperty('itens_saude') && { itens_saude: JSON.parse(JSON.stringify((record as any).itens_saude)) }), ...(record.hasOwnProperty('itens_remonta') && { itens_remonta: JSON.parse(JSON.stringify((record as any).itens_remonta)) }), ...(record.hasOwnProperty('itens_motomecanizacao') && { itens_motomecanizacao: JSON.parse(JSON.stringify((record as any).itens_motomecanizacao)) }), ...(record.hasOwnProperty('quantidades_por_posto') && { quantidades_por_posto: JSON.parse(JSON.stringify((record as any).quantidades_por_posto)) }), ...(record.hasOwnProperty('itens_aquisicao') && { itens_aquisicao: JSON.parse(JSON.stringify((record as any).itens_aquisicao)) }) } as TablesInsert<typeof tableName>;
+                    const newRecord: TablesInsert<typeof tableName> = { 
+                        ...restOfRecord, 
+                        p_trab_id: newPTrabId, 
+                        ...(record.hasOwnProperty('itens_equipamentos') && { itens_equipamentos: JSON.parse(JSON.stringify((record as any).itens_equipamentos)) }), 
+                        ...(record.hasOwnProperty('itens_saude') && { itens_saude: JSON.parse(JSON.stringify((record as any).itens_saude)) }), 
+                        ...(record.hasOwnProperty('itens_remonta') && { itens_remonta: JSON.parse(JSON.stringify((record as any).itens_remonta)) }), 
+                        ...(record.hasOwnProperty('itens_motomecanizacao') && { itens_motomecanizacao: JSON.parse(JSON.stringify((record as any).itens_motomecanizacao)) }), 
+                        ...(record.hasOwnProperty('quantidades_por_posto') && { quantidades_por_posto: JSON.parse(JSON.stringify((record as any).quantidades_por_posto)) }), 
+                        ...(record.hasOwnProperty('itens_aquisicao') && { itens_aquisicao: JSON.parse(JSON.stringify((record as any).itens_aquisicao)) }),
+                        ...(record.hasOwnProperty('detalhes_planejamento') && { detalhes_planejamento: JSON.parse(JSON.stringify((record as any).detalhes_planejamento)) }),
+                        ...(record.hasOwnProperty('itens_dor') && { itens_dor: JSON.parse(JSON.stringify((record as any).itens_dor)) }),
+                        ...(record.hasOwnProperty('grupos_dor') && { grupos_dor: JSON.parse(JSON.stringify((record as any).grupos_dor)) })
+                    } as TablesInsert<typeof tableName>;
                     return newRecord;
                 });
                 await (supabase.from(tableName) as any).insert(newRecords);
