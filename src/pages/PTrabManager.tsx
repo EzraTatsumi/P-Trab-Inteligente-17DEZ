@@ -57,6 +57,7 @@ import LinkPTrabDialog from "@/components/LinkPTrabDialog";
 import ManageSharingDialog from "@/components/ManageSharingDialog";
 import UnlinkPTrabDialog from "@/components/UnlinkPTrabDialog";
 import PageMetadata from "@/components/PageMetadata";
+import { fetchBatchPTrabTotals } from "@/lib/ptrabUtils";
 
 // Define a base type for PTrab data fetched from DB, including the missing 'origem' field
 type PTrabDB = Tables<'p_trab'> & {
@@ -76,13 +77,11 @@ interface PTrab extends PTrabDB {
   totalMaterialPermanente?: number;
   quantidadeRacaoOp?: number;
   quantidadeHorasVoo?: number;
-  // NOVO: Propriedades de compartilhamento
   isOwner: boolean;
   isShared: boolean;
   hasPendingRequests: boolean;
 }
 
-// NOVO TIPO: Para gerenciar solicitações
 interface ShareRequest extends Tables<'ptrab_share_requests'> {
   requester_profile: {
     id: string;
@@ -92,7 +91,6 @@ interface ShareRequest extends Tables<'ptrab_share_requests'> {
   } | null;
 }
 
-// Tipo de união para as tabelas que podem ser clonadas/consolidadas
 type PTrabLinkedTableName =
     'classe_i_registros' | 'classe_ii_registros' | 'classe_iii_registros' | 
     'classe_v_registros' | 'classe_vi_registros' | 'classe_vii_registros' | 
@@ -102,7 +100,6 @@ type PTrabLinkedTableName =
     'horas_voo_registros' | 'material_consumo_registros' | 'complemento_alimentacao_registros' |
     'material_permanente_registros' | 'servicos_terceiros_registros' | 'dor_registros';
 
-// Lista de Comandos Militares de Área (CMA)
 const COMANDOS_MILITARES_AREA = [
   "Comando Militar da Amazônia",
   "Comando Militar do Norte",
@@ -136,7 +133,6 @@ const statusConfig = {
 const PTrabManager = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const pTrabsList = useRef<PTrab[]>([]);
   const [pTrabs, setPTrabs] = useState<PTrab[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -160,9 +156,8 @@ const PTrabManager = () => {
   const [showCloneOptionsDialog, setShowCloneOptionsDialog] = useState(false);
   const [showCloneVariationDialog, setShowCloneVariationDialog] = useState(false);
   const [ptrabToClone, setPtrabToClone] = useState<PTrab | null>(null);
-  const [cloneType, setCloneType, ] = useState<'new' | 'variation'>('new');
+  const [cloneType, setCloneType] = useState<'new' | 'variation'>('new');
   const [suggestedCloneNumber, setSuggestedCloneNumber] = useState<string>("");
-  const [customCloneNumber, setCustomCloneNumber] = useState<string>("");
   
   const [originalPTrabIdToClone, setOriginalPTrabIdToClone] = useState(null as string | null);
 
@@ -181,7 +176,6 @@ const PTrabManager = () => {
   
   const [showCreditPrompt, setShowCreditPrompt] = useState(false);
   const [ptrabToFill, setPtrabToFill] = useState<PTrab | null>(null);
-  const hasBeenPrompted = useRef(new Set<string>());
 
   const [showShareLinkDialog, setShowShareLinkDialog] = useState(false);
   const [ptrabToShare, setPtrabToShare] = useState<PTrab | null>(null);
@@ -362,162 +356,50 @@ const PTrabManager = () => {
       if (pTrabsError) throw pTrabsError;
 
       if (!Array.isArray(pTrabsData)) {
-        console.error("Invalid data received from p_trab table");
         setPTrabs([]);
         return;
       }
 
       const typedPTrabsData = pTrabsData as unknown as PTrabDB[];
-      const numbers = (typedPTrabsData || []).map(p => p.numero_ptrab);
+      const ptrabIds = typedPTrabsData.map(p => p.id);
+      const numbers = typedPTrabsData.map(p => p.numero_ptrab);
       setExistingPTrabNumbers(numbers);
+      
+      // OTIMIZAÇÃO: Busca todos os totais em lote (apenas algumas requisições em vez de centenas)
+      const batchTotals = await fetchBatchPTrabTotals(ptrabIds);
       
       const ownedPTrabIds = typedPTrabsData.filter(p => p.user_id === user.id).map(p => p.id);
       let pendingRequests: Tables<'ptrab_share_requests'>[] = [];
       
       if (ownedPTrabIds.length > 0) {
-          const { data: requestsData, error: requestsError } = await supabase
+          const { data: requestsData } = await supabase
               .from('ptrab_share_requests')
               .select('id, ptrab_id, requester_id, share_token, status, created_at, updated_at')
               .in('ptrab_id', ownedPTrabIds)
               .eq('status', 'pending');
               
-          if (requestsError) console.error("Erro ao carregar solicitações pendentes:", requestsError);
-          else pendingRequests = requestsData || []; 
+          pendingRequests = requestsData || []; 
       }
       
       const ptrabsWithPendingRequests = new Set(pendingRequests.map(r => r.ptrab_id));
 
-      const pTrabsWithTotals: PTrab[] = await Promise.all(
-        (typedPTrabsData || []).map(async (ptrab) => {
-          let totalOperacionalCalculado = 0;
-          let totalLogisticaCalculado = 0;
-          let totalMaterialPermanenteCalculado = 0;
-          let quantidadeRacaoOpCalculada = 0;
-          let quantidadeHorasVooCalculada = 0;
+      const pTrabsWithTotals: PTrab[] = typedPTrabsData.map((ptrab) => {
+        const totals = batchTotals[ptrab.id] || {
+          totalLogistica: 0,
+          totalOperacional: 0,
+          totalMaterialPermanente: 0,
+          quantidadeRacaoOp: 0,
+          quantidadeHorasVoo: 0
+        };
 
-          // 1. Fetch Classe I totals (33.90.30)
-          const { data: classeIData, error: classeIError } = await supabase
-            .from('classe_i_registros')
-            .select('total_qs, total_qr, quantidade_r2, quantidade_r3')
-            .eq('p_trab_id', ptrab.id);
-
-          let totalClasseI = 0;
-          if (classeIError) console.error("Erro ao carregar Classe I para PTrab", ptrab.numero_ptrab, classeIError);
-          else {
-            totalClasseI = (classeIData || []).reduce((sum, record) => sum + record.total_qs + record.total_qr, 0);
-            quantidadeRacaoOpCalculada = (classeIData || []).reduce((sum, record) => sum + (record.quantidade_r2 || 0) + (record.quantidade_r3 || 0), 0);
-          }
-          
-          // 2. Fetch Classes II, V, VI, VII, VIII, IX totals
-          const { data: classeIIData } = await supabase.from('classe_ii_registros').select('valor_total').eq('p_trab_id', ptrab.id);
-          const { data: classeVData } = await supabase.from('classe_v_registros').select('valor_total').eq('p_trab_id', ptrab.id);
-          const { data: classeVIData } = await supabase.from('classe_vi_registros').select('valor_total').eq('p_trab_id', ptrab.id);
-          const { data: classeVIIData } = await supabase.from('classe_vii_registros').select('valor_total').eq('p_trab_id', ptrab.id);
-          const { data: classeVIIISaudeData } = await supabase.from('classe_viii_saude_registros').select('valor_total').eq('p_trab_id', ptrab.id);
-          const { data: classeVIIIRemontaData } = await supabase.from('classe_viii_remonta_registros').select('valor_total').eq('p_trab_id', ptrab.id);
-          const { data: classeIXData } = await supabase.from('classe_ix_registros').select('valor_total').eq('p_trab_id', ptrab.id);
-
-          let totalClassesDiversas = 0;
-          totalClassesDiversas += (classeIIData || []).reduce((sum, record) => sum + record.valor_total, 0);
-          totalClassesDiversas += (classeVData || []).reduce((sum, record) => sum + record.valor_total, 0);
-          totalClassesDiversas += (classeVIData || []).reduce((sum, record) => sum + record.valor_total, 0);
-          totalClassesDiversas += (classeVIIData || []).reduce((sum, record) => sum + record.valor_total, 0);
-          totalClassesDiversas += (classeVIIISaudeData || []).reduce((sum, record) => sum + record.valor_total, 0);
-          totalClassesDiversas += (classeVIIIRemontaData || []).reduce((sum, record) => sum + record.valor_total, 0);
-          totalClassesDiversas += (classeIXData || []).reduce((sum, record) => sum + record.valor_total, 0);
-
-          // 3. Fetch Classe III totals
-          const { data: classeIIIData } = await supabase.from('classe_iii_registros').select('valor_total').eq('p_trab_id', ptrab.id);
-          let totalClasseIII = (classeIIIData || []).reduce((sum, record) => sum + record.valor_total, 0);
-          
-          // 4. Fetch Diaria totals
-          const { data: diariaData } = await supabase.from('diaria_registros').select('valor_nd_15, valor_nd_30').eq('p_trab_id', ptrab.id);
-          let totalDiariaND15 = (diariaData || []).reduce((sum, record) => sum + (record.valor_nd_15 || 0), 0);
-          let totalDiariaND30 = (diariaData || []).reduce((sum, record) => sum + (record.valor_nd_30 || 0), 0);
-          
-          // 5. Fetch Verba Operacional totals
-          const { data: verbaOperacionalData } = await supabase.from('verba_operacional_registros').select('valor_nd_30, valor_nd_39').eq('p_trab_id', ptrab.id);
-          let totalVerbaOperacionalND30 = (verbaOperacionalData || []).reduce((sum, record) => sum + (record.valor_nd_30 || 0), 0);
-          let totalVerbaOperacionalND39 = (verbaOperacionalData || []).reduce((sum, record) => sum + (record.valor_nd_39 || 0), 0);
-          
-          // 6. Fetch Passagem totals
-          const { data: passagemData } = await supabase.from('passagem_registros').select('valor_nd_33').eq('p_trab_id', ptrab.id);
-          let totalPassagemND33 = (passagemData || []).reduce((sum, record) => sum + (record.valor_nd_33 || 0), 0);
-          
-          // 7. Fetch Concessionaria totals
-          const { data: concessionariaData } = await supabase.from('concessionaria_registros').select('valor_nd_39').eq('p_trab_id', ptrab.id);
-          let totalConcessionariaND39 = (concessionariaData || []).reduce((sum, record) => sum + (record.valor_nd_39 || 0), 0);
-          
-          // 8. Fetch Horas Voo totals
-          const { data: horasVooData } = await supabase.from('horas_voo_registros').select('valor_nd_30, valor_nd_39, quantidade_hv').eq('p_trab_id', ptrab.id);
-          let totalHorasVooND30 = (horasVooData || []).reduce((sum, record) => sum + (record.valor_nd_30 || 0), 0);
-          let totalHorasVooND39 = (horasVooData || []).reduce((sum, record) => sum + (record.valor_nd_39 || 0), 0);
-          quantidadeHorasVooCalculada = (horasVooData || []).reduce((sum, record) => sum + (record.quantidade_hv || 0), 0);
-          const totalHorasVoo = totalHorasVooND30 + totalHorasVooND39;
-          
-          // 9. Fetch Material Consumo totals
-          const { data: materialConsumoData } = await supabase.from('material_consumo_registros').select('valor_nd_30, valor_nd_39').eq('p_trab_id', ptrab.id);
-          let totalMaterialConsumoND30 = (materialConsumoData || []).reduce((sum, record) => sum + (record.valor_nd_30 || 0), 0);
-          let totalMaterialConsumoND39 = (materialConsumoData || []).reduce((sum, record) => sum + (record.valor_nd_39 || 0), 0);
-          const totalMaterialConsumo = totalMaterialConsumoND30 + totalMaterialConsumoND39;
-
-          // 10. Fetch Complemento Alimentação totals
-          const { data: complementoAlimentacaoData, error: complementoAlimentacaoError } = await supabase
-            .from('complemento_alimentacao_registros')
-            .select('valor_total')
-            .eq('p_trab_id', ptrab.id);
-            
-          let totalComplementoAlimentacao = 0;
-          if (complementoAlimentacaoError) console.error("Erro ao carregar Complemento Alimentação para PTrab", ptrab.numero_ptrab, complementoAlimentacaoError);
-          else {
-              totalComplementoAlimentacao = (complementoAlimentacaoData || []).reduce((sum, record) => sum + (Number(record.valor_total) || 0), 0);
-          }
-
-          // 11. Fetch Serviços de Terceiros totals
-          const { data: servicosTerceirosData, error: servicosTerceirosError } = await supabase
-            .from('servicos_terceiros_registros' as any)
-            .select('valor_total')
-            .eq('p_trab_id', ptrab.id);
-            
-          let totalServicosTerceiros = 0;
-          if (servicosTerceirosError) console.error("Erro ao carregar Serviços de Terceiros para PTrab", ptrab.numero_ptrab, servicosTerceirosError);
-          else {
-              totalServicosTerceiros = (servicosTerceirosData as any[] || []).reduce((sum, record) => sum + (Number(record.valor_total) || 0), 0);
-          }
-
-          // 12. Fetch Material Permanente totals - NOVO
-          const { data: materialPermanenteData, error: materialPermanenteError } = await supabase
-            .from('material_permanente_registros' as any)
-            .select('valor_total')
-            .eq('p_trab_id', ptrab.id);
-            
-          if (materialPermanenteError) console.error("Erro ao carregar Material Permanente para PTrab", ptrab.numero_ptrab, materialPermanenteError);
-          else {
-              totalMaterialPermanenteCalculado = (materialPermanenteData as any[] || []).reduce((sum, record) => sum + (Number(record.valor_total) || 0), 0);
-          }
-
-          // SOMA TOTAL DA ABA LOGÍSTICA
-          totalLogisticaCalculado = totalClasseI + totalClassesDiversas + totalClasseIII;
-          
-          // SOMA TOTAL DA ABA OPERACIONAL (Incluindo Complemento Alimentação e Serviços de Terceiros)
-          totalOperacionalCalculado = totalDiariaND15 + totalDiariaND30 + totalVerbaOperacionalND30 + totalVerbaOperacionalND39 + totalPassagemND33 + totalConcessionariaND39 + totalHorasVoo + totalMaterialConsumo + totalComplementoAlimentacao + totalServicosTerceiros;
-          
-          const isOwner = ptrab.user_id === user.id;
-          const isShared = !isOwner && (ptrab.shared_with || []).includes(user.id);
-          
-          return {
-            ...ptrab,
-            totalLogistica: totalLogisticaCalculado,
-            totalOperacional: totalOperacionalCalculado,
-            totalMaterialPermanente: totalMaterialPermanenteCalculado,
-            quantidadeRacaoOp: quantidadeRacaoOpCalculada,
-            quantidadeHorasVoo: quantidadeHorasVooCalculada,
-            isOwner: isOwner,
-            isShared: isShared,
-            hasPendingRequests: isOwner && ptrabsWithPendingRequests.has(ptrab.id),
-          } as PTrab;
-        })
-      );
+        return {
+          ...ptrab,
+          ...totals,
+          isOwner: ptrab.user_id === user.id,
+          isShared: ptrab.user_id !== user.id && (ptrab.shared_with || []).includes(user.id),
+          hasPendingRequests: ptrab.user_id === user.id && ptrabsWithPendingRequests.has(ptrab.id),
+        } as PTrab;
+      });
 
       setPTrabs(pTrabsWithTotals);
 
@@ -540,12 +422,12 @@ const PTrabManager = () => {
       }
 
     } catch (error: any) {
-      toast.error("Erro ao carregar P Trabs e seus totais");
+      toast.error("Erro ao carregar P Trabs");
       console.error(error);
     } finally {
       setLoading(false);
     }
-  }, [setLoading, setPTrabs, setExistingPTrabNumbers, user?.id]);
+  }, [user?.id]);
 
   useEffect(() => {
     checkAuth();
@@ -562,7 +444,6 @@ const PTrabManager = () => {
     if (ptrabToClone) {
       let newSuggestedNumber = generateUniqueMinutaNumber(existingPTrabNumbers); 
       setSuggestedCloneNumber(newSuggestedNumber);
-      setCustomCloneNumber(newSuggestedNumber);
     }
   }, [ptrabToClone, existingPTrabNumbers]);
 
@@ -782,12 +663,19 @@ const PTrabManager = () => {
         return;
     }
     if (!confirm("Tem certeza?")) return;
+    
+    // EXCLUSÃO OTIMISTA: Remove da lista imediatamente
+    const originalPTrabs = [...pTrabs];
+    setPTrabs(prev => prev.filter(p => p.id !== id));
+    
     try {
-      await supabase.from("p_trab").delete().eq("id", id);
+      const { error } = await supabase.from("p_trab").delete().eq("id", id);
+      if (error) throw error;
       toast.success("P Trab excluído!");
-      loadPTrabs();
     } catch (error: any) {
       toast.error("Erro ao excluir");
+      // Rollback em caso de erro
+      setPTrabs(originalPTrabs);
     }
   };
 
@@ -913,64 +801,41 @@ const PTrabManager = () => {
         return newRecords.length;
     };
 
-    const classeINumericFields = ['complemento_qr', 'complemento_qs', 'dias_operacao', 'efetivo', 'etapa_qr', 'etapa_qs', 'nr_ref_int', 'total_geral', 'total_qr', 'total_qs', 'valor_qr', 'valor_qs', 'quantidade_r2', 'quantidade_r3'];
-    const { data: originalClasseIRecords, error: fetchClasseIError } = await supabase.from("classe_i_registros").select("*").eq("p_trab_id", originalPTrabId);
-    if (fetchClasseIError) console.error("Erro ao carregar registros da Classe I:", fetchClasseIError);
-    else {
-      const newClasseIRecords = (originalClasseIRecords || []).map(record => {
-        const { id, created_at, updated_at, ...restOfRecord } = record;
-        const newRecord: Record<string, any> = { ...restOfRecord, p_trab_id: newPTrabId };
-        classeINumericFields.forEach(field => { if (newRecord[field] === null || newRecord[field] === undefined) newRecord[field] = 0; });
-        return newRecord;
-      });
-      if (newClasseIRecords.length > 0) {
-        const { error: insertClasseIError } = await supabase.from("classe_i_registros").insert(newClasseIRecords as TablesInsert<'classe_i_registros'>[]);
-        if (insertClasseIError) toast.error(`Erro ao clonar registros da Classe I: ${sanitizeError(insertClasseIError)}`);
-      }
-    }
-    
+    // OTIMIZAÇÃO: Executa todas as clonagens em paralelo usando Promise.all
     const genericNumericFields = ['dias_operacao', 'valor_total', 'valor_nd_30', 'valor_nd_39', 'efetivo'];
-    await cloneClassRecords('classe_ii_registros', ['itens_equipamentos'], genericNumericFields);
+    const classeINumericFields = ['complemento_qr', 'complemento_qs', 'dias_operacao', 'efetivo', 'etapa_qr', 'etapa_qs', 'nr_ref_int', 'total_geral', 'total_qr', 'total_qs', 'valor_qr', 'valor_qs', 'quantidade_r2', 'quantidade_r3'];
     const classeIIINumericFields = ['dias_operacao', 'preco_litro', 'quantidade', 'total_litros', 'valor_total', 'consumo_lubrificante_litro', 'preco_lubrificante', 'valor_nd_30', 'valor_nd_39'];
-    const { data: originalClasseIIIRecords, error: fetchClasseIIIError } = await supabase.from("classe_iii_registros").select("*").eq("p_trab_id", originalPTrabId);
-    if (fetchClasseIIIError) console.error("Erro ao carregar registros da Classe III:", fetchClasseIIIError);
-    else {
-      const newClasseIIIRecords = (originalClasseIIIRecords || []).map(record => {
-        const { id, created_at, updated_at, ...restOfRecord } = record;
-        const newRecord: Record<string, any> = { ...restOfRecord, p_trab_id: newPTrabId, itens_equipamentos: record.itens_equipamentos ? JSON.parse(JSON.stringify(record.itens_equipamentos)) : null };
-        classeIIINumericFields.forEach(field => { if (newRecord[field] === null || newRecord[field] === undefined) newRecord[field] = 0; });
-        return newRecord;
-      });
-      if (newClasseIIIRecords.length > 0) {
-        const { error: insertClasseIIIError } = await supabase.from("classe_iii_registros").insert(newClasseIIIRecords as TablesInsert<'classe_iii_registros'>[]);
-        if (insertClasseIIIError) toast.error(`Erro ao clonar registros da Classe III: ${sanitizeError(insertClasseIIIError)}`);
-      }
-    }
-    
-    await cloneClassRecords('classe_v_registros', ['itens_equipamentos'], genericNumericFields);
-    await cloneClassRecords('classe_vi_registros', ['itens_equipamentos'], genericNumericFields);
-    await cloneClassRecords('classe_vii_registros', ['itens_equipamentos'], genericNumericFields);
-    await cloneClassRecords('classe_viii_saude_registros', ['itens_saude'], genericNumericFields);
-    await cloneClassRecords('classe_viii_remonta_registros', ['itens_remonta'], [...genericNumericFields, 'quantidade_animais']);
-    await cloneClassRecords('classe_ix_registros', ['itens_motomecanizacao'], genericNumericFields);
-    const { data: originalRefLPC } = await supabase.from("p_trab_ref_lpc").select("*").eq("p_trab_id", originalPTrabId).maybeSingle();
-    if (originalRefLPC) {
-      const { id, created_at, updated_at, ...restOfRefLPC } = originalRefLPC;
-      const newRefLPCData = { ...restOfRefLPC, p_trab_id: newPTrabId, preco_diesel: restOfRefLPC.preco_diesel ?? 0, preco_gasolina: restOfRefLPC.preco_gasolina ?? 0 };
-      await supabase.from("p_trab_ref_lpc").insert([newRefLPCData as TablesInsert<'p_trab_ref_lpc'>]);
-    }
-    await cloneClassRecords('diaria_registros', ['quantidades_por_posto'], ['dias_operacao', 'quantidade', 'nr_viagens', 'valor_nd_15', 'valor_nd_30', 'valor_total']);
-    await cloneClassRecords('verba_operacional_registros', null, ['dias_operacao', 'quantidade_equipes', 'valor_total_solicitado', 'valor_nd_30', 'valor_nd_39']);
-    await cloneClassRecords('passagem_registros', null, ['dias_operacao', 'efetivo', 'quantidade_passagens', 'valor_nd_33', 'valor_total', 'valor_unitario']);
-    await cloneClassRecords('concessionaria_registros', null, ['dias_operacao', 'efetivo', 'consumo_pessoa_dia', 'valor_unitario', 'valor_total', 'valor_nd_39']);
-    await cloneClassRecords('horas_voo_registros', null, ['dias_operacao', 'quantidade_hv', 'valor_nd_30', 'valor_nd_39', 'valor_total']);
-    await cloneClassRecords('material_consumo_registros', ['itens_aquisicao'], ['dias_operacao', 'efetivo', 'valor_total', 'valor_nd_30', 'valor_nd_39']);
-    await cloneClassRecords('complemento_alimentacao_registros', ['itens_aquisicao'], ['dias_operacao', 'efetivo', 'valor_total', 'valor_nd_30', 'valor_nd_39']);
-    
-    // NOVAS TABELAS CLONADAS
-    await cloneClassRecords('material_permanente_registros', ['detalhes_planejamento'], ['dias_operacao', 'efetivo', 'valor_total', 'valor_nd_52']);
-    await cloneClassRecords('servicos_terceiros_registros', ['detalhes_planejamento'], ['dias_operacao', 'efetivo', 'valor_total', 'valor_nd_30', 'valor_nd_39']);
-    await cloneClassRecords('dor_registros', ['itens_dor', 'grupos_dor'], []);
+
+    await Promise.all([
+      cloneClassRecords('classe_i_registros', null, classeINumericFields),
+      cloneClassRecords('classe_ii_registros', ['itens_equipamentos'], genericNumericFields),
+      cloneClassRecords('classe_iii_registros', ['itens_equipamentos'], classeIIINumericFields),
+      cloneClassRecords('classe_v_registros', ['itens_equipamentos'], genericNumericFields),
+      cloneClassRecords('classe_vi_registros', ['itens_equipamentos'], genericNumericFields),
+      cloneClassRecords('classe_vii_registros', ['itens_equipamentos'], genericNumericFields),
+      cloneClassRecords('classe_viii_saude_registros', ['itens_saude'], genericNumericFields),
+      cloneClassRecords('classe_viii_remonta_registros', ['itens_remonta'], [...genericNumericFields, 'quantidade_animais']),
+      cloneClassRecords('classe_ix_registros', ['itens_motomecanizacao'], genericNumericFields),
+      cloneClassRecords('diaria_registros', ['quantidades_por_posto'], ['dias_operacao', 'quantidade', 'nr_viagens', 'valor_nd_15', 'valor_nd_30', 'valor_total']),
+      cloneClassRecords('verba_operacional_registros', null, ['dias_operacao', 'quantidade_equipes', 'valor_total_solicitado', 'valor_nd_30', 'valor_nd_39']),
+      cloneClassRecords('passagem_registros', null, ['dias_operacao', 'efetivo', 'quantidade_passagens', 'valor_nd_33', 'valor_total', 'valor_unitario']),
+      cloneClassRecords('concessionaria_registros', null, ['dias_operacao', 'efetivo', 'consumo_pessoa_dia', 'valor_unitario', 'valor_total', 'valor_nd_39']),
+      cloneClassRecords('horas_voo_registros', null, ['dias_operacao', 'quantidade_hv', 'valor_nd_30', 'valor_nd_39', 'valor_total']),
+      cloneClassRecords('material_consumo_registros', ['itens_aquisicao'], ['dias_operacao', 'efetivo', 'valor_total', 'valor_nd_30', 'valor_nd_39']),
+      cloneClassRecords('complemento_alimentacao_registros', ['itens_aquisicao'], ['dias_operacao', 'efetivo', 'valor_total', 'valor_nd_30', 'valor_nd_39']),
+      cloneClassRecords('material_permanente_registros', ['detalhes_planejamento'], ['dias_operacao', 'efetivo', 'valor_total', 'valor_nd_52']),
+      cloneClassRecords('servicos_terceiros_registros', ['detalhes_planejamento'], ['dias_operacao', 'efetivo', 'valor_total', 'valor_nd_30', 'valor_nd_39']),
+      cloneClassRecords('dor_registros', ['itens_dor', 'grupos_dor'], []),
+      // Referência LPC (caso especial)
+      (async () => {
+        const { data: originalRefLPC } = await supabase.from("p_trab_ref_lpc").select("*").eq("p_trab_id", originalPTrabId).maybeSingle();
+        if (originalRefLPC) {
+          const { id, created_at, updated_at, ...restOfRefLPC } = originalRefLPC;
+          const newRefLPCData = { ...restOfRefLPC, p_trab_id: newPTrabId, preco_diesel: restOfRefLPC.preco_diesel ?? 0, preco_gasolina: restOfRefLPC.preco_gasolina ?? 0 };
+          await supabase.from("p_trab_ref_lpc").insert([newRefLPCData as TablesInsert<'p_trab_ref_lpc'>]);
+        }
+      })()
+    ]);
   };
 
   const needsNumbering = (ptrab: PTrab) => ptrab.numero_ptrab.startsWith("Minuta") && (ptrab.status === 'aberto' || ptrab.status === 'em_andamento');
@@ -1002,31 +867,32 @@ const PTrabManager = () => {
         if (insertError || !newPTrab) throw insertError;
         const newPTrabId = newPTrab.id;
         const tablesToConsolidate: PTrabLinkedTableName[] = ['classe_i_registros', 'classe_ii_registros', 'classe_iii_registros', 'classe_v_registros', 'classe_vi_registros', 'classe_vii_registros', 'classe_viii_saude_registros', 'classe_viii_remonta_registros', 'classe_ix_registros', 'diaria_registros', 'verba_operacional_registros', 'passagem_registros', 'concessionaria_registros', 'horas_voo_registros', 'material_consumo_registros', 'complemento_alimentacao_registros', 'material_permanente_registros', 'servicos_terceiros_registros', 'dor_registros'];
-        for (const tableName of tablesToConsolidate) {
+        
+        // OTIMIZAÇÃO: Consolidação em paralelo
+        await Promise.all(tablesToConsolidate.map(async (tableName) => {
             const { data: records, error: recordsError } = await (supabase.from(tableName as any) as any).select('*').in('p_trab_id', selectedPTrabsToConsolidate);
-            if (recordsError) continue;
-            const typedRecords = records as any[];
-            if (typedRecords && typedRecords.length > 0) {
-                const newRecords = typedRecords.map(record => {
-                    const { id, created_at, updated_at, ...restOfRecord } = record;
-                    const newRecord: any = { 
-                        ...restOfRecord, 
-                        p_trab_id: newPTrabId, 
-                        ...((record as any).hasOwnProperty('itens_equipamentos') && { itens_equipamentos: JSON.parse(JSON.stringify(record.itens_equipamentos)) }), 
-                        ...((record as any).hasOwnProperty('itens_saude') && { itens_saude: JSON.parse(JSON.stringify(record.itens_saude)) }), 
-                        ...((record as any).hasOwnProperty('itens_remonta') && { itens_remonta: JSON.parse(JSON.stringify(record.itens_remonta)) }), 
-                        ...((record as any).hasOwnProperty('itens_motomecanizacao') && { itens_motomecanizacao: JSON.parse(JSON.stringify(record.itens_motomecanizacao)) }), 
-                        ...((record as any).hasOwnProperty('quantidades_por_posto') && { quantidades_por_posto: JSON.parse(JSON.stringify(record.quantidades_por_posto)) }), 
-                        ...((record as any).hasOwnProperty('itens_aquisicao') && { itens_aquisicao: JSON.parse(JSON.stringify(record.itens_aquisicao)) }),
-                        ...((record as any).hasOwnProperty('detalhes_planejamento') && { detalhes_planejamento: JSON.parse(JSON.stringify(record.detalhes_planejamento)) }),
-                        ...((record as any).hasOwnProperty('itens_dor') && { itens_dor: JSON.parse(JSON.stringify(record.itens_dor)) }),
-                        ...((record as any).hasOwnProperty('grupos_dor') && { grupos_dor: JSON.parse(JSON.stringify(record.grupos_dor)) })
-                    };
-                    return newRecord;
-                });
-                await (supabase.from(tableName as any) as any).insert(newRecords);
-            }
-        }
+            if (recordsError || !records || records.length === 0) return;
+            
+            const newRecords = records.map((record: any) => {
+                const { id, created_at, updated_at, ...restOfRecord } = record;
+                const newRecord: any = { 
+                    ...restOfRecord, 
+                    p_trab_id: newPTrabId, 
+                    ...((record as any).hasOwnProperty('itens_equipamentos') && { itens_equipamentos: JSON.parse(JSON.stringify(record.itens_equipamentos)) }), 
+                    ...((record as any).hasOwnProperty('itens_saude') && { itens_saude: JSON.parse(JSON.stringify(record.itens_saude)) }), 
+                    ...((record as any).hasOwnProperty('itens_remonta') && { itens_remonta: JSON.parse(JSON.stringify(record.itens_remonta)) }), 
+                    ...((record as any).hasOwnProperty('itens_motomecanizacao') && { itens_motomecanizacao: JSON.parse(JSON.stringify(record.itens_motomecanizacao)) }), 
+                    ...((record as any).hasOwnProperty('quantidades_por_posto') && { quantidades_por_posto: JSON.parse(JSON.stringify(record.quantidades_por_posto)) }), 
+                    ...((record as any).hasOwnProperty('itens_aquisicao') && { itens_aquisicao: JSON.parse(JSON.stringify(record.itens_aquisicao)) }),
+                    ...((record as any).hasOwnProperty('detalhes_planejamento') && { detalhes_planejamento: JSON.parse(JSON.stringify(record.detalhes_planejamento)) }),
+                    ...((record as any).hasOwnProperty('itens_dor') && { itens_dor: JSON.parse(JSON.stringify(record.itens_dor)) }),
+                    ...((record as any).hasOwnProperty('grupos_dor') && { grupos_dor: JSON.parse(JSON.stringify(record.grupos_dor)) })
+                };
+                return newRecord;
+            });
+            await (supabase.from(tableName as any) as any).insert(newRecords);
+        }));
+
         await updateUserCredits(user.id, 0, 0);
         toast.success(`Consolidação concluída! Novo P Trab ${finalMinutaNumber} criado.`);
         loadPTrabs();
