@@ -54,7 +54,6 @@ import ServicosTerceirosDiretrizRow from "@/components/ServicosTerceirosDiretriz
 import ServicosTerceirosDiretrizFormDialog from "@/components/ServicosTerceirosDiretrizFormDialog";
 import ServicosTerceirosExportImportDialog from "@/components/ServicosTerceirosExportImportDialog";
 
-// NOVOS IMPORTS PARA MATERIAL PERMANENTE
 import { DiretrizMaterialPermanente } from "@/types/diretrizesMaterialPermanente";
 import { useMaterialPermanenteDiretrizes } from "@/hooks/useMaterialPermanenteDiretrizes";
 import MaterialPermanenteDiretrizRow from "@/components/MaterialPermanenteDiretrizRow";
@@ -347,6 +346,108 @@ const CustosOperacionaisPage = () => {
     };
   }, []);
 
+  // --- 1. Hook unificado para carregar tudo em paralelo com Cache ---
+  const { data: pageData, isLoading: isLoadingPageData, isFetching: isFetchingPageData } = useQuery({
+    queryKey: ['diretrizesCustosOperacionais', selectedYear, user?.id],
+    queryFn: async () => {
+      if (!user?.id || !selectedYear) return null;
+
+      const [opRes, passRes, concRes] = await Promise.all([
+        supabase
+          .from("diretrizes_operacionais")
+          .select("*")
+          .eq("user_id", user.id)
+          .eq("ano_referencia", selectedYear)
+          .maybeSingle(),
+        supabase
+          .from('diretrizes_passagens')
+          .select('*')
+          .eq('user_id', user.id)
+          .eq('ano_referencia', selectedYear)
+          .order('om_referencia', { ascending: true }),
+        supabase
+          .from('diretrizes_concessionaria')
+          .select('*')
+          .eq('user_id', user.id)
+          .eq('ano_referencia', selectedYear)
+          .order('categoria', { ascending: true })
+          .order('nome_concessionaria', { ascending: true })
+      ]);
+
+      if (opRes.error) throw opRes.error;
+      if (passRes.error) throw passRes.error;
+      if (concRes.error) throw concRes.error;
+
+      return {
+        operacional: opRes.data || defaultDiretrizes(selectedYear),
+        passagens: passRes.data || [],
+        concessionaria: concRes.data || []
+      };
+    },
+    enabled: !!user?.id && !!selectedYear,
+    staleTime: 1000 * 60 * 5, // 5 minutos de cache
+  });
+
+  // --- 2. Sincronização com o estado local (para edição) ---
+  useEffect(() => {
+    if (pageData) {
+      setLoading(true);
+      const loadedData = pageData.operacional;
+      const numericData: Partial<DiretrizOperacional> = {
+        ...loadedData,
+        fator_passagens_aereas: Number(loadedData.fator_passagens_aereas || 0),
+        fator_servicos_terceiros: Number(loadedData.fator_servicos_terceiros || 0),
+        fator_material_consumo: Number(loadedData.fator_material_consumo || 0),
+        fator_concessionaria: Number(loadedData.fator_concessionaria || 0),
+        valor_complemento_alimentacao: Number(loadedData.valor_complemento_alimentacao || 0),
+        valor_fretamento_aereo_hora: Number(loadedData.valor_fretamento_aereo_hora || 0),
+        valor_locacao_estrutura_dia: Number(loadedData.valor_locacao_estrutura_dia || 0),
+        valor_locacao_viaturas_dia: Number(loadedData.valor_locacao_viaturas_dia || 0),
+        diaria_referencia_legal: loadedData.diaria_referencia_legal || defaultDiretrizes(selectedYear).diaria_referencia_legal,
+        diaria_of_gen_bsb: Number(loadedData.diaria_of_gen_bsb || 0),
+        diaria_of_gen_capitais: Number(loadedData.diaria_of_gen_capitais || 0),
+        diaria_of_gen_demais: Number(loadedData.diaria_of_gen_demais || 0),
+        diaria_of_sup_bsb: Number(loadedData.diaria_of_sup_bsb || 0),
+        diaria_of_sup_capitais: Number(loadedData.diaria_of_sup_capitais || 0),
+        diaria_of_sup_demais: Number(loadedData.diaria_of_sup_demais || 0),
+        diaria_of_int_sgt_bsb: Number(loadedData.diaria_of_int_sgt_bsb || 0),
+        diaria_of_int_sgt_capitais: Number(loadedData.diaria_of_int_sgt_capitais || 0),
+        diaria_of_int_sgt_demais: Number(loadedData.diaria_of_int_sgt_demais || 0),
+        diaria_demais_pracas_bsb: Number(loadedData.diaria_demais_pracas_bsb || 0),
+        diaria_demais_pracas_capitais: Number(loadedData.diaria_demais_pracas_capitais || 0),
+        diaria_demais_pracas_demais: Number(loadedData.diaria_demais_pracas_demais || 0),
+        taxa_embarque: Number(loadedData.taxa_embarque || defaultDiretrizes(selectedYear).taxa_embarque),
+        observacoes: loadedData.observacoes || "",
+      };
+
+      setDiretrizes(numericData);
+      
+      const initialRawInputs: Record<string, string> = {};
+      DIARIA_RANKS_CONFIG.forEach(rank => {
+        initialRawInputs[`diaria_${rank.key}_bsb`] = numberToRawDigits(numericData[`diaria_${rank.key}_bsb` as keyof DiretrizOperacional] as number);
+        initialRawInputs[`diaria_${rank.key}_capitais`] = numberToRawDigits(numericData[`diaria_${rank.key}_capitais` as keyof DiretrizOperacional] as number);
+        initialRawInputs[`diaria_${rank.key}_demais`] = numberToRawDigits(numericData[`diaria_${rank.key}_demais` as keyof DiretrizOperacional] as number);
+      });
+      initialRawInputs['taxa_embarque'] = numberToRawDigits(numericData.taxa_embarque as number);
+      setRawInputs(initialRawInputs);
+
+      setDiretrizesPassagens((pageData.passagens || []).map(d => ({
+          ...d,
+          trechos: (d.trechos as unknown as TrechoPassagem[]) || [],
+          data_inicio_vigencia: d.data_inicio_vigencia || null,
+          data_fim_vigencia: d.data_fim_vigencia || null,
+      })));
+      
+      setDiretrizesConcessionaria((pageData.concessionaria || []).map((d: any) => ({
+          ...d,
+          consumo_pessoa_dia: Number(d.consumo_pessoa_dia),
+          custo_unitario: Number(d.custo_unitario),
+      })));
+      
+      setLoading(false);
+    }
+  }, [pageData, selectedYear]);
+
   useEffect(() => {
     if (!isLoadingDefaultYear && defaultYearData) {
         const checkAuthAndLoadYears = async () => {
@@ -364,18 +465,10 @@ const CustosOperacionaisPage = () => {
     }
   }, [isLoadingDefaultYear, defaultYearData?.year, defaultYearData?.defaultYear]);
 
-  useEffect(() => {
-    if (selectedYear) {
-      loadDiretrizesForYear(selectedYear);
-      loadDiretrizesPassagens(selectedYear); 
-      loadDiretrizesConcessionaria(selectedYear);
-    }
-  }, [selectedYear]);
-
   const loadAvailableYears = async (defaultYearId: number | null) => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      const { data: { user: authUser } } = await supabase.auth.getUser();
+      if (!authUser) return;
 
       const [
           { data: opData, error: opError },
@@ -385,12 +478,12 @@ const CustosOperacionaisPage = () => {
           { data: servicosData, error: servicosError },
           { data: permanenteData, error: permanenteError }
       ] = await Promise.all([
-          supabase.from("diretrizes_operacionais").select("ano_referencia").eq("user_id", user.id),
-          supabase.from("diretrizes_passagens").select("ano_referencia").eq("user_id", user.id),
-          supabase.from("diretrizes_concessionaria").select("ano_referencia").eq("user_id", user.id),
-          supabase.from("diretrizes_material_consumo").select("ano_referencia").eq("user_id", user.id),
-          supabase.from("diretrizes_servicos_terceiros" as any).select("ano_referencia").eq("user_id", user.id),
-          supabase.from("diretrizes_material_permanente" as any).select("ano_referencia").eq("user_id", user.id),
+          supabase.from("diretrizes_operacionais").select("ano_referencia").eq("user_id", authUser.id),
+          supabase.from("diretrizes_passagens").select("ano_referencia").eq("user_id", authUser.id),
+          supabase.from("diretrizes_concessionaria").select("ano_referencia").eq("user_id", authUser.id),
+          supabase.from("diretrizes_material_consumo").select("ano_referencia").eq("user_id", authUser.id),
+          supabase.from("diretrizes_servicos_terceiros" as any).select("ano_referencia").eq("user_id", authUser.id),
+          supabase.from("diretrizes_material_permanente" as any).select("ano_referencia").eq("user_id", authUser.id),
       ]);
 
       if (opError || passagensError || concessionariaError || materialConsumoError || servicosError || permanenteError) throw opError || passagensError || concessionariaError || materialConsumoError || servicosError || permanenteError;
@@ -418,138 +511,6 @@ const CustosOperacionaisPage = () => {
     } catch (error: any) {
       console.error("Erro ao carregar anos disponíveis:", error);
       toast.error("Erro ao carregar anos disponíveis");
-    }
-  };
-  
-  const loadDiretrizesForYear = async (year: number) => {
-    try {
-      setLoading(true);
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-
-      const { data, error } = await supabase
-        .from("diretrizes_operacionais")
-        .select("*")
-        .eq("user_id", user.id)
-        .eq("ano_referencia", year)
-        .maybeSingle();
-
-      if (error) throw error;
-
-      const loadedData = data || defaultDiretrizes(year);
-      
-      const numericData: Partial<DiretrizOperacional> = {
-        ...loadedData,
-        fator_passagens_aereas: Number(loadedData.fator_passagens_aereas || 0),
-        fator_servicos_terceiros: Number(loadedData.fator_servicos_terceiros || 0),
-        fator_material_consumo: Number(loadedData.fator_material_consumo || 0),
-        fator_concessionaria: Number(loadedData.fator_concessionaria || 0),
-        
-        valor_complemento_alimentacao: Number(loadedData.valor_complemento_alimentacao || 0),
-        valor_fretamento_aereo_hora: Number(loadedData.valor_fretamento_aereo_hora || 0),
-        valor_locacao_estrutura_dia: Number(loadedData.valor_locacao_estrutura_dia || 0),
-        valor_locacao_viaturas_dia: Number(loadedData.valor_locacao_viaturas_dia || 0),
-        
-        diaria_referencia_legal: loadedData.diaria_referencia_legal || defaultDiretrizes(year).diaria_referencia_legal,
-        diaria_of_gen_bsb: Number(loadedData.diaria_of_gen_bsb || 0),
-        diaria_of_gen_capitais: Number(loadedData.diaria_of_gen_capitais || 0),
-        diaria_of_gen_demais: Number(loadedData.diaria_of_gen_demais || 0),
-        diaria_of_sup_bsb: Number(loadedData.diaria_of_sup_bsb || 0),
-        diaria_of_sup_capitais: Number(loadedData.diaria_of_sup_capitais || 0),
-        diaria_of_sup_demais: Number(loadedData.diaria_of_sup_demais || 0),
-        diaria_of_int_sgt_bsb: Number(loadedData.diaria_of_int_sgt_bsb || 0),
-        diaria_of_int_sgt_capitais: Number(loadedData.diaria_of_int_sgt_capitais || 0),
-        diaria_of_int_sgt_demais: Number(loadedData.diaria_of_int_sgt_demais || 0),
-        diaria_demais_pracas_bsb: Number(loadedData.diaria_demais_pracas_bsb || 0),
-        diaria_demais_pracas_capitais: Number(loadedData.diaria_demais_pracas_capitais || 0),
-        diaria_demais_pracas_demais: Number(loadedData.diaria_demais_pracas_demais || 0),
-        
-        taxa_embarque: Number(loadedData.taxa_embarque || defaultDiretrizes(year).taxa_embarque),
-        
-        observacoes: loadedData.observacoes || "",
-      };
-      
-      setDiretrizes(numericData);
-      
-      const initialRawInputs: Record<string, string> = {};
-      
-      OPERATIONAL_FIELDS.filter(f => (f.type as string) === 'currency').forEach(f => {
-        initialRawInputs[f.key as string] = numberToRawDigits(numericData[f.key as keyof DiretrizOperacional] as number);
-      });
-      
-      DIARIA_RANKS_CONFIG.forEach(rank => {
-        initialRawInputs[`diaria_${rank.key}_bsb`] = numberToRawDigits(numericData[`diaria_${rank.key}_bsb` as keyof DiretrizOperacional] as number);
-        initialRawInputs[`diaria_${rank.key}_capitais`] = numberToRawDigits(numericData[`diaria_${rank.key}_capitais` as keyof DiretrizOperacional] as number);
-        initialRawInputs[`diaria_${rank.key}_demais`] = numberToRawDigits(numericData[`diaria_${rank.key}_demais` as keyof DiretrizOperacional] as number);
-      });
-      
-      initialRawInputs['taxa_embarque'] = numberToRawDigits(numericData.taxa_embarque as number);
-      
-      setRawInputs(initialRawInputs);
-      
-    } catch (error: any) {
-      console.error("Erro ao carregar diretrizes operacionais:", error);
-      toast.error("Erro ao carregar diretrizes para o ano selecionado");
-    } finally {
-      setLoading(false);
-    }
-  };
-  
-  const loadDiretrizesPassagens = async (year: number) => {
-    try {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) return;
-        
-        const { data, error } = await supabase
-            .from('diretrizes_passagens')
-            .select('*')
-            .eq('user_id', user.id)
-            .eq('ano_referencia', year)
-            .order('om_referencia', { ascending: true });
-            
-        if (error) throw error;
-        
-        const typedData: DiretrizPassagem[] = (data || []).map(d => ({
-            ...d,
-            trechos: (d.trechos as unknown as TrechoPassagem[]) || [],
-            data_inicio_vigencia: d.data_inicio_vigencia || null,
-            data_fim_vigencia: d.data_fim_vigencia || null,
-        }));
-        
-        setDiretrizesPassagens(typedData);
-        
-    } catch (error) {
-        console.error("Erro ao carregar diretrizes de passagens:", error);
-        toast.error("Erro ao carregar contratos de passagens.");
-    }
-  };
-  
-  const loadDiretrizesConcessionaria = async (year: number) => {
-    try {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) return;
-        
-        const { data, error } = await supabase
-            .from('diretrizes_concessionaria')
-            .select('*')
-            .eq('user_id', user.id)
-            .eq('ano_referencia', year)
-            .order('categoria', { ascending: true })
-            .order('nome_concessionaria', { ascending: true });
-            
-        if (error) throw error;
-        
-        const typedData: DiretrizConcessionaria[] = (data || []).map((d: Tables<'diretrizes_concessionaria'>) => ({
-            ...d,
-            consumo_pessoa_dia: Number(d.consumo_pessoa_dia),
-            custo_unitario: Number(d.custo_unitario),
-        }));
-        
-        setDiretrizesConcessionaria(typedData);
-        
-    } catch (error) {
-        console.error("Erro ao carregar diretrizes de concessionária:", error);
-        toast.error("Erro ao carregar diretrizes de concessionária.");
     }
   };
   
@@ -587,8 +548,8 @@ const CustosOperacionaisPage = () => {
 
   const handleSaveDiretrizes = async () => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
+      const { data: { user: authUser } } = await supabase.auth.getUser();
+      if (!authUser) {
         toast.error("Usuário não autenticado");
         return;
       }
@@ -598,8 +559,6 @@ const CustosOperacionaisPage = () => {
         return;
       }
       
-      // Garantindo que todos os campos tenham valores numéricos válidos (0 se nulo/undefined)
-      // Usamos o operador ?? para garantir que a chave exista no objeto final.
       const dataToValidate = {
         ano_referencia: selectedYear,
         fator_passagens_aereas: Number(diretrizes.fator_passagens_aereas ?? 0),
@@ -629,11 +588,10 @@ const CustosOperacionaisPage = () => {
         observacoes: diretrizes.observacoes || "",
       };
       
-      // Validação com o esquema atualizado
       diretrizOperacionalSchema.parse(dataToValidate);
 
       const diretrizData: TablesInsert<'diretrizes_operacionais'> = {
-        user_id: user.id,
+        user_id: authUser.id,
         ...dataToValidate
       };
 
@@ -653,7 +611,7 @@ const CustosOperacionaisPage = () => {
       
       toast.success("Diretrizes Operacionais salvas com sucesso!");
       
-      queryClient.invalidateQueries({ queryKey: ["diretrizesOperacionais", selectedYear] });
+      queryClient.invalidateQueries({ queryKey: ['diretrizesCustosOperacionais', selectedYear, authUser.id] });
       await loadAvailableYears(defaultYear);
     } catch (error: any) {
       if (error instanceof z.ZodError) {
@@ -676,17 +634,17 @@ const CustosOperacionaisPage = () => {
     
     setIsSaving(true);
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error("Usuário não autenticado");
+      const { data: { user: authUser } } = await supabase.auth.getUser();
+      if (!authUser) throw new Error("Usuário não autenticado");
       
       const { error } = await supabase
         .from('profiles')
         .update({ default_operacional_year: selectedYear })
-        .eq('id', user.id);
+        .eq('id', authUser.id);
         
       if (error) throw error;
       
-      queryClient.invalidateQueries({ queryKey: ["defaultOperacionalYear", user.id] });
+      queryClient.invalidateQueries({ queryKey: ["defaultOperacionalYear", authUser.id] });
       
       toast.success(`Ano ${selectedYear} definido como padrão para cálculos!`);
       
@@ -699,15 +657,15 @@ const CustosOperacionaisPage = () => {
 
   const handleCopyDiretrizes = async (sourceYear: number, targetYear: number) => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error("Usuário não autenticado");
+      const { data: { user: authUser } } = await supabase.auth.getUser();
+      if (!authUser) throw new Error("Usuário não autenticado");
       
       setIsSaving(true);
       
       const { data: sourceOperacional, error: operacionalError } = await supabase
         .from("diretrizes_operacionais")
         .select("*")
-        .eq("user_id", user.id)
+        .eq("user_id", authUser.id)
         .eq("ano_referencia", sourceYear)
         .maybeSingle();
         
@@ -715,7 +673,7 @@ const CustosOperacionaisPage = () => {
       
       if (sourceOperacional) {
           const { id: oldId, created_at, updated_at, ...restOperacional } = sourceOperacional;
-          const newOperacional = { ...restOperacional, ano_referencia: targetYear, user_id: user.id };
+          const newOperacional = { ...restOperacional, ano_referencia: targetYear, user_id: authUser.id };
           
           const { error: insertOperacionalError } = await supabase
             .from("diretrizes_operacionais")
@@ -726,7 +684,7 @@ const CustosOperacionaisPage = () => {
       const { data: sourcePassagens, error: passagensError } = await supabase
         .from("diretrizes_passagens")
         .select("om_referencia, ug_referencia, numero_pregao, trechos, ativo, data_inicio_vigencia, data_fim_vigencia")
-        .eq("user_id", user.id)
+        .eq("user_id", authUser.id)
         .eq("ano_referencia", sourceYear);
         
       if (passagensError) throw passagensError;
@@ -735,7 +693,7 @@ const CustosOperacionaisPage = () => {
           const newPassagens = sourcePassagens.map(p => ({
               ...p,
               ano_referencia: targetYear,
-              user_id: user.id,
+              user_id: authUser.id,
               trechos: p.trechos, 
           }));
           
@@ -748,7 +706,7 @@ const CustosOperacionaisPage = () => {
       const { data: sourceConcessionaria, error: concessionariaError } = await supabase
         .from("diretrizes_concessionaria")
         .select("categoria, nome_concessionaria, consumo_pessoa_dia, fonte_consumo, custo_unitario, fonte_custo, unidade_custo")
-        .eq("user_id", user.id)
+        .eq("user_id", authUser.id)
         .eq("ano_referencia", sourceYear);
         
       if (concessionariaError) throw concessionariaError;
@@ -759,7 +717,7 @@ const CustosOperacionaisPage = () => {
               return {
                   ...restOfConcessionaria,
                   ano_referencia: targetYear,
-                  user_id: user.id,
+                  user_id: authUser.id,
               };
           });
           
@@ -772,7 +730,7 @@ const CustosOperacionaisPage = () => {
       const { data: sourceMaterialConsumo, error: materialConsumoError } = await supabase
         .from("diretrizes_material_consumo")
         .select("nr_subitem, nome_subitem, descricao_subitem, itens_aquisicao, ativo")
-        .eq("user_id", user.id)
+        .eq("user_id", authUser.id)
         .eq("ano_referencia", sourceYear);
         
       if (materialConsumoError) throw materialConsumoError;
@@ -783,7 +741,7 @@ const CustosOperacionaisPage = () => {
               return {
                   ...restOfMaterialConsumo,
                   ano_referencia: targetYear,
-                  user_id: user.id,
+                  user_id: authUser.id,
                   itens_aquisicao: m.itens_aquisicao,
               };
           });
@@ -797,7 +755,7 @@ const CustosOperacionaisPage = () => {
       const { data: sourceServicos, error: servicosError } = await supabase
         .from("diretrizes_servicos_terceiros" as any)
         .select("nr_subitem, nome_subitem, descricao_subitem, itens_aquisicao, ativo")
-        .eq("user_id", user.id)
+        .eq("user_id", authUser.id)
         .eq("ano_referencia", sourceYear);
         
       if (servicosError) throw servicosError;
@@ -808,7 +766,7 @@ const CustosOperacionaisPage = () => {
               return {
                   ...restOfServicos,
                   ano_referencia: targetYear,
-                  user_id: user.id,
+                  user_id: authUser.id,
                   itens_aquisicao: s.itens_aquisicao,
               };
           });
@@ -822,7 +780,7 @@ const CustosOperacionaisPage = () => {
       const { data: sourcePermanente, error: permanenteError } = await supabase
         .from("diretrizes_material_permanente" as any)
         .select("nr_subitem, nome_subitem, descricao_subitem, itens_aquisicao, ativo")
-        .eq("user_id", user.id)
+        .eq("user_id", authUser.id)
         .eq("ano_referencia", sourceYear);
         
       if (permanenteError) throw permanenteError;
@@ -833,7 +791,7 @@ const CustosOperacionaisPage = () => {
               return {
                   ...restOfPermanente,
                   ano_referencia: targetYear,
-                  user_id: user.id,
+                  user_id: authUser.id,
                   itens_aquisicao: p.itens_aquisicao,
               };
           });
@@ -844,11 +802,11 @@ const CustosOperacionaisPage = () => {
           if (insertPermanenteError) throw insertPermanenteError;
       }
       
-      toast.success(`Diretrizes operacionais, de passagens, concessionária, material de consumo, serviços de terceiros e material permanente do ano ${sourceYear} copiadas com sucesso para o ano ${targetYear}!`);
+      toast.success(`Diretrizes copiadas com sucesso para o ano ${targetYear}!`);
       setIsYearManagementDialogOpen(false);
       setSelectedYear(targetYear);
       
-      queryClient.invalidateQueries({ queryKey: ["defaultOperacionalYear", user.id] });
+      queryClient.invalidateQueries({ queryKey: ['diretrizesCustosOperacionais', targetYear, authUser.id] });
       await loadAvailableYears(defaultYear);
       
     } catch (error: any) {
@@ -865,54 +823,27 @@ const CustosOperacionaisPage = () => {
       return;
     }
     
-    if (!confirm(`Tem certeza que deseja EXCLUIR TODAS as diretrizes operacionais, de passagens, concessionária, material de consumo, serviços de terceiros e material permanente para o ano ${year}? Esta ação é irreversível.`)) return;
+    if (!confirm(`Tem certeza que deseja EXCLUIR TODAS as diretrizes para o ano ${year}? Esta ação é irreversível.`)) return;
 
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error("Usuário não autenticado");
+      const { data: { user: authUser } } = await supabase.auth.getUser();
+      if (!authUser) throw new Error("Usuário não autenticado");
       
       setIsSaving(true);
       
-      await supabase
-        .from("diretrizes_operacionais")
-        .delete()
-        .eq("user_id", user.id)
-        .eq("ano_referencia", year);
-        
-      await supabase
-        .from("diretrizes_passagens")
-        .delete()
-        .eq("user_id", user.id)
-        .eq("ano_referencia", year);
-        
-      await supabase
-        .from("diretrizes_concessionaria")
-        .delete()
-        .eq("user_id", user.id)
-        .eq("ano_referencia", year);
-        
-      await supabase
-        .from("diretrizes_material_consumo")
-        .delete()
-        .eq("user_id", user.id)
-        .eq("ano_referencia", year);
+      await Promise.all([
+        supabase.from("diretrizes_operacionais").delete().eq("user_id", authUser.id).eq("ano_referencia", year),
+        supabase.from("diretrizes_passagens").delete().eq("user_id", authUser.id).eq("ano_referencia", year),
+        supabase.from("diretrizes_concessionaria").delete().eq("user_id", authUser.id).eq("ano_referencia", year),
+        supabase.from("diretrizes_material_consumo").delete().eq("user_id", authUser.id).eq("ano_referencia", year),
+        supabase.from("diretrizes_servicos_terceiros" as any).delete().eq("user_id", authUser.id).eq("ano_referencia", year),
+        supabase.from("diretrizes_material_permanente" as any).delete().eq("user_id", authUser.id).eq("ano_referencia", year)
+      ]);
 
-      await supabase
-        .from("diretrizes_servicos_terceiros" as any)
-        .delete()
-        .eq("user_id", user.id)
-        .eq("ano_referencia", year);
-
-      await supabase
-        .from("diretrizes_material_permanente" as any)
-        .delete()
-        .eq("user_id", user.id)
-        .eq("ano_referencia", year);
-
-      toast.success(`Diretrizes operacionais, de passagens, concessionária, material de consumo, serviços de terceiros e material permanente do ano ${year} excluídas com sucesso!`);
+      toast.success(`Diretrizes do ano ${year} excluídas com sucesso!`);
       setIsYearManagementDialogOpen(false);
       
-      queryClient.invalidateQueries({ queryKey: ["defaultOperacionalYear", user.id] });
+      queryClient.invalidateQueries({ queryKey: ['diretrizesCustosOperacionais', year, authUser.id] });
       await loadAvailableYears(defaultYear);
       
     } catch (error: any) {
@@ -925,7 +856,6 @@ const CustosOperacionaisPage = () => {
   
   const handleCurrencyChange = (field: keyof DiretrizOperacional, rawValue: string) => {
     const { numericValue, digits } = formatCurrencyInput(rawValue);
-    
     setRawInputs(prev => ({ ...prev, [field]: digits }));
     setDiretrizes(prev => ({ ...prev, [field]: numericValue }));
   };
@@ -1035,36 +965,10 @@ const CustosOperacionaisPage = () => {
           <TableBody>
             {DIARIA_RANKS_CONFIG.map((rank, index) => (
               <TableRow key={rank.key}>
-                <TableCell className="font-medium whitespace-nowrap">
-                    {index === DIARIA_RANKS_CONFIG.length - 1 ? (
-                        <span className="rounded-bl-lg block">{rank.label}</span>
-                    ) : (
-                        rank.label
-                    )}
-                </TableCell>
-                <TableCell>
-                  <CurrencyInput
-                    {...getDiariaProps(rank.key, 'bsb')}
-                  />
-                </TableCell>
-                <TableCell>
-                  <CurrencyInput
-                    {...getDiariaProps(rank.key, 'capitais')}
-                  />
-                </TableCell>
-                <TableCell>
-                    {index === DIARIA_RANKS_CONFIG.length - 1 ? (
-                        <span className="rounded-br-lg block">
-                            <CurrencyInput
-                                {...getDiariaProps(rank.key, 'demais')}
-                            />
-                        </span>
-                    ) : (
-                        <CurrencyInput
-                            {...getDiariaProps(rank.key, 'demais')}
-                        />
-                    )}
-                </TableCell>
+                <TableCell className="font-medium whitespace-nowrap">{rank.label}</TableCell>
+                <TableCell><CurrencyInput {...getDiariaProps(rank.key, 'bsb')} /></TableCell>
+                <TableCell><CurrencyInput {...getDiariaProps(rank.key, 'capitais')} /></TableCell>
+                <TableCell><CurrencyInput {...getDiariaProps(rank.key, 'demais')} /></TableCell>
               </TableRow>
             ))}
           </TableBody>
@@ -1076,11 +980,11 @@ const CustosOperacionaisPage = () => {
   const handleSavePassagem = async (data: Partial<DiretrizPassagem> & { ano_referencia: number, om_referencia: string, ug_referencia: string }) => {
       try {
           setIsSaving(true);
-          const { data: { user } } = await supabase.auth.getUser();
-          if (!user) throw new Error("Usuário não autenticado");
+          const { data: { user: authUser } } = await supabase.auth.getUser();
+          if (!authUser) throw new Error("Usuário não autenticado");
           
           const dbData: TablesInsert<'diretrizes_passagens'> = {
-              user_id: user.id,
+              user_id: authUser.id,
               ano_referencia: data.ano_referencia,
               om_referencia: data.om_referencia,
               ug_referencia: data.ug_referencia,
@@ -1092,24 +996,16 @@ const CustosOperacionaisPage = () => {
           };
           
           if (data.id) {
-              const { error } = await supabase
-                  .from('diretrizes_passagens')
-                  .update(dbData as TablesUpdate<'diretrizes_passagens'>)
-                  .eq('id', data.id);
-              if (error) throw error;
+              await supabase.from('diretrizes_passagens').update(dbData as TablesUpdate<'diretrizes_passagens'>).eq('id', data.id);
               toast.success("Contrato de Passagens atualizado!");
           } else {
-              const { error } = await supabase
-                  .from('diretrizes_passagens')
-                  .insert([dbData]);
-              if (error) throw error;
+              await supabase.from('diretrizes_passagens').insert([dbData]);
               toast.success("Novo Contrato de Passagens cadastrado!");
           }
           
-          await loadDiretrizesPassagens(selectedYear);
+          queryClient.invalidateQueries({ queryKey: ['diretrizesCustosOperacionais', selectedYear, authUser.id] });
           setDiretrizToEdit(null);
           setIsPassagemFormOpen(false);
-          
       } catch (error: any) {
           toast.error(sanitizeError(error));
       } finally {
@@ -1129,12 +1025,11 @@ const CustosOperacionaisPage = () => {
   
   const handleDeletePassagem = async (id: string, omName: string) => {
       if (!confirm(`Tem certeza que deseja excluir o contrato de passagens da OM ${omName}?`)) return;
-      
       try {
           setIsSaving(true);
           await supabase.from('diretrizes_passagens').delete().eq('id', id);
           toast.success("Contrato de Passagens excluído!");
-          await loadDiretrizesPassagens(selectedYear);
+          queryClient.invalidateQueries({ queryKey: ['diretrizesCustosOperacionais', selectedYear, user?.id] });
       } catch (error) {
           toast.error(sanitizeError(error));
       } finally {
@@ -1149,47 +1044,12 @@ const CustosOperacionaisPage = () => {
                   <Card className="p-4">
                       <CardTitle className="text-base font-semibold mb-3">Contratos Cadastrados</CardTitle>
                       <Table>
-                          <TableHeader>
-                              <TableRow>
-                                  <TableHead>OM Referência</TableHead>
-                                  <TableHead>Pregão</TableHead>
-                                  <TableHead className="text-center">Vigência</TableHead>
-                                  <TableHead className="text-center">Trechos</TableHead>
-                                  <TableHead className="w-[100px] text-center">Ações</TableHead>
-                              </TableRow>
-                          </TableHeader>
-                          <TableBody>
-                              {diretrizesPassagens.map(d => (
-                                  <PassagemDiretrizRow
-                                      key={d.id}
-                                      diretriz={d}
-                                      onEdit={handleStartEditPassagem}
-                                      onDelete={handleDeletePassagem}
-                                      loading={isSaving}
-                                  />
-                              ))}
-                          </TableBody>
+                          <TableHeader><TableRow><TableHead>OM Referência</TableHead><TableHead>Pregão</TableHead><TableHead className="text-center">Vigência</TableHead><TableHead className="text-center">Trechos</TableHead><TableHead className="w-[100px] text-center">Ações</TableHead></TableRow></TableHeader>
+                          <TableBody>{diretrizesPassagens.map(d => (<PassagemDiretrizRow key={d.id} diretriz={d} onEdit={handleStartEditPassagem} onDelete={handleDeletePassagem} loading={isSaving} />))}</TableBody>
                       </Table>
                   </Card>
-              ) : (
-                  <Card className="p-4 text-center text-muted-foreground">
-                      Nenhum contrato de passagens cadastrado para o ano de referência.
-                  </Card>
-              )}
-              
-              <div className="flex justify-end">
-                  <Button 
-                      type="button" 
-                      onClick={handleOpenNewPassagem}
-                      disabled={isSaving}
-                      variant="outline" 
-                      size="sm" 
-                      className="w-full"
-                  >
-                      <Plus className="mr-2 h-4 w-4" />
-                      Adicionar Novo Contrato
-                  </Button>
-              </div>
+              ) : (<Card className="p-4 text-center text-muted-foreground">Nenhum contrato de passagens cadastrado para o ano de referência.</Card>)}
+              <div className="flex justify-end"><Button type="button" onClick={handleOpenNewPassagem} disabled={isSaving} variant="outline" size="sm" className="w-full"><Plus className="mr-2 h-4 w-4" />Adicionar Novo Contrato</Button></div>
           </div>
       );
   };
@@ -1197,44 +1057,23 @@ const CustosOperacionaisPage = () => {
   const handleSaveConcessionaria = async (data: DiretrizConcessionariaForm & { id?: string }) => {
       try {
           setIsSaving(true);
-          const { data: { user } } = await supabase.auth.getUser();
-          if (!user) throw new Error("Usuário não autenticado");
+          const { data: { user: authUser } } = await supabase.auth.getUser();
+          if (!authUser) throw new Error("Usuário não autenticado");
           
-          const consumoValue = typeof data.consumo_pessoa_dia === 'string'
-            ? parseFloat(data.consumo_pessoa_dia.replace(',', '.')) || 0
-            : data.consumo_pessoa_dia;
-
-          const dbData: TablesInsert<'diretrizes_concessionaria'> = {
-              user_id: user.id,
-              ano_referencia: selectedYear,
-              categoria: data.categoria,
-              nome_concessionaria: data.nome_concessionaria,
-              consumo_pessoa_dia: consumoValue,
-              fonte_consumo: data.fonte_consumo || null,
-              custo_unitario: data.custo_unitario,
-              fonte_custo: data.fonte_custo || null,
-              unidade_custo: data.unidade_custo,
-          };
+          const consumoValue = typeof data.consumo_pessoa_dia === 'string' ? parseFloat(data.consumo_pessoa_dia.replace(',', '.')) || 0 : data.consumo_pessoa_dia;
+          const dbData: TablesInsert<'diretrizes_concessionaria'> = { user_id: authUser.id, ano_referencia: selectedYear, categoria: data.categoria, nome_concessionaria: data.nome_concessionaria, consumo_pessoa_dia: consumoValue, fonte_consumo: data.fonte_consumo || null, custo_unitario: data.custo_unitario, fonte_custo: data.fonte_custo || null, unidade_custo: data.unidade_custo };
 
           if (data.id) {
-              const { error } = await supabase
-                  .from('diretrizes_concessionaria')
-                  .update(dbData as TablesUpdate<'diretrizes_concessionaria'>)
-                  .eq('id', data.id);
-              if (error) throw error;
+              await supabase.from('diretrizes_concessionaria').update(dbData as TablesUpdate<'diretrizes_concessionaria'>).eq('id', data.id);
               toast.success("Diretriz de Concessionária atualizada!");
           } else {
-              const { error } = await supabase
-                  .from('diretrizes_concessionaria')
-                  .insert([dbData]);
-              if (error) throw error;
+              await supabase.from('diretrizes_concessionaria').insert([dbData]);
               toast.success("Nova Diretriz de Concessionária cadastrada!");
           }
           
-          await loadDiretrizesConcessionaria(selectedYear);
+          queryClient.invalidateQueries({ queryKey: ['diretrizesCustosOperacionais', selectedYear, authUser.id] });
           setDiretrizConcessionariaToEdit(null);
           setIsConcessionariaFormOpen(false);
-          
       } catch (error: any) {
           toast.error(sanitizeError(error));
       } finally {
@@ -1255,12 +1094,11 @@ const CustosOperacionaisPage = () => {
   
   const handleDeleteConcessionaria = async (id: string, nome: string) => {
       if (!confirm(`Tem certeza que deseja excluir a diretriz da concessionária ${nome}?`)) return;
-      
       try {
           setIsSaving(true);
           await supabase.from('diretrizes_concessionaria').delete().eq('id', id);
           toast.success("Diretriz de Concessionária excluída!");
-          await loadDiretrizesConcessionaria(selectedYear);
+          queryClient.invalidateQueries({ queryKey: ['diretrizesCustosOperacionais', selectedYear, user?.id] });
       } catch (error) {
           toast.error(sanitizeError(error));
       } finally {
@@ -1270,114 +1108,47 @@ const CustosOperacionaisPage = () => {
   
   const renderConcessionariaList = (category: CategoriaConcessionaria) => {
       const filteredDiretrizes = diretrizesConcessionaria.filter(d => d.categoria === category);
-      
       return (
           <div className="space-y-4">
               {filteredDiretrizes.length > 0 ? (
                   <Card className="p-4">
                       <CardTitle className="text-base font-semibold mb-3">Diretrizes Cadastradas</CardTitle>
                       <Table>
-                          <TableHeader>
-                              <TableRow>
-                                  <TableHead>Concessionária</TableHead>
-                                  <TableHead className="text-center">Consumo/Pessoa/Dia</TableHead>
-                                  <TableHead className="text-right">Custo Unitário</TableHead>
-                                  <TableHead className="w-[100px] text-center">Ações</TableHead>
-                              </TableRow>
-                          </TableHeader>
-                          <TableBody>
-                              {filteredDiretrizes.map(d => (
-                                  <ConcessionariaDiretrizRow
-                                      key={d.id}
-                                      diretriz={d}
-                                      onEdit={handleStartEditConcessionaria}
-                                      onDelete={handleDeleteConcessionaria}
-                                      loading={isSaving}
-                                  />
-                              ))}
-                          </TableBody>
+                          <TableHeader><TableRow><TableHead>Concessionária</TableHead><TableHead className="text-center">Consumo/Pessoa/Dia</TableHead><TableHead className="text-right">Custo Unitário</TableHead><TableHead className="w-[100px] text-center">Ações</TableHead></TableRow></TableHeader>
+                          <TableBody>{filteredDiretrizes.map(d => (<ConcessionariaDiretrizRow key={d.id} diretriz={d} onEdit={handleStartEditConcessionaria} onDelete={handleDeleteConcessionaria} loading={isSaving} />))}</TableBody>
                       </Table>
                   </Card>
-              ) : (
-                  <Card className="p-4 text-center text-muted-foreground">
-                      Nenhuma diretriz de {category} cadastrada para o ano de referência.
-                  </Card>
-              )}
-              
-              <div className="flex justify-end">
-                  <Button 
-                      type="button" 
-                      onClick={() => handleOpenNewConcessionaria(category)}
-                      disabled={isSaving}
-                      variant="outline" 
-                      size="sm" 
-                      className="w-full"
-                  >
-                      <Plus className="mr-2 h-4 w-4" />
-                      Adicionar Nova Diretriz de {category}
-                  </Button>
-              </div>
+              ) : (<Card className="p-4 text-center text-muted-foreground">Nenhuma diretriz de {category} cadastrada para o ano de referência.</Card>)}
+              <div className="flex justify-end"><Button type="button" onClick={() => handleOpenNewConcessionaria(category)} disabled={isSaving} variant="outline" size="sm" className="w-full"><Plus className="mr-2 h-4 w-4" />Adicionar Nova Diretriz de {category}</Button></div>
           </div>
       );
   };
   
   const renderConcessionariaSection = () => {
       return (
-          <Card>
-              <CardContent className="pt-4">
-                  <Tabs value={selectedConcessionariaTab} onValueChange={(value) => setSelectedConcessionariaTab(value as CategoriaConcessionaria)}>
-                      <TabsList className="grid w-full grid-cols-2">
-                          {CATEGORIAS_CONCESSIONARIA.map(cat => (
-                              <TabsTrigger key={cat} value={cat}>{cat}</TabsTrigger>
-                          ))}
-                      </TabsList>
-                      
-                      {CATEGORIAS_CONCESSIONARIA.map(cat => (
-                          <TabsContent key={cat} value={cat}>
-                              {renderConcessionariaList(cat)}
-                          </TabsContent>
-                      ))}
-                  </Tabs>
-              </CardContent>
-          </Card>
+          <Card><CardContent className="pt-4"><Tabs value={selectedConcessionariaTab} onValueChange={(value) => setSelectedConcessionariaTab(value as CategoriaConcessionaria)}><TabsList className="grid w-full grid-cols-2">{CATEGORIAS_CONCESSIONARIA.map(cat => (<TabsTrigger key={cat} value={cat}>{cat}</TabsTrigger>))}</TabsList>{CATEGORIAS_CONCESSIONARIA.map(cat => (<TabsContent key={cat} value={cat}>{renderConcessionariaList(cat)}</TabsContent>))}</Tabs></CardContent></Card>
       );
   };
   
   const handleSaveMaterialConsumo = async (data: Partial<DiretrizMaterialConsumo> & { ano_referencia: number }) => {
       try {
           setIsSaving(true);
-          const { data: { user } } = await supabase.auth.getUser();
-          if (!user) throw new Error("Usuário não autenticado");
+          const { data: { user: authUser } } = await supabase.auth.getUser();
+          if (!authUser) throw new Error("Usuário não autenticado");
           
-          const dbData: TablesInsert<'diretrizes_material_consumo'> = {
-              user_id: user.id,
-              ano_referencia: data.ano_referencia,
-              nr_subitem: data.nr_subitem!,
-              nome_subitem: data.nome_subitem!,
-              descricao_subitem: data.descricao_subitem || null,
-              itens_aquisicao: data.itens_aquisicao as unknown as Json,
-              ativo: data.ativo ?? true,
-          };
+          const dbData: TablesInsert<'diretrizes_material_consumo'> = { user_id: authUser.id, ano_referencia: data.ano_referencia, nr_subitem: data.nr_subitem!, nome_subitem: data.nome_subitem!, descricao_subitem: data.descricao_subitem || null, itens_aquisicao: data.itens_aquisicao as unknown as Json, ativo: data.ativo ?? true };
 
           if (data.id) {
-              const { error } = await supabase
-                  .from('diretrizes_material_consumo')
-                  .update(dbData as TablesUpdate<'diretrizes_material_consumo'>)
-                  .eq('id', data.id);
-              if (error) throw error;
+              await supabase.from('diretrizes_material_consumo').update(dbData as TablesUpdate<'diretrizes_material_consumo'>).eq('id', data.id);
               toast.success("Subitem da ND atualizado!");
           } else {
-              const { error } = await supabase
-                  .from('diretrizes_material_consumo')
-                  .insert([dbData]);
-              if (error) throw error;
+              await supabase.from('diretrizes_material_consumo').insert([dbData]);
               toast.success("Novo Subitem da ND cadastrado!");
           }
           
-          queryClient.invalidateQueries({ queryKey: ['diretrizesMaterialConsumo', selectedYear, user.id] });
+          queryClient.invalidateQueries({ queryKey: ['diretrizesMaterialConsumo', selectedYear, authUser.id] });
           setDiretrizMaterialConsumoToEdit(null);
           setIsMaterialConsumoFormOpen(false);
-          
       } catch (error: any) {
           toast.error(sanitizeError(error));
       } finally {
@@ -1388,40 +1159,22 @@ const CustosOperacionaisPage = () => {
   const handleSaveServicosTerceiros = async (data: Partial<DiretrizServicosTerceiros> & { ano_referencia: number }) => {
       try {
           setIsSaving(true);
-          const { data: { user } } = await supabase.auth.getUser();
-          if (!user) throw new Error("Usuário não autenticado");
+          const { data: { user: authUser } } = await supabase.auth.getUser();
+          if (!authUser) throw new Error("Usuário não autenticado");
           
-          const dbData: any = {
-              user_id: user.id,
-              ano_referencia: data.ano_referencia,
-              nr_subitem: data.nr_subitem!,
-              nome_subitem: data.nome_subitem!,
-              descricao_subitem: data.descricao_subitem || null,
-              itens_aquisicao: data.itens_aquisicao as unknown as Json,
-              ativo: data.ativo ?? true,
-          };
+          const dbData: any = { user_id: authUser.id, ano_referencia: data.ano_referencia, nr_subitem: data.nr_subitem!, nome_subitem: data.nome_subitem!, descricao_subitem: data.descricao_subitem || null, itens_aquisicao: data.itens_aquisicao as unknown as Json, ativo: data.ativo ?? true };
 
           if (data.id) {
-              const { error } = await supabase
-                  .from('diretrizes_servicos_terceiros' as any)
-                  .update(dbData)
-                  .eq('id', data.id);
-              if (error) throw error;
+              await supabase.from('diretrizes_servicos_terceiros' as any).update(dbData).eq('id', data.id);
               toast.success("Subitem da ND atualizado!");
           } else {
-              const { error } = await supabase
-                  .from('diretrizes_servicos_terceiros' as any)
-                  .insert([dbData]);
-              if (error) throw error;
+              await supabase.from('diretrizes_servicos_terceiros' as any).insert([dbData]);
               toast.success("Novo Subitem da ND cadastrado!");
           }
           
-          // Invalidação silenciosa (sem await) para fechar o diálogo imediatamente
-          queryClient.invalidateQueries({ queryKey: ['diretrizesServicosTerceiros', selectedYear, user.id] });
-          
+          queryClient.invalidateQueries({ queryKey: ['diretrizesServicosTerceiros', selectedYear, authUser.id] });
           setDiretrizServicosTerceirosToEdit(null);
           setIsServicosTerceirosFormOpen(false);
-          
       } catch (error: any) {
           toast.error(sanitizeError(error));
       } finally {
@@ -1432,40 +1185,22 @@ const CustosOperacionaisPage = () => {
   const handleSaveMaterialPermanente = async (data: Partial<DiretrizMaterialPermanente> & { ano_referencia: number }) => {
       try {
           setIsSaving(true);
-          const { data: { user } } = await supabase.auth.getUser();
-          if (!user) throw new Error("Usuário não autenticado");
+          const { data: { user: authUser } } = await supabase.auth.getUser();
+          if (!authUser) throw new Error("Usuário não autenticado");
           
-          const dbData: any = {
-              user_id: user.id,
-              ano_referencia: data.ano_referencia,
-              nr_subitem: data.nr_subitem!,
-              nome_subitem: data.nome_subitem!,
-              descricao_subitem: data.descricao_subitem || null,
-              itens_aquisicao: data.itens_aquisicao as unknown as Json,
-              ativo: data.ativo ?? true,
-          };
+          const dbData: any = { user_id: authUser.id, ano_referencia: data.ano_referencia, nr_subitem: data.nr_subitem!, nome_subitem: data.nome_subitem!, descricao_subitem: data.descricao_subitem || null, itens_aquisicao: data.itens_aquisicao as unknown as Json, ativo: data.ativo ?? true };
 
           if (data.id) {
-              const { error } = await supabase
-                  .from('diretrizes_material_permanente' as any)
-                  .update(dbData)
-                  .eq('id', data.id);
-              if (error) throw error;
+              await supabase.from('diretrizes_material_permanente' as any).update(dbData).eq('id', data.id);
               toast.success("Subitem da ND atualizado!");
           } else {
-              const { error } = await supabase
-                  .from('diretrizes_material_permanente' as any)
-                  .insert([dbData]);
-              if (error) throw error;
+              await supabase.from('diretrizes_material_permanente' as any).insert([dbData]);
               toast.success("Novo Subitem da ND cadastrado!");
           }
           
-          // Invalidação silenciosa (sem await) para fechar o diálogo imediatamente
-          queryClient.invalidateQueries({ queryKey: ['diretrizesMaterialPermanente', selectedYear, user.id] });
-          
+          queryClient.invalidateQueries({ queryKey: ['diretrizesMaterialPermanente', selectedYear, authUser.id] });
           setDiretrizMaterialPermanenteToEdit(null);
           setIsMaterialPermanenteFormOpen(false);
-          
       } catch (error: any) {
           toast.error(sanitizeError(error));
       } finally {
@@ -1505,17 +1240,13 @@ const CustosOperacionaisPage = () => {
   
   const handleDeleteMaterialConsumo = async (id: string, nome: string) => {
       if (!confirm(`Tem certeza que deseja excluir o Subitem da ND "${nome}"?`)) return;
-      
-      // OTIMIZAÇÃO VISUAL IMEDIATA (Optimistic UI no Estado Local)
       setDiretrizesMaterialConsumo(current => current.filter(d => d.id !== id));
-
       try {
           const { error } = await supabase.from('diretrizes_material_consumo').delete().eq('id', id);
           if (error) throw error;
           toast.success("Subitem da ND excluído!");
       } catch (error) {
           toast.error(sanitizeError(error));
-          // Rollback em caso de erro
           queryClient.invalidateQueries({ queryKey: ['diretrizesMaterialConsumo', selectedYear, user?.id] });
       } finally {
           queryClient.invalidateQueries({ queryKey: ['diretrizesMaterialConsumo', selectedYear, user?.id] });
@@ -1524,17 +1255,13 @@ const CustosOperacionaisPage = () => {
 
   const handleDeleteServicosTerceiros = async (id: string, nome: string) => {
       if (!confirm(`Tem certeza que deseja excluir o Subitem da ND "${nome}"?`)) return;
-      
-      // OTIMIZAÇÃO VISUAL IMEDIATA (Optimistic UI no Estado Local)
       setDiretrizesServicosTerceiros(current => current.filter(d => d.id !== id));
-
       try {
           const { error } = await supabase.from('diretrizes_servicos_terceiros' as any).delete().eq('id', id);
           if (error) throw error;
           toast.success("Subitem da ND excluído!");
       } catch (error) {
           toast.error(sanitizeError(error));
-          // Rollback em caso de erro
           queryClient.invalidateQueries({ queryKey: ['diretrizesServicosTerceiros', selectedYear, user?.id] });
       } finally {
           queryClient.invalidateQueries({ queryKey: ['diretrizesServicosTerceiros', selectedYear, user?.id] });
@@ -1543,17 +1270,13 @@ const CustosOperacionaisPage = () => {
 
   const handleDeleteMaterialPermanente = async (id: string, nome: string) => {
       if (!confirm(`Tem certeza que deseja excluir o Subitem da ND "${nome}"?`)) return;
-      
-      // OTIMIZAÇÃO VISUAL IMEDIATA (Optimistic UI no Estado Local)
       setDiretrizesMaterialPermanente(current => current.filter(d => d.id !== id));
-
       try {
           const { error } = await supabase.from('diretrizes_material_permanente' as any).delete().eq('id', id);
           if (error) throw error;
           toast.success("Subitem da ND excluído!");
       } catch (error) {
           toast.error(sanitizeError(error));
-          // Rollback em caso de erro
           queryClient.invalidateQueries({ queryKey: ['diretrizesMaterialPermanente', selectedYear, user?.id] });
       } finally {
           queryClient.invalidateQueries({ queryKey: ['diretrizesMaterialPermanente', selectedYear, user?.id] });
@@ -1562,657 +1285,120 @@ const CustosOperacionaisPage = () => {
   
   const indexedItems = useMemo<IndexedItemAquisicao[]>(() => {
     if (!diretrizesMaterialConsumo) return [];
-    
     return diretrizesMaterialConsumo.flatMap(diretriz => {
         const itens = (diretriz.itens_aquisicao || []) as ItemAquisicao[];
-        
-        return itens.map(item => ({
-            ...item,
-            diretrizId: diretriz.id,
-            subitemNr: diretriz.nr_subitem,
-            subitemNome: diretriz.nome_subitem,
-        }));
+        return itens.map(item => ({ ...item, diretrizId: diretriz.id, subitemNr: diretriz.nr_subitem, subitemNome: diretriz.nome_subitem }));
     });
   }, [diretrizesMaterialConsumo]);
 
   const indexedItemsServicos = useMemo<IndexedItemServico[]>(() => {
     if (!diretrizesServicosTerceiros) return [];
-    
     return diretrizesServicosTerceiros.flatMap(diretriz => {
         const itens = (diretriz.itens_aquisicao || []) as ItemAquisicaoServico[];
-        
-        return itens.map(item => ({
-            ...item,
-            diretrizId: diretriz.id,
-            subitemNr: diretriz.nr_subitem,
-            subitemNome: diretriz.nome_subitem,
-        }));
+        return itens.map(item => ({ ...item, diretrizId: diretriz.id, subitemNr: diretriz.nr_subitem, subitemNome: diretriz.nome_subitem }));
     });
   }, [diretrizesServicosTerceiros]);
 
   const indexedItemsPermanente = useMemo<IndexedItemPermanente[]>(() => {
     if (!diretrizesMaterialPermanente) return [];
-    
     return diretrizesMaterialPermanente.flatMap(diretriz => {
         const itens = (diretriz.itens_aquisicao || []) as ItemAquisicao[];
-        
-        return itens.map(item => ({
-            ...item,
-            diretrizId: diretriz.id,
-            subitemNr: diretriz.nr_subitem,
-            subitemNome: diretriz.nome_subitem,
-        }));
+        return itens.map(item => ({ ...item, diretrizId: diretriz.id, subitemNr: diretriz.nr_subitem, subitemNome: diretriz.nome_subitem }));
     });
   }, [diretrizesMaterialPermanente]);
 
   const filteredItems = useMemo(() => {
     if (!searchTerm) return [];
     const lowerCaseSearch = searchTerm.toLowerCase().trim();
-    
     if (lowerCaseSearch.length < 3) return [];
-    
-    return indexedItems.filter(item => {
-        const searchString = [
-            item.descricao_item,
-            item.codigo_catmat,
-            item.numero_pregao,
-            item.uasg,
-            item.subitemNr,
-            item.subitemNome,
-        ].join(' ').toLowerCase();
-        
-        return searchString.includes(lowerCaseSearch);
-    });
+    return indexedItems.filter(item => [item.descricao_item, item.codigo_catmat, item.numero_pregao, item.uasg, item.subitemNr, item.subitemNome].join(' ').toLowerCase().includes(lowerCaseSearch));
   }, [searchTerm, indexedItems]);
 
   const filteredItemsServicos = useMemo(() => {
     if (!searchTermServicos) return [];
     const lowerCaseSearch = searchTermServicos.toLowerCase().trim();
-    
     if (lowerCaseSearch.length < 3) return [];
-    
-    return indexedItemsServicos.filter(item => {
-        const searchString = [
-            item.descricao_item,
-            item.codigo_catmat,
-            item.numero_pregao,
-            item.uasg,
-            item.subitemNr,
-            item.subitemNome,
-        ].join(' ').toLowerCase();
-        
-        return searchString.includes(lowerCaseSearch);
-    });
+    return indexedItemsServicos.filter(item => [item.descricao_item, item.codigo_catmat, item.numero_pregao, item.uasg, item.subitemNr, item.subitemNome].join(' ').toLowerCase().includes(lowerCaseSearch));
   }, [searchTermServicos, indexedItemsServicos]);
 
   const filteredItemsPermanente = useMemo(() => {
     if (!searchTermPermanente) return [];
     const lowerCaseSearch = searchTermPermanente.toLowerCase().trim();
-    
     if (lowerCaseSearch.length < 3) return [];
-    
-    return indexedItemsPermanente.filter(item => {
-        const searchString = [
-            item.descricao_item,
-            item.codigo_catmat,
-            item.numero_pregao,
-            item.uasg,
-            item.subitemNr,
-            item.subitemNome,
-        ].join(' ').toLowerCase();
-        
-        return searchString.includes(lowerCaseSearch);
-    });
+    return indexedItemsPermanente.filter(item => [item.descricao_item, item.codigo_catmat, item.numero_pregao, item.uasg, item.subitemNr, item.subitemNome].join(' ').toLowerCase().includes(lowerCaseSearch));
   }, [searchTermPermanente, indexedItemsPermanente]);
 
   const handleGoToSubitem = (diretrizId: string) => {
       handleCollapseChange('material_consumo_detalhe', true);
       setSubitemToOpenId(diretrizId);
-      
-      setTimeout(() => {
-          const element = document.getElementById(`diretriz-material-consumo-${diretrizId}`);
-          if (element) {
-              element.scrollIntoView({ behavior: 'smooth', block: 'start' });
-          } else {
-              toast.warning("Subitem encontrado, mas não visível na tela.");
-          }
-      }, 100);
-      
+      setTimeout(() => { const element = document.getElementById(`diretriz-material-consumo-${diretrizId}`); if (element) element.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 100);
       setSearchTerm("");
   };
 
   const handleGoToSubitemServico = (diretrizId: string) => {
       handleCollapseChange('servicos_terceiros_detalhe', true);
       setSubitemServicoToOpenId(diretrizId);
-      
-      setTimeout(() => {
-          const element = document.getElementById(`diretriz-servicos-terceiros-${diretrizId}`);
-          if (element) {
-              element.scrollIntoView({ behavior: 'smooth', block: 'start' });
-          } else {
-              toast.warning("Subitem encontrado, mas não visível na tela.");
-          }
-      }, 100);
-      
+      setTimeout(() => { const element = document.getElementById(`diretriz-servicos-terceiros-${diretrizId}`); if (element) element.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 100);
       setSearchTermServicos("");
   };
 
   const handleGoToSubitemPermanente = (diretrizId: string) => {
       handleCollapseChange('material_permanente_detalhe', true);
       setSubitemPermanenteToOpenId(diretrizId);
-      
-      setTimeout(() => {
-          const element = document.getElementById(`diretriz-material-permanente-${diretrizId}`);
-          if (element) {
-              element.scrollIntoView({ behavior: 'smooth', block: 'start' });
-          } else {
-              toast.warning("Subitem encontrado, mas não visível na tela.");
-          }
-      }, 100);
-      
+      setTimeout(() => { const element = document.getElementById(`diretriz-material-permanente-${diretrizId}`); if (element) element.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 100);
       setSearchTermPermanente("");
   };
   
-  useEffect(() => {
-      if (subitemToOpenId) {
-          const timer = setTimeout(() => setSubitemToOpenId(null), 500);
-          return () => clearTimeout(timer);
-      }
-  }, [subitemToOpenId]);
-
-  useEffect(() => {
-      if (subitemServicoToOpenId) {
-          const timer = setTimeout(() => setSubitemServicoToOpenId(null), 500);
-          return () => clearTimeout(timer);
-      }
-  }, [subitemServicoToOpenId]);
-
-  useEffect(() => {
-      if (subitemPermanenteToOpenId) {
-          const timer = setTimeout(() => setSubitemPermanenteToOpenId(null), 500);
-          return () => clearTimeout(timer);
-      }
-  }, [subitemPermanenteToOpenId]);
+  useEffect(() => { if (subitemToOpenId) { const timer = setTimeout(() => setSubitemToOpenId(null), 500); return () => clearTimeout(timer); } }, [subitemToOpenId]);
+  useEffect(() => { if (subitemServicoToOpenId) { const timer = setTimeout(() => setSubitemServicoToOpenId(null), 500); return () => clearTimeout(timer); } }, [subitemServicoToOpenId]);
+  useEffect(() => { if (subitemPermanenteToOpenId) { const timer = setTimeout(() => setSubitemPermanenteToOpenId(null), 500); return () => clearTimeout(timer); } }, [subitemPermanenteToOpenId]);
 
   const renderSearchResults = () => {
-      if (searchTerm.length < 3) {
-          return (
-              <Card className="p-4 text-center text-muted-foreground">
-                  Digite pelo menos 3 caracteres para iniciar a busca.
-              </Card>
-          );
-      }
-      
-      if (filteredItems.length === 0) {
-          return (
-              <Card className="p-4 text-center text-muted-foreground">
-                  Nenhum item de aquisição encontrado com este termo.
-              </Card>
-          );
-      }
-      
+      if (searchTerm.length < 3) return (<Card className="p-4 text-center text-muted-foreground">Digite pelo menos 3 caracteres para iniciar a busca.</Card>);
+      if (filteredItems.length === 0) return (<Card className="p-4 text-center text-muted-foreground">Nenhum item de aquisição encontrado com este termo.</Card>);
       return (
-          <Card className="p-4">
-              <CardTitle className="text-base font-semibold mb-3">
-                   Resultados da Busca ({filteredItems.length})
-              </CardTitle>
-              <Table>
-                  <TableHeader>
-                      <TableRow>
-                          <TableHead className="w-[40%]">Item de Aquisição</TableHead>
-                          <TableHead className="w-[40%]">Subitem ND</TableHead>
-                          <TableHead className="w-[20%] text-center">Ações</TableHead>
-                      </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                      {filteredItems.map((item, index) => (
-                          <TableRow key={`${item.diretrizId}-${index}`}>
-                              <TableCell className="font-medium">
-                                  {item.descricao_item}
-                                  <p className="text-xs text-muted-foreground">
-                                      Cód. CATMAT: {item.codigo_catmat || 'N/A'}
-                                  </p>
-                                  <p className="text-xs text-muted-foreground truncate">
-                                      Pregão: {item.numero_pregao} | UASG: {formatCodug(item.uasg) || 'N/A'}
-                                  </p>
-                              </TableCell>
-                              <TableCell className="text-left">
-                                  <span className="font-semibold mr-1 whitespace-nowrap">{item.subitemNr}</span>
-                                  <span className="text-sm text-muted-foreground">{item.subitemNome}</span>
-                              </TableCell>
-                              <TableCell className="text-right">
-                                  <Button 
-                                      variant="outline" 
-                                      size="sm" 
-                                      onClick={() => handleGoToSubitem(item.diretrizId)}
-                                      className="w-full justify-start"
-                                  >
-                                      <Package className="h-4 w-4 mr-1" />
-                                      Ver Local
-                                  </Button>
-                              </TableCell>
-                          </TableRow>
-                      ))}
-                  </TableBody>
-              </Table>
-          </Card>
+          <Card className="p-4"><CardTitle className="text-base font-semibold mb-3">Resultados da Busca ({filteredItems.length})</CardTitle><Table><TableHeader><TableRow><TableHead className="w-[40%]">Item de Aquisição</TableHead><TableHead className="w-[40%]">Subitem ND</TableHead><TableHead className="w-[20%] text-center">Ações</TableHead></TableRow></TableHeader><TableBody>{filteredItems.map((item, index) => (<TableRow key={`${item.diretrizId}-${index}`}><TableCell className="font-medium">{item.descricao_item}<p className="text-xs text-muted-foreground">Cód. CATMAT: {item.codigo_catmat || 'N/A'}</p><p className="text-xs text-muted-foreground truncate">Pregão: {item.numero_pregao} | UASG: {formatCodug(item.uasg) || 'N/A'}</p></TableCell><TableCell className="text-left"><span className="font-semibold mr-1 whitespace-nowrap">{item.subitemNr}</span><span className="text-sm text-muted-foreground">{item.subitemNome}</span></TableCell><TableCell className="text-right"><Button variant="outline" size="sm" onClick={() => handleGoToSubitem(item.diretrizId)} className="w-full justify-start"><Package className="h-4 w-4 mr-1" />Ver Local</Button></TableCell></TableRow>))}</TableBody></Table></Card>
       );
   };
 
   const renderSearchResultsServicos = () => {
-      if (searchTermServicos.length < 3) {
-          return (
-              <Card className="p-4 text-center text-muted-foreground">
-                  Digite pelo menos 3 caracteres para iniciar a busca.
-              </Card>
-          );
-      }
-      
-      if (filteredItemsServicos.length === 0) {
-          return (
-              <Card className="p-4 text-center text-muted-foreground">
-                  Nenhum item de serviço encontrado com este termo.
-              </Card>
-          );
-      }
-      
+      if (searchTermServicos.length < 3) return (<Card className="p-4 text-center text-muted-foreground">Digite pelo menos 3 caracteres para iniciar a busca.</Card>);
+      if (filteredItemsServicos.length === 0) return (<Card className="p-4 text-center text-muted-foreground">Nenhum item de serviço encontrado com este termo.</Card>);
       return (
-          <Card className="p-4">
-              <CardTitle className="text-base font-semibold mb-3">
-                   Resultados da Busca ({filteredItemsServicos.length})
-              </CardTitle>
-              <Table>
-                  <TableHeader>
-                      <TableRow>
-                          <TableHead className="w-[40%]">Item de Serviço</TableHead>
-                          <TableHead className="w-[40%]">Subitem ND</TableHead>
-                          <TableHead className="w-[20%] text-center">Ações</TableHead>
-                      </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                      {filteredItemsServicos.map((item, index) => (
-                          <TableRow key={`${item.diretrizId}-${index}`}>
-                              <TableCell className="font-medium">
-                                  {item.descricao_item}
-                                  <p className="text-xs text-muted-foreground">
-                                      Cód. CATMAT: {item.codigo_catmat || 'N/A'}
-                                  </p>
-                                  <p className="text-xs text-muted-foreground truncate">
-                                      Pregão: {item.numero_pregao} | UASG: {formatCodug(item.uasg) || 'N/A'}
-                                  </p>
-                              </TableCell>
-                              <TableCell className="text-left">
-                                  <span className="font-semibold mr-1 whitespace-nowrap">{item.subitemNr}</span>
-                                  <span className="text-sm text-muted-foreground">{item.subitemNome}</span>
-                              </TableCell>
-                              <TableCell className="text-right">
-                                  <Button 
-                                      variant="outline" 
-                                      size="sm" 
-                                      onClick={() => handleGoToSubitemServico(item.diretrizId)}
-                                      className="w-full justify-start"
-                                  >
-                                      <Package className="h-4 w-4 mr-1" />
-                                      Ver Local
-                                  </Button>
-                              </TableCell>
-                          </TableRow>
-                      ))}
-                  </TableBody>
-              </Table>
-          </Card>
+          <Card className="p-4"><CardTitle className="text-base font-semibold mb-3">Resultados da Busca ({filteredItemsServicos.length})</CardTitle><Table><TableHeader><TableRow><TableHead className="w-[40%]">Item de Serviço</TableHead><TableHead className="w-[40%]">Subitem ND</TableHead><TableHead className="w-[20%] text-center">Ações</TableHead></TableRow></TableHeader><TableBody>{filteredItemsServicos.map((item, index) => (<TableRow key={`${item.diretrizId}-${index}`}><TableCell className="font-medium">{item.descricao_item}<p className="text-xs text-muted-foreground">Cód. CATMAT: {item.codigo_catmat || 'N/A'}</p><p className="text-xs text-muted-foreground truncate">Pregão: {item.numero_pregao} | UASG: {formatCodug(item.uasg) || 'N/A'}</p></TableCell><TableCell className="text-left"><span className="font-semibold mr-1 whitespace-nowrap">{item.subitemNr}</span><span className="text-sm text-muted-foreground">{item.subitemNome}</span></TableCell><TableCell className="text-right"><Button variant="outline" size="sm" onClick={() => handleGoToSubitemServico(item.diretrizId)} className="w-full justify-start"><Package className="h-4 w-4 mr-1" />Ver Local</Button></TableCell></TableRow>))}</TableBody></Table></Card>
       );
   };
 
   const renderSearchResultsPermanente = () => {
-      if (searchTermPermanente.length < 3) {
-          return (
-              <Card className="p-4 text-center text-muted-foreground">
-                  Digite pelo menos 3 caracteres para iniciar a busca.
-              </Card>
-          );
-      }
-      
-      if (filteredItemsPermanente.length === 0) {
-          return (
-              <Card className="p-4 text-center text-muted-foreground">
-                  Nenhum item de material permanente encontrado com este termo.
-              </Card>
-          );
-      }
-      
+      if (searchTermPermanente.length < 3) return (<Card className="p-4 text-center text-muted-foreground">Digite pelo menos 3 caracteres para iniciar a busca.</Card>);
+      if (filteredItemsPermanente.length === 0) return (<Card className="p-4 text-center text-muted-foreground">Nenhum item de material permanente encontrado com este termo.</Card>);
       return (
-          <Card className="p-4">
-              <CardTitle className="text-base font-semibold mb-3">
-                   Resultados da Busca ({filteredItemsPermanente.length})
-              </CardTitle>
-              <Table>
-                  <TableHeader>
-                      <TableRow>
-                          <TableHead className="w-[40%]">Item Permanente</TableHead>
-                          <TableHead className="w-[40%]">Subitem ND</TableHead>
-                          <TableHead className="w-[20%] text-center">Ações</TableHead>
-                      </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                      {filteredItemsPermanente.map((item, index) => (
-                          <TableRow key={`${item.diretrizId}-${index}`}>
-                              <TableCell className="font-medium">
-                                  {item.descricao_item}
-                                  <p className="text-xs text-muted-foreground">
-                                      Cód. CATMAT: {item.codigo_catmat || 'N/A'}
-                                  </p>
-                                  <p className="text-xs text-muted-foreground truncate">
-                                      Pregão: {item.numero_pregao} | UASG: {formatCodug(item.uasg) || 'N/A'}
-                                  </p>
-                              </TableCell>
-                              <TableCell className="text-left">
-                                  <span className="font-semibold mr-1 whitespace-nowrap">{item.subitemNr}</span>
-                                  <span className="text-sm text-muted-foreground">{item.subitemNome}</span>
-                              </TableCell>
-                              <TableCell className="text-right">
-                                  <Button 
-                                      variant="outline" 
-                                      size="sm" 
-                                      onClick={() => handleGoToSubitemPermanente(item.diretrizId)}
-                                      className="w-full justify-start"
-                                  >
-                                      <Package className="h-4 w-4 mr-1" />
-                                      Ver Local
-                                  </Button>
-                              </TableCell>
-                          </TableRow>
-                      ))}
-                  </TableBody>
-              </Table>
-          </Card>
+          <Card className="p-4"><CardTitle className="text-base font-semibold mb-3">Resultados da Busca ({filteredItemsPermanente.length})</CardTitle><Table><TableHeader><TableRow><TableHead className="w-[40%]">Item Permanente</TableHead><TableHead className="w-[40%]">Subitem ND</TableHead><TableHead className="w-[20%] text-center">Ações</TableHead></TableRow></TableHeader><TableBody>{filteredItemsPermanente.map((item, index) => (<TableRow key={`${item.diretrizId}-${index}`}><TableCell className="font-medium">{item.descricao_item}<p className="text-xs text-muted-foreground">Cód. CATMAT: {item.codigo_catmat || 'N/A'}</p><p className="text-xs text-muted-foreground truncate">Pregão: {item.numero_pregao} | UASG: {formatCodug(item.uasg) || 'N/A'}</p></TableCell><TableCell className="text-left"><span className="font-semibold mr-1 whitespace-nowrap">{item.subitemNr}</span><span className="text-sm text-muted-foreground">{item.subitemNome}</span></TableCell><TableCell className="text-right"><Button variant="outline" size="sm" onClick={() => handleGoToSubitemPermanente(item.diretrizId)} className="w-full justify-start"><Package className="h-4 w-4 mr-1" />Ver Local</Button></TableCell></TableRow>))}</TableBody></Table></Card>
       );
   };
   
   const renderMaterialConsumoSection = () => {
       const isDataLoading = isLoadingMaterialConsumo || isMovingMaterialConsumo;
-      
       return (
-          <div className="space-y-4">
-              <Card className="p-4">
-                  <div className="flex justify-between items-center mb-4">
-                      <CardTitle className="text-base font-semibold">
-                          Subitens da ND Cadastrados
-                      </CardTitle>
-                      <Button 
-                          type="button" 
-                          variant="outline" 
-                          size="sm" 
-                          onClick={() => setIsExportImportDialogOpen(true)}
-                          disabled={isSaving || isDataLoading}
-                      >
-                          <FileSpreadsheet className="h-4 w-4 mr-2" />
-                          Exportar/Importar
-                      </Button>
-                  </div>
-                  
-                  <div className="mb-4 relative">
-                      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                      <Input
-                          placeholder="Buscar item de aquisição (nome, CATMAT, pregão, subitem...)"
-                          value={searchTerm}
-                          onChange={(e) => setSearchTerm(e.target.value)}
-                          disabled={isDataLoading}
-                          className="pl-10"
-                      />
-                  </div>
-                  
-                  {searchTerm ? (
-                      renderSearchResults()
-                  ) : (
-                      (diretrizesMaterialConsumo?.length || 0) > 0 ? (
-                          <Table>
-                              <TableHeader>
-                                  <TableRow>
-                                      <TableHead className="w-[150px] text-center">Nr Subitem</TableHead>
-                                      <TableHead>Nome do Subitem</TableHead>
-                                      <TableHead className="w-[100px] text-center">Ações</TableHead>
-                                  </TableRow>
-                              </TableHeader>
-                              <TableBody>
-                                  {diretrizesMaterialConsumo.map(d => (
-                                      <MaterialConsumoDiretrizRow
-                                          key={d.id}
-                                          diretriz={d}
-                                          onEdit={handleStartEditMaterialConsumo}
-                                          onDelete={handleDeleteMaterialConsumo}
-                                          loading={isSaving || isDataLoading}
-                                          onMoveItem={handleMoveItem}
-                                          id={`diretriz-material-consumo-${d.id}`} 
-                                          forceOpen={subitemToOpenId === d.id}
-                                      />
-                                  ))}
-                              </TableBody>
-                          </Table>
-                      ) : (
-                          <Card className="p-4 text-center text-muted-foreground">
-                              Nenhum subitem da ND cadastrado para o ano de referência.
-                          </Card>
-                      )
-                  )}
-              </Card>
-              
-              <div className="flex justify-end">
-                  <Button 
-                      type="button" 
-                      onClick={handleOpenNewMaterialConsumo}
-                      disabled={isSaving || isDataLoading || !!searchTerm}
-                      variant="outline" 
-                      size="sm" 
-                      className="w-full"
-                  >
-                      <Plus className="mr-2 h-4 w-4" />
-                      Adicionar Novo Subitem da ND
-                  </Button>
-              </div>
-              
-              {(isLoadingMaterialConsumo || isMovingMaterialConsumo) && (
-                  <div className="text-center py-2">
-                      <Loader2 className="h-5 w-5 animate-spin text-primary mx-auto" />
-                      <p className="text-xs text-muted-foreground mt-1">
-                          {isMovingMaterialConsumo ? "Movendo item..." : "Carregando subitens..."}
-                      </p>
-                  </div>
-              )}
-          </div>
+          <div className="space-y-4"><Card className="p-4"><div className="flex justify-between items-center mb-4"><CardTitle className="text-base font-semibold">Subitens da ND Cadastrados</CardTitle><Button type="button" variant="outline" size="sm" onClick={() => setIsExportImportDialogOpen(true)} disabled={isSaving || isDataLoading}><FileSpreadsheet className="h-4 w-4 mr-2" />Exportar/Importar</Button></div><div className="mb-4 relative"><Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" /><Input placeholder="Buscar item de aquisição (nome, CATMAT, pregão, subitem...)" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} disabled={isDataLoading} className="pl-10" /></div>{searchTerm ? renderSearchResults() : ((diretrizesMaterialConsumo?.length || 0) > 0 ? (<Table><TableHeader><TableRow><TableHead className="w-[150px] text-center">Nr Subitem</TableHead><TableHead>Nome do Subitem</TableHead><TableHead className="w-[100px] text-center">Ações</TableHead></TableRow></TableHeader><TableBody>{diretrizesMaterialConsumo.map(d => (<MaterialConsumoDiretrizRow key={d.id} diretriz={d} onEdit={handleStartEditMaterialConsumo} onDelete={handleDeleteMaterialConsumo} loading={isSaving || isDataLoading} onMoveItem={handleMoveItem} id={`diretriz-material-consumo-${d.id}`} forceOpen={subitemToOpenId === d.id} />))}</TableBody></Table>) : (<Card className="p-4 text-center text-muted-foreground">Nenhum subitem da ND cadastrado para o ano de referência.</Card>))}</Card><div className="flex justify-end"><Button type="button" onClick={handleOpenNewMaterialConsumo} disabled={isSaving || isDataLoading || !!searchTerm} variant="outline" size="sm" className="w-full"><Plus className="mr-2 h-4 w-4" />Adicionar Novo Subitem da ND</Button></div>{(isLoadingMaterialConsumo || isMovingMaterialConsumo) && (<div className="text-center py-2"><Loader2 className="h-5 w-5 animate-spin text-primary mx-auto" /><p className="text-xs text-muted-foreground mt-1">{isMovingMaterialConsumo ? "Movendo item..." : "Carregando subitens..."}</p></div>)}</div>
       );
   };
 
   const renderServicosTerceirosSection = () => {
       const isDataLoading = isLoadingServicosTerceiros || isMovingServicosTerceiros;
-      
       return (
-          <div className="space-y-4">
-              <Card className="p-4">
-                  <div className="flex justify-between items-center mb-4">
-                      <CardTitle className="text-base font-semibold">
-                          Subitens da ND Cadastrados
-                      </CardTitle>
-                      <Button 
-                          type="button" 
-                          variant="outline" 
-                          size="sm" 
-                          onClick={() => setIsExportImportServicosDialogOpen(true)}
-                          disabled={isSaving || isDataLoading}
-                      >
-                          <FileSpreadsheet className="h-4 w-4 mr-2" />
-                          Exportar/Importar
-                      </Button>
-                  </div>
-                  
-                  <div className="mb-4 relative">
-                      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                      <Input
-                          placeholder="Buscar item de serviço (nome, CATMAT, pregão, subitem...)"
-                          value={searchTermServicos}
-                          onChange={(e) => setSearchTermServicos(e.target.value)}
-                          disabled={isDataLoading}
-                          className="pl-10"
-                      />
-                  </div>
-                  
-                  {searchTermServicos ? (
-                      renderSearchResultsServicos()
-                  ) : (
-                      (diretrizesServicosTerceiros?.length || 0) > 0 ? (
-                          <Table>
-                              <TableHeader>
-                                  <TableRow>
-                                      <TableHead className="w-[150px] text-center">Nr Subitem</TableHead>
-                                      <TableHead>Nome do Subitem</TableHead>
-                                      <TableHead className="w-[100px] text-center">Ações</TableHead>
-                                  </TableRow>
-                              </TableHeader>
-                              <TableBody>
-                                  {diretrizesServicosTerceiros.map(d => (
-                                      <ServicosTerceirosDiretrizRow
-                                          key={d.id}
-                                          diretriz={d}
-                                          onEdit={handleStartEditServicosTerceiros}
-                                          onDelete={handleDeleteServicosTerceiros}
-                                          loading={isSaving || isDataLoading}
-                                          onMoveItem={handleMoveItemServico}
-                                          id={`diretriz-servicos-terceiros-${d.id}`} 
-                                          forceOpen={subitemServicoToOpenId === d.id}
-                                      />
-                                  ))}
-                              </TableBody>
-                          </Table>
-                      ) : (
-                          <Card className="p-4 text-center text-muted-foreground">
-                              Nenhum subitem da ND cadastrado para o ano de referência.
-                          </Card>
-                      )
-                  )}
-              </Card>
-              
-              <div className="flex justify-end">
-                  <Button 
-                      type="button" 
-                      onClick={handleOpenNewServicosTerceiros}
-                      disabled={isSaving || isDataLoading || !!searchTermServicos}
-                      variant="outline" 
-                      size="sm" 
-                      className="w-full"
-                  >
-                      <Plus className="mr-2 h-4 w-4" />
-                      Adicionar Novo Subitem da ND
-                  </Button>
-              </div>
-              
-              {(isLoadingServicosTerceiros || isMovingServicosTerceiros) && (
-                  <div className="text-center py-2">
-                      <Loader2 className="h-5 w-5 animate-spin text-primary mx-auto" />
-                      <p className="text-xs text-muted-foreground mt-1">
-                          {isMovingMaterialConsumo ? "Movendo item..." : "Carregando subitens..."}
-                      </p>
-                  </div>
-              )}
-          </div>
+          <div className="space-y-4"><Card className="p-4"><div className="flex justify-between items-center mb-4"><CardTitle className="text-base font-semibold">Subitens da ND Cadastrados</CardTitle><Button type="button" variant="outline" size="sm" onClick={() => setIsExportImportServicosDialogOpen(true)} disabled={isSaving || isDataLoading}><FileSpreadsheet className="h-4 w-4 mr-2" />Exportar/Importar</Button></div><div className="mb-4 relative"><Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" /><Input placeholder="Buscar item de serviço (nome, CATMAT, pregão, subitem...)" value={searchTermServicos} onChange={(e) => setSearchTermServicos(e.target.value)} disabled={isDataLoading} className="pl-10" /></div>{searchTermServicos ? renderSearchResultsServicos() : ((diretrizesServicosTerceiros?.length || 0) > 0 ? (<Table><TableHeader><TableRow><TableHead className="w-[150px] text-center">Nr Subitem</TableHead><TableHead>Nome do Subitem</TableHead><TableHead className="w-[100px] text-center">Ações</TableHead></TableRow></TableHeader><TableBody>{diretrizesServicosTerceiros.map(d => (<ServicosTerceirosDiretrizRow key={d.id} diretriz={d} onEdit={handleStartEditServicosTerceiros} onDelete={handleDeleteServicosTerceiros} loading={isSaving || isDataLoading} onMoveItem={handleMoveItemServico} id={`diretriz-servicos-terceiros-${d.id}`} forceOpen={subitemServicoToOpenId === d.id} />))}</TableBody></Table>) : (<Card className="p-4 text-center text-muted-foreground">Nenhum subitem da ND cadastrado para o ano de referência.</Card>))}</Card><div className="flex justify-end"><Button type="button" onClick={handleOpenNewServicosTerceiros} disabled={isSaving || isDataLoading || !!searchTermServicos} variant="outline" size="sm" className="w-full"><Plus className="mr-2 h-4 w-4" />Adicionar Novo Subitem da ND</Button></div>{(isLoadingServicosTerceiros || isMovingServicosTerceiros) && (<div className="text-center py-2"><Loader2 className="h-5 w-5 animate-spin text-primary mx-auto" /><p className="text-xs text-muted-foreground mt-1">{isMovingMaterialConsumo ? "Movendo item..." : "Carregando subitens..."}</p></div>)}</div>
       );
   };
 
   const renderMaterialPermanenteSection = () => {
       const isDataLoading = isLoadingMaterialPermanente || isMovingMaterialPermanente;
-      
       return (
-          <div className="space-y-4">
-              <Card className="p-4">
-                  <div className="flex justify-between items-center mb-4">
-                      <CardTitle className="text-base font-semibold">
-                          Subitens da ND Cadastrados
-                      </CardTitle>
-                      <Button 
-                          type="button" 
-                          variant="outline" 
-                          size="sm" 
-                          onClick={() => setIsExportImportPermanenteDialogOpen(true)}
-                          disabled={isSaving || isDataLoading}
-                      >
-                          <FileSpreadsheet className="h-4 w-4 mr-2" />
-                          Exportar/Importar
-                      </Button>
-                  </div>
-                  
-                  <div className="mb-4 relative">
-                      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                      <Input
-                          placeholder="Buscar item permanente (nome, CATMAT, pregão, subitem...)"
-                          value={searchTermPermanente}
-                          onChange={(e) => setSearchTermPermanente(e.target.value)}
-                          disabled={isDataLoading}
-                          className="pl-10"
-                      />
-                  </div>
-                  
-                  {searchTermPermanente ? (
-                      renderSearchResultsPermanente()
-                  ) : (
-                      (diretrizesMaterialPermanente?.length || 0) > 0 ? (
-                          <Table>
-                              <TableHeader>
-                                  <TableRow>
-                                      <TableHead className="w-[150px] text-center">Nr Subitem</TableHead>
-                                      <TableHead>Nome do Subitem</TableHead>
-                                      <TableHead className="w-[100px] text-center">Ações</TableHead>
-                                  </TableRow>
-                              </TableHeader>
-                              <TableBody>
-                                  {diretrizesMaterialPermanente.map(d => (
-                                      <MaterialPermanenteDiretrizRow
-                                          key={d.id}
-                                          diretriz={d}
-                                          onEdit={handleStartEditMaterialPermanente}
-                                          onDelete={handleDeleteMaterialPermanente}
-                                          loading={isSaving || isDataLoading}
-                                          id={`diretriz-material-permanente-${d.id}`} 
-                                          forceOpen={subitemPermanenteToOpenId === d.id}
-                                          isExpanded={subitemPermanenteToOpenId === d.id}
-                                          onToggleExpand={() => setSubitemPermanenteToOpenId(subitemPermanenteToOpenId === d.id ? null : d.id)}
-                                      />
-                                  ))}
-                              </TableBody>
-                          </Table>
-                      ) : (
-                          <Card className="p-4 text-center text-muted-foreground">
-                              Nenhum subitem da ND cadastrado para o ano de referência.
-                          </Card>
-                      )
-                  )}
-              </Card>
-              
-              <div className="flex justify-end">
-                  <Button 
-                      type="button" 
-                      onClick={handleOpenNewMaterialPermanente}
-                      disabled={isSaving || isDataLoading || !!searchTermPermanente}
-                      variant="outline" 
-                      size="sm" 
-                      className="w-full"
-                  >
-                      <Plus className="mr-2 h-4 w-4" />
-                      Adicionar Novo Subitem da ND
-                  </Button>
-              </div>
-              
-              {(isLoadingMaterialPermanente || isMovingMaterialPermanente) && (
-                  <div className="text-center py-2">
-                      <Loader2 className="h-5 w-5 animate-spin text-primary mx-auto" />
-                      <p className="text-xs text-muted-foreground mt-1">
-                          {isMovingMaterialPermanente ? "Movendo item..." : "Carregando subitens..."}
-                      </p>
-                  </div>
-              )}
-          </div>
+          <div className="space-y-4"><Card className="p-4"><div className="flex justify-between items-center mb-4"><CardTitle className="text-base font-semibold">Subitens da ND Cadastrados</CardTitle><Button type="button" variant="outline" size="sm" onClick={() => setIsExportImportPermanenteDialogOpen(true)} disabled={isSaving || isDataLoading}><FileSpreadsheet className="h-4 w-4 mr-2" />Exportar/Importar</Button></div><div className="mb-4 relative"><Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" /><Input placeholder="Buscar item permanente (nome, CATMAT, pregão, subitem...)" value={searchTermPermanente} onChange={(e) => setSearchTermPermanente(e.target.value)} disabled={isDataLoading} className="pl-10" /></div>{searchTermPermanente ? renderSearchResultsPermanente() : ((diretrizesMaterialPermanente?.length || 0) > 0 ? (<Table><TableHeader><TableRow><TableHead className="w-[150px] text-center">Nr Subitem</TableHead><TableHead>Nome do Subitem</TableHead><TableHead className="w-[100px] text-center">Ações</TableHead></TableRow></TableHeader><TableBody>{diretrizesMaterialPermanente.map(d => (<MaterialPermanenteDiretrizRow key={d.id} diretriz={d} onEdit={handleStartEditMaterialPermanente} onDelete={handleDeleteMaterialPermanente} loading={isSaving || isDataLoading} id={`diretriz-material-permanente-${d.id}`} forceOpen={subitemPermanenteToOpenId === d.id} isExpanded={subitemPermanenteToOpenId === d.id} onToggleExpand={() => setSubitemPermanenteToOpenId(subitemPermanenteToOpenId === d.id ? null : d.id)} />))}</TableBody></Table>) : (<Card className="p-4 text-center text-muted-foreground">Nenhum subitem da ND cadastrado para o ano de referência.</Card>))}</Card><div className="flex justify-end"><Button type="button" onClick={handleOpenNewMaterialPermanente} disabled={isSaving || isDataLoading || !!searchTermPermanente} variant="outline" size="sm" className="w-full"><Plus className="mr-2 h-4 w-4" />Adicionar Novo Subitem da ND</Button></div>{(isLoadingMaterialPermanente || isMovingMaterialPermanente) && (<div className="text-center py-2"><Loader2 className="h-5 w-5 animate-spin text-primary mx-auto" /><p className="text-xs text-muted-foreground mt-1">{isMovingMaterialPermanente ? "Movendo item..." : "Carregando subitens..."}</p></div>)}</div>
       );
   };
 
-  if (loading || isLoadingDefaultYear) {
+  if (loading || isLoadingDefaultYear || isLoadingPageData || isFetchingPageData) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <Loader2 className="h-6 w-6 animate-spin text-primary" />
@@ -2223,332 +1409,40 @@ const CustosOperacionaisPage = () => {
 
   return (
     <div className="min-h-screen bg-background p-4 md:p-8">
-      <PageMetadata 
-        title="Configurações de Custos Operacionais" 
-        description="Defina os valores de diárias, contratos de passagens, concessionárias e fatores de custeio operacional para o cálculo do P Trab."
-        canonicalPath="/config/custos-operacionais"
-      />
-      
+      <PageMetadata title="Configurações de Custos Operacionais" description="Defina os valores de diárias, contratos de passagens, concessionárias e fatores de custeio operacional para o cálculo do P Trab." canonicalPath="/config/custos-operacionais" />
       <div className="max-w-3xl mx-auto space-y-6">
-        <div className="flex items-center justify-between">
-          <Button variant="ghost" onClick={() => navigate("/ptrab")} className="mb-2">
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Voltar para Planos de Trabalho
-          </Button>
-          <Button 
-            variant="outline" 
-            onClick={() => setIsYearManagementDialogOpen(true)}
-            disabled={isSaving || isLoadingDefaultYear}
-          >
-            <Settings className="mr-2 h-4 w-4" />
-            Gerenciar Anos
-          </Button>
-        </div>
-
+        <div className="flex items-center justify-between"><Button variant="ghost" onClick={() => navigate("/ptrab")} className="mb-2"><ArrowLeft className="mr-2 h-4 w-4" />Voltar para Planos de Trabalho</Button><Button variant="outline" onClick={() => setIsYearManagementDialogOpen(true)} disabled={isSaving || isLoadingDefaultYear}><Settings className="mr-2 h-4 w-4" />Gerenciar Anos</Button></div>
         <Card>
-          <CardHeader>
-            <h1 className="text-2xl font-bold">Configurações dos Custos Operacionais</h1>
-            <CardDescription>
-              Defina os valores e fatores de referência para o cálculo de despesas operacionais (GND 3 e GND4).
-            </CardDescription>
-          </CardHeader>
+          <CardHeader><h1 className="text-2xl font-bold">Configurações dos Custos Operacionais</h1><CardDescription>Defina os valores e fatores de referência para o cálculo de despesas operacionais (GND 3 e GND4).</CardDescription></CardHeader>
           <CardContent className="space-y-6">
             <form onSubmit={(e) => { e.preventDefault(); handleSaveDiretrizes(); }}>
-              <div className="space-y-2 mb-6">
-                <Label>Ano de Referência</Label>
-                <Select
-                  value={selectedYear.toString()}
-                  onValueChange={(value) => setSelectedYear(parseInt(value))}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecione o ano" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {availableYears.map((year) => (
-                      <SelectItem key={year} value={year.toString()}>
-                        {year} {year === defaultYear && "(Padrão)"}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                
-                <p className="text-sm text-muted-foreground pt-1">
-                  Ano Padrão de Cálculo: 
-                  <span className="font-semibold text-primary ml-1">
-                    {defaultYear ? defaultYear : 'Não definido (usando o mais recente)'}
-                  </span>
-                  {defaultYear && defaultYear !== selectedYear && (
-                    <span className="text-xs text-gray-500 ml-2">(Selecione este ano para editar o padrão)</span>
-                  )}
-                </p>
-              </div>
-
+              <div className="space-y-2 mb-6"><Label>Ano de Referência</Label><Select value={selectedYear.toString()} onValueChange={(value) => setSelectedYear(parseInt(value))}><SelectTrigger><SelectValue placeholder="Selecione o ano" /></SelectTrigger><SelectContent>{availableYears.map((year) => (<SelectItem key={year} value={year.toString()}>{year} {year === defaultYear && "(Padrão)"}</SelectItem>))}</SelectContent></Select><p className="text-sm text-muted-foreground pt-1">Ano Padrão de Cálculo: <span className="font-semibold text-primary ml-1">{defaultYear ? defaultYear : 'Não definido (usando o mais recente)'}</span>{defaultYear && defaultYear !== selectedYear && (<span className="text-xs text-gray-500 ml-2">(Selecione este ano para editar o padrão)</span>)}</p></div>
               <div className="border-t pt-4 mt-6">
                 <div className="space-y-4">
-                  <div ref={el => collapsibleRefs.current['diarias_detalhe'] = el} className="border-b pb-4 last:border-b-0 last:pb-0">
-                    <Collapsible 
-                      open={fieldCollapseState['diarias_detalhe']} 
-                      onOpenChange={(open) => handleCollapseChange('diarias_detalhe', open)}
-                    >
-                      <CollapsibleTrigger asChild>
-                        <div className="flex items-center justify-between cursor-pointer py-2">
-                          <h2 className="text-base font-medium">
-                            Pagamento de Diárias
-                          </h2>
-                          {fieldCollapseState['diarias_detalhe'] ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-                        </div>
-                      </CollapsibleTrigger>
-                      <CollapsibleContent>
-                        <div className="mt-2">
-                          {renderDiariaTable()}
-                        </div>
-                      </CollapsibleContent>
-                    </Collapsible>
-                  </div>
-                  
-                  <div ref={el => collapsibleRefs.current['passagens_detalhe'] = el} className="border-b pb-4 last:border-b-0 last:pb-0">
-                    <Collapsible 
-                      open={fieldCollapseState['passagens_detalhe']} 
-                      onOpenChange={(open) => handleCollapseChange('passagens_detalhe', open)}
-                    >
-                      <CollapsibleTrigger asChild>
-                        <div className="flex items-center justify-between cursor-pointer py-2">
-                          <h2 className="text-base font-medium flex items-center gap-2">
-                            Aquisição de Passagens
-                          </h2>
-                          {fieldCollapseState['passagens_detalhe'] ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-                        </div>
-                      </CollapsibleTrigger>
-                      <CollapsibleContent>
-                        <div className="mt-2">
-                          {renderPassagensSection()}
-                        </div>
-                      </CollapsibleContent>
-                    </Collapsible>
-                  </div>
-                  
-                  <div ref={el => collapsibleRefs.current['concessionaria_detalhe'] = el} className="border-b pb-4 last:border-b-0 last:pb-0">
-                    <Collapsible 
-                      open={fieldCollapseState['concessionaria_detalhe']} 
-                      onOpenChange={(open) => handleCollapseChange('concessionaria_detalhe', open)}
-                    >
-                      <CollapsibleTrigger asChild>
-                        <div className="flex items-center justify-between cursor-pointer py-2">
-                          <h2 className="text-base font-medium flex items-center gap-2">
-                            Pagamento de Concessionárias
-                          </h2>
-                          {fieldCollapseState['concessionaria_detalhe'] ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-                        </div>
-                      </CollapsibleTrigger>
-                      <CollapsibleContent>
-                        <div className="mt-2">
-                          {renderConcessionariaSection()}
-                        </div>
-                      </CollapsibleContent>
-                    </Collapsible>
-                  </div>
-                  
-                  <div ref={el => collapsibleRefs.current['material_consumo_detalhe'] = el} className="border-b pb-4 last:border-b-0 last:pb-0">
-                    <Collapsible 
-                      open={fieldCollapseState['material_consumo_detalhe']} 
-                      onOpenChange={(open) => handleCollapseChange('material_consumo_detalhe', open)}
-                    >
-                      <CollapsibleTrigger asChild>
-                        <div className="flex items-center justify-between cursor-pointer py-2">
-                          <h2 className="text-base font-medium flex items-center gap-2">
-                            Aquisição de Material de Consumo
-                          </h2>
-                          {fieldCollapseState['material_consumo_detalhe'] ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-                        </div>
-                      </CollapsibleTrigger>
-                      <CollapsibleContent>
-                        <div className="mt-2">
-                          {renderMaterialConsumoSection()}
-                        </div>
-                      </CollapsibleContent>
-                    </Collapsible>
-                  </div>
-
-                  <div ref={el => collapsibleRefs.current['material_permanente_detalhe'] = el} className="border-b pb-4 last:border-b-0 last:pb-0">
-                    <Collapsible 
-                      open={fieldCollapseState['material_permanente_detalhe']} 
-                      onOpenChange={(open) => handleCollapseChange('material_permanente_detalhe', open)}
-                    >
-                      <CollapsibleTrigger asChild>
-                        <div className="flex items-center justify-between cursor-pointer py-2">
-                          <h2 className="text-base font-medium flex items-center gap-2">
-                            Aquisição de Material Permanente
-                          </h2>
-                          {fieldCollapseState['material_permanente_detalhe'] ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-                        </div>
-                      </CollapsibleTrigger>
-                      <CollapsibleContent>
-                        <div className="mt-2">
-                          {renderMaterialPermanenteSection()}
-                        </div>
-                      </CollapsibleContent>
-                    </Collapsible>
-                  </div>
-
-                  <div ref={el => collapsibleRefs.current['servicos_terceiros_detalhe'] = el} className="border-b pb-4 last:border-b-0 last:pb-0">
-                    <Collapsible 
-                      open={fieldCollapseState['servicos_terceiros_detalhe']} 
-                      onOpenChange={(open) => handleCollapseChange('servicos_terceiros_detalhe', open)}
-                    >
-                      <CollapsibleTrigger asChild>
-                        <div className="flex items-center justify-between cursor-pointer py-2">
-                          <h2 className="text-base font-medium flex items-center gap-2">
-                            Contratação de Serviços de Terceiros / Locações (Transporte)
-                          </h2>
-                          {fieldCollapseState['servicos_terceiros_detalhe'] ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-                        </div>
-                      </CollapsibleTrigger>
-                      <CollapsibleContent>
-                        <div className="mt-2">
-                          {renderServicosTerceirosSection()}
-                        </div>
-                      </CollapsibleContent>
-                    </Collapsible>
-                  </div>
-                  
-                  {OPERATIONAL_FIELDS.filter(f => f.key !== 'fator_material_consumo' && f.key !== 'fator_servicos_terceiros').map(field => {
-                    const fieldKey = field.key as string;
-                    const isOpen = fieldCollapseState[fieldKey] ?? false;
-                    
-                    return (
-                      <div key={fieldKey} ref={el => collapsibleRefs.current[fieldKey] = el} className="border-b pb-4 last:border-b-0 last:pb-0">
-                        <Collapsible 
-                          open={isOpen} 
-                          onOpenChange={(open) => handleCollapseChange(fieldKey, open)}
-                        >
-                          <CollapsibleTrigger asChild>
-                            <div className="flex items-center justify-between cursor-pointer py-2">
-                              <h2 className="text-base font-medium">
-                                {field.label}
-                              </h2>
-                              {isOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-                            </div>
-                          </CollapsibleTrigger>
-                          <CollapsibleContent>
-                            <div className="mt-2">
-                              {renderDiretrizField(field)}
-                            </div>
-                          </CollapsibleContent>
-                        </Collapsible>
-                      </div>
-                    );
-                  })}
+                  <div ref={el => collapsibleRefs.current['diarias_detalhe'] = el} className="border-b pb-4 last:border-b-0 last:pb-0"><Collapsible open={fieldCollapseState['diarias_detalhe']} onOpenChange={(open) => handleCollapseChange('diarias_detalhe', open)}><CollapsibleTrigger asChild><div className="flex items-center justify-between cursor-pointer py-2"><h2 className="text-base font-medium">Pagamento de Diárias</h2>{fieldCollapseState['diarias_detalhe'] ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}</div></CollapsibleTrigger><CollapsibleContent><div className="mt-2">{renderDiariaTable()}</div></CollapsibleContent></Collapsible></div>
+                  <div ref={el => collapsibleRefs.current['passagens_detalhe'] = el} className="border-b pb-4 last:border-b-0 last:pb-0"><Collapsible open={fieldCollapseState['passagens_detalhe']} onOpenChange={(open) => handleCollapseChange('passagens_detalhe', open)}><CollapsibleTrigger asChild><div className="flex items-center justify-between cursor-pointer py-2"><h2 className="text-base font-medium flex items-center gap-2">Aquisição de Passagens</h2>{fieldCollapseState['passagens_detalhe'] ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}</div></CollapsibleTrigger><CollapsibleContent><div className="mt-2">{renderPassagensSection()}</div></CollapsibleContent></Collapsible></div>
+                  <div ref={el => collapsibleRefs.current['concessionaria_detalhe'] = el} className="border-b pb-4 last:border-b-0 last:pb-0"><Collapsible open={fieldCollapseState['concessionaria_detalhe']} onOpenChange={(open) => handleCollapseChange('concessionaria_detalhe', open)}><CollapsibleTrigger asChild><div className="flex items-center justify-between cursor-pointer py-2"><h2 className="text-base font-medium flex items-center gap-2">Pagamento de Concessionárias</h2>{fieldCollapseState['concessionaria_detalhe'] ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}</div></CollapsibleTrigger><CollapsibleContent><div className="mt-2">{renderConcessionariaSection()}</div></CollapsibleContent></Collapsible></div>
+                  <div ref={el => collapsibleRefs.current['material_consumo_detalhe'] = el} className="border-b pb-4 last:border-b-0 last:pb-0"><Collapsible open={fieldCollapseState['material_consumo_detalhe']} onOpenChange={(open) => handleCollapseChange('material_consumo_detalhe', open)}><CollapsibleTrigger asChild><div className="flex items-center justify-between cursor-pointer py-2"><h2 className="text-base font-medium flex items-center gap-2">Aquisição de Material de Consumo</h2>{fieldCollapseState['material_consumo_detalhe'] ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}</div></CollapsibleTrigger><CollapsibleContent><div className="mt-2">{renderMaterialConsumoSection()}</div></CollapsibleContent></Collapsible></div>
+                  <div ref={el => collapsibleRefs.current['material_permanente_detalhe'] = el} className="border-b pb-4 last:border-b-0 last:pb-0"><Collapsible open={fieldCollapseState['material_permanente_detalhe']} onOpenChange={(open) => handleCollapseChange('material_permanente_detalhe', open)}><CollapsibleTrigger asChild><div className="flex items-center justify-between cursor-pointer py-2"><h2 className="text-base font-medium flex items-center gap-2">Aquisição de Material Permanente</h2>{fieldCollapseState['material_permanente_detalhe'] ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}</div></CollapsibleTrigger><CollapsibleContent><div className="mt-2">{renderMaterialPermanenteSection()}</div></CollapsibleContent></Collapsible></div>
+                  <div ref={el => collapsibleRefs.current['servicos_terceiros_detalhe'] = el} className="border-b pb-4 last:border-b-0 last:pb-0"><Collapsible open={fieldCollapseState['servicos_terceiros_detalhe']} onOpenChange={(open) => handleCollapseChange('servicos_terceiros_detalhe', open)}><CollapsibleTrigger asChild><div className="flex items-center justify-between cursor-pointer py-2"><h2 className="text-base font-medium flex items-center gap-2">Contratação de Serviços de Terceiros / Locações (Transporte)</h2>{fieldCollapseState['servicos_terceiros_detalhe'] ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}</div></CollapsibleTrigger><CollapsibleContent><div className="mt-2">{renderServicosTerceirosSection()}</div></CollapsibleContent></Collapsible></div>
+                  {OPERATIONAL_FIELDS.filter(f => f.key !== 'fator_material_consumo' && f.key !== 'fator_servicos_terceiros').map(field => { const fieldKey = field.key as string; const isOpen = fieldCollapseState[fieldKey] ?? false; return (<div key={fieldKey} ref={el => collapsibleRefs.current[fieldKey] = el} className="border-b pb-4 last:border-b-0 last:pb-0"><Collapsible open={isOpen} onOpenChange={(open) => handleCollapseChange(fieldKey, open)}><CollapsibleTrigger asChild><div className="flex items-center justify-between cursor-pointer py-2"><h2 className="text-base font-medium">{field.label}</h2>{isOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}</div></CollapsibleTrigger><CollapsibleContent><div className="mt-2">{renderDiretrizField(field)}</div></CollapsibleContent></Collapsible></div>); })}
                 </div>
               </div>
-
-              <div className="space-y-2 border-t pt-4 mt-6">
-                <Label>Observações</Label>
-                <Textarea
-                  value={diretrizes.observacoes || ""}
-                  onChange={(e) => setDiretrizes({ ...diretrizes, observacoes: e.target.value })}
-                  onKeyDown={handleEnterToNextField}
-                />
-              </div>
-
-              <div className="flex justify-end gap-3 mt-6">
-                <Button 
-                  type="button" 
-                  variant="secondary" 
-                  onClick={handleSetDefaultYear} 
-                  disabled={isSaving || selectedYear === defaultYear || !selectedYear}
-                >
-                  {selectedYear === defaultYear ? "Padrão Atual" : "Adotar como Padrão"}
-                </Button>
-                
-                <Button type="submit" disabled={isSaving}>
-                  {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-                  Salvar Diretrizes
-                </Button>
-              </div>
+              <div className="space-y-2 border-t pt-4 mt-6"><Label>Observações</Label><Textarea value={diretrizes.observacoes || ""} onChange={(e) => setDiretrizes({ ...diretrizes, observacoes: e.target.value })} onKeyDown={handleEnterToNextField} /></div>
+              <div className="flex justify-end gap-3 mt-6"><Button type="button" variant="secondary" onClick={handleSetDefaultYear} disabled={isSaving || selectedYear === defaultYear || !selectedYear}>{selectedYear === defaultYear ? "Padrão Atual" : "Adotar como Padrão"}</Button><Button type="submit" disabled={isSaving}>{isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}Salvar Diretrizes</Button></div>
             </form>
           </CardContent>
         </Card>
       </div>
-      
-      <YearManagementDialog
-        open={isYearManagementDialogOpen}
-        onOpenChange={setIsYearManagementDialogOpen}
-        availableYears={availableYears}
-        defaultYear={defaultYear}
-        onCopy={handleCopyDiretrizes}
-        onDelete={handleDeleteDiretrizes}
-        loading={isSaving}
-      />
-      
-      <PassagemDiretrizFormDialog
-          open={isPassagemFormOpen}
-          onOpenChange={setIsPassagemFormOpen}
-          selectedYear={selectedYear}
-          diretrizToEdit={diretrizToEdit} 
-          onSave={handleSavePassagem} 
-          loading={isSaving}
-      />
-      
-      <ConcessionariaDiretrizFormDialog
-          open={isConcessionariaFormOpen}
-          onOpenChange={setIsConcessionariaFormOpen}
-          selectedYear={selectedYear}
-          diretrizToEdit={diretrizConcessionariaToEdit} 
-          onSave={handleSaveConcessionaria}
-          loading={isSaving}
-          initialCategory={selectedConcessionariaTab}
-      />
-      
-      <MaterialConsumoDiretrizFormDialog
-          open={isMaterialConsumoFormOpen}
-          onOpenChange={setIsMaterialConsumoFormOpen}
-          selectedYear={selectedYear}
-          diretrizToEdit={diretrizMaterialConsumoToEdit}
-          onSave={handleSaveMaterialConsumo}
-          loading={isSaving}
-      />
-      
-      <MaterialConsumoExportImportDialog
-          open={isExportImportDialogOpen}
-          onOpenChange={setIsExportImportDialogOpen}
-          selectedYear={selectedYear}
-          diretrizes={diretrizesMaterialConsumo || []}
-          onImportSuccess={handleMaterialConsumoImportSuccess}
-      />
-
-      <ServicosTerceirosDiretrizFormDialog
-          open={isServicosTerceirosFormOpen}
-          onOpenChange={setIsServicosTerceirosFormOpen}
-          selectedYear={selectedYear}
-          diretrizToEdit={diretrizServicosTerceirosToEdit}
-          onSave={handleSaveServicosTerceiros}
-          loading={isSaving}
-      />
-      
-      <ServicosTerceirosExportImportDialog
-          open={isExportImportServicosDialogOpen}
-          onOpenChange={setIsExportImportServicosDialogOpen}
-          selectedYear={selectedYear}
-          diretrizes={diretrizesServicosTerceiros || []}
-          onImportSuccess={handleServicosTerceirosImportSuccess}
-      />
-
-      <MaterialPermanenteDiretrizFormDialog
-          open={isMaterialPermanenteFormOpen}
-          onOpenChange={setIsMaterialPermanenteFormOpen}
-          selectedYear={selectedYear}
-          diretrizToEdit={diretrizMaterialPermanenteToEdit}
-          onSave={handleSaveMaterialPermanente}
-          loading={isSaving}
-      />
-      
-      <MaterialPermanenteExportImportDialog
-          open={isExportImportPermanenteDialogOpen}
-          onOpenChange={setIsExportImportPermanenteDialogOpen}
-          selectedYear={selectedYear}
-          diretrizes={diretrizesMaterialPermanente || []}
-          onImportSuccess={handleMaterialPermanenteImportSuccess}
-      />
+      <YearManagementDialog open={isYearManagementDialogOpen} onOpenChange={setIsYearManagementDialogOpen} availableYears={availableYears} defaultYear={defaultYear} onCopy={handleCopyDiretrizes} onDelete={handleDeleteDiretrizes} loading={isSaving} />
+      <PassagemDiretrizFormDialog open={isPassagemFormOpen} onOpenChange={setIsPassagemFormOpen} selectedYear={selectedYear} diretrizToEdit={diretrizToEdit} onSave={handleSavePassagem} loading={isSaving} />
+      <ConcessionariaDiretrizFormDialog open={isConcessionariaFormOpen} onOpenChange={setIsConcessionariaFormOpen} selectedYear={selectedYear} diretrizToEdit={diretrizConcessionariaToEdit} onSave={handleSaveConcessionaria} loading={isSaving} initialCategory={selectedConcessionariaTab} />
+      <MaterialConsumoDiretrizFormDialog open={isMaterialConsumoFormOpen} onOpenChange={setIsMaterialConsumoFormOpen} selectedYear={selectedYear} diretrizToEdit={diretrizMaterialConsumoToEdit} onSave={handleSaveMaterialConsumo} loading={isSaving} />
+      <MaterialConsumoExportImportDialog open={isExportImportDialogOpen} onOpenChange={setIsExportImportDialogOpen} selectedYear={selectedYear} diretrizes={diretrizesMaterialConsumo || []} onImportSuccess={handleMaterialConsumoImportSuccess} />
+      <ServicosTerceirosDiretrizFormDialog open={isServicosTerceirosFormOpen} onOpenChange={setIsServicosTerceirosFormOpen} selectedYear={selectedYear} diretrizToEdit={diretrizServicosTerceirosToEdit} onSave={handleSaveServicosTerceiros} loading={isSaving} />
+      <ServicosTerceirosExportImportDialog open={isExportImportServicosDialogOpen} onOpenChange={setIsExportImportServicosDialogOpen} selectedYear={selectedYear} diretrizes={diretrizesServicosTerceiros || []} onImportSuccess={handleServicosTerceirosImportSuccess} />
+      <MaterialPermanenteDiretrizFormDialog open={isMaterialPermanenteFormOpen} onOpenChange={setIsMaterialPermanenteFormOpen} selectedYear={selectedYear} diretrizToEdit={diretrizMaterialPermanenteToEdit} onSave={handleSaveMaterialPermanente} loading={isSaving} />
+      <MaterialPermanenteExportImportDialog open={isExportImportPermanenteDialogOpen} onOpenChange={setIsExportImportPermanenteDialogOpen} selectedYear={selectedYear} diretrizes={diretrizesMaterialPermanente || []} onImportSuccess={handleMaterialPermanenteImportSuccess} />
     </div>
   );
 };
