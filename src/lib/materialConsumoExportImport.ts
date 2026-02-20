@@ -95,9 +95,10 @@ const parseNumericValue = (value: any): number => {
 
 /**
  * Gera uma chave de unicidade para um Item de Aquisição.
+ * Critério: Código, Descrição do Item, Pregão, UASG e Valor Unitário.
  */
-const generateItemKey = (item: { descricao_item: string, codigo_catmat: string, numero_pregao: string, uasg: string }): string => {
-    return `${normalizeString(item.descricao_item)}|${normalizeString(item.codigo_catmat)}|${normalizeString(item.numero_pregao)}|${normalizeString(item.uasg)}`;
+const generateItemKey = (item: { descricao_item: string, codigo_catmat: string, numero_pregao: string, uasg: string, valor_unitario: number }): string => {
+    return `${normalizeString(item.codigo_catmat)}|${normalizeString(item.descricao_item)}|${normalizeString(item.numero_pregao)}|${normalizeString(item.uasg)}|${Number(item.valor_unitario).toFixed(2)}`;
 };
 
 /**
@@ -154,7 +155,6 @@ export async function processMaterialConsumoImport(file: File, year: number, use
     }
     
     const existingItemKeys = new Set<string>();
-    // CORREÇÃO: Cast para unknown antes de DiretrizMaterialConsumo[]
     (existingDiretrizes as unknown as DiretrizMaterialConsumo[] || []).forEach(diretriz => {
         const itens = diretriz.itens_aquisicao || [];
         itens.forEach(item => {
@@ -197,7 +197,7 @@ export async function processMaterialConsumoImport(file: File, year: number, use
         
         // Checagem de duplicidade interna (apenas se for válido até aqui)
         if (isValid) {
-            const itemKey = generateItemKey({ descricao_item, codigo_catmat, numero_pregao, uasg });
+            const itemKey = generateItemKey({ descricao_item, codigo_catmat, numero_pregao, uasg, valor_unitario });
             if (itemKeysInFile.has(itemKey)) {
                 isDuplicateInternal = true;
                 totalDuplicates++;
@@ -273,7 +273,6 @@ export async function persistMaterialConsumoImport(stagedData: StagingRow[], yea
     
     // Mapear diretrizes existentes por chave de subitem (nr_subitem|nome_subitem)
     const existingMap = new Map<string, DiretrizMaterialConsumo>();
-    // CORREÇÃO: Cast para unknown antes de DiretrizMaterialConsumo[]
     (existingDiretrizes as unknown as DiretrizMaterialConsumo[] || []).forEach(d => {
         const key = `${d.nr_subitem}|${d.nome_subitem}`;
         existingMap.set(key, d);
@@ -368,7 +367,6 @@ export async function persistMaterialConsumoImport(stagedData: StagingRow[], yea
     
     // Atualizações
     if (updates.length > 0) {
-        // Executa as atualizações em lote (se suportado) ou individualmente
         const updatePromises = updates.map(update => 
             supabase
                 .from('diretrizes_material_consumo')

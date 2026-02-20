@@ -57,6 +57,7 @@ export async function processServicosTerceirosImport(file: File, year: number, u
         const nr_subitem = String(row.getCell(1).value || '').trim();
         const nome_subitem = String(row.getCell(2).value || '').trim();
         const codigo_catmat = String(row.getCell(4).value || '').trim();
+        const descricao_item = String(row.getCell(5).value || '').trim();
         const valor_unitario = Number(row.getCell(8).value || 0);
         const numero_pregao = String(row.getCell(9).value || '').trim();
         const uasg = String(row.getCell(10).value || '').trim();
@@ -64,11 +65,19 @@ export async function processServicosTerceirosImport(file: File, year: number, u
         const errors: string[] = [];
         if (!nr_subitem) errors.push("Subitem ausente");
         if (!nome_subitem) errors.push("Nome do subitem ausente");
+        if (!descricao_item) errors.push("Descrição do item ausente");
         if (valor_unitario <= 0) errors.push("Valor inválido");
 
-        const key = `${codigo_catmat}-${numero_pregao}-${uasg}`;
+        // Nova chave de unicidade: Código, Item, Pregão, UASG e Valor
+        const key = `${codigo_catmat}|${descricao_item}|${numero_pregao}|${uasg}|${valor_unitario.toFixed(2)}`;
         const isDuplicateInternal = internalKeys.has(key);
-        const isDuplicateExternal = existingItems.some(ei => ei.codigo_catmat === codigo_catmat && ei.numero_pregao === numero_pregao && ei.uasg === uasg);
+        const isDuplicateExternal = existingItems.some(ei => 
+            ei.codigo_catmat === codigo_catmat && 
+            ei.descricao_item === descricao_item &&
+            ei.numero_pregao === numero_pregao && 
+            ei.uasg === uasg &&
+            Number(ei.valor_unitario).toFixed(2) === valor_unitario.toFixed(2)
+        );
 
         if (!isDuplicateInternal) internalKeys.add(key);
 
@@ -78,7 +87,7 @@ export async function processServicosTerceirosImport(file: File, year: number, u
             nome_subitem,
             descricao_subitem: String(row.getCell(3).value || ''),
             codigo_catmat,
-            descricao_item: String(row.getCell(5).value || ''),
+            descricao_item,
             nome_reduzido: String(row.getCell(6).value || ''),
             unidade_medida: String(row.getCell(7).value || 'UN'),
             valor_unitario,
@@ -134,7 +143,6 @@ export async function persistServicosTerceirosImport(stagedData: any[], year: nu
 
     const toUpsert = Array.from(subitemsMap.values());
     
-    // Busca itens existentes para mesclar
     const { data: existingItems } = await supabase
         .from('diretrizes_servicos_terceiros' as any)
         .select('*')
@@ -142,7 +150,6 @@ export async function persistServicosTerceirosImport(stagedData: any[], year: nu
         .eq('ano_referencia', year);
 
     const finalUpsert = toUpsert.map(newItem => {
-        // Busca por número E nome para garantir a mesclagem correta
         const existing = (existingItems as any[])?.find(e => 
             e.nr_subitem === newItem.nr_subitem && 
             e.nome_subitem === newItem.nome_subitem

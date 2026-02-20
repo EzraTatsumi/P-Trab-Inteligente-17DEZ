@@ -56,6 +56,7 @@ export async function processMaterialPermanenteImport(file: File, year: number, 
         const nr_subitem = String(row.getCell(1).value || '').trim();
         const nome_subitem = String(row.getCell(2).value || '').trim();
         const codigo_catmat = String(row.getCell(4).value || '').trim();
+        const descricao_item = String(row.getCell(5).value || '').trim();
         const valor_unitario = Number(row.getCell(7).value || 0);
         const numero_pregao = String(row.getCell(8).value || '').trim();
         const uasg = String(row.getCell(9).value || '').trim();
@@ -63,11 +64,19 @@ export async function processMaterialPermanenteImport(file: File, year: number, 
         const errors: string[] = [];
         if (!nr_subitem) errors.push("Subitem ausente");
         if (!nome_subitem) errors.push("Nome do subitem ausente");
+        if (!descricao_item) errors.push("Descrição do item ausente");
         if (valor_unitario <= 0) errors.push("Valor inválido");
 
-        const key = `${codigo_catmat}-${numero_pregao}-${uasg}`;
+        // Nova chave de unicidade: Código, Item, Pregão, UASG e Valor
+        const key = `${codigo_catmat}|${descricao_item}|${numero_pregao}|${uasg}|${valor_unitario.toFixed(2)}`;
         const isDuplicateInternal = internalKeys.has(key);
-        const isDuplicateExternal = existingItems.some(ei => ei.codigo_catmat === codigo_catmat && ei.numero_pregao === numero_pregao && ei.uasg === uasg);
+        const isDuplicateExternal = existingItems.some(ei => 
+            ei.codigo_catmat === codigo_catmat && 
+            ei.descricao_item === descricao_item &&
+            ei.numero_pregao === numero_pregao && 
+            ei.uasg === uasg &&
+            Number(ei.valor_unitario).toFixed(2) === valor_unitario.toFixed(2)
+        );
 
         if (!isDuplicateInternal) internalKeys.add(key);
 
@@ -77,7 +86,7 @@ export async function processMaterialPermanenteImport(file: File, year: number, 
             nome_subitem,
             descricao_subitem: String(row.getCell(3).value || ''),
             codigo_catmat,
-            descricao_item: String(row.getCell(5).value || ''),
+            descricao_item,
             descricao_reduzida: String(row.getCell(6).value || ''),
             valor_unitario,
             numero_pregao,
@@ -101,7 +110,6 @@ export async function processMaterialPermanenteImport(file: File, year: number, 
 export async function persistMaterialPermanenteImport(stagedData: StagingRowPermanente[], year: number, userId: string) {
     const validRows = stagedData.filter(r => r.isValid);
     
-    // Agrupa por subitem (chave composta por número e nome)
     const subitemsMap = new Map<string, any>();
     
     validRows.forEach(row => {
@@ -132,7 +140,6 @@ export async function persistMaterialPermanenteImport(stagedData: StagingRowPerm
 
     const toUpsert = Array.from(subitemsMap.values());
     
-    // Busca diretrizes existentes para mesclar se o subitem já existir
     const { data: existingDiretrizes } = await supabase
         .from('diretrizes_material_permanente' as any)
         .select('*')
@@ -140,7 +147,6 @@ export async function persistMaterialPermanenteImport(stagedData: StagingRowPerm
         .eq('ano_referencia', year);
 
     const finalUpsert = toUpsert.map(newItem => {
-        // Busca por número E nome para garantir a mesclagem correta
         const existing = (existingDiretrizes as any[])?.find(e => 
             e.nr_subitem === newItem.nr_subitem && 
             e.nome_subitem === newItem.nome_subitem
