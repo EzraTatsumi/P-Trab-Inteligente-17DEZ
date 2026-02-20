@@ -58,6 +58,8 @@ import ManageSharingDialog from "@/components/ManageSharingDialog";
 import UnlinkPTrabDialog from "@/components/UnlinkPTrabDialog";
 import PageMetadata from "@/components/PageMetadata";
 import { fetchBatchPTrabTotals } from "@/lib/ptrabUtils";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { PTrabTableSkeleton } from "@/components/PTrabTableSkeleton";
 
 // Define a base type for PTrab data fetched from DB, including the missing 'origem' field
 type PTrabDB = Tables<'p_trab'> & {
@@ -80,15 +82,6 @@ interface PTrab extends PTrabDB {
   isOwner: boolean;
   isShared: boolean;
   hasPendingRequests: boolean;
-}
-
-interface ShareRequest extends Tables<'ptrab_share_requests'> {
-  requester_profile: {
-    id: string;
-    first_name: string | null;
-    last_name: string | null;
-    raw_user_meta_data: { posto_graduacao?: string, nome_om?: string } | null;
-  } | null;
 }
 
 type PTrabLinkedTableName =
@@ -133,13 +126,11 @@ const statusConfig = {
 const PTrabManager = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const [pTrabs, setPTrabs] = useState<PTrab[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { user } = useSession();
+  const queryClient = useQueryClient();
+  
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [existingPTrabNumbers, setExistingPTrabNumbers] = useState<string[]>([]);
-  
-  const { user } = useSession();
   const [userName, setUserName] = useState<string>("");
   
   const [settingsDropdownOpen, setSettingsDropdownOpen] = useState(false);
@@ -192,6 +183,65 @@ const PTrabManager = () => {
   
   const currentYear = new Date().getFullYear();
   const yearSuffix = `/${currentYear}`;
+
+  // --- TanStack Query para carregar P Trabs ---
+  const { data: pTrabs = [], isLoading: loading, refetch: loadPTrabs } = useQuery({
+    queryKey: ['pTrabs', user?.id],
+    queryFn: async () => {
+      if (!user?.id) return [];
+      
+      const { data: pTrabsData, error: pTrabsError } = await supabase
+        .from("p_trab")
+        .select("*, comentario, origem, rotulo_versao, user_id, shared_with, share_token")
+        .or(`user_id.eq.${user.id},shared_with.cs.{${user.id}}`)
+        .order("created_at", { ascending: false });
+
+      if (pTrabsError) throw pTrabsError;
+
+      const typedPTrabsData = pTrabsData as unknown as PTrabDB[];
+      const ptrabIds = typedPTrabsData.map(p => p.id);
+      
+      // Busca totais em lote
+      const batchTotals = await fetchBatchPTrabTotals(ptrabIds);
+      
+      const ownedPTrabIds = typedPTrabsData.filter(p => p.user_id === user.id).map(p => p.id);
+      let pendingRequests: Tables<'ptrab_share_requests'>[] = [];
+      
+      if (ownedPTrabIds.length > 0) {
+          const { data: requestsData } = await supabase
+              .from('ptrab_share_requests')
+              .select('id, ptrab_id, requester_id, share_token, status, created_at, updated_at')
+              .in('ptrab_id', ownedPTrabIds)
+              .eq('status', 'pending');
+              
+          pendingRequests = requestsData || []; 
+      }
+      
+      const ptrabsWithPendingRequests = new Set(pendingRequests.map(r => r.ptrab_id));
+
+      return typedPTrabsData.map((ptrab) => {
+        const totals = batchTotals[ptrab.id] || {
+          totalLogistica: 0,
+          totalOperacional: 0,
+          totalMaterialPermanente: 0,
+          quantidadeRacaoOp: 0,
+          quantidadeHorasVoo: 0
+        };
+
+        return {
+          ...ptrab,
+          ...totals,
+          isOwner: ptrab.user_id === user.id,
+          isShared: ptrab.user_id !== user.id && (ptrab.shared_with || []).includes(user.id),
+          hasPendingRequests: ptrab.user_id === user.id && ptrabsWithPendingRequests.has(ptrab.id),
+        } as PTrab;
+      });
+    },
+    enabled: !!user?.id,
+    staleTime: 1000 * 60 * 5, // 5 minutos de cache "fresco"
+  });
+
+  const existingPTrabNumbers = useMemo(() => pTrabs.map(p => p.numero_ptrab), [pTrabs]);
 
   const fetchUserName = useCallback(async (userId: string, userMetadata: any) => {
     const { data: profileData, error: profileError } = await supabase
@@ -343,102 +393,15 @@ const PTrabManager = () => {
     return Math.ceil(diff / (1000 * 3600 * 24)) + 1;
   };
 
-  const loadPTrabs = useCallback(async () => {
-    if (!user?.id) return;
-    
-    try {
-      const { data: pTrabsData, error: pTrabsError } = await supabase
-        .from("p_trab")
-        .select("*, comentario, origem, rotulo_versao, user_id, shared_with, share_token")
-        .or(`user_id.eq.${user.id},shared_with.cs.{${user.id}}`)
-        .order("created_at", { ascending: false });
-
-      if (pTrabsError) throw pTrabsError;
-
-      if (!Array.isArray(pTrabsData)) {
-        setPTrabs([]);
-        return;
-      }
-
-      const typedPTrabsData = pTrabsData as unknown as PTrabDB[];
-      const ptrabIds = typedPTrabsData.map(p => p.id);
-      const numbers = typedPTrabsData.map(p => p.numero_ptrab);
-      setExistingPTrabNumbers(numbers);
-      
-      // OTIMIZAÇÃO: Busca todos os totais em lote (apenas algumas requisições em vez de centenas)
-      const batchTotals = await fetchBatchPTrabTotals(ptrabIds);
-      
-      const ownedPTrabIds = typedPTrabsData.filter(p => p.user_id === user.id).map(p => p.id);
-      let pendingRequests: Tables<'ptrab_share_requests'>[] = [];
-      
-      if (ownedPTrabIds.length > 0) {
-          const { data: requestsData } = await supabase
-              .from('ptrab_share_requests')
-              .select('id, ptrab_id, requester_id, share_token, status, created_at, updated_at')
-              .in('ptrab_id', ownedPTrabIds)
-              .eq('status', 'pending');
-              
-          pendingRequests = requestsData || []; 
-      }
-      
-      const ptrabsWithPendingRequests = new Set(pendingRequests.map(r => r.ptrab_id));
-
-      const pTrabsWithTotals: PTrab[] = typedPTrabsData.map((ptrab) => {
-        const totals = batchTotals[ptrab.id] || {
-          totalLogistica: 0,
-          totalOperacional: 0,
-          totalMaterialPermanente: 0,
-          quantidadeRacaoOp: 0,
-          quantidadeHorasVoo: 0
-        };
-
-        return {
-          ...ptrab,
-          ...totals,
-          isOwner: ptrab.user_id === user.id,
-          isShared: ptrab.user_id !== user.id && (ptrab.shared_with || []).includes(user.id),
-          hasPendingRequests: ptrab.user_id === user.id && ptrabsWithPendingRequests.has(ptrab.id),
-        } as PTrab;
-      });
-
-      setPTrabs(pTrabsWithTotals);
-
-      const tenDaysAgo = new Date();
-      tenDaysAgo.setDate(tenDaysAgo.getDate() - 10);
-
-      for (const ptrab of pTrabsWithTotals) {
-        if (
-          ptrab.status === 'aprovado' && 
-          ptrab.isOwner &&
-          new Date(ptrab.updated_at) < tenDaysAgo &&
-          !promptedForArchive.current.has(ptrab.id)
-        ) {
-          setPtrabToArchiveId(ptrab.id);
-          setPtrabToArchiveName(`${ptrab.numero_ptrab} - ${ptrab.nome_operacao}`);
-          setShowArchiveStatusDialog(true);
-          promptedForArchive.current.add(ptrab.id);
-          break;
-        }
-      }
-
-    } catch (error: any) {
-      toast.error("Erro ao carregar P Trabs");
-      console.error(error);
-    } finally {
-      setLoading(false);
-    }
-  }, [user?.id]);
-
   useEffect(() => {
     checkAuth();
-    loadPTrabs();
     
     if (user?.id) {
         fetchUserName(user.id, user.user_metadata).then(name => {
             setUserName(name || ""); 
         });
     }
-  }, [loadPTrabs, user, fetchUserName]);
+  }, [user, fetchUserName]);
 
   useEffect(() => {
     if (ptrabToClone) {
@@ -477,7 +440,6 @@ const PTrabManager = () => {
     }
     if (!confirm(`Tem certeza que deseja ARQUIVAR o P Trab "${ptrabName}"? Esta ação irá finalizar o trabalho e restringir edições.`)) return;
 
-    setLoading(true);
     try {
         const { error } = await supabase.from("p_trab").update({ status: "arquivado" }).eq("id", ptrabId);
         if (error) throw error;
@@ -486,14 +448,11 @@ const PTrabManager = () => {
     } catch (error) {
         console.error("Erro ao arquivar P Trab:", error);
         toast.error("Erro ao arquivar P Trab.");
-    } finally {
-        setLoading(false);
     }
   };
 
   const handleConfirmReactivateStatus = async () => {
     if (!ptrabToReactivateId) return;
-    setLoading(true);
     try {
       const { data: ptrab, error: fetchError } = await supabase.from("p_trab").select("numero_ptrab").eq("id", ptrabToReactivateId).single();
       if (fetchError || !ptrab) throw new Error("P Trab não encontrado.");
@@ -509,7 +468,6 @@ const PTrabManager = () => {
     } catch (error: any) {
       console.error("Erro ao reativar P Trab:", error);
       toast.error(error.message || "Erro ao reativar P Trab.");
-      setLoading(false);
     }
   };
 
@@ -553,7 +511,6 @@ const PTrabManager = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Usuário não autenticado");
@@ -569,25 +526,21 @@ const PTrabManager = () => {
           if (fieldName === 'nome cmt om') fieldName = 'Nome do Comandante da OM';
           if (fieldName === 'comando militar area') fieldName = 'Comando Militar de Área';
           toast.error(`O campo '${fieldName}' é obrigatório.`);
-          setLoading(false);
           return;
         }
       }
       if (!formData.codug_om || !formData.rm_vinculacao || !formData.codug_rm_vinculacao) {
         toast.error("A OM deve ser selecionada na lista para preencher os CODUGs e RM.");
-        setLoading(false);
         return;
       }
       if (new Date(formData.periodo_fim) < new Date(formData.periodo_inicio)) {
         toast.error("A Data Fim deve ser posterior ou igual à Data Início.");
-        setLoading(false);
         return;
       }
       if (currentNumber && !currentNumber.startsWith("Minuta")) {
         const isDuplicate = isPTrabNumberDuplicate(currentNumber, existingPTrabNumbers) && currentNumber !== pTrabs.find(p => p.id === editingId)?.numero_ptrab;
         if (isDuplicate) {
           toast.error("Já existe um P Trab com este número. Por favor, proponha outro.");
-          setLoading(false);
           return;
         }
       }
@@ -625,8 +578,6 @@ const PTrabManager = () => {
       loadPTrabs();
     } catch (error: any) {
       toast.error(sanitizeError(error));
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -664,9 +615,10 @@ const PTrabManager = () => {
     }
     if (!confirm("Tem certeza?")) return;
     
-    // EXCLUSÃO OTIMISTA: Remove da lista imediatamente
-    const originalPTrabs = [...pTrabs];
-    setPTrabs(prev => prev.filter(p => p.id !== id));
+    // EXCLUSÃO OTIMISTA: Remove da lista imediatamente no cache do QueryClient
+    queryClient.setQueryData(['pTrabs', user?.id], (old: PTrab[] | undefined) => 
+      old ? old.filter(p => p.id !== id) : []
+    );
     
     try {
       const { error } = await supabase.from("p_trab").delete().eq("id", id);
@@ -675,7 +627,7 @@ const PTrabManager = () => {
     } catch (error: any) {
       toast.error("Erro ao excluir");
       // Rollback em caso de erro
-      setPTrabs(originalPTrabs);
+      loadPTrabs();
     }
   };
 
@@ -699,7 +651,6 @@ const PTrabManager = () => {
       toast.error("O número sugerido já existe. Tente novamente ou use outro número.");
       return;
     }
-    setLoading(true);
     try {
       const { error } = await supabase.from("p_trab").update({ numero_ptrab: newNumber, status: 'aprovado' }).eq("id", ptrabToApprove.id);
       if (error) throw error;
@@ -710,8 +661,6 @@ const PTrabManager = () => {
       loadPTrabs();
     } catch (error: any) {
       toast.error(sanitizeError(error));
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -742,7 +691,6 @@ const PTrabManager = () => {
       return;
     }
     setShowCloneVariationDialog(false);
-    setLoading(true);
     try {
         const { id, created_at, updated_at, user_id, share_token, shared_with, totalLogistica, totalOperacional, totalMaterialPermanente, quantidadeRacaoOp, quantidadeHorasVoo, isOwner, isShared, hasPendingRequests, ...restOfPTrab } = ptrabToClone;
         const newPTrabData: TablesInsert<'p_trab'> & { origem: PTrabDB['origem'] } = { ...restOfPTrab, numero_ptrab: suggestedCloneNumber, status: "aberto", origem: ptrabToClone.origem, comentario: null, rotulo_versao: versionName, user_id: (await supabase.auth.getUser()).data.user?.id! };
@@ -757,8 +705,6 @@ const PTrabManager = () => {
     } catch (error: any) {
         console.error("Erro ao clonar variação:", error);
         toast.error(sanitizeError(error));
-    } finally {
-        setLoading(false);
     }
   };
 
@@ -855,7 +801,6 @@ const PTrabManager = () => {
 
   const handleConfirmConsolidation = async (finalMinutaNumber: string) => {
     if (selectedPTrabsToConsolidate.length < 2 || !user?.id) return;
-    setLoading(true);
     setShowConsolidationNumberDialog(false);
     try {
         const { data: selectedPTrabsData, error: fetchError } = await supabase.from('p_trab').select('*').in('id', selectedPTrabsToConsolidate);
@@ -900,7 +845,6 @@ const PTrabManager = () => {
         console.error("Erro na consolidação:", error);
         toast.error(sanitizeError(error));
     } finally {
-        setLoading(false);
         setSelectedPTrabsToConsolidate([]);
     }
   };
@@ -929,7 +873,6 @@ const PTrabManager = () => {
         toast.error("Link inválido ou usuário não autenticado.");
         return;
     }
-    setLoading(true);
     try {
         const url = new URL(linkPTrabInput);
         const ptrabId = url.searchParams.get('ptrabId');
@@ -942,8 +885,6 @@ const PTrabManager = () => {
         setShowLinkPTrabDialog(false);
     } catch (error: any) {
         toast.error("Erro ao solicitar vinculação.", { description: sanitizeError(error) });
-    } finally {
-        setLoading(false);
     }
   };
   
@@ -954,7 +895,6 @@ const PTrabManager = () => {
   };
   
   const handleApproveRequest = async (requestId: string) => {
-    setLoading(true);
     try {
         const { data, error } = await supabase.rpc('approve_ptrab_share', { p_request_id: requestId });
         if (error) throw error;
@@ -963,13 +903,10 @@ const PTrabManager = () => {
         loadPTrabs();
     } catch (error: any) {
         toast.error("Erro ao aprovar solicitação.");
-    } finally {
-        setLoading(false);
     }
   };
   
   const handleRejectRequest = async (requestId: string) => {
-    setLoading(true);
     try {
         const { data, error } = await supabase.rpc('reject_ptrab_share', { p_request_id: requestId });
         if (error) throw error;
@@ -978,14 +915,11 @@ const PTrabManager = () => {
         loadPTrabs();
     } catch (error: any) {
         toast.error("Erro ao rejeitar solicitação.");
-    } finally {
-        setLoading(false);
     }
   };
   
   const handleCancelSharing = async (ptrabId: string, userIdToRemove: string, userName: string) => {
     if (!confirm(`Tem certeza que deseja remover o acesso de ${userName} a este P Trab?`)) return;
-    setLoading(true);
     try {
         const { data: success, error } = await supabase.rpc('remove_user_from_shared_with', { p_ptrab_id: ptrabId, p_user_to_remove_id: userIdToRemove });
         if (error) throw error;
@@ -994,8 +928,6 @@ const PTrabManager = () => {
         loadPTrabs();
     } catch (error: any) {
         toast.error("Erro ao cancelar compartilhamento.");
-    } finally {
-        setLoading(false);
     }
   };
   
@@ -1006,7 +938,6 @@ const PTrabManager = () => {
   
   const handleConfirmUnlink = async () => {
     if (!ptrabToUnlink || !user?.id) return;
-    setLoading(true);
     try {
         const { data: success, error } = await supabase.rpc('remove_user_from_shared_with', { p_ptrab_id: ptrabToUnlink.id, p_user_to_remove_id: user.id });
         if (error) throw error;
@@ -1016,8 +947,6 @@ const PTrabManager = () => {
         loadPTrabs();
     } catch (error: any) {
         toast.error("Erro ao desvincular P Trab.", { description: sanitizeError(error) });
-    } finally {
-        setLoading(false);
     }
   };
 
@@ -1093,7 +1022,6 @@ const PTrabManager = () => {
                       <Select
                         value={formData.comando_militar_area}
                         onValueChange={(value) => setFormData({ ...formData, comando_militar_area: value })}
-                        disabled={loading}
                       >
                         <SelectTrigger id="comando_militar_area">
                           <SelectValue placeholder="Selecione o Comando Militar de Área" />
@@ -1150,7 +1078,6 @@ const PTrabManager = () => {
                           }
                         }}
                         placeholder="Selecione uma OM..."
-                        disabled={loading}
                       />
                     </div>
                     <div className="space-y-2">
@@ -1186,7 +1113,7 @@ const PTrabManager = () => {
                     <Textarea id="acoes" value={formData.acoes} onChange={(e) => setFormData({ ...formData, acoes: e.target.value })} rows={4} maxLength={2000} required onKeyDown={handleEnterToNextField} />
                   </div>
                   <DialogFooter>
-                    <Button type="submit" disabled={loading}>{loading ? "Aguarde..." : (editingId ? "Atualizar" : "Criar")}</Button>
+                    <Button type="submit">{(editingId ? "Atualizar" : "Criar")}</Button>
                     <Button variant="outline" type="button" onClick={() => setDialogOpen(false)}>Cancelar</Button>
                   </DialogFooter>
                 </form>
@@ -1240,10 +1167,7 @@ const PTrabManager = () => {
           </CardHeader>
           <CardContent>
             {loading ? (
-              <div className="text-center py-12">
-                <Loader2 className="h-8 w-8 animate-spin text-primary mb-2 mx-auto" />
-                <span className="ml-2 text-muted-foreground">Carregando P Trabs...</span>
-              </div>
+              <PTrabTableSkeleton />
             ) : pTrabs.length === 0 ? (
               <div className="text-center py-12">
                 <FileText className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
@@ -1342,7 +1266,7 @@ const PTrabManager = () => {
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-2 items-start">
-                          {(needsNumbering(ptrab) || isApprovedOrArchived) && <Button onClick={() => handleOpenApproveDialog(ptrab)} size="sm" className="flex items-center gap-2 bg-green-600 hover:bg-green-700" disabled={loading || isApprovedOrArchived || isActionDisabledForNonOwner}><CheckCircle className="h-4 w-4" />Aprovar</Button>}
+                          {(needsNumbering(ptrab) || isApprovedOrArchived) && <Button onClick={() => handleOpenApproveDialog(ptrab)} size="sm" className="flex items-center gap-2 bg-green-600 hover:bg-green-700" disabled={isApprovedOrArchived || isActionDisabledForNonOwner}><CheckCircle className="h-4 w-4" />Aprovar</Button>}
                           
                           <div className="flex flex-col gap-1">
                             <Button 
@@ -1413,8 +1337,8 @@ const PTrabManager = () => {
             <AlertDialogDescription>Tem certeza que deseja reativar o P Trab "{ptrabToReactivateName}"? Ele retornará ao status de "Aprovado" (se já numerado) ou "Aberto" (se for Minuta), permitindo novas edições.</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogAction onClick={handleConfirmReactivateStatus} disabled={loading}>{loading ? "Aguarde..." : "Confirmar Reativação"}</AlertDialogAction>
-            <AlertDialogCancel onClick={handleCancelReactivateStatus} disabled={loading}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={handleConfirmReactivateStatus}>Confirmar Reativação</AlertDialogAction>
+            <AlertDialogCancel onClick={handleCancelReactivateStatus}>Cancelar</AlertDialogCancel>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
@@ -1475,20 +1399,20 @@ const PTrabManager = () => {
             </div>
           </div>
           <DialogFooter>
-            <Button onClick={handleApproveAndNumber} disabled={loading || !suggestedApproveNumber.trim()}>{loading ? "Aguarde..." : "Confirmar Aprovação"}</Button>
+            <Button onClick={handleApproveAndNumber} disabled={!suggestedApproveNumber.trim()}>Confirmar Aprovação</Button>
             <Button variant="outline" onClick={() => setShowApproveDialog(false)}>Cancelar</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      <PTrabConsolidationDialog open={showConsolidationDialog} onOpenChange={setShowConsolidationDialog} pTrabsList={pTrabs.filter(p => p.status !== 'arquivado').map(p => ({ id: p.id, numero_ptrab: p.numero_ptrab, nome_operacao: p.nome_operacao }))} existingPTrabNumbers={existingPTrabNumbers} onConfirm={handleOpenConsolidationNumberDialog} loading={loading} />
-      <ConsolidationNumberDialog open={showConsolidationNumberDialog} onOpenChange={setShowConsolidationNumberDialog} suggestedNumber={suggestedConsolidationNumber} existingNumbers={existingPTrabNumbers} selectedPTrabs={simplePTrabsToConsolidate} onConfirm={handleConfirmConsolidation} loading={loading} />
+      <PTrabConsolidationDialog open={showConsolidationDialog} onOpenChange={setShowConsolidationDialog} pTrabsList={pTrabs.filter(p => p.status !== 'arquivado').map(p => ({ id: p.id, numero_ptrab: p.numero_ptrab, nome_operacao: p.nome_operacao }))} existingPTrabNumbers={existingPTrabNumbers} onConfirm={handleOpenConsolidationNumberDialog} />
+      <ConsolidationNumberDialog open={showConsolidationNumberDialog} onOpenChange={setShowConsolidationNumberDialog} suggestedNumber={suggestedConsolidationNumber} existingNumbers={existingPTrabNumbers} selectedPTrabs={simplePTrabsToConsolidate} onConfirm={handleConfirmConsolidation} />
       <CreditPromptDialog open={showCreditPrompt} onConfirm={handlePromptConfirm} onCancel={handlePromptCancel} />
       
       {ptrabToShare && <ShareLinkDialog open={showShareLinkDialog} onOpenChange={setShowShareLinkDialog} ptrabName={`${ptrabToShare.numero_ptrab} - ${ptrabToShare.nome_operacao}`} shareLink={shareLink} />}
-      <LinkPTrabDialog open={showLinkPTrabDialog} onOpenChange={setShowLinkPTrabDialog} linkInput={linkPTrabInput} onLinkInputChange={setLinkPTrabInput} onRequestLink={handleRequestLink} loading={loading} />
-      {ptrabToManageSharing && <ManageSharingDialog open={showManageSharingDialog} onOpenChange={setShowManageSharingDialog} ptrabId={ptrabToManageSharing.id} ptrabName={`${ptrabToManageSharing.numero_ptrab} - ${ptrabToManageSharing.nome_operacao}`} onApprove={handleApproveRequest} onReject={handleRejectRequest} onCancelSharing={handleCancelSharing} loading={loading} />}
-      {ptrabToUnlink && <UnlinkPTrabDialog open={showUnlinkPTrabDialog} onOpenChange={setShowUnlinkPTrabDialog} ptrabName={`${ptrabToUnlink.numero_ptrab} - ${ptrabToUnlink.nome_operacao}`} onConfirm={handleConfirmUnlink} loading={loading} />}
+      <LinkPTrabDialog open={showLinkPTrabDialog} onOpenChange={setShowLinkPTrabDialog} linkInput={linkPTrabInput} onLinkInputChange={setLinkPTrabInput} onRequestLink={handleRequestLink} />
+      {ptrabToManageSharing && <ManageSharingDialog open={showManageSharingDialog} onOpenChange={setShowManageSharingDialog} ptrabId={ptrabToManageSharing.id} ptrabName={`${ptrabToManageSharing.numero_ptrab} - ${ptrabToManageSharing.nome_operacao}`} onApprove={handleApproveRequest} onReject={handleRejectRequest} onCancelSharing={handleCancelSharing} />}
+      {ptrabToUnlink && <UnlinkPTrabDialog open={showUnlinkPTrabDialog} onOpenChange={setShowUnlinkPTrabDialog} ptrabName={`${ptrabToUnlink.numero_ptrab} - ${ptrabToUnlink.nome_operacao}`} onConfirm={handleConfirmUnlink} />}
       
       <AIChatDrawer />
     </div>
