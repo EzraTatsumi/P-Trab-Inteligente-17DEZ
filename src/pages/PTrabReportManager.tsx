@@ -15,11 +15,18 @@ import PTrabOperacionalReport from "@/components/reports/PTrabOperacionalReport"
 import PTrabHorasVooReport from "@/components/reports/PTrabHorasVooReport"; 
 import PTrabMaterialPermanenteReport from "@/components/reports/PTrabMaterialPermanenteReport";
 import PTrabDORReport from "@/components/reports/PTrabDORReport";
+
 import {
+  generateRacaoQuenteMemoriaCalculo,
+  generateRacaoOperacionalMemoriaCalculo,
   calculateClasseICalculations,
 } from "@/lib/classeIUtils";
-import { calculateItemTotalClasseIX as calculateItemTotalClasseIXUtility } from "@/lib/classeIXUtils";
-import { calculateItemTotals } from "@/lib/classeIIIUtils";
+import { generateClasseIIMemoriaCalculo as generateClasseIIUtility } from "@/lib/classeIIUtils";
+import { generateCategoryMemoriaCalculo as generateClasseVUtility } from "@/lib/classeVUtils";
+import { generateCategoryMemoriaCalculo as generateClasseVIUtility } from "@/lib/classeVIUtils";
+import { generateCategoryMemoriaCalculo as generateClasseVIIUtility } from "@/lib/classeVIIUtils";
+import { generateCategoryMemoriaCalculo as generateClasseVIIIUtility } from "@/lib/classeVIIIUtils";
+import { generateCategoryMemoriaCalculo as generateClasseIXUtility, calculateItemTotalClasseIX as calculateItemTotalClasseIXUtility } from "@/lib/classeIXUtils";
 import { 
   calculateDiariaTotals,
   DestinoDiaria,
@@ -57,21 +64,9 @@ import {
 import { RefLPC } from "@/types/refLPC";
 import { Tables, Json } from "@/integrations/supabase/types"; 
 import { ItemAquisicao } from "@/types/diretrizesMaterialConsumo";
-import { 
-    generateClasseIMemoriaCalculoUnificada, 
-    generateClasseIIMemoriaCalculo, 
-    generateClasseIIIGranularUtility,
-    getOMPriority,
-    isRegiaoMilitar,
-    CLASSE_V_CATEGORIES,
-    CLASSE_VI_CATEGORIES,
-    CLASSE_VII_CATEGORIES,
-    CLASSE_VIII_CATEGORIES,
-    CLASSE_IX_CATEGORIES
-} from "@/lib/reportUtils";
 
 // =================================================================
-// TIPOS E INTERFACES
+// EXPORTS NECESSÁRIOS PARA OS RELATÓRIOS (Restaurados)
 // =================================================================
 
 export interface PTrabData extends Tables<'p_trab'> {
@@ -212,6 +207,90 @@ export interface GrupoOM {
   linhasConcessionaria: LinhaConcessionaria[]; 
 }
 
+export const CLASSE_V_CATEGORIES = ["Armt L", "Armt P", "IODCT", "DQBRN"];
+export const CLASSE_VI_CATEGORIES = ["Gerador", "Embarcação", "Equipamento de Engenharia"];
+export const CLASSE_VII_CATEGORIES = ["Comunicações", "Informática"];
+export const CLASSE_VIII_CATEGORIES = ["Saúde", "Remonta/Veterinária"];
+export const CLASSE_IX_CATEGORIES = ["Vtr Administrativa", "Vtr Operacional", "Motocicleta", "Vtr Blindada"];
+
+export const normalizarNome = (valor?: string) =>
+  (valor || '')
+    .toUpperCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+export const getOMPriority = (nomeOM: string, nomeRM: string): 1 | 2 | 3 => {
+  const om = normalizarNome(nomeOM);
+  const rm = normalizarNome(nomeRM);
+  if (om === rm || /^\d+ª?\s*RM$/.test(om) || om.includes('REGIAO MILITAR') || rm.includes(om) || om.includes('RM')) return 1;
+  if (om.includes('BDA') || om.includes('BRIGADA')) return 2;
+  return 3;
+};
+
+export const isRegiaoMilitar = (nomeOM: string, nomeRM: string) => {
+  const om = normalizarNome(nomeOM);
+  const rm = normalizarNome(nomeRM);
+  if (om === rm) return true;
+  if (/^\d+ª?\s*RM$/.test(om) || om.includes('REGIAO MILITAR')) return true;
+  if (rm.includes(om)) return true;
+  return false;
+};
+
+export const generateClasseIMemoriaCalculoUnificada = (registro: any, tipo: 'QS' | 'QR' | 'OP'): string => {
+    if (registro.categoria === 'RACAO_OPERACIONAL') {
+        if (tipo === 'OP') {
+            if (registro.memoria_calculo_op_customizada) return registro.memoria_calculo_op_customizada;
+            return generateRacaoOperacionalMemoriaCalculo(registro);
+        }
+        return "N/A";
+    }
+    const { qs, qr } = generateRacaoQuenteMemoriaCalculo(registro);
+    if (tipo === 'QS') return registro.memoria_calculo_qs_customizada || qs;
+    return registro.memoria_calculo_qr_customizada || qr;
+};
+
+export const generateClasseIIMemoriaCalculo = (registro: any, isClasseII: boolean): string => {
+    if (registro.detalhamento_customizado) return registro.detalhamento_customizado;
+    if (CLASSE_IX_CATEGORIES.includes(registro.categoria)) return generateClasseIXUtility(registro);
+    if (isClasseII) return generateClasseIIUtility(registro.categoria, registro.itens_equipamentos, registro.dias_operacao, registro.om_detentora || registro.organizacao, registro.ug_detentora || registro.ug, registro.fase_atividade, registro.efetivo || 0, registro.valor_nd_30, registro.valor_nd_39);
+    if (CLASSE_V_CATEGORIES.includes(registro.categoria)) return generateClasseVUtility(registro.categoria, registro.itens_equipamentos, registro.dias_operacao, registro.om_detentora || registro.organizacao, registro.ug_detentora || registro.ug, registro.fase_atividade, registro.efetivo || 0, registro.valor_nd_30, registro.valor_nd_39);
+    if (CLASSE_VI_CATEGORIES.includes(registro.categoria)) return generateClasseVIUtility(registro.categoria, registro.itens_equipamentos, registro.dias_operacao, registro.om_detentora || registro.organizacao, registro.ug_detentora || registro.ug, registro.fase_atividade, registro.efetivo || 0, registro.valor_nd_30, registro.valor_nd_39);
+    if (CLASSE_VII_CATEGORIES.includes(registro.categoria)) return generateClasseVIIUtility(registro.categoria, registro.itens_equipamentos, registro.dias_operacao, registro.om_detentora || registro.organizacao, registro.ug_detentora || registro.ug, registro.fase_atividade, registro.efetivo || 0, registro.valor_nd_30, registro.valor_nd_39);
+    if (CLASSE_VIII_CATEGORIES.includes(registro.categoria)) {
+        const itens = registro.categoria === 'Saúde' ? registro.itens_saude : registro.itens_remonta;
+        return generateClasseVIIIUtility(registro.categoria, itens, registro.dias_operacao, registro.om_detentora || registro.organizacao, registro.ug_detentora || registro.ug, registro.fase_atividade, registro.efetivo || 0, registro.valor_nd_30, registro.valor_nd_39, registro.animal_tipo);
+    }
+    return registro.detalhamento || "Memória não disponível.";
+};
+
+export const generateDiariaMemoriaCalculoUnificada = (registro: any, diretrizesOp: any): string => {
+    if (registro.detalhamento_customizado) return registro.detalhamento_customizado;
+    const totals = calculateDiariaTotals(registro, diretrizesOp);
+    return generateDiariaMemoriaCalculoUtility(registro, diretrizesOp, totals);
+};
+
+export const generateVerbaOperacionalMemoriaCalculada = (registro: any): string => registro.detalhamento_customizado || generateVerbaOperacionalMemoriaCalculoUtility(registro);
+export const generateSuprimentoFundosMemoriaCalculada = (registro: any): string => registro.detalhamento_customizado || generateSuprimentoFundosMemoriaCalculoUtility(registro);
+export const generatePassagemMemoriaCalculada = (registro: any): string => registro.detalhamento_customizado || generatePassagemMemoriaCalculo(registro);
+export const generateConcessionariaMemoriaCalculada = (registro: any): string => registro.detalhamento_customizado || generateConcessionariaMemoriaCalculoUtility(registro);
+export const generateMaterialConsumoMemoriaCalculada = (registro: any): string => registro.detalhamento_customizado || generateMaterialConsumoMemoriaCalculoUtility(registro, registro);
+export const generateComplementoMemoriaCalculada = (registro: any, subType?: 'QS' | 'QR'): string => {
+    if (registro.detalhamento_customizado) return registro.detalhamento_customizado;
+    const full = generateComplementoMemoriaCalculoUtility(registro, registro);
+    if (registro.categoria_complemento === 'genero' && subType) {
+        const parts = full.split("\n\n--- DIVISOR_MEMORIA ---\n\n");
+        return subType === 'QS' ? (parts[0] || "") : (parts[1] || "");
+    }
+    return full;
+};
+export const generateServicoMemoriaCalculada = (registro: any): string => registro.detalhamento_customizado || generateServicoMemoriaCalculoUtility(registro, registro);
+
+// =================================================================
+// COMPONENTE PRINCIPAL
+// =================================================================
+
 type ReportType = 'logistico' | 'racao_operacional' | 'operacional' | 'material_permanente' | 'hora_voo' | 'dor';
 
 const REPORT_OPTIONS = [
@@ -231,33 +310,26 @@ const PTrabReportManager = () => {
   const [selectedReport, setSelectedReport] = useState<ReportType>('logistico');
   const [selectedDorId, setSelectedDorId] = useState<string | null>(null);
 
-  // --- TanStack Query para carregar TUDO via RPC ---
   const { data: masterData, isLoading: loading } = useQuery({
     queryKey: ['ptrabFullReport', ptrabId],
     queryFn: async () => {
       if (!ptrabId) return null;
       const data = await fetchFullReportData(ptrabId) as any;
-      
-      // Busca diretrizes em paralelo para complementar
       const year = new Date(data.p_trab.periodo_inicio).getFullYear();
       const [diretrizesOp, diretrizesPassagens] = await Promise.all([
         fetchDiretrizesOperacionais(year),
         fetchDiretrizesPassagens(year)
       ]);
-
       return { ...data, diretrizesOp, diretrizesPassagens };
     },
     enabled: !!ptrabId,
-    staleTime: 1000 * 60 * 10, // 10 minutos de cache
+    staleTime: 1000 * 60 * 10,
   });
 
-  // --- Mapeamento de Dados (Memoizado para performance) ---
   const processedData = useMemo(() => {
     if (!masterData) return null;
-
     const { p_trab, classe_i, classe_ii, classe_iii, classe_v, classe_vi, classe_vii, classe_viii_saude, classe_viii_remonta, classe_ix, diarias, passagens, verba_operacional, concessionarias, material_consumo, material_permanente, servicos_terceiros, complemento_alimentacao, dor, ref_lpc, diretrizesOp, diretrizesPassagens } = masterData;
 
-    // Processamento de Classe I
     const registrosClasseI = (classe_i || []).map((r: any) => ({
         ...r,
         diasOperacao: r.dias_operacao,
@@ -281,7 +353,6 @@ const PTrabReportManager = () => {
         calculos: calculateClasseICalculations(r.efetivo, r.dias_operacao, r.nr_ref_int || 0, Number(r.valor_qs), Number(r.valor_qr)),
     }));
 
-    // Processamento de Classe II e outras (Unificado)
     const registrosClasseII = [
         ...(classe_ii || []).map((r: any) => ({ ...r, efetivo: r.efetivo || 0 })),
         ...(classe_v || []).map((r: any) => ({ ...r, efetivo: r.efetivo || 0 })),
@@ -291,21 +362,6 @@ const PTrabReportManager = () => {
         ...(classe_viii_remonta || []).map((r: any) => ({ ...r, itens_remonta: r.itens_remonta, categoria: 'Remonta/Veterinária', efetivo: r.efetivo || 0 })),
         ...(classe_ix || []).map((r: any) => ({ ...r, itens_equipamentos: r.itens_motomecanizacao, efetivo: r.efetivo || 0 })),
     ];
-
-    // Processamento de Classe III
-    const registrosClasseIII = (classe_iii || []).map((r: any) => ({
-        ...r,
-        itens_equipamentos: (r.itens_equipamentos as any as ItemClasseIII[] | null) || null,
-    }));
-
-    // Processamento Operacional
-    const registrosDiaria = (diarias || []).map((r: any) => ({
-        ...r,
-        valor_nd_15: Number(r.valor_nd_15 || 0),
-        valor_nd_30: Number(r.valor_nd_30 || 0),
-        valor_taxa_embarque: Number(r.valor_taxa_embarque || 0),
-        valor_total: Number(r.valor_total || 0),
-    }));
 
     const allVerba = (verba_operacional || []).map((r: any) => ({
         ...r,
@@ -318,8 +374,8 @@ const PTrabReportManager = () => {
         ptrabData: p_trab as PTrabData,
         registrosClasseI,
         registrosClasseII,
-        registrosClasseIII,
-        registrosDiaria,
+        registrosClasseIII: (classe_iii || []).map((r: any) => ({ ...r, itens_equipamentos: r.itens_equipamentos || null })),
+        registrosDiaria: (diarias || []).map((r: any) => ({ ...r, valor_total: Number(r.valor_total || 0) })),
         registrosVerbaOperacional: allVerba.filter((r: any) => r.detalhamento !== 'Suprimento de Fundos'),
         registrosSuprimentoFundos: allVerba.filter((r: any) => r.detalhamento === 'Suprimento de Fundos'),
         registrosPassagem: (passagens || []).map((r: any) => ({ ...r, valor_total: Number(r.valor_total || 0) })),
@@ -337,23 +393,12 @@ const PTrabReportManager = () => {
     };
   }, [masterData]);
 
-  // --- Lógica de Agrupamento por OM (Memoizada) ---
   const reportContext = useMemo(() => {
     if (!processedData) return null;
-    const { registrosClasseI, registrosClasseII, registrosClasseIII, refLPC, nomeRM } = processedData;
-
+    const { registrosClasseI, registrosClasseII, nomeRM } = processedData;
     const grupos: Record<string, GrupoOM> = {};
-    const initializeGroup = (name: string) => {
-        if (!grupos[name]) {
-            grupos[name] = { 
-                linhasQS: [], linhasQR: [], linhasClasseII: [], linhasClasseV: [],
-                linhasClasseVI: [], linhasClasseVII: [], linhasClasseVIII: [], linhasClasseIX: [],
-                linhasClasseIII: [], linhasConcessionaria: [] 
-            };
-        }
-    };
+    const initializeGroup = (name: string) => { if (!grupos[name]) grupos[name] = { linhasQS: [], linhasQR: [], linhasClasseII: [], linhasClasseV: [], linhasClasseVI: [], linhasClasseVII: [], linhasClasseVIII: [], linhasClasseIX: [], linhasClasseIII: [], linhasConcessionaria: [] }; };
 
-    // Agrupamento Logístico
     registrosClasseI.filter(r => r.categoria === 'RACAO_QUENTE').forEach((registro) => {
         initializeGroup(registro.omQS || registro.organizacao);
         grupos[registro.omQS || registro.organizacao].linhasQS.push({ registro, tipo: 'QS', valor_nd_30: registro.totalQS, valor_nd_39: 0 });
@@ -372,12 +417,8 @@ const PTrabReportManager = () => {
         else grupos[registro.organizacao].linhasClasseII.push(linha);
     });
 
-    // Agrupamento Operacional
     const gruposOp: Record<string, GrupoOMOperacional> = {};
-    const initializeOpGroup = (name: string) => {
-        if (!gruposOp[name]) gruposOp[name] = { diarias: [], verbaOperacional: [], suprimentoFundos: [], passagens: [], concessionarias: [], materialConsumo: [], complementoAlimentacao: [], servicosTerceiros: [] };
-    };
-
+    const initializeOpGroup = (name: string) => { if (!gruposOp[name]) gruposOp[name] = { diarias: [], verbaOperacional: [], suprimentoFundos: [], passagens: [], concessionarias: [], materialConsumo: [], complementoAlimentacao: [], servicosTerceiros: [] }; };
     processedData.registrosDiaria.forEach(r => { initializeOpGroup(r.organizacao); gruposOp[r.organizacao].diarias.push(r); });
     processedData.registrosVerbaOperacional.forEach(r => { initializeOpGroup(r.om_detentora || r.organizacao); gruposOp[r.om_detentora || r.organizacao].verbaOperacional.push(r); });
     processedData.registrosPassagem.forEach(r => { initializeOpGroup(r.om_detentora || r.organizacao); gruposOp[r.om_detentora || r.organizacao].passagens.push(r); });
@@ -385,30 +426,13 @@ const PTrabReportManager = () => {
     processedData.registrosMaterialConsumo.forEach(r => { initializeOpGroup(r.om_detentora || r.organizacao); gruposOp[r.om_detentora || r.organizacao].materialConsumo.push(r); });
     processedData.registrosServicosTerceiros.forEach(r => { initializeOpGroup(r.om_detentora || r.organizacao); gruposOp[r.om_detentora || r.organizacao].servicosTerceiros.push(r); });
 
-    const omsOrdenadas = Object.keys(grupos).sort((a, b) => {
-        const aPriority = getOMPriority(a, nomeRM);
-        const bPriority = getOMPriority(b, nomeRM);
-        return aPriority !== bPriority ? aPriority - bPriority : a.localeCompare(b);
-    });
-
-    const omsOpOrdenadas = Object.keys(gruposOp).sort((a, b) => {
-        const aPriority = getOMPriority(a, nomeRM);
-        const bPriority = getOMPriority(b, nomeRM);
-        return aPriority !== bPriority ? aPriority - bPriority : a.localeCompare(b);
-    });
+    const omsOrdenadas = Object.keys(grupos).sort((a, b) => { const aP = getOMPriority(a, nomeRM); const bP = getOMPriority(b, nomeRM); return aP !== bP ? aP - bP : a.localeCompare(b); });
+    const omsOpOrdenadas = Object.keys(gruposOp).sort((a, b) => { const aP = getOMPriority(a, nomeRM); const bP = getOMPriority(b, nomeRM); return aP !== bP ? aP - bP : a.localeCompare(b); });
 
     return { grupos, gruposOp, omsOrdenadas, omsOpOrdenadas };
   }, [processedData]);
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <Loader2 className="h-6 w-6 animate-spin text-primary" />
-        <span className="ml-2 text-muted-foreground">Carregando dados do P Trab...</span>
-      </div>
-    );
-  }
-
+  if (loading) return <div className="min-h-screen bg-background flex items-center justify-center"><Loader2 className="h-6 w-6 animate-spin text-primary" /><span className="ml-2 text-muted-foreground">Carregando dados do P Trab...</span></div>;
   if (!processedData || !reportContext) return null;
 
   const renderReport = () => {
@@ -421,7 +445,7 @@ const PTrabReportManager = () => {
       case 'racao_operacional':
         return <PTrabRacaoOperacionalReport ptrabData={ptrabData} registrosClasseI={registrosClasseI} fileSuffix="Aba Rç Op" generateClasseIMemoriaCalculo={generateClasseIMemoriaCalculoUnificada} />;
       case 'operacional':
-        return <PTrabOperacionalReport ptrabData={ptrabData} omsOrdenadas={omsOpOrdenadas} gruposPorOM={gruposOp} registrosDiaria={registrosDiaria} registrosVerbaOperacional={registrosVerbaOperacional} registrosSuprimentoFundos={registrosSuprimentoFundos} registrosPassagem={registrosPassagem} registrosConcessionaria={registrosConcessionaria} registrosMaterialConsumo={registrosMaterialConsumo} registrosComplementoAlimentacao={registrosComplementoAlimentacao} registrosServicosTerceiros={registrosServicosTerceiros} diretrizesOperacionais={diretrizesOperacionais} diretrizesPassagens={diretrizesPassagens} fileSuffix="Aba Op" generateDiariaMemoriaCalculo={(r) => generateDiariaMemoriaCalculoUtility(r, diretrizesOperacionais, calculateDiariaTotals(r, diretrizesOperacionais!))} generateVerbaOperacionalMemoriaCalculo={generateVerbaOperacionalMemoriaCalculoUtility} generateSuprimentoFundosMemoriaCalculo={generateSuprimentoFundosMemoriaCalculoUtility} generatePassagemMemoriaCalculo={generatePassagemMemoriaCalculo} generateConcessionariaMemoriaCalculo={generateConcessionariaMemoriaCalculoUtility} generateMaterialConsumoMemoriaCalculo={generateMaterialConsumoMemoriaCalculoUtility} generateComplementoMemoriaCalculo={generateComplementoMemoriaCalculoUtility} generateServicoMemoriaCalculo={generateServicoMemoriaCalculoUtility} />;
+        return <PTrabOperacionalReport ptrabData={ptrabData} omsOrdenadas={omsOpOrdenadas} gruposPorOM={gruposOp} registrosDiaria={registrosDiaria} registrosVerbaOperacional={registrosVerbaOperacional} registrosSuprimentoFundos={registrosSuprimentoFundos} registrosPassagem={registrosPassagem} registrosConcessionaria={registrosConcessionaria} registrosMaterialConsumo={registrosMaterialConsumo} registrosComplementoAlimentacao={registrosComplementoAlimentacao} registrosServicosTerceiros={registrosServicosTerceiros} diretrizesOperacionais={diretrizesOperacionais} diretrizesPassagens={diretrizesPassagens} fileSuffix="Aba Op" generateDiariaMemoriaCalculo={(r) => generateDiariaMemoriaCalculoUnificada(r, diretrizesOperacionais)} generateVerbaOperacionalMemoriaCalculo={generateVerbaOperacionalMemoriaCalculada} generateSuprimentoFundosMemoriaCalculo={generateSuprimentoFundosMemoriaCalculada} generatePassagemMemoriaCalculo={generatePassagemMemoriaCalculada} generateConcessionariaMemoriaCalculo={generateConcessionariaMemoriaCalculada} generateMaterialConsumoMemoriaCalculo={generateMaterialConsumoMemoriaCalculada} generateComplementoMemoriaCalculo={generateComplementoMemoriaCalculada} generateServicoMemoriaCalculo={generateServicoMemoriaCalculada} />;
       case 'material_permanente':
         return <PTrabMaterialPermanenteReport ptrabData={ptrabData} registrosMaterialPermanente={registrosMaterialPermanente} fileSuffix="Aba Mat Perm" />;
       case 'hora_voo':
@@ -438,38 +462,17 @@ const PTrabReportManager = () => {
     <div className="min-h-screen bg-background">
       <div className="print:hidden sticky top-0 z-50 bg-background border-b border-border/50 shadow-sm">
         <div className="container max-w-7xl mx-auto py-4 px-4 flex items-center justify-between">
-          <Button variant="ghost" onClick={() => navigate('/ptrab')}>
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Voltar para Gerenciamento
-          </Button>
-          
+          <Button variant="ghost" onClick={() => navigate('/ptrab')}><ArrowLeft className="mr-2 h-4 w-4" />Voltar para Gerenciamento</Button>
           <div className="flex items-center gap-4">
-            <div className="flex items-center gap-2">
-              <FileText className="h-4 w-4 text-primary" />
-              <span className="text-sm font-medium">Relatório:</span>
-            </div>
+            <div className="flex items-center gap-2"><FileText className="h-4 w-4 text-primary" /><span className="text-sm font-medium">Relatório:</span></div>
             <Select value={selectedReport} onValueChange={(value) => setSelectedReport(value as ReportType)}>
-              <SelectTrigger className="w-[320px]">
-                <SelectValue placeholder="Selecione o Relatório" />
-              </SelectTrigger>
-              <SelectContent>
-                {REPORT_OPTIONS.map(option => (
-                  <SelectItem key={option.value} value={option.value}>
-                    <div className="flex items-center gap-2">
-                      <option.icon className={`h-4 w-4 ${option.iconClass}`} />
-                      {option.label}
-                    </div>
-                  </SelectItem>
-                ))}
-              </SelectContent>
+              <SelectTrigger className="w-[320px]"><SelectValue placeholder="Selecione o Relatório" /></SelectTrigger>
+              <SelectContent>{REPORT_OPTIONS.map(option => (<SelectItem key={option.value} value={option.value}><div className="flex items-center gap-2"><option.icon className={`h-4 w-4 ${option.iconClass}`} />{option.label}</div></SelectItem>))}</SelectContent>
             </Select>
           </div>
         </div>
       </div>
-
-      <div className="container max-w-7xl mx-auto py-4 px-4">
-        {renderReport()}
-      </div>
+      <div className="container max-w-7xl mx-auto py-4 px-4">{renderReport()}</div>
     </div>
   );
 };
