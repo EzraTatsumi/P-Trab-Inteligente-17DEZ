@@ -79,6 +79,8 @@ const defaultDiretrizes = (year: number): Partial<DiretrizOperacional> => ({
   ano_referencia: year,
   fator_passagens_aereas: 0,
   fator_servicos_terceiros: 0,
+  valor_verba_operacional_dia: 0,
+  valor_suprimentos_fundo_dia: 0,
   valor_complemento_alimentacao: 0,
   valor_fretamento_aereo_hora: 0,
   valor_locacao_estrutura_dia: 0,
@@ -597,11 +599,13 @@ const CustosOperacionaisPage = () => {
       }
       
       // Garantindo que todos os campos tenham valores numéricos válidos (0 se nulo/undefined)
-      // para evitar o erro "Required!" do Zod.
+      // Incluindo campos que podem estar ocultos na UI mas são exigidos pelo esquema
       const dataToValidate = {
         ano_referencia: selectedYear,
         fator_passagens_aereas: Number(diretrizes.fator_passagens_aereas || 0),
         fator_servicos_terceiros: Number(diretrizes.fator_servicos_terceiros || 0),
+        valor_verba_operacional_dia: Number(diretrizes.valor_verba_operacional_dia || 0),
+        valor_suprimentos_fundo_dia: Number(diretrizes.valor_suprimentos_fundo_dia || 0),
         valor_complemento_alimentacao: Number(diretrizes.valor_complemento_alimentacao || 0),
         valor_fretamento_aereo_hora: Number(diretrizes.valor_fretamento_aereo_hora || 0),
         valor_locacao_estrutura_dia: Number(diretrizes.valor_locacao_estrutura_dia || 0),
@@ -652,7 +656,6 @@ const CustosOperacionaisPage = () => {
       await loadAvailableYears(defaultYear);
     } catch (error: any) {
       if (error instanceof z.ZodError) {
-        // Mapeia os erros do Zod para mensagens amigáveis
         const firstError = error.errors[0];
         const fieldName = firstError.path.join('.');
         toast.error(`Erro de validação no campo ${fieldName}: ${firstError.message}`);
@@ -2105,7 +2108,7 @@ const CustosOperacionaisPage = () => {
                   <div className="text-center py-2">
                       <Loader2 className="h-5 w-5 animate-spin text-primary mx-auto" />
                       <p className="text-xs text-muted-foreground mt-1">
-                          {isMovingServicosTerceiros ? "Movendo item..." : "Carregando subitens..."}
+                          {isMovingMaterialConsumo ? "Movendo item..." : "Carregando subitens..."}
                       </p>
                   </div>
               )}
