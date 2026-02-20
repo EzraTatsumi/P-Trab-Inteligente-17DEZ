@@ -26,13 +26,13 @@ interface MaterialPermanenteBulkJustificativaDialogProps {
 
 const FIELDS = ['grupo', 'proposito', 'destinacao', 'local', 'finalidade', 'motivo'];
 
-const FIELD_LABELS: Record<string, string> = {
-  grupo: 'Grupo (Tipo Material?)',
-  proposito: 'Propósito (Obj imediato?)',
-  destinacao: 'Destinação (Para quem?)',
-  local: 'Local (Onde será empregado?)',
-  finalidade: 'Finalidade (Para quê?)',
-  motivo: 'Motivo (Porque?)'
+const FIELD_LABELS: Record<string, { title: string, sub: string }> = {
+  grupo: { title: 'Grupo', sub: '(Tipo Material?)' },
+  proposito: { title: 'Propósito', sub: '(Obj imediato?)' },
+  destinacao: { title: 'Destinação', sub: '(Para quem?)' },
+  local: { title: 'Local', sub: '(Onde será empregado?)' },
+  finalidade: { title: 'Finalidade', sub: '(Para quê?)' },
+  motivo: { title: 'Motivo', sub: '(Porque?)' }
 };
 
 const MaterialPermanenteBulkJustificativaDialog = ({
@@ -253,7 +253,10 @@ const MaterialPermanenteBulkJustificativaDialog = ({
                 <TableHead className="w-[200px] bg-muted/50 border-r text-xs font-bold">Item</TableHead>
                 {FIELDS.map(f => (
                   <TableHead key={f} className="w-[180px] text-center text-[10px] font-bold border-r uppercase tracking-tighter leading-tight py-2">
-                    {FIELD_LABELS[f]}
+                    <div>{FIELD_LABELS[f].title}</div>
+                    <div className="normal-case font-normal text-[9px] mt-0.5 text-muted-foreground italic">
+                      {FIELD_LABELS[f].sub}
+                    </div>
                   </TableHead>
                 ))}
               </TableRow>
