@@ -101,12 +101,13 @@ export async function processMaterialPermanenteImport(file: File, year: number, 
 export async function persistMaterialPermanenteImport(stagedData: StagingRowPermanente[], year: number, userId: string) {
     const validRows = stagedData.filter(r => r.isValid);
     
-    // Agrupa por subitem
+    // Agrupa por subitem (chave composta por número e nome)
     const subitemsMap = new Map<string, any>();
     
     validRows.forEach(row => {
-        if (!subitemsMap.has(row.nr_subitem)) {
-            subitemsMap.set(row.nr_subitem, {
+        const key = `${row.nr_subitem}|${row.nome_subitem}`;
+        if (!subitemsMap.has(key)) {
+            subitemsMap.set(key, {
                 user_id: userId,
                 ano_referencia: year,
                 nr_subitem: row.nr_subitem,
@@ -117,7 +118,7 @@ export async function persistMaterialPermanenteImport(stagedData: StagingRowPerm
             });
         }
         
-        subitemsMap.get(row.nr_subitem).itens_aquisicao.push({
+        subitemsMap.get(key).itens_aquisicao.push({
             id: Math.random().toString(36).substring(2, 9),
             descricao_item: row.descricao_item,
             descricao_reduzida: row.descricao_reduzida,
@@ -139,8 +140,12 @@ export async function persistMaterialPermanenteImport(stagedData: StagingRowPerm
         .eq('ano_referencia', year);
 
     const finalUpsert = toUpsert.map(newItem => {
-        // CORREÇÃO: Usando a variável correta 'existingDiretrizes'
-        const existing = (existingDiretrizes as any[])?.find(e => e.nr_subitem === newItem.nr_subitem);
+        // Busca por número E nome para garantir a mesclagem correta
+        const existing = (existingDiretrizes as any[])?.find(e => 
+            e.nr_subitem === newItem.nr_subitem && 
+            e.nome_subitem === newItem.nome_subitem
+        );
+        
         if (existing) {
             return {
                 ...existing,
@@ -152,7 +157,7 @@ export async function persistMaterialPermanenteImport(stagedData: StagingRowPerm
 
     const { data, error } = await supabase
         .from('diretrizes_material_permanente' as any)
-        .upsert(finalUpsert, { onConflict: 'user_id,ano_referencia,nr_subitem' })
+        .upsert(finalUpsert, { onConflict: 'user_id,ano_referencia,nr_subitem,nome_subitem' })
         .select();
 
     if (error) throw error;

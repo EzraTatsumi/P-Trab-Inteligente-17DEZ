@@ -105,8 +105,9 @@ export async function persistServicosTerceirosImport(stagedData: any[], year: nu
     const subitemsMap = new Map<string, any>();
     
     validRows.forEach(row => {
-        if (!subitemsMap.has(row.nr_subitem)) {
-            subitemsMap.set(row.nr_subitem, {
+        const key = `${row.nr_subitem}|${row.nome_subitem}`;
+        if (!subitemsMap.has(key)) {
+            subitemsMap.set(key, {
                 user_id: userId,
                 ano_referencia: year,
                 nr_subitem: row.nr_subitem,
@@ -117,7 +118,7 @@ export async function persistServicosTerceirosImport(stagedData: any[], year: nu
             });
         }
         
-        subitemsMap.get(row.nr_subitem).itens_aquisicao.push({
+        subitemsMap.get(key).itens_aquisicao.push({
             id: Math.random().toString(36).substring(2, 9),
             descricao_item: row.descricao_item,
             descricao_reduzida: row.nome_reduzido,
@@ -141,7 +142,12 @@ export async function persistServicosTerceirosImport(stagedData: any[], year: nu
         .eq('ano_referencia', year);
 
     const finalUpsert = toUpsert.map(newItem => {
-        const existing = (existingItems as any[])?.find(e => e.nr_subitem === newItem.nr_subitem);
+        // Busca por número E nome para garantir a mesclagem correta
+        const existing = (existingItems as any[])?.find(e => 
+            e.nr_subitem === newItem.nr_subitem && 
+            e.nome_subitem === newItem.nome_subitem
+        );
+        
         if (existing) {
             return {
                 ...existing,
@@ -153,7 +159,7 @@ export async function persistServicosTerceirosImport(stagedData: any[], year: nu
 
     const { data, error } = await supabase
         .from('diretrizes_servicos_terceiros' as any)
-        .upsert(finalUpsert, { onConflict: 'user_id,ano_referencia,nr_subitem' })
+        .upsert(finalUpsert, { onConflict: 'user_id,ano_referencia,nr_subitem,nome_subitem' })
         .select();
 
     if (error) throw error;
