@@ -1,23 +1,34 @@
+"use client";
+
 import React from 'react';
+import ArpCatmatSearchForm from './ArpCatmatSearchForm';
 import { DetailedArpItem } from '@/types/pncp';
-import ArpCatmatSearchForm from './ArpCatmatSearchForm'; // Assuming this file exists
 
 interface ArpCatmatSearchProps {
     onItemPreSelect: (item: DetailedArpItem, pregaoFormatado: string, uasg: string) => void;
     selectedItemIds: string[];
     onClearSelection: () => void;
     scrollContainerRef: React.RefObject<HTMLDivElement>;
+    mode?: 'material' | 'servico';
 }
 
-// Este componente atua como um wrapper simples para o formulário
-const ArpCatmatSearch: React.FC<ArpCatmatSearchProps> = ({ onItemPreSelect, selectedItemIds, onClearSelection, scrollContainerRef }) => {
+const ArpCatmatSearch: React.FC<ArpCatmatSearchProps> = ({ 
+    onItemPreSelect, 
+    selectedItemIds, 
+    onClearSelection, 
+    scrollContainerRef,
+    mode = 'material'
+}) => {
     return (
-        <ArpCatmatSearchForm 
-            onItemPreSelect={onItemPreSelect} 
-            selectedItemIds={selectedItemIds} 
-            onClearSelection={onClearSelection} 
-            scrollContainerRef={scrollContainerRef}
-        />
+        <div className="space-y-4">
+            <ArpCatmatSearchForm 
+                onItemPreSelect={onItemPreSelect}
+                selectedItemIds={selectedItemIds}
+                onClearSelection={onClearSelection}
+                scrollContainerRef={scrollContainerRef}
+                mode={mode}
+            />
+        </div>
     );
 };
 

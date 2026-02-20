@@ -33,7 +33,7 @@ interface ArpCatmatSearchFormProps {
     selectedItemIds: string[];
     onClearSelection: () => void;
     scrollContainerRef: React.RefObject<HTMLDivElement>;
-    mode?: 'material' | 'servico'; // NOVO: Propriedade de modo
+    mode?: 'material' | 'servico';
 }
 
 // Calcula as datas padrão
@@ -49,11 +49,10 @@ const ArpCatmatSearchForm: React.FC<ArpCatmatSearchFormProps> = ({
     selectedItemIds, 
     onClearSelection, 
     scrollContainerRef,
-    mode = 'material' // Padrão para material
+    mode = 'material'
 }) => {
     const [isSearching, setIsSearching] = useState(false);
-    const [isCatmatCatalogOpen, setIsCatmatCatalogOpen] = useState(false);
-    const [isCatserCatalogOpen, setIsCatserCatalogOpen] = useState(false);
+    const [isCatalogOpen, setIsCatalogOpen] = useState(false);
     // Armazena os itens detalhados (DetailedArpItem)
     const [detailedItems, setDetailedItems] = useState<DetailedArpItem[]>([]); 
     
@@ -77,8 +76,7 @@ const ArpCatmatSearchForm: React.FC<ArpCatmatSearchFormProps> = ({
     
     const handleCatalogSelect = (item: { code: string, description: string, short_description: string | null }) => {
         form.setValue('codigoItem', item.code, { shouldValidate: true });
-        setIsCatmatCatalogOpen(false);
-        setIsCatserCatalogOpen(false);
+        setIsCatalogOpen(false);
     };
 
     const onSubmit = async (values: ArpCatmatFormValues) => {
@@ -185,29 +183,16 @@ const ArpCatmatSearchForm: React.FC<ArpCatmatSearchFormProps> = ({
                                             />
                                         </FormControl>
                                         <div className="flex flex-col gap-1">
-                                            {mode === 'material' ? (
-                                                <Button 
-                                                    type="button" 
-                                                    variant="outline" 
-                                                    size="sm" 
-                                                    onClick={() => setIsCatmatCatalogOpen(true)}
-                                                    disabled={isSearching}
-                                                    className="h-8 px-2 text-[10px]"
-                                                >
-                                                    <BookOpen className="h-3 w-3 mr-1" /> CATMAT
-                                                </Button>
-                                            ) : (
-                                                <Button 
-                                                    type="button" 
-                                                    variant="outline" 
-                                                    size="sm" 
-                                                    onClick={() => setIsCatserCatalogOpen(true)}
-                                                    disabled={isSearching}
-                                                    className="h-8 px-2 text-[10px]"
-                                                >
-                                                    <BookOpen className="h-3 w-3 mr-1" /> CATSER
-                                                </Button>
-                                            )}
+                                            <Button 
+                                                type="button" 
+                                                variant="outline" 
+                                                size="sm" 
+                                                onClick={() => setIsCatalogOpen(true)}
+                                                disabled={isSearching}
+                                                className="h-8 px-2 text-[10px]"
+                                            >
+                                                <BookOpen className="h-3 w-3 mr-1" /> {mode === 'material' ? 'CATMAT' : 'CATSER'}
+                                            </Button>
                                         </div>
                                     </div>
                                     <FormMessage />
@@ -284,16 +269,19 @@ const ArpCatmatSearchForm: React.FC<ArpCatmatSearchFormProps> = ({
                 </div>
             )}
 
-            <CatmatCatalogDialog
-                open={isCatmatCatalogOpen}
-                onOpenChange={setIsCatmatCatalogOpen}
-                onSelect={handleCatalogSelect}
-            />
-            <CatserCatalogDialog
-                open={isCatserCatalogOpen}
-                onOpenChange={setIsCatserCatalogOpen}
-                onSelect={handleCatalogSelect}
-            />
+            {mode === 'material' ? (
+                <CatmatCatalogDialog
+                    open={isCatalogOpen}
+                    onOpenChange={setIsCatalogOpen}
+                    onSelect={handleCatalogSelect}
+                />
+            ) : (
+                <CatserCatalogDialog
+                    open={isCatalogOpen}
+                    onOpenChange={setIsCatalogOpen}
+                    onSelect={handleCatalogSelect}
+                />
+            )}
         </>
     );
 };
