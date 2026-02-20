@@ -599,36 +599,37 @@ const CustosOperacionaisPage = () => {
       }
       
       // Garantindo que todos os campos tenham valores numéricos válidos (0 se nulo/undefined)
-      // Incluindo campos que podem estar ocultos na UI mas são exigidos pelo esquema
+      // Usamos o operador ?? para garantir que a chave exista no objeto final.
       const dataToValidate = {
         ano_referencia: selectedYear,
-        fator_passagens_aereas: Number(diretrizes.fator_passagens_aereas || 0),
-        fator_servicos_terceiros: Number(diretrizes.fator_servicos_terceiros || 0),
-        valor_verba_operacional_dia: Number(diretrizes.valor_verba_operacional_dia || 0),
-        valor_suprimentos_fundo_dia: Number(diretrizes.valor_suprimentos_fundo_dia || 0),
-        valor_complemento_alimentacao: Number(diretrizes.valor_complemento_alimentacao || 0),
-        valor_fretamento_aereo_hora: Number(diretrizes.valor_fretamento_aereo_hora || 0),
-        valor_locacao_estrutura_dia: Number(diretrizes.valor_locacao_estrutura_dia || 0),
-        valor_locacao_viaturas_dia: Number(diretrizes.valor_locacao_viaturas_dia || 0),
-        fator_material_consumo: Number(diretrizes.fator_material_consumo || 0),
-        fator_concessionaria: Number(diretrizes.fator_concessionaria || 0),
-        diaria_of_gen_bsb: Number(diretrizes.diaria_of_gen_bsb || 0),
-        diaria_of_gen_capitais: Number(diretrizes.diaria_of_gen_capitais || 0),
-        diaria_of_gen_demais: Number(diretrizes.diaria_of_gen_demais || 0),
-        diaria_of_sup_bsb: Number(diretrizes.diaria_of_sup_bsb || 0),
-        diaria_of_sup_capitais: Number(diretrizes.diaria_of_sup_capitais || 0),
-        diaria_of_sup_demais: Number(diretrizes.diaria_of_sup_demais || 0),
-        diaria_of_int_sgt_bsb: Number(diretrizes.diaria_of_int_sgt_bsb || 0),
-        diaria_of_int_sgt_capitais: Number(diretrizes.diaria_of_int_sgt_capitais || 0),
-        diaria_of_int_sgt_demais: Number(diretrizes.diaria_of_int_sgt_demais || 0),
-        diaria_demais_pracas_bsb: Number(diretrizes.diaria_demais_pracas_bsb || 0),
-        diaria_demais_pracas_capitais: Number(diretrizes.diaria_demais_pracas_capitais || 0),
-        diaria_demais_pracas_demais: Number(diretrizes.diaria_demais_pracas_demais || 0),
-        taxa_embarque: Number(diretrizes.taxa_embarque || 0),
-        diaria_referencia_legal: diretrizes.diaria_referencia_legal || "",
+        fator_passagens_aereas: Number(diretrizes.fator_passagens_aereas ?? 0),
+        fator_servicos_terceiros: Number(diretrizes.fator_servicos_terceiros ?? 0),
+        valor_verba_operacional_dia: Number(diretrizes.valor_verba_operacional_dia ?? 0),
+        valor_suprimentos_fundo_dia: Number(diretrizes.valor_suprimentos_fundo_dia ?? 0),
+        valor_complemento_alimentacao: Number(diretrizes.valor_complemento_alimentacao ?? 0),
+        valor_fretamento_aereo_hora: Number(diretrizes.valor_fretamento_aereo_hora ?? 0),
+        valor_locacao_estrutura_dia: Number(diretrizes.valor_locacao_estrutura_dia ?? 0),
+        valor_locacao_viaturas_dia: Number(diretrizes.valor_locacao_viaturas_dia ?? 0),
+        fator_material_consumo: Number(diretrizes.fator_material_consumo ?? 0),
+        fator_concessionaria: Number(diretrizes.fator_concessionaria ?? 0),
+        diaria_of_gen_bsb: Number(diretrizes.diaria_of_gen_bsb ?? 0),
+        diaria_of_gen_capitais: Number(diretrizes.diaria_of_gen_capitais ?? 0),
+        diaria_of_gen_demais: Number(diretrizes.diaria_of_gen_demais ?? 0),
+        diaria_of_sup_bsb: Number(diretrizes.diaria_of_sup_bsb ?? 0),
+        diaria_of_sup_capitais: Number(diretrizes.diaria_of_sup_capitais ?? 0),
+        diaria_of_sup_demais: Number(diretrizes.diaria_of_sup_demais ?? 0),
+        diaria_of_int_sgt_bsb: Number(diretrizes.diaria_of_int_sgt_bsb ?? 0),
+        diaria_of_int_sgt_capitais: Number(diretrizes.diaria_of_int_sgt_capitais ?? 0),
+        diaria_of_int_sgt_demais: Number(diretrizes.diaria_of_int_sgt_demais ?? 0),
+        diaria_demais_pracas_bsb: Number(diretrizes.diaria_demais_pracas_bsb ?? 0),
+        diaria_demais_pracas_capitais: Number(diretrizes.diaria_demais_pracas_capitais ?? 0),
+        diaria_demais_pracas_demais: Number(diretrizes.diaria_demais_pracas_demais ?? 0),
+        taxa_embarque: Number(diretrizes.taxa_embarque ?? 0),
+        diaria_referencia_legal: diretrizes.diaria_referencia_legal || "Decreto Nº 12.324 de 19DEZ24",
         observacoes: diretrizes.observacoes || "",
       };
       
+      // Validação com o esquema atualizado
       diretrizOperacionalSchema.parse(dataToValidate);
 
       const diretrizData: TablesInsert<'diretrizes_operacionais'> = {
