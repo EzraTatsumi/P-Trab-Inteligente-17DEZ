@@ -36,8 +36,33 @@ const OnboardingTour: React.FC<OnboardingTourProps> = ({ enabled, onExit, hasPTr
       },
       {
         element: '#tour-table',
-        intro: 'Nesta tabela aparecerão todos os seus trabalhos. Você poderá acompanhar o status, os valores totais e realizar ações rápidas.',
+        intro: 'Nesta tabela aparecerão todos os seus trabalhos. Vamos ver o que cada coluna significa.',
         position: 'top',
+      },
+      {
+        element: '#tour-col-number',
+        intro: 'Aqui fica o número oficial do PTrab. Enquanto não for aprovado, ele aparecerá como "MINUTA".',
+        position: 'bottom',
+      },
+      {
+        element: '#tour-col-operation',
+        intro: 'O nome da operação e o rótulo da versão (caso seja uma variação de um trabalho existente).',
+        position: 'bottom',
+      },
+      {
+        element: '#tour-col-period',
+        intro: 'O período de execução e a duração total em dias da operação.',
+        position: 'bottom',
+      },
+      {
+        element: '#tour-col-status',
+        intro: 'O status atual (Aberto, Em Andamento, Aprovado ou Arquivado) e se o trabalho é compartilhado.',
+        position: 'bottom',
+      },
+      {
+        element: '#tour-col-value',
+        intro: 'O resumo financeiro: custos de Logística, Operacional e Material Permanente, além do total geral.',
+        position: 'bottom',
       }
     ];
 
@@ -45,7 +70,7 @@ const OnboardingTour: React.FC<OnboardingTourProps> = ({ enabled, onExit, hasPTr
     if (hasPTrabs) {
       baseSteps.push({
         element: '#tour-actions',
-        intro: 'Em cada item, você encontrará botões para preencher os detalhes, gerar o relatório para impressão ou clonar o trabalho.',
+        intro: 'Use estes botões para preencher os detalhes das classes, gerar o relatório para impressão ou realizar ações avançadas no menu.',
         position: 'left',
       });
     }
@@ -56,14 +81,13 @@ const OnboardingTour: React.FC<OnboardingTourProps> = ({ enabled, onExit, hasPTr
   const options = {
     nextLabel: 'Próximo',
     prevLabel: 'Anterior',
-    doneLabel: 'Entendi!',
-    hidePrev: true,
+    doneLabel: 'Finalizar Tour',
+    hidePrev: false,
     showStepNumbers: true,
     showBullets: true,
     exitOnOverlayClick: false,
     overlayOpacity: 0.8,
     scrollToElement: true,
-    // Evita erro se um elemento não for encontrado
     exitOnInvalidCriterion: false,
     disableInteraction: true
   };

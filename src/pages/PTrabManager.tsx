@@ -577,7 +577,7 @@ const PTrabManager = () => {
       if (editingId) {
         const { error } = await supabase.from("p_trab").update(ptrabData).eq("id", editingId);
         if (error) throw error;
-        toast.success("P Trab atualizado!");
+        toast.success("P Trab actualizado!");
       } else {
         const { id, ...insertData } = ptrabData as Partial<PTrab> & { id?: string };
         const { data: newPTrab, error: insertError = null } = await supabase.from("p_trab").insert([insertData as TablesInsert<'p_trab'>]).select().single();
@@ -1248,11 +1248,11 @@ const PTrabManager = () => {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="text-center border-b border-border">Número</TableHead>
-                    <TableHead className="text-center border-b border-border">Operação</TableHead>
-                    <TableHead className="text-center border-b border-border">Período</TableHead>
-                    <TableHead className="text-center border-b border-border">Status</TableHead>
-                    <TableHead className="text-center border-b border-border">Valor P Trab</TableHead>
+                    <TableHead id="tour-col-number" className="text-center border-b border-border">Número</TableHead>
+                    <TableHead id="tour-col-operation" className="text-center border-b border-border">Operação</TableHead>
+                    <TableHead id="tour-col-period" className="text-center border-b border-border">Período</TableHead>
+                    <TableHead id="tour-col-status" className="text-center border-b border-border">Status</TableHead>
+                    <TableHead id="tour-col-value" className="text-center border-b border-border">Valor P Trab</TableHead>
                     <TableHead className="text-center border-b border-border w-[50px]"></TableHead>
                     <TableHead className="text-center border-b border-border">Ações</TableHead>
                   </TableRow>
@@ -1469,7 +1469,7 @@ const PTrabManager = () => {
             </div>
           </div>
           <DialogFooter>
-            <Button onClick={handleApproveAndNumber} disabled={!suggestedApproveNumber.trim() || isActionLoading}>{isActionLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Confirmar Aprovação"}</Button>
+            <Button onClick={handleApproveAndNumber} disabled={!suggestedApproveNumber.trim() || isActionLoading}>{isActionLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : "Confirmar Aprovação"}</Button>
             <Button variant="outline" onClick={() => setShowApproveDialog(false)}>Cancelar</Button>
           </DialogFooter>
         </DialogContent>
