@@ -210,23 +210,23 @@ const MaterialPermanenteForm = () => {
             if (idsToDelete.length > 0) {
                 await supabase.from('material_permanente_registros' as any).delete().in('id', idsToDelete);
             }
-            const records = itemsToSave.flatMap(lote => {
-                const items = lote.detalhes_planejamento?.itens_selecionados || [];
-                return items.map((item: any) => ({
-                    p_trab_id: ptrabId,
-                    organizacao: lote.organizacao,
-                    ug: lote.ug,
-                    om_detentora: lote.om_detentora,
-                    ug_detentora: lote.ug_detentora,
-                    dias_operacao: lote.dias_operacao,
-                    efetivo: lote.efetivo,
-                    fase_atividade: lote.fase_atividade,
-                    categoria: lote.categoria,
-                    detalhes_planejamento: { item_unico: item, has_efetivo: lote.detalhes_planejamento.has_efetivo } as any,
-                    valor_total: (item.quantidade || 1) * item.valor_unitario,
-                    valor_nd_52: (item.quantidade || 1) * item.valor_unitario,
-                }));
-            });
+            
+            // MODIFICADO: Salva o lote como um único registro consolidado
+            const records = itemsToSave.map(lote => ({
+                p_trab_id: ptrabId,
+                organizacao: lote.organizacao,
+                ug: lote.ug,
+                om_detentora: lote.om_detentora,
+                ug_detentora: lote.ug_detentora,
+                dias_operacao: lote.dias_operacao,
+                efetivo: lote.efetivo,
+                fase_atividade: lote.fase_atividade,
+                categoria: lote.categoria,
+                detalhes_planejamento: lote.detalhes_planejamento,
+                valor_total: lote.valor_total,
+                valor_nd_52: lote.valor_nd_52,
+            }));
+
             const { error } = await supabase.from('material_permanente_registros' as any).insert(records);
             if (error) throw error;
         },
@@ -555,15 +555,47 @@ const MaterialPermanenteForm = () => {
                                             <div className="space-y-3">
                                                 {group.records.map((reg: MaterialPermanenteDBRecord) => {
                                                     const isDifferentOm = reg.om_detentora?.trim() !== reg.organizacao?.trim();
-                                                    const item = reg.detalhes_planejamento?.item_unico || reg.detalhes_planejamento?.itens_selecionados?.[0];
-                                                    const totalQty = item?.quantidade || 0;
+                                                    
+                                                    // MODIFICADO: Calcula a quantidade total de itens no lote para exibição consolidada
+                                                    const items = reg.detalhes_planejamento?.itens_selecionados || (reg.detalhes_planejamento?.item_unico ? [reg.detalhes_planejamento.item_unico] : []);
+                                                    const totalQty = items.reduce((acc: number, i: any) => acc + (i.quantidade || 0), 0);
+                                                    
                                                     return (
                                                         <Card key={reg.id} className="p-3 bg-background border">
                                                             <div className="flex items-center justify-between">
-                                                                <div className="flex flex-col"><h4 className="font-semibold text-base text-foreground flex items-center gap-2">Material Permanente<Badge variant="outline" className="text-xs font-semibold">{reg.fase_atividade}</Badge></h4><p className="text-xs text-muted-foreground">Período: {reg.dias_operacao} {reg.dias_operacao === 1 ? 'dia' : 'dias'} | Qtd: {totalQty} un</p></div>
-                                                                <div className="flex items-center gap-2"><span className="font-extrabold text-xl text-foreground">{formatCurrency(Number(reg.valor_total))}</span><div className="flex gap-1 shrink-0"><Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleEdit(reg)} disabled={!isPTrabEditable || pendingItems.length > 0}><Pencil className="h-4 w-4" /></Button><Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:bg-destructive/10" onClick={() => { setRecordToDelete(reg); setShowDeleteDialog(true); }} disabled={!isPTrabEditable}><Trash2 className="h-4 w-4" /></Button></div></div>
+                                                                <div className="flex flex-col">
+                                                                    <h4 className="font-semibold text-base text-foreground flex items-center gap-2">
+                                                                        Material Permanente
+                                                                        <Badge variant="outline" className="text-xs font-semibold">{reg.fase_atividade}</Badge>
+                                                                    </h4>
+                                                                    <p className="text-xs text-muted-foreground">
+                                                                        Período: {reg.dias_operacao} {reg.dias_operacao === 1 ? 'dia' : 'dias'} | Qtd Total: {totalQty} un
+                                                                    </p>
+                                                                </div>
+                                                                <div className="flex items-center gap-2">
+                                                                    <span className="font-extrabold text-xl text-foreground">{formatCurrency(Number(reg.valor_total))}</span>
+                                                                    <div className="flex gap-1 shrink-0">
+                                                                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleEdit(reg)} disabled={!isPTrabEditable || pendingItems.length > 0}>
+                                                                            <Pencil className="h-4 w-4" />
+                                                                        </Button>
+                                                                        <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:bg-destructive/10" onClick={() => { setRecordToDelete(reg); setShowDeleteDialog(true); }} disabled={!isPTrabEditable}>
+                                                                            <Trash2 className="h-4 w-4" />
+                                                                        </Button>
+                                                                    </div>
+                                                                </div>
                                                             </div>
-                                                            <div className="pt-2 border-t mt-2"><div className="flex justify-between text-xs"><span className="text-muted-foreground">OM Destino Recurso:</span><span className={cn("font-medium", isDifferentOm && "text-red-600")}>{reg.om_detentora} ({formatCodug(reg.ug_detentora || '')})</span></div>{Number(reg.valor_nd_52) > 0 && <div className="flex justify-between text-xs"><span className="text-muted-foreground">ND 44.90.52:</span><span className="text-green-600 font-medium">{formatCurrency(Number(reg.valor_nd_52))}</span></div>}</div>
+                                                            <div className="pt-2 border-t mt-2">
+                                                                <div className="flex justify-between text-xs">
+                                                                    <span className="text-muted-foreground">OM Destino Recurso:</span>
+                                                                    <span className={cn("font-medium", isDifferentOm && "text-red-600")}>{reg.om_detentora} ({formatCodug(reg.ug_detentora || '')})</span>
+                                                                </div>
+                                                                {Number(reg.valor_nd_52) > 0 && (
+                                                                    <div className="flex justify-between text-xs">
+                                                                        <span className="text-muted-foreground">ND 44.90.52:</span>
+                                                                        <span className="text-green-600 font-medium">{formatCurrency(Number(reg.valor_nd_52))}</span>
+                                                                    </div>
+                                                                )}
+                                                            </div>
                                                         </Card>
                                                     );
                                                 })}
