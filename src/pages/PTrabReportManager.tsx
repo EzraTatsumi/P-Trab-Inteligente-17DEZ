@@ -23,7 +23,7 @@ import {
 } from "@/lib/classeIUtils";
 import { generateClasseIIMemoriaCalculo as generateClasseIIUtility } from "@/lib/classeIIUtils";
 import { generateCategoryMemoriaCalculo as generateClasseVUtility } from "@/lib/classeVUtils";
-import { generateCategoryMemoriaCalculo as generateClasseVIUtility } from "@/lib/classeVIUtility";
+import { generateCategoryMemoriaCalculo as generateClasseVIUtility } from "@/lib/classeVIUtils";
 import { generateCategoryMemoriaCalculo as generateClasseVIIUtility } from "@/lib/classeVIIUtils";
 import { generateCategoryMemoriaCalculo as generateClasseVIIIUtility } from "@/lib/classeVIIIUtils";
 import { generateCategoryMemoriaCalculo as generateClasseIXUtility, calculateItemTotalClasseIX as calculateItemTotalClasseIXUtility } from "@/lib/classeIXUtils";
@@ -66,7 +66,7 @@ import { Tables, Json } from "@/integrations/supabase/types";
 import { ItemAquisicao } from "@/types/diretrizesMaterialConsumo";
 
 // =================================================================
-// EXPORTS E UTILITÁRIOS PARA OS RELATÓRIOS (Restaurados)
+// EXPORTS E UTILITÁRIOS PARA OS RELATÓRIOS
 // =================================================================
 
 export interface PTrabData extends Tables<'p_trab'> {
