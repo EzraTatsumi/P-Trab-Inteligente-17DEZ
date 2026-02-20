@@ -65,7 +65,8 @@ const PTrabMaterialPermanenteReport: React.FC<PTrabMaterialPermanenteReportProps
         group!.items.push({
           itemNome: item.descricao_reduzida || item.descricao_item,
           valor,
-          memoria: generateMaterialPermanenteMemoriaCalculo(reg, { itemEspecifico: item })
+          // CORREÇÃO: Passando o item diretamente, sem o wrapper 'itemEspecifico'
+          memoria: generateMaterialPermanenteMemoriaCalculo(reg, item)
         });
         group!.subtotal += valor;
       });

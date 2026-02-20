@@ -31,7 +31,12 @@ const extractJustificativaData = (item: any) => {
 export const generateMaterialPermanenteMemoriaCalculo = (registro: any, item: any) => {
     if (!item) return "";
 
-    // Extração robusta da justificativa
+    // Se o registro possui um detalhamento customizado (editado pelo usuário), ele tem prioridade total
+    if (registro?.detalhamento_customizado) {
+        return registro.detalhamento_customizado;
+    }
+
+    // Extração robusta da justificativa (mesma lógica do Form)
     const justData = extractJustificativaData(item);
     const { grupo, proposito, destinacao, local, finalidade, motivo } = justData;
     
