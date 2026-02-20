@@ -164,29 +164,44 @@ const ArpCatmatSearchForm: React.FC<ArpCatmatSearchFormProps> = ({
                             name="codigoItem"
                             render={({ field }) => (
                                 <FormItem className="col-span-4 md:col-span-2">
-                                    <FormLabel className="flex items-center justify-between">
-                                        <span>Código {mode === 'material' ? 'CATMAT' : 'CATSER'} *</span>
-                                        <Button 
-                                            type="button" 
-                                            variant="ghost" 
-                                            className="text-xs p-0 h-auto text-primary hover:bg-transparent hover:text-primary/80" 
-                                            onClick={() => mode === 'material' ? setIsCatmatCatalogOpen(true) : setIsCatserCatalogOpen(true)}
-                                            disabled={isSearching}
-                                        >
-                                            <BookOpen className="h-3 w-3 mr-1" /> 
-                                            Catálogo {mode === 'material' ? 'CATMAT' : 'CATSER'}
-                                        </Button>
-                                    </FormLabel>
-                                    <FormControl>
-                                        <Input
-                                            {...field}
-                                            onChange={handleCodeChange}
-                                            value={field.value}
-                                            placeholder={`Digite o código ${mode === 'material' ? 'CATMAT' : 'CATSER'}...`}
-                                            maxLength={9}
-                                            disabled={isSearching}
-                                        />
-                                    </FormControl>
+                                    <FormLabel>{mode === 'material' ? 'Cód. CATMAT *' : 'Cód. CATSER *'}</FormLabel>
+                                    <div className="flex gap-2">
+                                        <FormControl>
+                                            <Input
+                                                {...field}
+                                                onChange={handleCodeChange}
+                                                value={field.value}
+                                                placeholder={mode === 'material' ? "Ex: 604269" : "Ex: 17639"}
+                                                maxLength={9}
+                                                disabled={isSearching}
+                                            />
+                                        </FormControl>
+                                        <div className="flex flex-col gap-1">
+                                            {mode === 'material' ? (
+                                                <Button 
+                                                    type="button" 
+                                                    variant="outline" 
+                                                    size="sm" 
+                                                    onClick={() => setIsCatmatCatalogOpen(true)}
+                                                    disabled={isSearching}
+                                                    className="h-8 px-2 text-[10px]"
+                                                >
+                                                    <BookOpen className="h-3 w-3 mr-1" /> CATMAT
+                                                </Button>
+                                            ) : (
+                                                <Button 
+                                                    type="button" 
+                                                    variant="outline" 
+                                                    size="sm" 
+                                                    onClick={() => setIsCatserCatalogOpen(true)}
+                                                    disabled={isSearching}
+                                                    className="h-8 px-2 text-[10px]"
+                                                >
+                                                    <BookOpen className="h-3 w-3 mr-1" /> CATSER
+                                                </Button>
+                                            )}
+                                        </div>
+                                    </div>
                                     <FormMessage />
                                     <p className="text-xs text-muted-foreground mt-1">
                                         Insira o código do item de {mode === 'material' ? 'material' : 'serviço'}.
@@ -241,7 +256,7 @@ const ArpCatmatSearchForm: React.FC<ArpCatmatSearchFormProps> = ({
                         ) : (
                             <>
                                 <Search className="h-4 w-4 mr-2" />
-                                Buscar ARP por {mode === 'material' ? 'CATMAT' : 'CATSER'}
+                                Buscar Itens de ARP por Cód. Item
                             </>
                         )}
                     </Button>
