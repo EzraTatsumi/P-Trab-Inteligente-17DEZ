@@ -833,6 +833,9 @@ const PTrabReportManager = () => {
   const [diretrizesOperacionais, setDiretrizesOperacionais] = useState<Tables<'diretrizes_operacionais'> | null>(null);
   const [diretrizesPassagens, setDiretrizesPassagens] = useState<Tables<'diretrizes_passagens'>[]>([]);
   const [refLPC, setRefLPC] = useState<RefLPC | null>(null);
+  
+  // ADICIONADO: Estado para gerir o cache em memória das abas
+  const [fetchedReports, setFetchedReports] = useState<Set<ReportType>>(new Set());
   const [loading, setLoading] = useState(true);
   const [selectedReport, setSelectedReport] = useState<ReportType>('logistico');
 
@@ -848,227 +851,211 @@ const PTrabReportManager = () => {
       return;
     }
 
+    // Magia do Cache: Se já baixamos os dados deste relatório, ignoramos o processo e a tela abre na hora!
+    if (fetchedReports.has(selectedReport) && ptrabData) {
+        return;
+    }
+
     setLoading(true);
     
     try {
-      const { data: ptrab, error: ptrabError } = await supabase
-        .from('p_trab')
-        .select('*, updated_at, rm_vinculacao')
-        .eq('id', ptrabId)
-        .single();
-
-      if (ptrabError || !ptrab) throw new Error("Não foi possível carregar o P Trab");
-
-      const year = new Date(ptrab.periodo_inicio).getFullYear();
-      
-      const [
-        { data: classeIData },
-        { data: classeIIData },
-        { data: classeVData },
-        { data: classeVIData },
-        { data: classeVIIData },
-        { data: classeVIIISaudeData },
-        { data: classeVIIIRemontaData },
-        { data: classeIXData },
-        { data: classeIIIData },
-        { data: refLPCData },
-        { data: diariaData }, 
-        { data: verbaOperacionalData }, 
-        { data: passagemData },
-        { data: concessionariaData },
-        { data: materialConsumoData }, 
-        { data: complementoAlimentacaoData },
-        { data: servicosTerceirosData },
-        { data: materialPermanenteData },
-        { data: horasVooData }, 
-        { data: dorData },
-        diretrizesOpData,
-        diretrizesPassagensData,
-      ] = await Promise.all([
-        supabase.from('classe_i_registros').select('*, memoria_calculo_qs_customizada, memoria_calculo_qr_customizada, memoria_calculo_op_customizada, fase_atividade, categoria, quantidade_r2, quantidade_r3').eq('p_trab_id', ptrabId),
-        supabase.from('classe_ii_registros').select('*, detalhamento_customizado, fase_atividade, valor_nd_30, valor_nd_39, om_detentora, ug_detentora, efetivo').eq('p_trab_id', ptrabId),
-        supabase.from('classe_v_registros').select('*, detalhamento_customizado, fase_atividade, valor_nd_30, valor_nd_39, om_detentora, ug_detentora, efetivo').eq('p_trab_id', ptrabId),
-        supabase.from('classe_vi_registros').select('*, detalhamento_customizado, fase_atividade, valor_nd_30, valor_nd_39, om_detentora, ug_detentora').eq('p_trab_id', ptrabId),
-        supabase.from('classe_vii_registros').select('*, detalhamento_customizado, fase_atividade, valor_nd_30, valor_nd_39, om_detentora, ug_detentora').eq('p_trab_id', ptrabId),
-        supabase.from('classe_viii_saude_registros').select('*, itens_saude, detalhamento_customizado, fase_atividade, valor_nd_30, valor_nd_39, om_detentora, ug_detentora').eq('p_trab_id', ptrabId),
-        supabase.from('classe_viii_remonta_registros').select('*, itens_remonta, detalhamento_customizado, fase_atividade, valor_nd_30, valor_nd_39, animal_tipo, quantidade_animais, om_detentora, ug_detentora').eq('p_trab_id', ptrabId),
-        supabase.from('classe_ix_registros').select('*, itens_motomecanizacao, detalhamento_customizado, fase_atividade, valor_nd_30, valor_nd_39, om_detentora, ug_detentora').eq('p_trab_id', ptrabId),
-        supabase.from('classe_iii_registros').select('*, detalhamento_customizado, itens_equipamentos, fase_atividade, consumo_lubrificante_litro, preco_lubrificante, valor_nd_30, valor_nd_39, om_detentora, ug_detentora').eq('p_trab_id', ptrabId),
-        supabase.from("p_trab_ref_lpc").select("*").eq("p_trab_id", ptrabId).maybeSingle(),
-        supabase.from('diaria_registros').select('*').eq('p_trab_id', ptrabId), 
-        supabase.from('verba_operacional_registros').select('*, objeto_aquisicao, objeto_contratacao, proposito, finalidade, local, tarefa').eq('p_trab_id', ptrabId), 
-        supabase.from('passagem_registros').select('*').eq('p_trab_id', ptrabId),
-        supabase.from('concessionaria_registros').select('*, diretriz_id').eq('p_trab_id', ptrabId),
-        supabase.from('material_consumo_registros').select('*').eq('p_trab_id', ptrabId), 
-        supabase.from('complemento_alimentacao_registros').select('*').eq('p_trab_id', ptrabId),
-        supabase.from('servicos_terceiros_registros' as any).select('*').eq('p_trab_id', ptrabId),
-        supabase.from('material_permanente_registros' as any).select('*').eq('p_trab_id', ptrabId),
-        supabase.from('horas_voo_registros').select('*').eq('p_trab_id', ptrabId), 
-        supabase.from('dor_registros' as any).select('*').eq('p_trab_id', ptrabId).order('created_at', { ascending: true }),
-        fetchDiretrizesOperacionais(year),
-        fetchDiretrizesPassagens(year),
-      ]);
-      
-      setDiretrizesOperacionais(diretrizesOpData as Tables<'diretrizes_operacionais'> || null);
-      setDiretrizesPassagens(diretrizesPassagensData as Tables<'diretrizes_passagens'>[] || []); 
-
-      const allClasseItems = [
-        ...(classeIIData as any[] || []).map((r: any) => ({ ...r, categoria: r.categoria, om_detentora: r.om_detentora, ug_detentora: r.ug_detentora, efetivo: r.efetivo || 0 })),
-        ...(classeVData as any[] || []).map((r: any) => ({ ...r, categoria: r.categoria, om_detentora: r.om_detentora, ug_detentora: r.ug_detentora, efetivo: r.efetivo || 0 })),
-        ...(classeVIData as any[] || []).map((r: any) => ({ ...r, categoria: r.categoria, om_detentora: r.om_detentora, ug_detentora: r.ug_detentora, efetivo: r.efetivo || 0 })), 
-        ...(classeVIIData as any[] || []).map((r: any) => ({ ...r, categoria: r.categoria, om_detentora: r.om_detentora, ug_detentora: r.ug_detentora, efetivo: r.efetivo || 0 })), 
-        ...(classeVIIISaudeData as any[] || []).map((r: any) => ({ ...r, itens_equipamentos: r.itens_saude, categoria: 'Saúde', om_detentora: r.om_detentora, ug_detentora: r.ug_detentora, efetivo: r.efetivo || 0 })), 
-        ...(classeVIIIRemontaData as any[] || []).map((r: any) => ({ ...r, itens_remonta: r.itens_remonta, categoria: 'Remonta/Veterinária', animal_tipo: r.animal_tipo, quantidade_animais: r.quantidade_animais, om_detentora: r.om_detentora, ug_detentora: r.ug_detentora, efetivo: r.efetivo || 0 })), 
-        ...(classeIXData as any[] || []).map((r: any) => ({ ...r, itens_equipamentos: r.itens_motomecanizacao, categoria: r.categoria, om_detentora: r.om_detentora, ug_detentora: r.ug_detentora, efetivo: r.efetivo || 0 })), 
-      ];
-
-      setPtrabData(ptrab as PTrabData);
-      setRegistrosClasseI((classeIData || []).map(r => {
-          const calculations = calculateClasseICalculations(r.efetivo, r.dias_operacao, r.nr_ref_int || 0, Number(r.valor_qs), Number(r.valor_qr));
-          
-          return {
-              ...r,
-              diasOperacao: r.dias_operacao,
-              faseAtividade: r.fase_atividade,
-              omQS: r.om_qs,
-              ugQS: r.ug_qs,
-              nrRefInt: r.nr_ref_int,
-              valorQS: Number(r.valor_qs),
-              valorQR: Number(r.valor_qr),
-              quantidadeR2: r.quantidade_r2 || 0,
-              quantidadeR3: r.quantidade_r3 || 0,
-              totalQS: Number(r.total_qs),
-              totalQR: Number(r.total_qr),
-              totalGeral: Number(r.total_geral),
-              complementoQS: Number(r.complemento_qs),
-              etapaQS: Number(r.etapa_qs),
-              complementoQR: Number(r.complemento_qr),
-              etapaQR: Number(r.etapa_qr),
-              memoriaQSCustomizada: r.memoria_calculo_qs_customizada,
-              memoriaQRCustomizada: r.memoria_calculo_qr_customizada,
-              calculos: calculations,
-          } as ClasseIRegistro;
-      }));
-      setRegistrosClasseII(allClasseItems as ClasseIIRegistro[]);
-      
-      setRegistrosClasseIII((classeIIIData || []).map(r => ({
-          ...r,
-          itens_equipamentos: (r.itens_equipamentos as any as ItemClasseIII[] | null) || null, 
-      })) as ClasseIIIRegistro[]);
-      
-      setRefLPC(refLPCData as RefLPC || null);
-      
-      setRegistrosDiaria((diariaData || []).map(r => ({
-          ...r,
-          destino: r.destino as DestinoDiaria,
-          quantidades_por_posto: r.quantidades_por_posto as QuantidadesPorPosto,
-          valor_nd_15: Number(r.valor_nd_15 || 0),
-          valor_nd_30: Number(r.valor_nd_30 || 0),
-          valor_taxa_embarque: Number(r.valor_taxa_embarque || 0),
-          valor_total: Number(r.valor_total || 0),
-          is_aereo: r.is_aereo || false,
-      })) as DiariaRegistro[]);
-      
-      const allVerbaRecords = (verbaOperacionalData || []).map(r => ({
-          ...r,
-          valor_total_solicitado: Number(r.valor_total_solicitado || 0),
-          valor_nd_30: Number(r.valor_nd_30 || 0),
-          valor_nd_39: Number(r.valor_nd_39 || 0),
-          dias_operacao: r.dias_operacao || 0,
-          quantidade_equipes: r.quantidade_equipes || 0,
-          objeto_aquisicao: r.objeto_aquisicao || null,
-          objeto_contratacao: r.objeto_contratacao || null,
-          proposito: r.proposito || null,
-          finalidade: r.finalidade || null,
-          local: r.local || null,
-          tarefa: r.tarefa || null,
-      })) as VerbaOperacionalRegistro[];
-      
-      setRegistrosVerbaOperacional(allVerbaRecords.filter(r => r.detalhamento !== 'Suprimento de Fundos'));
-      setRegistrosSuprimentoFundos(allVerbaRecords.filter(r => r.detalhamento === 'Suprimento de Fundos'));
-      
-      setRegistrosPassagem((passagemData || []).map(r => ({
-          ...r,
-          valor_unitario: Number(r.valor_unitario || 0),
-          valor_total: Number(r.valor_total || 0),
-          valor_nd_33: Number(r.valor_nd_33 || 0),
-          quantidade_passagens: r.quantidade_passagens || 0,
-          is_ida_volta: r.is_ida_volta || false,
-          efetivo: r.efetivo || 0,
-      })) as PassagemRegistro[]);
-      
-      setRegistrosConcessionaria((concessionariaData || []).map(r => ({
-          ...r,
-          valor_unitario: Number(r.valor_unitario || 0),
-          consumo_pessoa_dia: Number(r.consumo_pessoa_dia || 0),
-          valor_total: Number(r.valor_total || 0),
-          valor_nd_39: Number(r.valor_nd_39 || 0),
-          dias_operacao: r.dias_operacao || 0,
-          efetivo: r.efetivo || 0,
-          nome_concessionaria: '',
-          unidade_custo: '',
-          fonte_consumo: null,
-          fonte_custo: null,
-      })) as ConcessionariaRegistro[]);
-
-      setRegistrosMaterialConsumo((materialConsumoData || []).map(r => ({
-          ...r,
-          valor_total: Number(r.valor_total || 0),
-          valor_nd_30: Number(r.valor_nd_30 || 0),
-          valor_nd_39: Number(r.valor_nd_39 || 0),
-          dias_operacao: r.dias_operacao || 0,
-          efetivo: r.efetivo || 0,
-      })) as MaterialConsumoRegistro[]);
-
-      setRegistrosComplementoAlimentacao((complementoAlimentacaoData || []).map(r => ({
-          ...r,
-          valor_total: Number(r.valor_total || 0),
-          valor_nd_30: Number(r.valor_nd_30 || 0),
-          valor_nd_39: Number(r.valor_nd_39 || 0),
-          dias_operacao: r.dias_operacao || 0,
-          efetivo: r.efetivo || 0,
-          itens_aquisicao: (r.itens_aquisicao as unknown as ItemAquisicao[]) || []
-      })) as unknown as ComplementoAlimentacaoRegistro[]);
-
-      setRegistrosServicosTerceiros(((servicosTerceirosData as any[]) || []).map(r => ({
-          ...r,
-          valor_total: Number(r.valor_total || 0),
-          valor_nd_30: Number(r.valor_nd_30 || 0),
-          valor_nd_39: Number(r.valor_nd_39 || 0),
-          dias_operacao: r.dias_operacao || 0,
-          efetivo: r.efetivo || 0,
-      })) as ServicoTerceiroRegistro[]);
-
-      setRegistrosMaterialPermanente(((materialPermanenteData as any[]) || []).map(r => ({
-          ...r,
-          valor_total: Number(r.valor_total || 0),
-          valor_nd_52: Number(r.valor_nd_52 || 0),
-          dias_operacao: r.dias_operacao || 0,
-          efetivo: r.efetivo || 0,
-      })) as MaterialPermanenteRegistro[]);
-      
-      setRegistrosHorasVoo((horasVooData || []).map(r => ({
-          ...r,
-          quantidade_hv: Number(r.quantidade_hv || 0),
-          valor_nd_30: Number(r.valor_nd_30 || 0),
-          valor_nd_39: Number(r.valor_nd_39 || 0),
-          valor_total: Number(r.valor_total || 0),
-          dias_operacao: r.dias_operacao || 0,
-      })) as HorasVooRegistro[]);
-
-      setRegistrosDOR(dorData || []);
-      if (dorData && (dorData as any[]).length > 0) {
-        setSelectedDorId((dorData as any[])[0].id);
+      // 1. Busca os dados base do P Trab apenas na primeira vez
+      let currentPtrab = ptrabData;
+      if (!currentPtrab) {
+          const { data: ptrab, error: ptrabError } = await supabase
+              .from('p_trab')
+              .select('*, updated_at, rm_vinculacao')
+              .eq('id', ptrabId)
+              .single();
+          if (ptrabError || !ptrab) throw new Error("Não foi possível carregar o P Trab");
+          currentPtrab = ptrab as PTrabData;
+          setPtrabData(currentPtrab);
       }
+
+      const year = new Date(currentPtrab.periodo_inicio).getFullYear();
       
+      // 2. Prepara variáveis para receber os dados
+      let classeIData: any = null, classeIIData: any = null, classeVData: any = null,
+          classeVIData: any = null, classeVIIData: any = null, classeVIIISaudeData: any = null,
+          classeVIIIRemontaData: any = null, classeIXData: any = null, classeIIIData: any = null,
+          refLPCData: any = null, diariaData: any = null, verbaOperacionalData: any = null,
+          passagemData: any = null, concessionariaData: any = null, materialConsumoData: any = null,
+          complementoAlimentacaoData: any = null, servicosTerceirosData: any = null,
+          materialPermanenteData: any = null, horasVooData: any = null, dorData: any = null,
+          diretrizesOpData: any = null, diretrizesPassagensData: any = null;
+
+      // 3. Monta APENAS as requisições necessárias para a aba atual (Lazy Fetching)
+      const promises: Promise<void>[] = [];
+
+      if (selectedReport === 'logistico' || selectedReport === 'racao_operacional') {
+          promises.push(supabase.from('classe_i_registros').select('*, memoria_calculo_qs_customizada, memoria_calculo_qr_customizada, memoria_calculo_op_customizada, fase_atividade, categoria, quantidade_r2, quantidade_r3').eq('p_trab_id', ptrabId).then(({data}) => { classeIData = data; }));
+      }
+
+      if (selectedReport === 'logistico') {
+          promises.push(supabase.from('classe_ii_registros').select('*, detalhamento_customizado, fase_atividade, valor_nd_30, valor_nd_39, om_detentora, ug_detentora, efetivo').eq('p_trab_id', ptrabId).then(({data}) => { classeIIData = data; }));
+          promises.push(supabase.from('classe_v_registros').select('*, detalhamento_customizado, fase_atividade, valor_nd_30, valor_nd_39, om_detentora, ug_detentora, efetivo').eq('p_trab_id', ptrabId).then(({data}) => { classeVData = data; }));
+          promises.push(supabase.from('classe_vi_registros').select('*, detalhamento_customizado, fase_atividade, valor_nd_30, valor_nd_39, om_detentora, ug_detentora').eq('p_trab_id', ptrabId).then(({data}) => { classeVIData = data; }));
+          promises.push(supabase.from('classe_vii_registros').select('*, detalhamento_customizado, fase_atividade, valor_nd_30, valor_nd_39, om_detentora, ug_detentora').eq('p_trab_id', ptrabId).then(({data}) => { classeVIIData = data; }));
+          promises.push(supabase.from('classe_viii_saude_registros').select('*, itens_saude, detalhamento_customizado, fase_atividade, valor_nd_30, valor_nd_39, om_detentora, ug_detentora').eq('p_trab_id', ptrabId).then(({data}) => { classeVIIISaudeData = data; }));
+          promises.push(supabase.from('classe_viii_remonta_registros').select('*, itens_remonta, detalhamento_customizado, fase_atividade, valor_nd_30, valor_nd_39, animal_tipo, quantidade_animais, om_detentora, ug_detentora').eq('p_trab_id', ptrabId).then(({data}) => { classeVIIIRemontaData = data; }));
+          promises.push(supabase.from('classe_ix_registros').select('*, itens_motomecanizacao, detalhamento_customizado, fase_atividade, valor_nd_30, valor_nd_39, om_detentora, ug_detentora').eq('p_trab_id', ptrabId).then(({data}) => { classeIXData = data; }));
+          promises.push(supabase.from('classe_iii_registros').select('*, detalhamento_customizado, itens_equipamentos, fase_atividade, consumo_lubrificante_litro, preco_lubrificante, valor_nd_30, valor_nd_39, om_detentora, ug_detentora').eq('p_trab_id', ptrabId).then(({data}) => { classeIIIData = data; }));
+          promises.push(supabase.from("p_trab_ref_lpc").select("*").eq("p_trab_id", ptrabId).maybeSingle().then(({data}) => { refLPCData = data; }));
+      }
+
+      if (selectedReport === 'operacional') {
+          promises.push(supabase.from('diaria_registros').select('*').eq('p_trab_id', ptrabId).then(({data}) => { diariaData = data; }));
+          promises.push(supabase.from('verba_operacional_registros').select('*, objeto_aquisicao, objeto_contratacao, proposito, finalidade, local, tarefa').eq('p_trab_id', ptrabId).then(({data}) => { verbaOperacionalData = data; }));
+          promises.push(supabase.from('passagem_registros').select('*').eq('p_trab_id', ptrabId).then(({data}) => { passagemData = data; }));
+          promises.push(supabase.from('concessionaria_registros').select('*, diretriz_id').eq('p_trab_id', ptrabId).then(({data}) => { concessionariaData = data; }));
+          promises.push(supabase.from('material_consumo_registros').select('*').eq('p_trab_id', ptrabId).then(({data}) => { materialConsumoData = data; }));
+          promises.push(supabase.from('complemento_alimentacao_registros').select('*').eq('p_trab_id', ptrabId).then(({data}) => { complementoAlimentacaoData = data; }));
+          promises.push(supabase.from('servicos_terceiros_registros' as any).select('*').eq('p_trab_id', ptrabId).then(({data}) => { servicosTerceirosData = data; }));
+          promises.push(fetchDiretrizesOperacionais(year).then(data => { diretrizesOpData = data; }));
+          promises.push(fetchDiretrizesPassagens(year).then(data => { diretrizesPassagensData = data; }));
+      }
+
+      if (selectedReport === 'material_permanente') {
+          promises.push(supabase.from('material_permanente_registros' as any).select('*').eq('p_trab_id', ptrabId).then(({data}) => { materialPermanenteData = data; }));
+      }
+
+      if (selectedReport === 'hora_voo') {
+          promises.push(supabase.from('horas_voo_registros').select('*').eq('p_trab_id', ptrabId).then(({data}) => { horasVooData = data; }));
+      }
+
+      if (selectedReport === 'dor') {
+          promises.push(supabase.from('dor_registros' as any).select('*').eq('p_trab_id', ptrabId).order('created_at', { ascending: true }).then(({data}) => { dorData = data; }));
+      }
+
+      // Dispara apenas as requisições necessárias simultaneamente
+      await Promise.all(promises);
+
+      // 4. Atualiza os estados com os dados obtidos
+      if (diretrizesOpData !== null) setDiretrizesOperacionais(diretrizesOpData as Tables<'diretrizes_operacionais'>);
+      if (diretrizesPassagensData !== null) setDiretrizesPassagens(diretrizesPassagensData as Tables<'diretrizes_passagens'>[]);
+      if (refLPCData !== null) setRefLPC(refLPCData as RefLPC);
+
+      if (classeIData !== null) {
+          setRegistrosClasseI((classeIData || []).map((r: any) => {
+              const calculations = calculateClasseICalculations(r.efetivo, r.dias_operacao, r.nr_ref_int || 0, Number(r.valor_qs), Number(r.valor_qr));
+              return {
+                  ...r, diasOperacao: r.dias_operacao, faseAtividade: r.fase_atividade, omQS: r.om_qs, ugQS: r.ug_qs,
+                  nrRefInt: r.nr_ref_int, valorQS: Number(r.valor_qs), valorQR: Number(r.valor_qr), quantidadeR2: r.quantidade_r2 || 0,
+                  quantidadeR3: r.quantidade_r3 || 0, totalQS: Number(r.total_qs), totalQR: Number(r.total_qr),
+                  totalGeral: Number(r.total_geral), complementoQS: Number(r.complemento_qs), etapaQS: Number(r.etapa_qs),
+                  complementoQR: Number(r.complemento_qr), etapaQR: Number(r.etapa_qr), memoriaQSCustomizada: r.memoria_calculo_qs_customizada,
+                  memoriaQRCustomizada: r.memoria_calculo_qr_customizada, calculos: calculations,
+              } as ClasseIRegistro;
+          }));
+      }
+
+      if (classeIIData !== null || classeVData !== null || classeVIData !== null || classeVIIData !== null || classeVIIISaudeData !== null || classeVIIIRemontaData !== null || classeIXData !== null) {
+          const allClasseItems = [
+              ...(classeIIData || []).map((r: any) => ({ ...r, categoria: r.categoria, om_detentora: r.om_detentora, ug_detentora: r.ug_detentora, efetivo: r.efetivo || 0 })),
+              ...(classeVData || []).map((r: any) => ({ ...r, categoria: r.categoria, om_detentora: r.om_detentora, ug_detentora: r.ug_detentora, efetivo: r.efetivo || 0 })),
+              ...(classeVIData || []).map((r: any) => ({ ...r, categoria: r.categoria, om_detentora: r.om_detentora, ug_detentora: r.ug_detentora, efetivo: r.efetivo || 0 })), 
+              ...(classeVIIData || []).map((r: any) => ({ ...r, categoria: r.categoria, om_detentora: r.om_detentora, ug_detentora: r.ug_detentora, efetivo: r.efetivo || 0 })), 
+              ...(classeVIIISaudeData || []).map((r: any) => ({ ...r, itens_equipamentos: r.itens_saude, categoria: 'Saúde', om_detentora: r.om_detentora, ug_detentora: r.ug_detentora, efetivo: r.efetivo || 0 })), 
+              ...(classeVIIIRemontaData || []).map((r: any) => ({ ...r, itens_remonta: r.itens_remonta, categoria: 'Remonta/Veterinária', animal_tipo: r.animal_tipo, quantidade_animais: r.quantidade_animais, om_detentora: r.om_detentora, ug_detentora: r.ug_detentora, efetivo: r.efetivo || 0 })), 
+              ...(classeIXData || []).map((r: any) => ({ ...r, itens_equipamentos: r.itens_motomecanizacao, categoria: r.categoria, om_detentora: r.om_detentora, ug_detentora: r.ug_detentora, efetivo: r.efetivo || 0 })), 
+          ];
+          setRegistrosClasseII(allClasseItems as ClasseIIRegistro[]);
+      }
+
+      if (classeIIIData !== null) {
+          setRegistrosClasseIII((classeIIIData || []).map((r: any) => ({
+              ...r, itens_equipamentos: (r.itens_equipamentos as any as ItemClasseIII[] | null) || null, 
+          })) as ClasseIIIRegistro[]);
+      }
+
+      if (diariaData !== null) {
+          setRegistrosDiaria((diariaData || []).map((r: any) => ({
+              ...r, destino: r.destino as DestinoDiaria, quantidades_por_posto: r.quantidades_por_posto as QuantidadesPorPosto,
+              valor_nd_15: Number(r.valor_nd_15 || 0), valor_nd_30: Number(r.valor_nd_30 || 0), valor_taxa_embarque: Number(r.valor_taxa_embarque || 0),
+              valor_total: Number(r.valor_total || 0), is_aereo: r.is_aereo || false,
+          })) as DiariaRegistro[]);
+      }
+
+      if (verbaOperacionalData !== null) {
+          const allVerbaRecords = (verbaOperacionalData || []).map((r: any) => ({
+              ...r, valor_total_solicitado: Number(r.valor_total_solicitado || 0), valor_nd_30: Number(r.valor_nd_30 || 0),
+              valor_nd_39: Number(r.valor_nd_39 || 0), dias_operacao: r.dias_operacao || 0, quantidade_equipes: r.quantidade_equipes || 0,
+              objeto_aquisicao: r.objeto_aquisicao || null, objeto_contratacao: r.objeto_contratacao || null,
+              proposito: r.proposito || null, finalidade: r.finalidade || null, local: r.local || null, tarefa: r.tarefa || null,
+          })) as VerbaOperacionalRegistro[];
+          setRegistrosVerbaOperacional(allVerbaRecords.filter(r => r.detalhamento !== 'Suprimento de Fundos'));
+          setRegistrosSuprimentoFundos(allVerbaRecords.filter(r => r.detalhamento === 'Suprimento de Fundos'));
+      }
+
+      if (passagemData !== null) {
+          setRegistrosPassagem((passagemData || []).map((r: any) => ({
+              ...r, valor_unitario: Number(r.valor_unitario || 0), valor_total: Number(r.valor_total || 0),
+              valor_nd_33: Number(r.valor_nd_33 || 0), quantidade_passagens: r.quantidade_passagens || 0,
+              is_ida_volta: r.is_ida_volta || false, efetivo: r.efetivo || 0,
+          })) as PassagemRegistro[]);
+      }
+
+      if (concessionariaData !== null) {
+          setRegistrosConcessionaria((concessionariaData || []).map((r: any) => ({
+              ...r, valor_unitario: Number(r.valor_unitario || 0), consumo_pessoa_dia: Number(r.consumo_pessoa_dia || 0),
+              valor_total: Number(r.valor_total || 0), valor_nd_39: Number(r.valor_nd_39 || 0), dias_operacao: r.dias_operacao || 0,
+              efetivo: r.efetivo || 0, nome_concessionaria: '', unidade_custo: '', fonte_consumo: null, fonte_custo: null,
+          })) as ConcessionariaRegistro[]);
+      }
+
+      if (materialConsumoData !== null) {
+          setRegistrosMaterialConsumo((materialConsumoData || []).map((r: any) => ({
+              ...r, valor_total: Number(r.valor_total || 0), valor_nd_30: Number(r.valor_nd_30 || 0),
+              valor_nd_39: Number(r.valor_nd_39 || 0), dias_operacao: r.dias_operacao || 0, efetivo: r.efetivo || 0,
+          })) as MaterialConsumoRegistro[]);
+      }
+
+      if (complementoAlimentacaoData !== null) {
+          setRegistrosComplementoAlimentacao((complementoAlimentacaoData || []).map((r: any) => ({
+              ...r, valor_total: Number(r.valor_total || 0), valor_nd_30: Number(r.valor_nd_30 || 0),
+              valor_nd_39: Number(r.valor_nd_39 || 0), dias_operacao: r.dias_operacao || 0, efetivo: r.efetivo || 0,
+              itens_aquisicao: (r.itens_aquisicao as any) || []
+          })) as any);
+      }
+
+      if (servicosTerceirosData !== null) {
+          setRegistrosServicosTerceiros((servicosTerceirosData || []).map((r: any) => ({
+              ...r, valor_total: Number(r.valor_total || 0), valor_nd_30: Number(r.valor_nd_30 || 0),
+              valor_nd_39: Number(r.valor_nd_39 || 0), dias_operacao: r.dias_operacao || 0, efetivo: r.efetivo || 0,
+          })) as ServicoTerceiroRegistro[]);
+      }
+
+      if (materialPermanenteData !== null) {
+          setRegistrosMaterialPermanente((materialPermanenteData || []).map((r: any) => ({
+              ...r, valor_total: Number(r.valor_total || 0), valor_nd_52: Number(r.valor_nd_52 || 0),
+              dias_operacao: r.dias_operacao || 0, efetivo: r.efetivo || 0,
+          })) as MaterialPermanenteRegistro[]);
+      }
+
+      if (horasVooData !== null) {
+          setRegistrosHorasVoo((horasVooData || []).map((r: any) => ({
+              ...r, quantidade_hv: Number(r.quantidade_hv || 0), valor_nd_30: Number(r.valor_nd_30 || 0),
+              valor_nd_39: Number(r.valor_nd_39 || 0), valor_total: Number(r.valor_total || 0), dias_operacao: r.dias_operacao || 0,
+          })) as HorasVooRegistro[]);
+      }
+
+      if (dorData !== null) {
+          setRegistrosDOR(dorData || []);
+          if (dorData && (dorData as any[]).length > 0) {
+              setSelectedDorId((prev) => prev ? prev : (dorData as any[])[0].id);
+          }
+      }
+
+      // Marca que este relatório específico já foi completamente descarregado
+      setFetchedReports(prev => new Set(prev).add(selectedReport));
+
     } catch (error) {
       console.error("Erro ao carregar dados:", error);
-      toast({ title: "Erro", description: "Não foi possível carregar os dados do P Trab.", variant: "destructive" });
-      navigate('/ptrab');
+      toast({ title: "Erro", description: "Não foi possível carregar os dados do relatório.", variant: "destructive" });
     } finally {
       setLoading(false);
     }
-  }, [ptrabId, navigate, toast]);
+  }, [ptrabId, selectedReport, fetchedReports, ptrabData, navigate, toast]);
 
   useEffect(() => {
     loadData();
