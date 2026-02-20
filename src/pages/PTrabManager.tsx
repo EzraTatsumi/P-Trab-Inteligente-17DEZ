@@ -23,7 +23,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { toast } from "sonner";
-import { Plus, Trash2, LogOut, FileText, Printer, Settings, MoreVertical, Pencil, Copy, MessageSquare, ArrowRight, CheckCircle, GitBranch, Archive, RefreshCw, User, Share2, Link, Users, XCircle, ArrowDownUp, ClipboardList } from "lucide-react";
+import { Plus, Edit, Trash2, LogOut, FileText, Printer, Settings, PenSquare, MoreVertical, Pencil, Copy, FileSpreadsheet, Download, MessageSquare, ArrowRight, HelpCircle, CheckCircle, GitBranch, Archive, RefreshCw, User, Loader2, Share2, Link, Users, XCircle, ArrowDownUp, ClipboardList } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { sanitizeError } from "@/lib/errorUtils";
@@ -40,14 +40,14 @@ import {
 } from "@/components/ui/alert-dialog";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { formatCurrency } from "@/lib/formatUtils";
-import { isPTrabNumberDuplicate, generateApprovalPTrabNumber, generateUniqueMinutaNumber } from "@/lib/ptrabNumberUtils";
+import { generateUniquePTrabNumber, generateVariationPTrabNumber, isPTrabNumberDuplicate, generateApprovalPTrabNumber, generateUniqueMinutaNumber } from "@/lib/ptrabNumberUtils";
 import PTrabConsolidationDialog from "@/components/PTrabConsolidationDialog";
 import { ConsolidationNumberDialog } from "@/components/ConsolidationNumberDialog";
-import { Tables, TablesInsert, TablesUpdate } from "@/integrations/supabase/types";
+import { Tables, TablesInsert, TablesUpdate, TableName } from "@/integrations/supabase/types";
 import { Badge } from "@/components/ui/badge";
 import { HelpDialog } from "@/components/HelpDialog";
 import { CloneVariationDialog } from "@/components/CloneVariationDialog";
-import { updateUserCredits } from "@/lib/creditUtils";
+import { updateUserCredits, fetchUserCredits } from "@/lib/creditUtils";
 import { cn } from "@/lib/utils";
 import { CreditPromptDialog } from "@/components/CreditPromptDialog";
 import { useSession } from "@/components/SessionContextProvider";
@@ -57,10 +57,9 @@ import LinkPTrabDialog from "@/components/LinkPTrabDialog";
 import ManageSharingDialog from "@/components/ManageSharingDialog";
 import UnlinkPTrabDialog from "@/components/UnlinkPTrabDialog";
 import PageMetadata from "@/components/PageMetadata";
-import { fetchBatchPTrabTotals, fetchDiretrizesOperacionais, fetchDiretrizesPassagens } from "@/lib/ptrabUtils";
+import { fetchBatchPTrabTotals } from "@/lib/ptrabUtils";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { PTrabTableSkeleton } from "@/components/PTrabTableSkeleton";
-import { fetchFullReportData } from "@/integrations/supabase/api";
 
 // Define a base type for PTrab data fetched from DB, including the missing 'origem' field
 type PTrabDB = Tables<'p_trab'> & {
@@ -302,25 +301,6 @@ const PTrabManager = () => {
 
   const handleNavigateToPrintOrExport = (ptrabId: string) => {
       navigate(`/ptrab/print?ptrabId=${ptrabId}`);
-  };
-
-  /**
-   * Prefetch dos dados do relatório para carregamento instantâneo.
-   */
-  const prefetchReportData = (ptrabId: string) => {
-    queryClient.prefetchQuery({
-      queryKey: ['ptrabFullReport', ptrabId],
-      queryFn: async () => {
-        const data = await fetchFullReportData(ptrabId) as any;
-        const year = new Date(data.p_trab.periodo_inicio).getFullYear();
-        const [diretrizesOp, diretrizesPassagens] = await Promise.all([
-          fetchDiretrizesOperacionais(year),
-          fetchDiretrizesPassagens(year)
-        ]);
-        return { ...data, diretrizesOp, diretrizesPassagens };
-      },
-      staleTime: 1000 * 60 * 10,
-    });
   };
 
   const isConsolidationDisabled = useMemo(() => {
@@ -1315,12 +1295,7 @@ const PTrabManager = () => {
                             <DropdownMenuContent align="end">
                               <DropdownMenuLabel>Ações</DropdownMenuLabel>
                               <DropdownMenuSeparator />
-                              <DropdownMenuItem 
-                                onClick={() => handleNavigateToPrintOrExport(ptrab.id)}
-                                onMouseEnter={() => prefetchReportData(ptrab.id)}
-                              >
-                                <Printer className="mr-2 h-4 w-4" />Visualizar Impressão
-                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => handleNavigateToPrintOrExport(ptrab.id)}><Printer className="mr-2 h-4 w-4" />Visualizar Impressão</DropdownMenuItem>
                               <DropdownMenuItem onClick={() => isEditable && handleEdit(ptrab)} disabled={!isEditable} className={!isEditable ? "opacity-50 cursor-not-allowed" : ""}><Pencil className="mr-2 h-4 w-4" />Editar P Trab</DropdownMenuItem>
                               {isOwnedByCurrentUser && <DropdownMenuItem onClick={() => !isSharingDisabled && handleOpenShareDialog(ptrab)} disabled={isSharingDisabled} className={isSharingDisabled ? "opacity-50 cursor-not-allowed" : ""}><Share2 className="mr-2 h-4 w-4" />Compartilhar</DropdownMenuItem>}
                               {isSharedWithCurrentUser && <DropdownMenuItem onClick={() => handleOpenUnlinkDialog(ptrab)} className="text-red-600"><XCircle className="mr-2 h-4 w-4" />Desvincular</DropdownMenuItem>}
