@@ -66,7 +66,7 @@ import { Tables, Json } from "@/integrations/supabase/types";
 import { ItemAquisicao } from "@/types/diretrizesMaterialConsumo";
 
 // =================================================================
-// EXPORTS NECESSÁRIOS PARA OS RELATÓRIOS (Restaurados)
+// EXPORTS E UTILITÁRIOS PARA OS RELATÓRIOS (Restaurados)
 // =================================================================
 
 export interface PTrabData extends Tables<'p_trab'> {
@@ -212,6 +212,52 @@ export const CLASSE_VI_CATEGORIES = ["Gerador", "Embarcação", "Equipamento de 
 export const CLASSE_VII_CATEGORIES = ["Comunicações", "Informática"];
 export const CLASSE_VIII_CATEGORIES = ["Saúde", "Remonta/Veterinária"];
 export const CLASSE_IX_CATEGORIES = ["Vtr Administrativa", "Vtr Operacional", "Motocicleta", "Vtr Blindada"];
+
+export const formatDate = (date: string) => {
+  return new Date(date).toLocaleDateString('pt-BR');
+};
+
+export const calculateDays = (inicio: string, fim: string) => {
+  const start = new Date(inicio);
+  const end = new Date(fim);
+  const diff = end.getTime() - start.getTime();
+  return Math.ceil(diff / (1000 * 3600 * 24)) + 1;
+};
+
+export const formatFasesParaTexto = (faseCSV: string | null | undefined): string => {
+  if (!faseCSV) return 'operação';
+  const fases = faseCSV.split(';').map(f => f.trim()).filter(f => f);
+  if (fases.length === 0) return 'operação';
+  if (fases.length === 1) return fases[0];
+  if (fases.length === 2) return `${fases[0]} e ${fases[1]}`;
+  const ultimaFase = fases[fases.length - 1];
+  const demaisFases = fases.slice(0, -1).join(', ');
+  return `${demaisFases} e ${ultimaFase}`;
+};
+
+export const getClasseIILabel = (category: string): string => {
+    switch (category) {
+        case 'Vtr Administrativa': return 'Viatura Administrativa';
+        case 'Vtr Operacional': return 'Viatura Operacional';
+        case 'Motocicleta': return 'Motocicleta';
+        case 'Vtr Blindada': return 'Viatura Blindada';
+        case 'Equipamento Individual': return 'Eqp Individual';
+        case 'Proteção Balística': return 'Prot Balística';
+        case 'Material de Estacionamento': return 'Mat Estacionamento';
+        case 'Armt L': return 'Armamento Leve';
+        case 'Armt P': return 'Armamento Pesado';
+        case 'IODCT': return 'IODCT';
+        case 'DQBRN': return 'DQBRN';
+        case 'Gerador': return 'Gerador';
+        case 'Embarcação': return 'Embarcação';
+        case 'Equipamento de Engenharia': return 'Eqp Engenharia';
+        case 'Comunicações': return 'Comunicações';
+        case 'Informática': return 'Informática';
+        case 'Saúde': return 'Saúde';
+        case 'Remonta/Veterinária': return 'Remonta/Veterinária';
+        default: return category;
+    }
+};
 
 export const normalizarNome = (valor?: string) =>
   (valor || '')
