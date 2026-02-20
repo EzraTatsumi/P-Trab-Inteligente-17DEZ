@@ -12,17 +12,22 @@ const Toaster = ({ ...props }: ToasterProps) => {
     <Sonner
       theme={theme as ToasterProps["theme"]}
       className="toaster group"
-      // richColors removido para evitar cores automáticas vibrantes
+      richColors={false} // Força explicitamente a desativação das cores vibrantes
       toastOptions={{
         classNames: {
-          // Forçamos o fundo branco (bg-background) e o texto azul (text-blue-700)
+          // Base do toast: fundo branco e texto azul
           toast:
-            "group toast group-[.toaster]:bg-background group-[.toaster]:text-blue-700 group-[.toaster]:border-border group-[.toaster]:shadow-lg font-sans border",
+            "group toast group-[.toaster]:bg-white group-[.toaster]:text-blue-700 group-[.toaster]:border-border group-[.toaster]:shadow-lg font-sans border",
           description: "group-[.toast]:text-muted-foreground",
           actionButton:
             "group-[.toast]:bg-primary group-[.toast]:text-primary-foreground",
           cancelButton:
             "group-[.toast]:bg-muted group-[.toast]:text-muted-foreground",
+          // Forçamos o mesmo estilo para todos os tipos, anulando qualquer cor nativa
+          success: "group-[.toaster]:bg-white group-[.toaster]:text-blue-700",
+          error: "group-[.toaster]:bg-white group-[.toaster]:text-blue-700",
+          info: "group-[.toaster]:bg-white group-[.toaster]:text-blue-700",
+          warning: "group-[.toaster]:bg-white group-[.toaster]:text-blue-700",
         },
       }}
       {...props}

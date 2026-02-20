@@ -48,13 +48,7 @@ const App = () => (
     <QueryClientProvider client={queryClient}>
       <SessionContextProvider>
         <TooltipProvider>
-          {/* richColors removido para respeitar o estilo neutro definido no componente Toaster */}
-          <Toaster 
-            position="top-right" 
-            theme="light" 
-            closeButton={true}
-            expand={true}
-          />
+          <Toaster />
           <BrowserRouter>
             <Routes>
               <Route path="/" element={<Index />} />
