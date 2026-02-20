@@ -23,7 +23,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { toast } from "sonner";
-import { Plus, Edit, Trash2, LogOut, FileText, Printer, Settings, PenSquare, MoreVertical, Pencil, Copy, FileSpreadsheet, Download, MessageSquare, ArrowRight, HelpCircle, CheckCircle, GitBranch, Archive, RefreshCw, User, Loader2, Share2, Link, Users, XCircle, ArrowDownUp, ClipboardList } from "lucide-react";
+import { Plus, Edit, Trash2, LogOut, FileText, Printer, Settings, PenSquare, MoreVertical, Pencil, Copy, FileSpreadsheet, Download, MessageSquare, ArrowRight, HelpCircle, CheckCircle, GitBranch, Archive, RefreshCw, User, Loader2, Share2, Link, Users, XCircle, ArrowDownUp, ClipboardList, Sparkles } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { sanitizeError } from "@/lib/errorUtils";
@@ -60,6 +60,7 @@ import PageMetadata from "@/components/PageMetadata";
 import { fetchBatchPTrabTotals } from "@/lib/ptrabUtils";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { PTrabTableSkeleton } from "@/components/PTrabTableSkeleton";
+import OnboardingTour from "@/components/OnboardingTour";
 
 // Define a base type for PTrab data fetched from DB, including the missing 'origem' field
 type PTrabDB = Tables<'p_trab'> & {
@@ -181,6 +182,8 @@ const PTrabManager = () => {
   
   const [showUnlinkPTrabDialog, setShowUnlinkPTrabDialog] = useState(false);
   const [ptrabToUnlink, setPtrabToUnlink] = useState<PTrab | null>(null);
+
+  const [tourEnabled, setTourEnabled] = useState(false);
   
   const currentYear = new Date().getFullYear();
   const yearSuffix = `/${currentYear}`;
@@ -401,6 +404,13 @@ const PTrabManager = () => {
         fetchUserName(user.id, user.user_metadata).then(name => {
             setUserName(name || ""); 
         });
+        
+        // Verifica se é a primeira vez do usuário para mostrar o tour automaticamente
+        const hasSeenTour = localStorage.getItem(`hasSeenTour_${user.id}`);
+        if (!hasSeenTour) {
+            setTimeout(() => setTourEnabled(true), 1500);
+            localStorage.setItem(`hasSeenTour_${user.id}`, 'true');
+        }
     }
   }, [user, fetchUserName]);
 
@@ -466,7 +476,7 @@ const PTrabManager = () => {
       if (fetchError || !ptrab) throw new Error("P Trab não encontrado.");
       const isMinuta = ptrab.numero_ptrab.startsWith("Minuta");
       const newStatus = isMinuta ? 'aberto' : 'aprovado';
-      const { error: updateError } = await supabase.from("p_trab").update({ status: newStatus }).eq("id", ptrabToReactivateId);
+      const { error: updateError = null } = await supabase.from("p_trab").update({ status: newStatus }).eq("id", ptrabToReactivateId);
       if (updateError) throw updateError;
       toast.success(`P Trab ${ptrabToReactivateName} reativado para "${newStatus.toUpperCase()}"!`);
       setShowReactivateStatusDialog(false);
@@ -1005,9 +1015,11 @@ const PTrabManager = () => {
         canonicalPath="/ptrab"
       />
       
+      <OnboardingTour enabled={tourEnabled} onExit={() => setTourEnabled(false)} />
+
       <div className="max-w-7xl mx-auto space-y-4">
         <div className="flex justify-between items-center">
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-4" id="tour-welcome">
             <div>
               <h1 className="text-3xl font-bold">Planos de Trabalho</h1>
               <p className="text-muted-foreground">Gerencie seu P Trab</p>
@@ -1024,7 +1036,7 @@ const PTrabManager = () => {
             
             <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
               <DialogTrigger asChild>
-                <Button onClick={() => { resetForm(); setDialogOpen(true); window.scrollTo({ top: 0, behavior: 'smooth' }); }}>
+                <Button id="tour-new-ptrab" onClick={() => { resetForm(); setDialogOpen(true); window.scrollTo({ top: 0, behavior: 'smooth' }); }}>
                   <Plus className="mr-2 h-4 w-4" />
                   Novo P Trab
                 </Button>
@@ -1171,7 +1183,7 @@ const PTrabManager = () => {
               <Tooltip>
                 <TooltipTrigger asChild>
                   <span className="inline-block">
-                    <Button onClick={() => !isConsolidationDisabled && setShowConsolidationDialog(true)} variant="secondary" disabled={isConsolidationDisabled}>
+                    <Button id="tour-consolidate" onClick={() => !isConsolidationDisabled && setShowConsolidationDialog(true)} variant="secondary" disabled={isConsolidationDisabled}>
                       <ArrowRight className="mr-2 h-4 w-4" />
                       Consolidar P Trab
                     </Button>
@@ -1184,10 +1196,21 @@ const PTrabManager = () => {
             </TooltipProvider>
 
             <HelpDialog />
+            
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button variant="outline" size="icon" onClick={() => setTourEnabled(true)} className="text-primary border-primary/50 hover:bg-primary/10">
+                    <Sparkles className="h-4 w-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Iniciar Tour Guiado</TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
 
             <DropdownMenu open={settingsDropdownOpen} onOpenChange={setSettingsDropdownOpen}>
               <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="icon"><Settings className="h-4 w-4" /></Button>
+                <Button id="tour-settings" variant="outline" size="icon"><Settings className="h-4 w-4" /></Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-56" onPointerLeave={() => setSettingsDropdownOpen(false)}>
                 <DropdownMenuLabel>Configurações</DropdownMenuLabel>
@@ -1208,7 +1231,7 @@ const PTrabManager = () => {
           </div>
         </div>
 
-        <Card>
+        <Card id="tour-table">
           <CardHeader>
             <h2 className="text-xl font-bold">Planos de Trabalho Cadastrados</h2>
           </CardHeader>
@@ -1235,7 +1258,7 @@ const PTrabManager = () => {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {pTrabs.map((ptrab) => {
+                  {pTrabs.map((ptrab, index) => {
                     const originBadge = getOriginBadge(ptrab.origem);
                     const isMinuta = ptrab.numero_ptrab.startsWith("Minuta");
                     const isEditable = (ptrab.isOwner || ptrab.isShared) && ptrab.status !== 'aprovado' && ptrab.status !== 'arquivado'; 
@@ -1312,7 +1335,7 @@ const PTrabManager = () => {
                         </TooltipProvider>
                       </TableCell>
                       <TableCell className="text-right">
-                        <div className="flex justify-end gap-2 items-start">
+                        <div className="flex justify-end gap-2 items-start" id={index === 0 ? "tour-actions" : undefined}>
                           {(needsNumbering(ptrab) || isApprovedOrArchived) && <Button onClick={() => handleOpenApproveDialog(ptrab)} size="sm" className="flex items-center gap-2 bg-green-600 hover:bg-green-700" disabled={isApprovedOrArchived || isActionDisabledForNonOwner}><CheckCircle className="h-4 w-4" />Aprovar</Button>}
                           
                           <div className="flex flex-col gap-1">
