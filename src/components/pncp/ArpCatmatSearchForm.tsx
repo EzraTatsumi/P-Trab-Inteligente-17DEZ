@@ -33,10 +33,9 @@ interface ArpCatmatSearchFormProps {
     selectedItemIds: string[];
     onClearSelection: () => void;
     scrollContainerRef: React.RefObject<HTMLDivElement>;
-    mode?: 'material' | 'servico'; // NOVO: Propriedade de modo
+    mode?: 'material' | 'servico';
 }
 
-// Calcula as datas padrão
 const today = new Date();
 const oneYearAgo = subDays(today, 365);
 
@@ -49,15 +48,13 @@ const ArpCatmatSearchForm: React.FC<ArpCatmatSearchFormProps> = ({
     selectedItemIds, 
     onClearSelection, 
     scrollContainerRef,
-    mode = 'material' // Padrão para material
+    mode = 'material'
 }) => {
     const [isSearching, setIsSearching] = useState(false);
     const [isCatmatCatalogOpen, setIsCatmatCatalogOpen] = useState(false);
     const [isCatserCatalogOpen, setIsCatserCatalogOpen] = useState(false);
-    // Armazena os itens detalhados (DetailedArpItem)
     const [detailedItems, setDetailedItems] = useState<DetailedArpItem[]>([]); 
     
-    // REF para o container de resultados
     const resultsRef = useRef<HTMLDivElement>(null);
 
     const form = useForm<ArpCatmatFormValues>({
@@ -69,7 +66,7 @@ const ArpCatmatSearchForm: React.FC<ArpCatmatSearchFormProps> = ({
         },
     });
     
-    const handleCatmatChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const handleCodeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const rawValue = e.target.value.replace(/\D/g, '');
         const limitedValue = rawValue.slice(0, 9); 
         form.setValue('codigoItem', limitedValue, { shouldValidate: true });
@@ -105,7 +102,6 @@ const ArpCatmatSearchForm: React.FC<ArpCatmatSearchFormProps> = ({
             
             setDetailedItems(results);
             
-            // Rola para o topo dos resultados após a busca ser concluída
             if (results.length > 0 && resultsRef.current) {
                 setTimeout(() => {
                     resultsRef.current?.scrollIntoView({
@@ -123,29 +119,26 @@ const ArpCatmatSearchForm: React.FC<ArpCatmatSearchFormProps> = ({
         }
     };
     
-    // Mapeia os DetailedArpItem para o formato ArpItemResult para usar o ArpSearchResultsList
     const mappedResults: ArpItemResult[] = useMemo(() => {
         if (detailedItems.length === 0) return [];
         
-        // Agrupa os itens detalhados pelo número de controle da ARP
         const groups = detailedItems.reduce((acc, item) => {
             const key = item.numeroControlePncpAta;
             if (!acc[key]) {
                 acc[key] = {
                     id: key,
                     numeroAta: item.numeroAta,
-                    objeto: item.descricaoItem, // Usamos a descrição do item como objeto representativo
+                    objeto: item.descricaoItem,
                     uasg: item.uasg,
                     omNome: item.omNome,
                     dataVigenciaInicial: item.dataVigenciaInicial,
                     dataVigenciaFinal: item.dataVigenciaFinal,
-                    valorTotalEstimado: 0, // Não calculamos o total aqui
+                    valorTotalEstimado: 0,
                     quantidadeItens: 0,
                     pregaoFormatado: item.pregaoFormatado,
                     numeroControlePncpAta: key,
                 };
             }
-            // Atualiza o objeto com a descrição mais longa (heurística)
             if (item.descricaoItem.length > acc[key].objeto.length) {
                 acc[key].objeto = item.descricaoItem;
             }
@@ -155,7 +148,6 @@ const ArpCatmatSearchForm: React.FC<ArpCatmatSearchFormProps> = ({
         return Object.values(groups);
     }, [detailedItems]);
     
-    // Função para lidar com a seleção de itens detalhados (passada para ArpSearchResultsList)
     const handleItemPreSelectWrapper = (item: DetailedArpItem, pregaoFormatado: string, uasg: string) => {
         onItemPreSelect(item, pregaoFormatado, uasg);
     };
@@ -177,9 +169,9 @@ const ArpCatmatSearchForm: React.FC<ArpCatmatSearchFormProps> = ({
                                         <FormControl>
                                             <Input
                                                 {...field}
-                                                onChange={handleCatmatChange}
+                                                onChange={handleCodeChange}
                                                 value={field.value}
-                                                placeholder="Ex: 604269"
+                                                placeholder={mode === 'material' ? "Ex: 604269" : "Ex: 17639"}
                                                 maxLength={9}
                                                 disabled={isSearching}
                                             />
@@ -271,7 +263,6 @@ const ArpCatmatSearchForm: React.FC<ArpCatmatSearchFormProps> = ({
                 </form>
             </Form>
             
-            {/* Seção de Resultados */}
             {mappedResults.length > 0 && (
                 <div ref={resultsRef}>
                     <ArpSearchResultsList 
