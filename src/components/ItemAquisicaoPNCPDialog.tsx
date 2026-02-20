@@ -320,7 +320,7 @@ const ItemAquisicaoPNCPDialog: React.FC<ItemAquisicaoPNCPDialogProps> = ({
                         <ArpUasgSearch onItemPreSelect={handleItemPreSelect} selectedItemIds={selectedItemIds} onClearSelection={handleClearSelection} scrollContainerRef={dialogContentRef} mode={apiMode} />
                     </TabsContent>
                     <TabsContent value="arp-catmat">
-                        <ArpCatmatSearch {...({ onItemPreSelect: handleItemPreSelect, selectedItemIds, onClearSelection: handleClearSelection, scrollContainerRef: dialogContentRef, mode: apiMode } as any)} />
+                        <ArpCatmatSearch {...({ onItemPreSelect: handleItemPreSelect, selectedItemIds, onClearSelection: handleClearSelection, scrollContainerRef: dialogContentRef, mode: apiMode } )} />
                     </TabsContent>
                     <TabsContent value="avg-price">
                         <PriceSearchForm onPriceSelect={handlePriceSelect} isInspecting={isInspecting} onClearPriceSelection={handleClearPriceSelection} selectedItemForInspection={selectedItemForInspection} mode={apiMode} />
