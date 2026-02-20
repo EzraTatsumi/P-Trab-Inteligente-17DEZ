@@ -3,7 +3,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Loader2, FileText, Package, Utensils, Briefcase, HardHat, Plane, ClipboardList, Frown } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner"; // Alterado para sonner para suportar toast.promise
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import ExcelJS from 'exceljs';
@@ -811,7 +811,6 @@ const NoDataFallback: React.FC<NoDataFallbackProps> = ({ reportName, message }) 
 const PTrabReportManager = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { toast } = useToast();
   const ptrabId = searchParams.get('ptrabId');
   
   const [ptrabData, setPtrabData] = useState<PTrabData | null>(null);
@@ -846,7 +845,7 @@ const PTrabReportManager = () => {
 
   const loadData = useCallback(async () => {
     if (!ptrabId) {
-      toast({ title: "Erro", description: "P Trab não selecionado", variant: "destructive" });
+      toast.error("P Trab não selecionado");
       navigate('/ptrab');
       return;
     }
@@ -888,43 +887,43 @@ const PTrabReportManager = () => {
       const promises: Promise<void>[] = [];
 
       if (selectedReport === 'logistico' || selectedReport === 'racao_operacional') {
-          promises.push(supabase.from('classe_i_registros').select('*, memoria_calculo_qs_customizada, memoria_calculo_qr_customizada, memoria_calculo_op_customizada, fase_atividade, categoria, quantidade_r2, quantidade_r3').eq('p_trab_id', ptrabId).then(({data}) => { classeIData = data; }));
+          promises.push(Promise.resolve(supabase.from('classe_i_registros').select('*, memoria_calculo_qs_customizada, memoria_calculo_qr_customizada, memoria_calculo_op_customizada, fase_atividade, categoria, quantidade_r2, quantidade_r3').eq('p_trab_id', ptrabId).then(({data}) => { classeIData = data; })));
       }
 
       if (selectedReport === 'logistico') {
-          promises.push(supabase.from('classe_ii_registros').select('*, detalhamento_customizado, fase_atividade, valor_nd_30, valor_nd_39, om_detentora, ug_detentora, efetivo').eq('p_trab_id', ptrabId).then(({data}) => { classeIIData = data; }));
-          promises.push(supabase.from('classe_v_registros').select('*, detalhamento_customizado, fase_atividade, valor_nd_30, valor_nd_39, om_detentora, ug_detentora, efetivo').eq('p_trab_id', ptrabId).then(({data}) => { classeVData = data; }));
-          promises.push(supabase.from('classe_vi_registros').select('*, detalhamento_customizado, fase_atividade, valor_nd_30, valor_nd_39, om_detentora, ug_detentora').eq('p_trab_id', ptrabId).then(({data}) => { classeVIData = data; }));
-          promises.push(supabase.from('classe_vii_registros').select('*, detalhamento_customizado, fase_atividade, valor_nd_30, valor_nd_39, om_detentora, ug_detentora').eq('p_trab_id', ptrabId).then(({data}) => { classeVIIData = data; }));
-          promises.push(supabase.from('classe_viii_saude_registros').select('*, itens_saude, detalhamento_customizado, fase_atividade, valor_nd_30, valor_nd_39, om_detentora, ug_detentora').eq('p_trab_id', ptrabId).then(({data}) => { classeVIIISaudeData = data; }));
-          promises.push(supabase.from('classe_viii_remonta_registros').select('*, itens_remonta, detalhamento_customizado, fase_atividade, valor_nd_30, valor_nd_39, animal_tipo, quantidade_animais, om_detentora, ug_detentora').eq('p_trab_id', ptrabId).then(({data}) => { classeVIIIRemontaData = data; }));
-          promises.push(supabase.from('classe_ix_registros').select('*, itens_motomecanizacao, detalhamento_customizado, fase_atividade, valor_nd_30, valor_nd_39, om_detentora, ug_detentora').eq('p_trab_id', ptrabId).then(({data}) => { classeIXData = data; }));
-          promises.push(supabase.from('classe_iii_registros').select('*, detalhamento_customizado, itens_equipamentos, fase_atividade, consumo_lubrificante_litro, preco_lubrificante, valor_nd_30, valor_nd_39, om_detentora, ug_detentora').eq('p_trab_id', ptrabId).then(({data}) => { classeIIIData = data; }));
-          promises.push(supabase.from("p_trab_ref_lpc").select("*").eq("p_trab_id", ptrabId).maybeSingle().then(({data}) => { refLPCData = data; }));
+          promises.push(Promise.resolve(supabase.from('classe_ii_registros').select('*, detalhamento_customizado, fase_atividade, valor_nd_30, valor_nd_39, om_detentora, ug_detentora, efetivo').eq('p_trab_id', ptrabId).then(({data}) => { classeIIData = data; })));
+          promises.push(Promise.resolve(supabase.from('classe_v_registros').select('*, detalhamento_customizado, fase_atividade, valor_nd_30, valor_nd_39, om_detentora, ug_detentora, efetivo').eq('p_trab_id', ptrabId).then(({data}) => { classeVData = data; })));
+          promises.push(Promise.resolve(supabase.from('classe_vi_registros').select('*, detalhamento_customizado, fase_atividade, valor_nd_30, valor_nd_39, om_detentora, ug_detentora').eq('p_trab_id', ptrabId).then(({data}) => { classeVIData = data; })));
+          promises.push(Promise.resolve(supabase.from('classe_vii_registros').select('*, detalhamento_customizado, fase_atividade, valor_nd_30, valor_nd_39, om_detentora, ug_detentora').eq('p_trab_id', ptrabId).then(({data}) => { classeVIIData = data; })));
+          promises.push(Promise.resolve(supabase.from('classe_viii_saude_registros').select('*, itens_saude, detalhamento_customizado, fase_atividade, valor_nd_30, valor_nd_39, om_detentora, ug_detentora').eq('p_trab_id', ptrabId).then(({data}) => { classeVIIISaudeData = data; })));
+          promises.push(Promise.resolve(supabase.from('classe_viii_remonta_registros').select('*, itens_remonta, detalhamento_customizado, fase_atividade, valor_nd_30, valor_nd_39, animal_tipo, quantidade_animais, om_detentora, ug_detentora').eq('p_trab_id', ptrabId).then(({data}) => { classeVIIIRemontaData = data; })));
+          promises.push(Promise.resolve(supabase.from('classe_ix_registros').select('*, itens_motomecanizacao, detalhamento_customizado, fase_atividade, valor_nd_30, valor_nd_39, om_detentora, ug_detentora').eq('p_trab_id', ptrabId).then(({data}) => { classeIXData = data; })));
+          promises.push(Promise.resolve(supabase.from('classe_iii_registros').select('*, detalhamento_customizado, itens_equipamentos, fase_atividade, consumo_lubrificante_litro, preco_lubrificante, valor_nd_30, valor_nd_39, om_detentora, ug_detentora').eq('p_trab_id', ptrabId).then(({data}) => { classeIIIData = data; })));
+          promises.push(Promise.resolve(supabase.from("p_trab_ref_lpc").select("*").eq("p_trab_id", ptrabId).maybeSingle().then(({data}) => { refLPCData = data; })));
       }
 
       if (selectedReport === 'operacional') {
-          promises.push(supabase.from('diaria_registros').select('*').eq('p_trab_id', ptrabId).then(({data}) => { diariaData = data; }));
-          promises.push(supabase.from('verba_operacional_registros').select('*, objeto_aquisicao, objeto_contratacao, proposito, finalidade, local, tarefa').eq('p_trab_id', ptrabId).then(({data}) => { verbaOperacionalData = data; }));
-          promises.push(supabase.from('passagem_registros').select('*').eq('p_trab_id', ptrabId).then(({data}) => { passagemData = data; }));
-          promises.push(supabase.from('concessionaria_registros').select('*, diretriz_id').eq('p_trab_id', ptrabId).then(({data}) => { concessionariaData = data; }));
-          promises.push(supabase.from('material_consumo_registros').select('*').eq('p_trab_id', ptrabId).then(({data}) => { materialConsumoData = data; }));
-          promises.push(supabase.from('complemento_alimentacao_registros').select('*').eq('p_trab_id', ptrabId).then(({data}) => { complementoAlimentacaoData = data; }));
-          promises.push(supabase.from('servicos_terceiros_registros' as any).select('*').eq('p_trab_id', ptrabId).then(({data}) => { servicosTerceirosData = data; }));
-          promises.push(fetchDiretrizesOperacionais(year).then(data => { diretrizesOpData = data; }));
-          promises.push(fetchDiretrizesPassagens(year).then(data => { diretrizesPassagensData = data; }));
+          promises.push(Promise.resolve(supabase.from('diaria_registros').select('*').eq('p_trab_id', ptrabId).then(({data}) => { diariaData = data; })));
+          promises.push(Promise.resolve(supabase.from('verba_operacional_registros').select('*, objeto_aquisicao, objeto_contratacao, proposito, finalidade, local, tarefa').eq('p_trab_id', ptrabId).then(({data}) => { verbaOperacionalData = data; })));
+          promises.push(Promise.resolve(supabase.from('passagem_registros').select('*').eq('p_trab_id', ptrabId).then(({data}) => { passagemData = data; })));
+          promises.push(Promise.resolve(supabase.from('concessionaria_registros').select('*, diretriz_id').eq('p_trab_id', ptrabId).then(({data}) => { concessionariaData = data; })));
+          promises.push(Promise.resolve(supabase.from('material_consumo_registros').select('*').eq('p_trab_id', ptrabId).then(({data}) => { materialConsumoData = data; })));
+          promises.push(Promise.resolve(supabase.from('complemento_alimentacao_registros').select('*').eq('p_trab_id', ptrabId).then(({data}) => { complementoAlimentacaoData = data; })));
+          promises.push(Promise.resolve(supabase.from('servicos_terceiros_registros' as any).select('*').eq('p_trab_id', ptrabId).then(({data}) => { servicosTerceirosData = data; })));
+          promises.push(Promise.resolve(fetchDiretrizesOperacionais(year).then(data => { diretrizesOpData = data; })));
+          promises.push(Promise.resolve(fetchDiretrizesPassagens(year).then(data => { diretrizesPassagensData = data; })));
       }
 
       if (selectedReport === 'material_permanente') {
-          promises.push(supabase.from('material_permanente_registros' as any).select('*').eq('p_trab_id', ptrabId).then(({data}) => { materialPermanenteData = data; }));
+          promises.push(Promise.resolve(supabase.from('material_permanente_registros' as any).select('*').eq('p_trab_id', ptrabId).then(({data}) => { materialPermanenteData = data; })));
       }
 
       if (selectedReport === 'hora_voo') {
-          promises.push(supabase.from('horas_voo_registros').select('*').eq('p_trab_id', ptrabId).then(({data}) => { horasVooData = data; }));
+          promises.push(Promise.resolve(supabase.from('horas_voo_registros').select('*').eq('p_trab_id', ptrabId).then(({data}) => { horasVooData = data; })));
       }
 
       if (selectedReport === 'dor') {
-          promises.push(supabase.from('dor_registros' as any).select('*').eq('p_trab_id', ptrabId).order('created_at', { ascending: true }).then(({data}) => { dorData = data; }));
+          promises.push(Promise.resolve(supabase.from('dor_registros' as any).select('*').eq('p_trab_id', ptrabId).order('created_at', { ascending: true }).then(({data}) => { dorData = data; })));
       }
 
       // Dispara apenas as requisições necessárias simultaneamente
@@ -1051,11 +1050,11 @@ const PTrabReportManager = () => {
 
     } catch (error) {
       console.error("Erro ao carregar dados:", error);
-      toast({ title: "Erro", description: "Não foi possível carregar os dados do relatório.", variant: "destructive" });
+      toast.error("Não foi possível carregar os dados do relatório.");
     } finally {
       setLoading(false);
     }
-  }, [ptrabId, selectedReport, fetchedReports, ptrabData, navigate, toast]);
+  }, [ptrabId, selectedReport, fetchedReports, ptrabData, navigate]);
 
   useEffect(() => {
     loadData();

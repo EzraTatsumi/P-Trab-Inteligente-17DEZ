@@ -75,7 +75,9 @@ export async function fetchPTrabData(ptrabId: string): Promise<PTrabData> {
  * Busca todos os registros de uma tabela específica para um dado PTrab.
  */
 export async function fetchPTrabRecords<T extends PTrabLinkedTableName>(tableName: T, ptrabId: string): Promise<Tables<T>[]> {
-    const { data, error } = await (supabase.from(tableName) as any)
+    // Usamos o cast para TableName para satisfazer a restrição do SDK do Supabase
+    const { data, error } = await supabase
+        .from(tableName as TableName)
         .select('*')
         .eq('p_trab_id', ptrabId);
 

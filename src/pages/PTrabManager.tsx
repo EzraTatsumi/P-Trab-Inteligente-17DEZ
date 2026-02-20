@@ -134,6 +134,7 @@ const PTrabManager = () => {
   const [userName, setUserName] = useState<string>("");
   
   const [settingsDropdownOpen, setSettingsDropdownOpen] = useState(false);
+  const [isActionLoading, setIsActionLoading] = useState(false);
 
   const [showArchiveStatusDialog, setShowArchiveStatusDialog] = useState(false);
   const [ptrabToArchiveId, setPtrabToArchiveId] = useState<string | null>(null);
@@ -412,6 +413,7 @@ const PTrabManager = () => {
 
   const handleConfirmArchiveStatus = async () => {
     if (!ptrabToArchiveId) return;
+    setIsActionLoading(true);
     try {
       const { error } = await supabase.from("p_trab").update({ status: "arquivado" }).eq("id", ptrabToArchiveId);
       if (error) throw error;
@@ -423,6 +425,8 @@ const PTrabManager = () => {
     } catch (error) {
       console.error("Erro ao arquivar P Trab:", error);
       toast.error("Erro ao arquivar P Trab.");
+    } finally {
+      setIsActionLoading(false);
     }
   };
 
@@ -440,6 +444,7 @@ const PTrabManager = () => {
     }
     if (!confirm(`Tem certeza que deseja ARQUIVAR o P Trab "${ptrabName}"? Esta ação irá finalizar o trabalho e restringir edições.`)) return;
 
+    setIsActionLoading(true);
     try {
         const { error } = await supabase.from("p_trab").update({ status: "arquivado" }).eq("id", ptrabId);
         if (error) throw error;
@@ -448,11 +453,14 @@ const PTrabManager = () => {
     } catch (error) {
         console.error("Erro ao arquivar P Trab:", error);
         toast.error("Erro ao arquivar P Trab.");
+    } finally {
+        setIsActionLoading(false);
     }
   };
 
   const handleConfirmReactivateStatus = async () => {
     if (!ptrabToReactivateId) return;
+    setIsActionLoading(true);
     try {
       const { data: ptrab, error: fetchError } = await supabase.from("p_trab").select("numero_ptrab").eq("id", ptrabToReactivateId).single();
       if (fetchError || !ptrab) throw new Error("P Trab não encontrado.");
@@ -468,6 +476,8 @@ const PTrabManager = () => {
     } catch (error: any) {
       console.error("Erro ao reativar P Trab:", error);
       toast.error(error.message || "Erro ao reativar P Trab.");
+    } finally {
+      setIsActionLoading(false);
     }
   };
 
@@ -486,6 +496,7 @@ const PTrabManager = () => {
 
   const handleSaveComentario = async () => {
     if (!ptrabComentario) return;
+    setIsActionLoading(true);
     try {
       const { error } = await supabase.from('p_trab').update({ comentario: comentarioText || null }).eq('id', ptrabComentario.id);
       if (error) throw error;
@@ -497,6 +508,8 @@ const PTrabManager = () => {
     } catch (error) {
       console.error("Erro ao salvar comentário:", error);
       toast.error("Erro ao salvar comentário. Tente novamente.");
+    } finally {
+      setIsActionLoading(false);
     }
   };
 
@@ -511,6 +524,7 @@ const PTrabManager = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setIsActionLoading(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Usuário não autenticado");
@@ -526,21 +540,25 @@ const PTrabManager = () => {
           if (fieldName === 'nome cmt om') fieldName = 'Nome do Comandante da OM';
           if (fieldName === 'comando militar area') fieldName = 'Comando Militar de Área';
           toast.error(`O campo '${fieldName}' é obrigatório.`);
+          setIsActionLoading(false);
           return;
         }
       }
       if (!formData.codug_om || !formData.rm_vinculacao || !formData.codug_rm_vinculacao) {
         toast.error("A OM deve ser selecionada na lista para preencher os CODUGs e RM.");
+        setIsActionLoading(false);
         return;
       }
       if (new Date(formData.periodo_fim) < new Date(formData.periodo_inicio)) {
         toast.error("A Data Fim deve ser posterior ou igual à Data Início.");
+        setIsActionLoading(false);
         return;
       }
       if (currentNumber && !currentNumber.startsWith("Minuta")) {
         const isDuplicate = isPTrabNumberDuplicate(currentNumber, existingPTrabNumbers) && currentNumber !== pTrabs.find(p => p.id === editingId)?.numero_ptrab;
         if (isDuplicate) {
           toast.error("Já existe um P Trab com este número. Por favor, proponha outro.");
+          setIsActionLoading(false);
           return;
         }
       }
@@ -571,6 +589,7 @@ const PTrabManager = () => {
         setDialogOpen(false);
         resetForm();
         loadPTrabs();
+        setIsActionLoading(false);
         return;
       }
       setDialogOpen(false);
@@ -578,6 +597,8 @@ const PTrabManager = () => {
       loadPTrabs();
     } catch (error: any) {
       toast.error(sanitizeError(error));
+    } finally {
+      setIsActionLoading(false);
     }
   };
 
@@ -620,6 +641,7 @@ const PTrabManager = () => {
       old ? old.filter(p => p.id !== id) : []
     );
     
+    setIsActionLoading(true);
     try {
       const { error } = await supabase.from("p_trab").delete().eq("id", id);
       if (error) throw error;
@@ -628,6 +650,8 @@ const PTrabManager = () => {
       toast.error("Erro ao excluir");
       // Rollback em caso de erro
       loadPTrabs();
+    } finally {
+      setIsActionLoading(false);
     }
   };
 
@@ -651,6 +675,7 @@ const PTrabManager = () => {
       toast.error("O número sugerido já existe. Tente novamente ou use outro número.");
       return;
     }
+    setIsActionLoading(true);
     try {
       const { error } = await supabase.from("p_trab").update({ numero_ptrab: newNumber, status: 'aprovado' }).eq("id", ptrabToApprove.id);
       if (error) throw error;
@@ -661,6 +686,8 @@ const PTrabManager = () => {
       loadPTrabs();
     } catch (error: any) {
       toast.error(sanitizeError(error));
+    } finally {
+      setIsActionLoading(false);
     }
   };
 
@@ -691,6 +718,7 @@ const PTrabManager = () => {
       return;
     }
     setShowCloneVariationDialog(false);
+    setIsActionLoading(true);
     try {
         const { id, created_at, updated_at, user_id, share_token, shared_with, totalLogistica, totalOperacional, totalMaterialPermanente, quantidadeRacaoOp, quantidadeHorasVoo, isOwner, isShared, hasPendingRequests, ...restOfPTrab } = ptrabToClone;
         const newPTrabData: TablesInsert<'p_trab'> & { origem: PTrabDB['origem'] } = { ...restOfPTrab, numero_ptrab: suggestedCloneNumber, status: "aberto", origem: ptrabToClone.origem, comentario: null, rotulo_versao: versionName, user_id: (await supabase.auth.getUser()).data.user?.id! };
@@ -705,6 +733,8 @@ const PTrabManager = () => {
     } catch (error: any) {
         console.error("Erro ao clonar variação:", error);
         toast.error(sanitizeError(error));
+    } finally {
+        setIsActionLoading(false);
     }
   };
 
@@ -802,6 +832,7 @@ const PTrabManager = () => {
   const handleConfirmConsolidation = async (finalMinutaNumber: string) => {
     if (selectedPTrabsToConsolidate.length < 2 || !user?.id) return;
     setShowConsolidationNumberDialog(false);
+    setIsActionLoading(true);
     try {
         const { data: selectedPTrabsData, error: fetchError } = await supabase.from('p_trab').select('*').in('id', selectedPTrabsToConsolidate);
         if (fetchError || !selectedPTrabsData || selectedPTrabsData.length === 0) throw new Error("Falha ao carregar dados dos P Trabs selecionados.");
@@ -846,6 +877,7 @@ const PTrabManager = () => {
         toast.error(sanitizeError(error));
     } finally {
         setSelectedPTrabsToConsolidate([]);
+        setIsActionLoading(false);
     }
   };
   
@@ -873,6 +905,7 @@ const PTrabManager = () => {
         toast.error("Link inválido ou usuário não autenticado.");
         return;
     }
+    setIsActionLoading(true);
     try {
         const url = new URL(linkPTrabInput);
         const ptrabId = url.searchParams.get('ptrabId');
@@ -885,6 +918,8 @@ const PTrabManager = () => {
         setShowLinkPTrabDialog(false);
     } catch (error: any) {
         toast.error("Erro ao solicitar vinculação.", { description: sanitizeError(error) });
+    } finally {
+        setIsActionLoading(false);
     }
   };
   
@@ -895,6 +930,7 @@ const PTrabManager = () => {
   };
   
   const handleApproveRequest = async (requestId: string) => {
+    setIsActionLoading(true);
     try {
         const { data, error } = await supabase.rpc('approve_ptrab_share', { p_request_id: requestId });
         if (error) throw error;
@@ -903,10 +939,13 @@ const PTrabManager = () => {
         loadPTrabs();
     } catch (error: any) {
         toast.error("Erro ao aprovar solicitação.");
+    } finally {
+        setIsActionLoading(false);
     }
   };
   
   const handleRejectRequest = async (requestId: string) => {
+    setIsActionLoading(true);
     try {
         const { data, error } = await supabase.rpc('reject_ptrab_share', { p_request_id: requestId });
         if (error) throw error;
@@ -915,11 +954,14 @@ const PTrabManager = () => {
         loadPTrabs();
     } catch (error: any) {
         toast.error("Erro ao rejeitar solicitação.");
+    } finally {
+        setIsActionLoading(false);
     }
   };
   
   const handleCancelSharing = async (ptrabId: string, userIdToRemove: string, userName: string) => {
     if (!confirm(`Tem certeza que deseja remover o acesso de ${userName} a este P Trab?`)) return;
+    setIsActionLoading(true);
     try {
         const { data: success, error } = await supabase.rpc('remove_user_from_shared_with', { p_ptrab_id: ptrabId, p_user_to_remove_id: userIdToRemove });
         if (error) throw error;
@@ -928,6 +970,8 @@ const PTrabManager = () => {
         loadPTrabs();
     } catch (error: any) {
         toast.error("Erro ao cancelar compartilhamento.");
+    } finally {
+        setIsActionLoading(false);
     }
   };
   
@@ -938,6 +982,7 @@ const PTrabManager = () => {
   
   const handleConfirmUnlink = async () => {
     if (!ptrabToUnlink || !user?.id) return;
+    setIsActionLoading(true);
     try {
         const { data: success, error } = await supabase.rpc('remove_user_from_shared_with', { p_ptrab_id: ptrabToUnlink.id, p_user_to_remove_id: user.id });
         if (error) throw error;
@@ -947,6 +992,8 @@ const PTrabManager = () => {
         loadPTrabs();
     } catch (error: any) {
         toast.error("Erro ao desvincular P Trab.", { description: sanitizeError(error) });
+    } finally {
+        setIsActionLoading(false);
     }
   };
 
@@ -1113,7 +1160,7 @@ const PTrabManager = () => {
                     <Textarea id="acoes" value={formData.acoes} onChange={(e) => setFormData({ ...formData, acoes: e.target.value })} rows={4} maxLength={2000} required onKeyDown={handleEnterToNextField} />
                   </div>
                   <DialogFooter>
-                    <Button type="submit">{(editingId ? "Atualizar" : "Criar")}</Button>
+                    <Button type="submit" disabled={isActionLoading}>{isActionLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : (editingId ? "Atualizar" : "Criar")}</Button>
                     <Button variant="outline" type="button" onClick={() => setDialogOpen(false)}>Cancelar</Button>
                   </DialogFooter>
                 </form>
@@ -1324,7 +1371,7 @@ const PTrabManager = () => {
             <AlertDialogDescription>O P Trab "{ptrabToArchiveName}" está com status "Aprovado" há mais de 10 dias. Deseja arquivá-lo?</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogAction onClick={handleConfirmArchiveStatus}>Sim, arquivar</AlertDialogAction>
+            <AlertDialogAction onClick={handleConfirmArchiveStatus} disabled={isActionLoading}>{isActionLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Sim, arquivar"}</AlertDialogAction>
             <AlertDialogCancel onClick={handleCancelArchiveStatus}>Agora não</AlertDialogCancel>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -1337,7 +1384,7 @@ const PTrabManager = () => {
             <AlertDialogDescription>Tem certeza que deseja reativar o P Trab "{ptrabToReactivateName}"? Ele retornará ao status de "Aprovado" (se já numerado) ou "Aberto" (se for Minuta), permitindo novas edições.</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogAction onClick={handleConfirmReactivateStatus}>Confirmar Reativação</AlertDialogAction>
+            <AlertDialogAction onClick={handleConfirmReactivateStatus} disabled={isActionLoading}>{isActionLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Confirmar Reativação"}</AlertDialogAction>
             <AlertDialogCancel onClick={handleCancelReactivateStatus}>Cancelar</AlertDialogCancel>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -1370,7 +1417,7 @@ const PTrabManager = () => {
         </DialogContent>
       </Dialog>
 
-      {ptrabToClone && <CloneVariationDialog open={showCloneVariationDialog} onOpenChange={setShowCloneVariationDialog} originalNumber={ptrabToClone.numero_ptrab} suggestedCloneNumber={suggestedCloneNumber} onConfirm={handleConfirmCloneVariation} />}
+      {ptrabToClone && <CloneVariationDialog open={showCloneVariationDialog} onOpenChange={setShowCloneVariationDialog} originalNumber={ptrabToClone.numero_ptrab} suggestedCloneNumber={suggestedCloneNumber} onConfirm={handleConfirmCloneVariation} loading={isActionLoading} />}
 
       <Dialog open={showComentarioDialog} onOpenChange={setShowComentarioDialog}>
         <DialogContent className="sm:max-w-[500px]">
@@ -1380,7 +1427,7 @@ const PTrabManager = () => {
           </DialogHeader>
           <div className="py-4"><Textarea placeholder="Digite seu comentário sobre este P Trab..." value={comentarioText} onChange={(e) => setComentarioText(e.target.value)} className="min-h-[150px]" /></div>
           <DialogFooter>
-            <Button onClick={handleSaveComentario}>Salvar</Button>
+            <Button onClick={handleSaveComentario} disabled={isActionLoading}>{isActionLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Salvar"}</Button>
             <Button variant="outline" onClick={() => setShowComentarioDialog(false)}>Cancelar</Button>
           </DialogFooter>
         </DialogContent>
@@ -1399,20 +1446,20 @@ const PTrabManager = () => {
             </div>
           </div>
           <DialogFooter>
-            <Button onClick={handleApproveAndNumber} disabled={!suggestedApproveNumber.trim()}>Confirmar Aprovação</Button>
+            <Button onClick={handleApproveAndNumber} disabled={!suggestedApproveNumber.trim() || isActionLoading}>{isActionLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Confirmar Aprovação"}</Button>
             <Button variant="outline" onClick={() => setShowApproveDialog(false)}>Cancelar</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      <PTrabConsolidationDialog open={showConsolidationDialog} onOpenChange={setShowConsolidationDialog} pTrabsList={pTrabs.filter(p => p.status !== 'arquivado').map(p => ({ id: p.id, numero_ptrab: p.numero_ptrab, nome_operacao: p.nome_operacao }))} existingPTrabNumbers={existingPTrabNumbers} onConfirm={handleOpenConsolidationNumberDialog} />
-      <ConsolidationNumberDialog open={showConsolidationNumberDialog} onOpenChange={setShowConsolidationNumberDialog} suggestedNumber={suggestedConsolidationNumber} existingNumbers={existingPTrabNumbers} selectedPTrabs={simplePTrabsToConsolidate} onConfirm={handleConfirmConsolidation} />
+      <PTrabConsolidationDialog open={showConsolidationDialog} onOpenChange={setShowConsolidationDialog} pTrabsList={pTrabs.filter(p => p.status !== 'arquivado').map(p => ({ id: p.id, numero_ptrab: p.numero_ptrab, nome_operacao: p.nome_operacao }))} existingPTrabNumbers={existingPTrabNumbers} onConfirm={handleOpenConsolidationNumberDialog} loading={isActionLoading} />
+      <ConsolidationNumberDialog open={showConsolidationNumberDialog} onOpenChange={setShowConsolidationNumberDialog} suggestedNumber={suggestedConsolidationNumber} existingNumbers={existingPTrabNumbers} selectedPTrabs={simplePTrabsToConsolidate} onConfirm={handleConfirmConsolidation} loading={isActionLoading} />
       <CreditPromptDialog open={showCreditPrompt} onConfirm={handlePromptConfirm} onCancel={handlePromptCancel} />
       
       {ptrabToShare && <ShareLinkDialog open={showShareLinkDialog} onOpenChange={setShowShareLinkDialog} ptrabName={`${ptrabToShare.numero_ptrab} - ${ptrabToShare.nome_operacao}`} shareLink={shareLink} />}
-      <LinkPTrabDialog open={showLinkPTrabDialog} onOpenChange={setShowLinkPTrabDialog} linkInput={linkPTrabInput} onLinkInputChange={setLinkPTrabInput} onRequestLink={handleRequestLink} />
-      {ptrabToManageSharing && <ManageSharingDialog open={showManageSharingDialog} onOpenChange={setShowManageSharingDialog} ptrabId={ptrabToManageSharing.id} ptrabName={`${ptrabToManageSharing.numero_ptrab} - ${ptrabToManageSharing.nome_operacao}`} onApprove={handleApproveRequest} onReject={handleRejectRequest} onCancelSharing={handleCancelSharing} />}
-      {ptrabToUnlink && <UnlinkPTrabDialog open={showUnlinkPTrabDialog} onOpenChange={setShowUnlinkPTrabDialog} ptrabName={`${ptrabToUnlink.numero_ptrab} - ${ptrabToUnlink.nome_operacao}`} onConfirm={handleConfirmUnlink} />}
+      <LinkPTrabDialog open={showLinkPTrabDialog} onOpenChange={setShowLinkPTrabDialog} linkInput={linkPTrabInput} onLinkInputChange={setLinkPTrabInput} onRequestLink={handleRequestLink} loading={isActionLoading} />
+      {ptrabToManageSharing && <ManageSharingDialog open={showManageSharingDialog} onOpenChange={setShowManageSharingDialog} ptrabId={ptrabToManageSharing.id} ptrabName={`${ptrabToManageSharing.numero_ptrab} - ${ptrabToManageSharing.nome_operacao}`} onApprove={handleApproveRequest} onReject={handleRejectRequest} onCancelSharing={handleCancelSharing} loading={isActionLoading} />}
+      {ptrabToUnlink && <UnlinkPTrabDialog open={showUnlinkPTrabDialog} onOpenChange={setShowUnlinkPTrabDialog} ptrabName={`${ptrabToUnlink.numero_ptrab} - ${ptrabToUnlink.nome_operacao}`} onConfirm={handleConfirmUnlink} loading={isActionLoading} />}
       
       <AIChatDrawer />
     </div>
