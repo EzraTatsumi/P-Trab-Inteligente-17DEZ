@@ -648,7 +648,7 @@ const PTrabManager = () => {
   const handleSaveComentario = async () => {
     if (!ptrabComentario) return;
     try {
-      const { error } = await supabase('p_trab').update({ comentario: comentarioText || null }).eq('id', ptrabComentario.id);
+      const { error } = await supabase.from('p_trab').update({ comentario: comentarioText || null }).eq('id', ptrabComentario.id);
       if (error) throw error;
       toast.success("Comentário salvo com sucesso!");
       setShowComentarioDialog(false);
@@ -880,14 +880,14 @@ const PTrabManager = () => {
         jsonbFields: (keyof Tables<T>)[] | null, 
         numericFields: string[]
     ) => {
-        const { data: originalRecords, error: fetchError } = await (supabase.from(tableName) as any).select('*').eq("p_trab_id", originalPTrabId);
+        const { data: originalRecords, error: fetchError } = await (supabase.from(tableName as any) as any).select('*').eq("p_trab_id", originalPTrabId);
         if (fetchError) {
             console.error(`Erro ao carregar registros da ${tableName}:`, fetchError);
             return 0;
         }
-        const typedRecords = originalRecords as Tables<T>[];
+        const typedRecords = originalRecords as any[];
         const newRecords = (typedRecords || []).map(record => {
-            const { id, created_at, updated_at, ...restOfRecord } = record as any; 
+            const { id, created_at, updated_at, ...restOfRecord } = record; 
             const newRecord: Record<string, any> = { ...restOfRecord, p_trab_id: newPTrabId };
             
             if (jsonbFields) {
@@ -904,7 +904,7 @@ const PTrabManager = () => {
             return newRecord;
         });
         if (newRecords.length > 0) {
-            const { error: insertError } = await (supabase.from(tableName) as any).insert(newRecords as TablesInsert<T>[]);
+            const { error: insertError } = await (supabase.from(tableName as any) as any).insert(newRecords);
             if (insertError) {
                 console.error(`ERRO DE INSERÇÃO ${tableName}:`, insertError);
                 toast.error(`Erro ao clonar registros da ${tableName}: ${sanitizeError(insertError)}`);
@@ -1003,28 +1003,28 @@ const PTrabManager = () => {
         const newPTrabId = newPTrab.id;
         const tablesToConsolidate: PTrabLinkedTableName[] = ['classe_i_registros', 'classe_ii_registros', 'classe_iii_registros', 'classe_v_registros', 'classe_vi_registros', 'classe_vii_registros', 'classe_viii_saude_registros', 'classe_viii_remonta_registros', 'classe_ix_registros', 'diaria_registros', 'verba_operacional_registros', 'passagem_registros', 'concessionaria_registros', 'horas_voo_registros', 'material_consumo_registros', 'complemento_alimentacao_registros', 'material_permanente_registros', 'servicos_terceiros_registros', 'dor_registros'];
         for (const tableName of tablesToConsolidate) {
-            const { data: records, error: recordsError } = await (supabase.from(tableName) as any).select('*').in('p_trab_id', selectedPTrabsToConsolidate);
+            const { data: records, error: recordsError } = await (supabase.from(tableName as any) as any).select('*').in('p_trab_id', selectedPTrabsToConsolidate);
             if (recordsError) continue;
-            const typedRecords = records as Tables<typeof tableName>[];
+            const typedRecords = records as any[];
             if (typedRecords && typedRecords.length > 0) {
                 const newRecords = typedRecords.map(record => {
-                    const { id, created_at, updated_at, ...restOfRecord } = record as any;
-                    const newRecord: TablesInsert<typeof tableName> = { 
+                    const { id, created_at, updated_at, ...restOfRecord } = record;
+                    const newRecord: any = { 
                         ...restOfRecord, 
                         p_trab_id: newPTrabId, 
-                        ...(record.hasOwnProperty('itens_equipamentos') && { itens_equipamentos: JSON.parse(JSON.stringify((record as any).itens_equipamentos)) }), 
-                        ...(record.hasOwnProperty('itens_saude') && { itens_saude: JSON.parse(JSON.stringify((record as any).itens_saude)) }), 
-                        ...(record.hasOwnProperty('itens_remonta') && { itens_remonta: JSON.parse(JSON.stringify((record as any).itens_remonta)) }), 
-                        ...(record.hasOwnProperty('itens_motomecanizacao') && { itens_motomecanizacao: JSON.parse(JSON.stringify((record as any).itens_motomecanizacao)) }), 
-                        ...(record.hasOwnProperty('quantidades_por_posto') && { quantidades_por_posto: JSON.parse(JSON.stringify((record as any).quantidades_por_posto)) }), 
-                        ...(record.hasOwnProperty('itens_aquisicao') && { itens_aquisicao: JSON.parse(JSON.stringify((record as any).itens_aquisicao)) }),
-                        ...(record.hasOwnProperty('detalhes_planejamento') && { detalhes_planejamento: JSON.parse(JSON.stringify((record as any).detalhes_planejamento)) }),
-                        ...(record.hasOwnProperty('itens_dor') && { itens_dor: JSON.parse(JSON.stringify((record as any).itens_dor)) }),
-                        ...(record.hasOwnProperty('grupos_dor') && { grupos_dor: JSON.parse(JSON.stringify((record as any).grupos_dor)) })
-                    } as TablesInsert<typeof tableName>;
+                        ...(record.hasOwnProperty('itens_equipamentos') && { itens_equipamentos: JSON.parse(JSON.stringify(record.itens_equipamentos)) }), 
+                        ...(record.hasOwnProperty('itens_saude') && { itens_saude: JSON.parse(JSON.stringify(record.itens_saude)) }), 
+                        ...(record.hasOwnProperty('itens_remonta') && { itens_remonta: JSON.parse(JSON.stringify(record.itens_remonta)) }), 
+                        ...(record.hasOwnProperty('itens_motomecanizacao') && { itens_motomecanizacao: JSON.parse(JSON.stringify(record.itens_motomecanizacao)) }), 
+                        ...(record.hasOwnProperty('quantidades_por_posto') && { quantidades_por_posto: JSON.parse(JSON.stringify(record.quantidades_por_posto)) }), 
+                        ...(record.hasOwnProperty('itens_aquisicao') && { itens_aquisicao: JSON.parse(JSON.stringify(record.itens_aquisicao)) }),
+                        ...(record.hasOwnProperty('detalhes_planejamento') && { detalhes_planejamento: JSON.parse(JSON.stringify(record.detalhes_planejamento)) }),
+                        ...(record.hasOwnProperty('itens_dor') && { itens_dor: JSON.parse(JSON.stringify(record.itens_dor)) }),
+                        ...(record.hasOwnProperty('grupos_dor') && { grupos_dor: JSON.parse(JSON.stringify(record.grupos_dor)) })
+                    };
                     return newRecord;
                 });
-                await (supabase.from(tableName) as any).insert(newRecords);
+                await (supabase.from(tableName as any) as any).insert(newRecords);
             }
         }
         await updateUserCredits(user.id, 0, 0);
