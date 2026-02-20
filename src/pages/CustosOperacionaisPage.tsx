@@ -654,28 +654,28 @@ const CustosOperacionaisPage = () => {
       };
 
       setIsSaving(true);
-      if (diretrizes.id) {
-        const { error } = await supabase
-          .from("diretrizes_operacionais")
-          .update(diretrizData as TablesUpdate<'diretrizes_operacionais'>)
-          .eq("id", diretrizes.id);
-        if (error) throw error;
-        toast.success("Diretrizes Operacionais atualizadas!");
-      } else {
-        const { error } = await supabase
-          .from("diretrizes_operacionais")
-          .insert([diretrizData as TablesInsert<'diretrizes_operacionais'>]);
-        if (error) throw error;
-        toast.success("Diretrizes Operacionais criadas!");
+      
+      // Usando upsert para ser mais robusto e evitar erros de duplicidade
+      const { data: savedData, error } = await supabase
+        .from("diretrizes_operacionais")
+        .upsert(diretrizData, { onConflict: 'user_id,ano_referencia' })
+        .select()
+        .single();
+
+      if (error) throw error;
+      
+      // Atualiza o estado local com os dados salvos (incluindo o ID)
+      if (savedData) {
+          setDiretrizes(savedData as Partial<DiretrizOperacional>);
       }
+      
+      toast.success("Diretrizes Operacionais salvas com sucesso!");
       
       queryClient.invalidateQueries({ queryKey: ["diretrizesOperacionais", diretrizes.ano_referencia] });
       await loadAvailableYears(defaultYear);
     } catch (error: any) {
       if (error instanceof z.ZodError) {
         toast.error(error.errors[0].message);
-      } else if (error.code === '23505') {
-        toast.error("Já existe uma diretriz para este ano");
       } else {
         toast.error(sanitizeError(error));
       }

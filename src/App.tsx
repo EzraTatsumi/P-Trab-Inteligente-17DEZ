@@ -48,13 +48,16 @@ const App = () => (
     <QueryClientProvider client={queryClient}>
       <SessionContextProvider>
         <TooltipProvider>
-          {/* Ajustado: Forçando o tema light e adicionando closeButton para melhor UX */}
+          {/* Ajustado: Forçando o tema light e garantindo richColors para consistência visual */}
           <Toaster 
             position="top-right" 
-            richColors 
+            richColors={true} 
             theme="light" 
-            closeButton
+            closeButton={true}
             expand={true}
+            toastOptions={{
+                className: "font-sans",
+            }}
           />
           <BrowserRouter>
             <Routes>
