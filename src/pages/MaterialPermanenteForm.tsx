@@ -8,21 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { 
-    ArrowLeft, 
-    Loader2, 
-    Save, 
-    Sparkles, 
-    AlertCircle, 
-    Trash2, 
-    FileText, 
-    Plus, 
-    XCircle, 
-    Pencil,
-    CheckCircle2,
-    CircleX,
-    Table as TableIcon
-} from "lucide-react";
+import { ArrowLeft, Loader2, Save, Sparkles, AlertCircle, Trash2, FileText, Plus, XCircle, Pencil, CheckCircle2, CircleX, Table as TableIcon } from "lucide-react";
 import { useMilitaryOrganizations } from "@/hooks/useMilitaryOrganizations";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { formatCodug, formatCurrency, formatPregao } from "@/lib/formatUtils";
@@ -37,16 +23,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { calculateMaterialPermanenteTotals } from "@/lib/materialPermanenteUtils";
 import MaterialPermanenteMemoria from "@/components/MaterialPermanenteMemoria";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, } from "@/components/ui/alert-dialog";
 import PageMetadata from "@/components/PageMetadata";
 import { useSession } from "@/components/SessionContextProvider";
 import MaterialPermanenteJustificativaDialog from "@/components/MaterialPermanenteJustificativaDialog";
@@ -106,15 +83,15 @@ const MaterialPermanenteForm = () => {
     const [selectedItems, setSelectedItems] = useState<ItemAquisicaoPermanente[]>([]);
     const [isSelectorOpen, setIsSelectorOpen] = useState(false);
     const [isBulkJustificativaOpen, setIsBulkJustificativaOpen] = useState(false);
-    
+
     const [pendingItems, setPendingItems] = useState<PendingPermanenteItem[]>([]);
     const [lastStagedState, setLastStagedState] = useState<any>(null);
     const [editingId, setEditingId] = useState<string | null>(null);
     const [activeCompositionId, setActiveCompositionId] = useState<string | null>(null);
-    
+
     const [editingMemoriaId, setEditingMemoriaId] = useState<string | null>(null);
     const [memoriaEdit, setMemoriaEdit] = useState("");
-    
+
     const [showDeleteDialog, setShowDeleteDialog] = useState(false);
     const [recordToDelete, setRecordToDelete] = useState<any>(null);
 
@@ -279,7 +256,7 @@ const MaterialPermanenteForm = () => {
         
         // Verificação robusta de justificativa
         const itemsWithoutJustification = selectedItems.filter(item => {
-            let justData = item.justificativa;
+            let justData: any = item.justificativa;
             if (Array.isArray(justData) && justData.length > 0) justData = justData[0];
             if (justData && typeof justData === 'object' && justData.justificativa) justData = justData.justificativa;
             
@@ -403,7 +380,7 @@ const MaterialPermanenteForm = () => {
 
     const getJustificativaText = (item: any, dias: number, fase: string) => {
         // Extração robusta para a pré-visualização
-        let justData = item.justificativa || {};
+        let justData: any = item.justificativa || {};
         if (Array.isArray(justData) && justData.length > 0) justData = justData[0];
         if (justData && typeof justData === 'object' && justData.justificativa && !justData.grupo) justData = justData.justificativa;
 
@@ -500,7 +477,7 @@ const MaterialPermanenteForm = () => {
                                                         <TableBody>
                                                             {selectedItems.map((item) => {
                                                                 // Verificação robusta de justificativa para o ícone de status
-                                                                let justData = item.justificativa;
+                                                                let justData: any = item.justificativa;
                                                                 if (Array.isArray(justData) && justData.length > 0) justData = justData[0];
                                                                 if (justData && typeof justData === 'object' && justData.justificativa && !justData.grupo) justData = justData.justificativa;
                                                                 
