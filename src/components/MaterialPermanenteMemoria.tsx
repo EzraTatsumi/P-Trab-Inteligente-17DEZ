@@ -19,8 +19,8 @@ interface MaterialPermanenteMemoriaProps {
     setMemoriaEdit: (value: string) => void;
     onStartEdit: (id: string, text: string) => void;
     onCancelEdit: () => void;
-    onSave: (registroId: string, itemId: string) => Promise<void>;
-    onRestore: (registroId: string, itemId: string) => Promise<void>;
+    onSave: (id: string) => Promise<void>;
+    onRestore: (id: string) => Promise<void>;
 }
 
 const MaterialPermanenteMemoria: React.FC<MaterialPermanenteMemoriaProps> = ({
@@ -36,14 +36,13 @@ const MaterialPermanenteMemoria: React.FC<MaterialPermanenteMemoriaProps> = ({
     onSave,
     onRestore,
 }) => {
-    const itemId = item.id || item.codigo_item || "default";
+    const itemId = item.id || item.codigo_item || Math.random().toString(36).substring(7);
     const uniqueId = `${registro.id}-${itemId}`;
     const isEditing = editingMemoriaId === uniqueId;
     
     const memoriaAutomatica = generateMaterialPermanenteMemoriaCalculo(registro, item);
-    // Prioridade: Memória customizada no item > Memória customizada no registro (legado) > Automática
-    const memoriaDisplay = item.detalhamento_customizado || (registro.detalhes_planejamento?.item_unico?.id === item.id ? registro.detalhamento_customizado : null) || memoriaAutomatica;
-    const hasCustomMemoria = !!item.detalhamento_customizado || (registro.detalhes_planejamento?.item_unico?.id === item.id && !!registro.detalhamento_customizado);
+    const memoriaDisplay = registro.detalhamento_customizado || memoriaAutomatica;
+    const hasCustomMemoria = !!registro.detalhamento_customizado;
 
     return (
         <div className="space-y-4 border p-4 rounded-lg bg-muted/30">
@@ -80,7 +79,7 @@ const MaterialPermanenteMemoria: React.FC<MaterialPermanenteMemoriaProps> = ({
                                     type="button" 
                                     size="sm" 
                                     variant="ghost" 
-                                    onClick={() => onRestore(registro.id, itemId)} 
+                                    onClick={() => onRestore(registro.id)} 
                                     disabled={isSaving || !isPTrabEditable} 
                                     className="gap-2 text-muted-foreground hover:text-destructive"
                                 >
@@ -94,7 +93,7 @@ const MaterialPermanenteMemoria: React.FC<MaterialPermanenteMemoriaProps> = ({
                                 type="button" 
                                 size="sm" 
                                 variant="default" 
-                                onClick={() => onSave(registro.id, itemId)} 
+                                onClick={() => onSave(registro.id)} 
                                 disabled={isSaving} 
                                 className="gap-2 bg-green-600 hover:bg-green-700"
                             >
