@@ -1,6 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Tables, TableName } from "@/integrations/supabase/types";
+import { Tables } from "@/integrations/supabase/types";
 
 // Tipo para as diretrizes operacionais (valores unitários)
 type DiretrizOperacional = Tables<'diretrizes_operacionais'>;
@@ -73,11 +73,10 @@ export async function fetchPTrabData(ptrabId: string): Promise<PTrabData> {
 
 /**
  * Busca todos os registros de uma tabela específica para um dado PTrab.
+ * Simplificado para evitar erros de profundidade de tipo do TypeScript com Supabase.
  */
-export async function fetchPTrabRecords<T extends PTrabLinkedTableName>(tableName: T, ptrabId: string): Promise<Tables<T>[]> {
-    // Usamos o cast para TableName para satisfazer a restrição do SDK do Supabase
-    const { data, error } = await supabase
-        .from(tableName as TableName)
+export async function fetchPTrabRecords(tableName: PTrabLinkedTableName, ptrabId: string): Promise<any[]> {
+    const { data, error } = await (supabase.from(tableName as any) as any)
         .select('*')
         .eq('p_trab_id', ptrabId);
 
@@ -85,7 +84,7 @@ export async function fetchPTrabRecords<T extends PTrabLinkedTableName>(tableNam
         throw new Error(`Falha ao carregar registros de ${String(tableName)}: ${error.message}`);
     }
     
-    return data as Tables<T>[];
+    return data || [];
 }
 
 /**

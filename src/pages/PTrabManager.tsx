@@ -1417,7 +1417,7 @@ const PTrabManager = () => {
         </DialogContent>
       </Dialog>
 
-      {ptrabToClone && <CloneVariationDialog open={showCloneVariationDialog} onOpenChange={setShowCloneVariationDialog} originalNumber={ptrabToClone.numero_ptrab} suggestedCloneNumber={suggestedCloneNumber} onConfirm={handleConfirmCloneVariation} loading={isActionLoading} />}
+      {ptrabToClone && <CloneVariationDialog open={showCloneVariationDialog} onOpenChange={setShowCloneVariationDialog} originalNumber={ptrabToClone.numero_ptrab} suggestedCloneNumber={suggestedCloneNumber} onConfirm={handleConfirmCloneVariation} />}
 
       <Dialog open={showComentarioDialog} onOpenChange={setShowComentarioDialog}>
         <DialogContent className="sm:max-w-[500px]">
