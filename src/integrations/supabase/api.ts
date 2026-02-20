@@ -93,6 +93,15 @@ export async function fetchUserProfile(): Promise<Profile> {
     return { ...profileData, om_details: null } as Profile;
 }
 
+/**
+ * Busca todos os dados de um P Trab para o relatório em uma única chamada RPC.
+ */
+export async function fetchFullReportData(ptrabId: string) {
+    const { data, error } = await supabase.rpc('get_ptrab_full_report_data', { p_ptrab_id: ptrabId });
+    if (error) throw error;
+    return data;
+}
+
 interface CatalogEntryStatus {
     description: string | null;
     shortDescription: string | null;
