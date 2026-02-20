@@ -591,71 +591,49 @@ const CustosOperacionaisPage = () => {
         return;
       }
 
-      if (!diretrizes.ano_referencia) {
+      if (!selectedYear) {
         toast.error("Informe o ano de referência");
         return;
       }
       
+      // Garantindo que todos os campos tenham valores numéricos válidos (0 se nulo/undefined)
+      // para evitar o erro "Required!" do Zod.
       const dataToValidate = {
-        ...diretrizes,
-        fator_passagens_aereas: diretrizes.fator_passagens_aereas || 0,
-        fator_servicos_terceiros: diretrizes.fator_servicos_terceiros || 0,
-        valor_complemento_alimentacao: diretrizes.valor_complemento_alimentacao || 0,
-        valor_fretamento_aereo_hora: diretrizes.valor_fretamento_aereo_hora || 0,
-        valor_locacao_estrutura_dia: diretrizes.valor_locacao_estrutura_dia || 0,
-        valor_locacao_viaturas_dia: diretrizes.valor_locacao_viaturas_dia || 0,
-        fator_material_consumo: diretrizes.fator_material_consumo || 0,
-        fator_concessionaria: diretrizes.fator_concessionaria || 0,
-        diaria_of_gen_bsb: diretrizes.diaria_of_gen_bsb || 0,
-        diaria_of_gen_capitais: diretrizes.diaria_of_gen_capitais || 0,
-        diaria_of_gen_demais: diretrizes.diaria_of_gen_demais || 0,
-        diaria_of_sup_bsb: diretrizes.diaria_of_sup_bsb || 0,
-        diaria_of_sup_capitais: diretrizes.diaria_of_sup_capitais || 0,
-        diaria_of_sup_demais: diretrizes.diaria_of_sup_demais || 0,
-        diaria_of_int_sgt_bsb: diretrizes.diaria_of_int_sgt_bsb || 0,
-        diaria_of_int_sgt_capitais: diretrizes.diaria_of_int_sgt_capitais || 0,
-        diaria_of_int_sgt_demais: diretrizes.diaria_of_int_sgt_demais || 0,
-        diaria_demais_pracas_bsb: diretrizes.diaria_demais_pracas_bsb || 0,
-        diaria_demais_pracas_capitais: diretrizes.diaria_demais_pracas_capitais || 0,
-        diaria_demais_pracas_demais: diretrizes.diaria_demais_pracas_demais || 0,
-        taxa_embarque: diretrizes.taxa_embarque || 0,
+        ano_referencia: selectedYear,
+        fator_passagens_aereas: Number(diretrizes.fator_passagens_aereas || 0),
+        fator_servicos_terceiros: Number(diretrizes.fator_servicos_terceiros || 0),
+        valor_complemento_alimentacao: Number(diretrizes.valor_complemento_alimentacao || 0),
+        valor_fretamento_aereo_hora: Number(diretrizes.valor_fretamento_aereo_hora || 0),
+        valor_locacao_estrutura_dia: Number(diretrizes.valor_locacao_estrutura_dia || 0),
+        valor_locacao_viaturas_dia: Number(diretrizes.valor_locacao_viaturas_dia || 0),
+        fator_material_consumo: Number(diretrizes.fator_material_consumo || 0),
+        fator_concessionaria: Number(diretrizes.fator_concessionaria || 0),
+        diaria_of_gen_bsb: Number(diretrizes.diaria_of_gen_bsb || 0),
+        diaria_of_gen_capitais: Number(diretrizes.diaria_of_gen_capitais || 0),
+        diaria_of_gen_demais: Number(diretrizes.diaria_of_gen_demais || 0),
+        diaria_of_sup_bsb: Number(diretrizes.diaria_of_sup_bsb || 0),
+        diaria_of_sup_capitais: Number(diretrizes.diaria_of_sup_capitais || 0),
+        diaria_of_sup_demais: Number(diretrizes.diaria_of_sup_demais || 0),
+        diaria_of_int_sgt_bsb: Number(diretrizes.diaria_of_int_sgt_bsb || 0),
+        diaria_of_int_sgt_capitais: Number(diretrizes.diaria_of_int_sgt_capitais || 0),
+        diaria_of_int_sgt_demais: Number(diretrizes.diaria_of_int_sgt_demais || 0),
+        diaria_demais_pracas_bsb: Number(diretrizes.diaria_demais_pracas_bsb || 0),
+        diaria_demais_pracas_capitais: Number(diretrizes.diaria_demais_pracas_capitais || 0),
+        diaria_demais_pracas_demais: Number(diretrizes.diaria_demais_pracas_demais || 0),
+        taxa_embarque: Number(diretrizes.taxa_embarque || 0),
+        diaria_referencia_legal: diretrizes.diaria_referencia_legal || "",
+        observacoes: diretrizes.observacoes || "",
       };
       
       diretrizOperacionalSchema.parse(dataToValidate);
 
       const diretrizData: TablesInsert<'diretrizes_operacionais'> = {
         user_id: user.id,
-        ano_referencia: diretrizes.ano_referencia,
-        fator_passagens_aereas: dataToValidate.fator_passagens_aereas,
-        fator_servicos_terceiros: dataToValidate.fator_servicos_terceiros,
-        valor_complemento_alimentacao: dataToValidate.valor_complemento_alimentacao,
-        valor_fretamento_aereo_hora: dataToValidate.valor_fretamento_aereo_hora,
-        valor_locacao_estrutura_dia: dataToValidate.valor_locacao_estrutura_dia,
-        valor_locacao_viaturas_dia: dataToValidate.valor_locacao_viaturas_dia,
-        fator_material_consumo: dataToValidate.fator_material_consumo,
-        fator_concessionaria: dataToValidate.fator_concessionaria,
-        observacoes: diretrizes.observacoes,
-        
-        diaria_referencia_legal: diretrizes.diaria_referencia_legal,
-        diaria_of_gen_bsb: diretrizes.diaria_of_gen_bsb,
-        diaria_of_gen_capitais: diretrizes.diaria_of_gen_capitais,
-        diaria_of_gen_demais: diretrizes.diaria_of_gen_demais,
-        diaria_of_sup_bsb: diretrizes.diaria_of_sup_bsb,
-        diaria_of_sup_capitais: diretrizes.diaria_of_sup_capitais,
-        diaria_of_sup_demais: diretrizes.diaria_of_sup_demais,
-        diaria_of_int_sgt_bsb: diretrizes.diaria_of_int_sgt_bsb,
-        diaria_of_int_sgt_capitais: diretrizes.diaria_of_int_sgt_capitais,
-        diaria_of_int_sgt_demais: diretrizes.diaria_of_int_sgt_demais,
-        diaria_demais_pracas_bsb: diretrizes.diaria_demais_pracas_bsb,
-        diaria_demais_pracas_capitais: diretrizes.diaria_demais_pracas_capitais,
-        diaria_demais_pracas_demais: diretrizes.diaria_demais_pracas_demais,
-        
-        taxa_embarque: diretrizes.taxa_embarque,
+        ...dataToValidate
       };
 
       setIsSaving(true);
       
-      // Usando upsert para ser mais robusto e evitar erros de duplicidade
       const { data: savedData, error } = await supabase
         .from("diretrizes_operacionais")
         .upsert(diretrizData, { onConflict: 'user_id,ano_referencia' })
@@ -664,18 +642,20 @@ const CustosOperacionaisPage = () => {
 
       if (error) throw error;
       
-      // Atualiza o estado local com os dados salvos (incluindo o ID)
       if (savedData) {
           setDiretrizes(savedData as Partial<DiretrizOperacional>);
       }
       
       toast.success("Diretrizes Operacionais salvas com sucesso!");
       
-      queryClient.invalidateQueries({ queryKey: ["diretrizesOperacionais", diretrizes.ano_referencia] });
+      queryClient.invalidateQueries({ queryKey: ["diretrizesOperacionais", selectedYear] });
       await loadAvailableYears(defaultYear);
     } catch (error: any) {
       if (error instanceof z.ZodError) {
-        toast.error(error.errors[0].message);
+        // Mapeia os erros do Zod para mensagens amigáveis
+        const firstError = error.errors[0];
+        const fieldName = firstError.path.join('.');
+        toast.error(`Erro de validação no campo ${fieldName}: ${firstError.message}`);
       } else {
         toast.error(sanitizeError(error));
       }
@@ -685,7 +665,7 @@ const CustosOperacionaisPage = () => {
   };
   
   const handleSetDefaultYear = async () => {
-    if (!diretrizes.ano_referencia) {
+    if (!selectedYear) {
       toast.error("Selecione um ano de referência válido.");
       return;
     }
@@ -697,14 +677,14 @@ const CustosOperacionaisPage = () => {
       
       const { error } = await supabase
         .from('profiles')
-        .update({ default_operacional_year: diretrizes.ano_referencia })
+        .update({ default_operacional_year: selectedYear })
         .eq('id', user.id);
         
       if (error) throw error;
       
       queryClient.invalidateQueries({ queryKey: ["defaultOperacionalYear", user.id] });
       
-      toast.success(`Ano ${diretrizes.ano_referencia} definido como padrão para cálculos!`);
+      toast.success(`Ano ${selectedYear} definido como padrão para cálculos!`);
       
     } catch (error: any) {
       toast.error(sanitizeError(error));
@@ -2471,9 +2451,9 @@ const CustosOperacionaisPage = () => {
                   type="button" 
                   variant="secondary" 
                   onClick={handleSetDefaultYear} 
-                  disabled={isSaving || diretrizes.ano_referencia === defaultYear || !diretrizes.ano_referencia}
+                  disabled={isSaving || selectedYear === defaultYear || !selectedYear}
                 >
-                  {diretrizes.ano_referencia === defaultYear ? "Padrão Atual" : "Adotar como Padrão"}
+                  {selectedYear === defaultYear ? "Padrão Atual" : "Adotar como Padrão"}
                 </Button>
                 
                 <Button type="submit" disabled={isSaving}>
