@@ -142,6 +142,7 @@ type ExpenseRow = {
     type: keyof typeof EXPENSE_ORDER_MAP;
     data: DiariaRegistro | ConsolidatedPassagemReport | ConsolidatedConcessionariaReport | VerbaOperacionalRegistro | MaterialConsumoRegistro | ServicoTerceiroRegistro | { registro: ComplementoAlimentacaoRegistro, subType?: 'QS' | 'QR' };
     isContinuation?: boolean;
+    continuationIndex?: number; // NOVO: Para garantir chaves únicas em múltiplas páginas de continuação
     partialItems?: ItemAquisicao[];
     partialTotal?: number;
     partialND30?: number;
@@ -450,6 +451,7 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
                 type: 'MATERIAL DE CONSUMO', 
                 data: registro,
                 isContinuation: index > 0,
+                continuationIndex: index, // ADICIONADO: Para garantir chaves únicas
                 partialItems: chunk,
                 partialTotal: totalValue,
                 partialND30: totalND30,
@@ -1176,7 +1178,7 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
                           }
 
                           return (
-                              <tr key={`${type}-${omName}-${(data as any).id || (data as any).groupKey || (data as any).registro?.id}-${rowItem.isContinuation ? 'cont' : 'orig'}-${(data as any).subType || ''}`} className="expense-row">
+                              <tr key={`${type}-${omName}-${(data as any).id || (data as any).groupKey || (data as any).registro?.id}-${rowItem.isContinuation ? `cont-${rowItem.continuationIndex}` : 'orig'}-${(data as any).subType || ''}`} className="expense-row">
                                 <td className="col-despesas-op"> 
                                   <div style={{ whiteSpace: 'pre-wrap' }}>{despesasLabel}</div>
                                 </td>
