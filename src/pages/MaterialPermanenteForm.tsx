@@ -155,10 +155,11 @@ const MaterialPermanenteForm = () => {
         enabled: !!ptrabId,
     });
 
+    // Agrupamento para a Seção 4: Agrupa por OM, UG, Fase e Dias para garantir consolidação total
     const consolidatedRegistros = useMemo<ConsolidatedPermanenteRecord[]>(() => {
         if (!registros) return [];
         const groups = registros.reduce((acc, reg) => {
-            const key = `${reg.organizacao}|${reg.ug}`;
+            const key = `${reg.organizacao}|${reg.ug}|${reg.fase_atividade}|${reg.dias_operacao}`;
             if (!acc[key]) {
                 acc[key] = { groupKey: key, organizacao: reg.organizacao, ug: reg.ug, records: [], totalGeral: 0 };
             }
@@ -205,7 +206,7 @@ const MaterialPermanenteForm = () => {
                 await supabase.from('material_permanente_registros' as any).delete().in('id', idsToDelete);
             }
             
-            // CONSOLIDAÇÃO: Salva um registro por lote (PendingPermanenteItem)
+            // SALVAMENTO CONSOLIDADO: Um registro por lote
             const records = itemsToSave.map(lote => ({
                 p_trab_id: ptrabId,
                 organizacao: lote.organizacao,
@@ -408,7 +409,7 @@ const MaterialPermanenteForm = () => {
 
     const getJustificativaText = (item: any, dias: number, fase: string) => {
         const j = item.justificativa || {};
-        const grupo = j.grupo || item.descricao_reduzida || item.descricao_item || "[Item]";
+        const grupo = j.grupo || item.descricao_reduzida || item.descricao_item || "[Grupo/Item]";
         const proposito = j.proposito || "[Propósito]";
         const destinacao = j.destinacao || "";
         const local = j.local || "[Local]";
@@ -573,6 +574,7 @@ const MaterialPermanenteForm = () => {
                                         <Card key={group.groupKey} className="p-4 bg-primary/5 border-primary/20">
                                             <div className="flex items-center justify-between mb-3 border-b pb-2"><h3 className="font-bold text-lg text-primary flex items-center gap-2">{group.organizacao} (UG: {formatCodug(group.ug)})</h3><span className="font-extrabold text-xl text-primary">{formatCurrency(group.totalGeral)}</span></div>
                                             <div className="space-y-3">
+                                                {/* CONSOLIDAÇÃO VISUAL: Agrupa registros que pertencem ao mesmo contexto */}
                                                 {group.records.map((reg: MaterialPermanenteDBRecord) => {
                                                     const isDifferentOm = reg.om_detentora?.trim() !== reg.organizacao?.trim();
                                                     const items = reg.detalhes_planejamento?.itens_selecionados || (reg.detalhes_planejamento?.item_unico ? [reg.detalhes_planejamento.item_unico] : []);

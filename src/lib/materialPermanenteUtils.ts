@@ -11,19 +11,19 @@ export const calculateMaterialPermanenteTotals = (items: any[]) => {
 export const generateMaterialPermanenteMemoriaCalculo = (registro: any, item: any) => {
     if (!item) return "";
 
-    // Extração da justificativa com fallbacks seguros para evitar placeholders
+    // Extração da justificativa com placeholders claros
     const j = item.justificativa || {};
-    const grupo = j.grupo || item.descricao_reduzida || item.descricao_item || "[Item]";
-    const proposito = j.proposito || "atender às necessidades da operação";
+    const grupo = j.grupo || item.descricao_reduzida || item.descricao_item || "[Grupo/Item]";
+    const proposito = j.proposito || "[Propósito]";
     const destinacao = j.destinacao || "";
-    const local = j.local || "no local da atividade";
-    const finalidade = j.finalidade || "cumprir a missão delegada";
-    const motivo = j.motivo || "da necessidade técnica/operacional identificada";
+    const local = j.local || "[Local]";
+    const finalidade = j.finalidade || "[Finalidade]";
+    const motivo = j.motivo || "[Motivo]";
     
     const diasStr = `${registro.dias_operacao || 1} ${registro.dias_operacao === 1 ? 'dia' : 'dias'}`;
-    const fase = registro.fase_atividade || 'Operação';
+    const fase = registro.fase_atividade || '[Fase]';
     
-    const justificativa = `Aquisição de ${grupo} para atender ${proposito} ${destinacao}, ${local}, a fim de ${finalidade}, durante ${diasStr} de ${fase}. Justifica-se essa aquisição pela ${motivo}.`;
+    const justificativa = `Aquisição de ${grupo} para atender ${proposito} ${destinacao}, ${local}, a fim de ${finalidade}, durante ${diasStr} de ${fase}. Justifica-se essa aquisição ${motivo}.`;
 
     const valorUnitario = Number(item.valor_unitario || 0);
     const quantidade = Number(item.quantidade || 0);
