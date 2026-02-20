@@ -26,6 +26,15 @@ interface MaterialPermanenteBulkJustificativaDialogProps {
 
 const FIELDS = ['grupo', 'proposito', 'destinacao', 'local', 'finalidade', 'motivo'];
 
+const FIELD_LABELS: Record<string, string> = {
+  grupo: 'Grupo (Tipo Material?)',
+  proposito: 'Propósito (Obj imediato?)',
+  destinacao: 'Destinação (Para quem?)',
+  local: 'Local (Onde será empregado?)',
+  finalidade: 'Finalidade (Para quê?)',
+  motivo: 'Motivo (Porque?)'
+};
+
 const MaterialPermanenteBulkJustificativaDialog = ({
   open,
   onOpenChange,
@@ -243,8 +252,8 @@ const MaterialPermanenteBulkJustificativaDialog = ({
               <TableRow>
                 <TableHead className="w-[200px] bg-muted/50 border-r text-xs font-bold">Item</TableHead>
                 {FIELDS.map(f => (
-                  <TableHead key={f} className="w-[180px] text-center text-xs font-bold border-r uppercase tracking-tighter">
-                    {f}
+                  <TableHead key={f} className="w-[180px] text-center text-[10px] font-bold border-r uppercase tracking-tighter leading-tight py-2">
+                    {FIELD_LABELS[f]}
                   </TableHead>
                 ))}
               </TableRow>
