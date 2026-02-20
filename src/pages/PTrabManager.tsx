@@ -1015,7 +1015,7 @@ const PTrabManager = () => {
         canonicalPath="/ptrab"
       />
       
-      <OnboardingTour enabled={tourEnabled} onExit={() => setTourEnabled(false)} />
+      <OnboardingTour enabled={tourEnabled} onExit={() => setTourEnabled(false)} hasPTrabs={pTrabs.length > 0} />
 
       <div className="max-w-7xl mx-auto space-y-4">
         <div className="flex justify-between items-center">
