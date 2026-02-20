@@ -55,8 +55,7 @@ type PriceType = 'avg' | 'median' | 'min' | 'max';
 
 const PriceSearchForm: React.FC<PriceSearchFormProps> = ({ onPriceSelect, isInspecting, onClearPriceSelection, selectedItemForInspection, mode = 'material' }) => {
     const [isSearching, setIsSearching] = useState(false);
-    const [isCatmatCatalogOpen, setIsCatmatCatalogOpen] = useState(false);
-    const [isCatserCatalogOpen, setIsCatserCatalogOpen] = useState(false);
+    const [isCatalogOpen, setIsCatalogOpen] = useState(false);
     const [searchResult, setSearchResult] = useState<PriceStatsResult | null>(null);
     const [excludedRecordIds, setExcludedRecordIds] = useState<Set<number>>(new Set());
     const [selectedPriceType, setSelectedPriceType] = useState<PriceType | null>(null);
@@ -72,8 +71,7 @@ const PriceSearchForm: React.FC<PriceSearchFormProps> = ({ onPriceSelect, isInsp
     
     const handleCatalogSelect = (item: { code: string }) => {
         form.setValue('codigoItem', item.code, { shouldValidate: true });
-        setIsCatmatCatalogOpen(false);
-        setIsCatserCatalogOpen(false);
+        setIsCatalogOpen(false);
     };
 
     const onSubmit = async (values: PriceSearchFormValues) => {
@@ -139,31 +137,18 @@ const PriceSearchForm: React.FC<PriceSearchFormProps> = ({ onPriceSelect, isInsp
                                 <FormLabel>{mode === 'material' ? 'Cód. CATMAT *' : 'Cód. CATSER *'}</FormLabel>
                                 <div className="flex gap-2 items-center">
                                     <FormControl>
-                                        <Input {...field} onChange={handleCodeChange} placeholder={mode === 'material' ? "Ex: 604269" : "Ex: 17639"} maxLength={9} disabled={isSearching} />
+                                        <Input {...field} onChange={handleCodeChange} placeholder="Ex: 604269" maxLength={9} disabled={isSearching} />
                                     </FormControl>
-                                    {mode === 'material' ? (
-                                        <Button 
-                                            type="button" 
-                                            variant="outline" 
-                                            size="sm" 
-                                            onClick={() => setIsCatmatCatalogOpen(true)} 
-                                            disabled={isSearching} 
-                                            className="h-8 px-2 text-[10px]"
-                                        >
-                                            <BookOpen className="h-3 w-3 mr-1" /> CATMAT
-                                        </Button>
-                                    ) : (
-                                        <Button 
-                                            type="button" 
-                                            variant="outline" 
-                                            size="sm" 
-                                            onClick={() => setIsCatserCatalogOpen(true)} 
-                                            disabled={isSearching} 
-                                            className="h-8 px-2 text-[10px]"
-                                        >
-                                            <BookOpen className="h-3 w-3 mr-1" /> CATSER
-                                        </Button>
-                                    )}
+                                    <Button 
+                                        type="button" 
+                                        variant="outline" 
+                                        size="sm" 
+                                        onClick={() => setIsCatalogOpen(true)} 
+                                        disabled={isSearching} 
+                                        className="h-8 px-2 text-[10px]"
+                                    >
+                                        <BookOpen className="h-3 w-3 mr-1" /> {mode === 'material' ? 'CATMAT' : 'CATSER'}
+                                    </Button>
                                 </div>
                                 <FormMessage />
                             </FormItem>
@@ -257,8 +242,7 @@ const PriceSearchForm: React.FC<PriceSearchFormProps> = ({ onPriceSelect, isInsp
                     </Card>
                 </div>
             )}
-            <CatmatCatalogDialog open={isCatmatCatalogOpen} onOpenChange={setIsCatmatCatalogOpen} onSelect={handleCatalogSelect} />
-            <CatserCatalogDialog open={isCatserCatalogOpen} onOpenChange={setIsCatserCatalogOpen} onSelect={handleCatalogSelect} />
+            {mode === 'material' ? <CatmatCatalogDialog open={isCatalogOpen} onOpenChange={setIsCatalogOpen} onSelect={handleCatalogSelect} /> : <CatserCatalogDialog open={isCatalogOpen} onOpenChange={setIsCatalogOpen} onSelect={handleCatalogSelect} />}
         </>
     );
 };
