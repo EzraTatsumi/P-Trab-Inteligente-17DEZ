@@ -211,7 +211,6 @@ const MaterialPermanenteForm = () => {
                 await supabase.from('material_permanente_registros' as any).delete().in('id', idsToDelete);
             }
             
-            // MODIFICADO: Salva o lote como um único registro consolidado
             const records = itemsToSave.map(lote => ({
                 p_trab_id: ptrabId,
                 organizacao: lote.organizacao,
@@ -277,8 +276,18 @@ const MaterialPermanenteForm = () => {
     const handleAddToPending = () => {
         if (selectedItems.length === 0) { toast.warning("Selecione pelo menos um item."); return; }
         if (diasOperacao <= 0) { toast.warning("Informe o período da operação."); return; }
-        const itemsWithoutJustification = selectedItems.filter(item => !item.justificativa || !Object.values(item.justificativa).some(v => v && v.toString().trim() !== ""));
+        
+        // Verificação robusta de justificativa
+        const itemsWithoutJustification = selectedItems.filter(item => {
+            let justData = item.justificativa;
+            if (Array.isArray(justData) && justData.length > 0) justData = justData[0];
+            if (justData && typeof justData === 'object' && justData.justificativa) justData = justData.justificativa;
+            
+            return !justData || !Object.values(justData).some(v => v && v.toString().trim() !== "");
+        });
+
         if (itemsWithoutJustification.length > 0) { toast.error("Todos os itens devem possuir uma justificativa preenchida."); return; }
+        
         const compositionId = editingId || activeCompositionId || crypto.randomUUID();
         if (!editingId && !activeCompositionId) setActiveCompositionId(compositionId);
         const { totalGeral } = calculateMaterialPermanenteTotals(selectedItems);
@@ -393,7 +402,12 @@ const MaterialPermanenteForm = () => {
     };
 
     const getJustificativaText = (item: any, dias: number, fase: string) => {
-        const { grupo, proposito, destinacao, local, finalidade, motivo } = item.justificativa || {};
+        // Extração robusta para a pré-visualização
+        let justData = item.justificativa || {};
+        if (Array.isArray(justData) && justData.length > 0) justData = justData[0];
+        if (justData && typeof justData === 'object' && justData.justificativa && !justData.grupo) justData = justData.justificativa;
+
+        const { grupo, proposito, destinacao, local, finalidade, motivo } = justData;
         const diasStr = `${dias} ${dias === 1 ? 'dia' : 'dias'}`;
         return `Aquisição de ${grupo || '[Grupo]'} para atender ${proposito || '[Propósito]'} ${destinacao || '[Destinação]'}, ${local || '[Local]'}, a fim de ${finalidade || '[Finalidade]'}, durante ${diasStr} de ${fase || '[Fase]'}. Justifica-se essa aquisição ${motivo || '[Motivo]'}.`;
     };
@@ -485,8 +499,14 @@ const MaterialPermanenteForm = () => {
                                                         </TableHeader>
                                                         <TableBody>
                                                             {selectedItems.map((item) => {
-                                                                const isJustified = !!(item.justificativa && Object.values(item.justificativa).some(v => v && v.toString().trim() !== ""));
+                                                                // Verificação robusta de justificativa para o ícone de status
+                                                                let justData = item.justificativa;
+                                                                if (Array.isArray(justData) && justData.length > 0) justData = justData[0];
+                                                                if (justData && typeof justData === 'object' && justData.justificativa && !justData.grupo) justData = justData.justificativa;
+                                                                
+                                                                const isJustified = !!(justData && Object.values(justData).some(v => v && v.toString().trim() !== ""));
                                                                 const isExpanded = expandedJustifications[item.id] || false;
+                                                                
                                                                 return (
                                                                     <React.Fragment key={item.id}>
                                                                         <TableRow>
@@ -556,7 +576,6 @@ const MaterialPermanenteForm = () => {
                                                 {group.records.map((reg: MaterialPermanenteDBRecord) => {
                                                     const isDifferentOm = reg.om_detentora?.trim() !== reg.organizacao?.trim();
                                                     
-                                                    // MODIFICADO: Calcula a quantidade total de itens no lote para exibição consolidada
                                                     const items = reg.detalhes_planejamento?.itens_selecionados || (reg.detalhes_planejamento?.item_unico ? [reg.detalhes_planejamento.item_unico] : []);
                                                     const totalQty = items.reduce((acc: number, i: any) => acc + (i.quantidade || 0), 0);
                                                     

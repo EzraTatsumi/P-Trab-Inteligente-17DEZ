@@ -6,14 +6,35 @@ export const calculateMaterialPermanenteTotals = (items: any[]) => {
 };
 
 /**
+ * Extrai os dados de justificativa de forma robusta, tratando arrays ou objetos aninhados.
+ */
+const extractJustificativaData = (item: any) => {
+    let data = item?.justificativa || {};
+
+    // Se for um array (como visto no JSON do usuário), pega o primeiro elemento
+    if (Array.isArray(data) && data.length > 0) {
+        data = data[0];
+    }
+
+    // Se o objeto resultante tiver uma propriedade 'justificativa' interna (aninhamento detectado)
+    // e não tiver os campos diretos, mergulha mais um nível
+    if (data && typeof data === 'object' && data.justificativa && !data.grupo) {
+        data = data.justificativa;
+    }
+
+    return data;
+};
+
+/**
  * Gera a memória de cálculo para Material Permanente.
- * Renomeada para generateMaterialPermanenteMemoriaCalculo para satisfazer as importações do projeto.
  */
 export const generateMaterialPermanenteMemoriaCalculo = (registro: any, item: any) => {
     if (!item) return "";
 
-    // Extração da justificativa
-    const { grupo, proposito, destinacao, local, finalidade, motivo } = item.justificativa || {};
+    // Extração robusta da justificativa
+    const justData = extractJustificativaData(item);
+    const { grupo, proposito, destinacao, local, finalidade, motivo } = justData;
+    
     const diasStr = `${registro.dias_operacao} ${registro.dias_operacao === 1 ? 'dia' : 'dias'}`;
     const fase = registro.fase_atividade || '[Fase]';
     
