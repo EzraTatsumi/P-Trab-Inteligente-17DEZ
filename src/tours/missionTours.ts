@@ -53,9 +53,8 @@ export const runMission01 = (onComplete: () => void) => {
         popover: {
           title: 'Configurações do Sistema',
           description: 'Gerencie OMs vinculadas, anos de referência para cálculos e dados de perfil que sairão nos cabeçalhos dos documentos.',
-          side: 'left',
-          align: 'start',
-          offset: 20
+          side: 'left', // Move para a esquerda para não cobrir o menu que abre para baixo
+          align: 'start'
         },
         onHighlighted: () => {
           if ((window as any).openSettings) (window as any).openSettings();
@@ -70,8 +69,7 @@ export const runMission01 = (onComplete: () => void) => {
           title: 'Assistente IA',
           description: 'Dúvidas sobre o DOR ou Natureza de Despesa? O ChatIA conhece todas as normas e ajuda você a redigir justificativas técnicas.',
           side: 'left',
-          align: 'end',
-          offset: 20
+          align: 'end'
         }
       },
       {
@@ -98,8 +96,7 @@ export const runMission01 = (onComplete: () => void) => {
           title: 'Detalhamento de Custos',
           description: 'Use este botão para entrar no formulário e detalhar todas as necessidades logísticas e operacionais da missão.',
           side: 'left',
-          align: 'center',
-          offset: 20
+          align: 'center'
         }
       },
       {
@@ -108,8 +105,7 @@ export const runMission01 = (onComplete: () => void) => {
           title: 'Redação Técnica (DOR)',
           description: 'Após os custos estarem prontos, o sistema gera automaticamente a sua justificativa técnica baseada nos números inseridos.',
           side: 'left',
-          align: 'center',
-          offset: 20
+          align: 'center'
         }
       },
       {
@@ -126,9 +122,8 @@ export const runMission01 = (onComplete: () => void) => {
         popover: {
           title: 'Agilidade e Colaboração',
           description: 'No menu de ações, você pode CLONAR planos complexos de anos anteriores para economizar tempo, ou COMPARTILHAR o acesso com outros militares para trabalho colaborativo.',
-          side: 'left',
-          align: 'start',
-          offset: 20
+          side: 'left', // Move para a esquerda para não cobrir o menu
+          align: 'start'
         },
         onHighlighted: () => {
           if ((window as any).openActions) (window as any).openActions();
