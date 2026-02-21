@@ -917,7 +917,7 @@ const PTrabManager = () => {
                     ...((record as any).hasOwnProperty('itens_aquisicao') && { itens_aquisicao: JSON.parse(JSON.stringify(record.itens_aquisicao)) }),
                     ...((record as any).hasOwnProperty('detalhes_planejamento') && { detalhes_planejamento: JSON.parse(JSON.stringify(record.detalhes_planejamento)) }),
                     ...((record as any).hasOwnProperty('itens_dor') && { itens_dor: JSON.parse(JSON.stringify(record.itens_dor)) }),
-                    ...((record as any).hasOwnProperty('grupos_dor') && { grupos_dor: JSON.parse(JSON.stringify(record.grupos_dor)) })
+                    ...((record as any).hasOwnProperty('groups_dor') && { grupos_dor: JSON.parse(JSON.stringify(record.grupos_dor)) })
                 };
                 return newRecord;
             });
