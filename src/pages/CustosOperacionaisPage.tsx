@@ -1196,7 +1196,7 @@ const CustosOperacionaisPage = () => {
               toast.success("Novo Subitem da ND cadastrado!");
           }
           
-          queryClient.invalidateQueries({ queryKey: ['diretrizesServicosTerceiros', selectedYear, authUser.id] });
+          queryClient.invalidateQueries({ queryKey: ['diretrizesCustosOperacionais', selectedYear, authUser.id] });
           setDiretrizServicosTerceirosToEdit(null);
           setIsServicosTerceirosFormOpen(false);
       } catch (error: any) {
