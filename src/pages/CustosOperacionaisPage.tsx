@@ -320,24 +320,11 @@ const CustosOperacionaisPage = () => {
       }
   }, []);
 
-  const handleOpenNewMaterialConsumo = useCallback(() => {
-      setDiretrizMaterialConsumoToEdit(null);
-      setIsMaterialConsumoFormOpen(true);
-  }, []);
-
   useEffect(() => {
     (window as any).expandMaterialConsumo = () => {
       handleCollapseChange('material_consumo_detalhe', true);
     };
-    (window as any).openMaterialConsumoForm = () => {
-      handleOpenNewMaterialConsumo();
-    };
-
-    return () => {
-      delete (window as any).expandMaterialConsumo;
-      delete (window as any).openMaterialConsumoForm;
-    };
-  }, [handleCollapseChange, handleOpenNewMaterialConsumo]);
+  }, [handleCollapseChange]);
   
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -1196,7 +1183,7 @@ const CustosOperacionaisPage = () => {
               toast.success("Novo Subitem da ND cadastrado!");
           }
           
-          queryClient.invalidateQueries({ queryKey: ['diretrizesCustosOperacionais', selectedYear, authUser.id] });
+          queryClient.invalidateQueries({ queryKey: ['diretrizesServicosTerceiros', selectedYear, authUser.id] });
           setDiretrizServicosTerceirosToEdit(null);
           setIsServicosTerceirosFormOpen(false);
       } catch (error: any) {
@@ -1247,6 +1234,11 @@ const CustosOperacionaisPage = () => {
       setIsMaterialPermanenteFormOpen(true);
   };
   
+  const handleOpenNewMaterialConsumo = () => {
+      setDiretrizMaterialConsumoToEdit(null);
+      setIsMaterialConsumoFormOpen(true);
+  };
+
   const handleOpenNewServicosTerceiros = () => {
       setDiretrizMaterialConsumoToEdit(null);
       setIsServicosTerceirosFormOpen(true);
@@ -1397,21 +1389,21 @@ const CustosOperacionaisPage = () => {
   };
   
   const renderMaterialConsumoSection = () => {
-      const isDataLoading = (isLoadingMaterialConsumo || isMovingMaterialConsumo) && !isGhostMode();
+      const isDataLoading = isLoadingMaterialConsumo || isMovingMaterialConsumo;
       return (
           <div className="space-y-4 lista-subitens-nd"><Card className="p-4"><div className="flex justify-between items-center mb-4"><CardTitle className="text-base font-semibold">Subitens da ND Cadastrados</CardTitle><Button type="button" variant="outline" size="sm" onClick={() => setIsExportImportDialogOpen(true)} disabled={isSaving || isDataLoading}><FileSpreadsheet className="h-4 w-4 mr-2" />Exportar/Importar</Button></div><div className="mb-4 relative"><Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" /><Input placeholder="Buscar item de aquisição (nome, CATMAT, pregão, subitem...)" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} disabled={isDataLoading} className="pl-10" /></div>{searchTerm ? renderSearchResults() : ((diretrizesMaterialConsumo?.length || 0) > 0 ? (<Table><TableHeader><TableRow><TableHead className="w-[150px] text-center">Nr Subitem</TableHead><TableHead>Nome do Subitem</TableHead><TableHead className="w-[100px] text-center">Ações</TableHead></TableRow></TableHeader><TableBody>{diretrizesMaterialConsumo.map(d => (<MaterialConsumoDiretrizRow key={d.id} diretriz={d} onEdit={handleStartEditMaterialConsumo} onDelete={handleDeleteMaterialConsumo} loading={isSaving || isDataLoading} onMoveItem={handleMoveItem} id={`diretriz-material-consumo-${d.id}`} forceOpen={subitemToOpenId === d.id} />))}</TableBody></Table>) : (<Card className="p-4 text-center text-muted-foreground">Nenhum subitem da ND cadastrado para o ano de referência.</Card>))}</Card><div className="flex justify-end"><Button type="button" onClick={handleOpenNewMaterialConsumo} disabled={isSaving || isDataLoading || !!searchTerm} variant="outline" size="sm" className="w-full btn-novo-subitem"><Plus className="mr-2 h-4 w-4" />Adicionar Novo Subitem da ND</Button></div>{(isLoadingMaterialConsumo || isMovingMaterialConsumo) && (<div className="text-center py-2"><Loader2 className="h-5 w-5 animate-spin text-primary mx-auto" /><p className="text-xs text-muted-foreground mt-1">{isMovingMaterialConsumo ? "Movendo item..." : "Carregando subitens..."}</p></div>)}</div>
       );
   };
 
   const renderServicosTerceirosSection = () => {
-      const isDataLoading = (isLoadingServicosTerceiros || isMovingServicosTerceiros) && !isGhostMode();
+      const isDataLoading = isLoadingServicosTerceiros || isMovingServicosTerceiros;
       return (
           <div className="space-y-4"><Card className="p-4"><div className="flex justify-between items-center mb-4"><CardTitle className="text-base font-semibold">Subitens da ND Cadastrados</CardTitle><Button type="button" variant="outline" size="sm" onClick={() => setIsExportImportServicosDialogOpen(true)} disabled={isSaving || isDataLoading}><FileSpreadsheet className="h-4 w-4 mr-2" />Exportar/Importar</Button></div><div className="mb-4 relative"><Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" /><Input placeholder="Buscar item de serviço (nome, CATMAT, pregão, subitem...)" value={searchTermServicos} onChange={(e) => setSearchTermServicos(e.target.value)} disabled={isDataLoading} className="pl-10" /></div>{searchTermServicos ? renderSearchResultsServicos() : ((diretrizesServicosTerceiros?.length || 0) > 0 ? (<Table><TableHeader><TableRow><TableHead className="w-[150px] text-center">Nr Subitem</TableHead><TableHead>Nome do Subitem</TableHead><TableHead className="w-[100px] text-center">Ações</TableHead></TableRow></TableHeader><TableBody>{diretrizesServicosTerceiros.map(d => (<ServicosTerceirosDiretrizRow key={d.id} diretriz={d} onEdit={handleStartEditServicosTerceiros} onDelete={handleDeleteServicosTerceiros} loading={isSaving || isDataLoading} onMoveItem={handleMoveItemServico} id={`diretriz-servicos-terceiros-${d.id}`} forceOpen={subitemServicoToOpenId === d.id} />))}</TableBody></Table>) : (<Card className="p-4 text-center text-muted-foreground">Nenhum subitem da ND cadastrado para o ano de referência.</Card>))}</Card><div className="flex justify-end"><Button type="button" onClick={handleOpenNewServicosTerceiros} disabled={isSaving || isDataLoading || !!searchTermServicos} variant="outline" size="sm" className="w-full"><Plus className="mr-2 h-4 w-4" />Adicionar Novo Subitem da ND</Button></div>{(isLoadingServicosTerceiros || isMovingServicosTerceiros) && (<div className="text-center py-2"><Loader2 className="h-5 w-5 animate-spin text-primary mx-auto" /><p className="text-xs text-muted-foreground mt-1">{isMovingMaterialConsumo ? "Movendo item..." : "Carregando subitens..."}</p></div>)}</div>
       );
   };
 
   const renderMaterialPermanenteSection = () => {
-      const isDataLoading = (isLoadingMaterialPermanente || isMovingMaterialPermanente) && !isGhostMode();
+      const isDataLoading = isLoadingMaterialPermanente || isMovingMaterialPermanente;
       return (
           <div className="space-y-4"><Card className="p-4"><div className="flex justify-between items-center mb-4"><CardTitle className="text-base font-semibold">Subitens da ND Cadastrados</CardTitle><Button type="button" variant="outline" size="sm" onClick={() => setIsExportImportPermanenteDialogOpen(true)} disabled={isSaving || isDataLoading}><FileSpreadsheet className="h-4 w-4 mr-2" />Exportar/Importar</Button></div><div className="mb-4 relative"><Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" /><Input placeholder="Buscar item permanente (nome, CATMAT, pregão, subitem...)" value={searchTermPermanente} onChange={(e) => setSearchTermPermanente(e.target.value)} disabled={isDataLoading} className="pl-10" /></div>{searchTermPermanente ? renderSearchResultsPermanente() : ((diretrizesMaterialPermanente?.length || 0) > 0 ? (<Table><TableHeader><TableRow><TableHead className="w-[150px] text-center">Nr Subitem</TableHead><TableHead>Nome do Subitem</TableHead><TableHead className="w-[100px] text-center">Ações</TableHead></TableRow></TableHeader><TableBody>{diretrizesMaterialPermanente.map(d => (<MaterialPermanenteDiretrizRow key={d.id} diretriz={d} onEdit={handleStartEditMaterialPermanente} onDelete={handleDeleteMaterialPermanente} loading={isSaving || isDataLoading} id={`diretriz-material-permanente-${d.id}`} forceOpen={subitemPermanenteToOpenId === d.id} isExpanded={subitemPermanenteToOpenId === d.id} onToggleExpand={() => setSubitemPermanenteToOpenId(subitemPermanenteToOpenId === d.id ? null : d.id)} />))}</TableBody></Table>) : (<Card className="p-4 text-center text-muted-foreground">Nenhum subitem da ND cadastrado para o ano de referência.</Card>))}</Card><div className="flex justify-end"><Button type="button" onClick={handleOpenNewMaterialPermanente} disabled={isSaving || isDataLoading || !!searchTermPermanente} variant="outline" size="sm" className="w-full"><Plus className="mr-2 h-4 w-4" />Adicionar Novo Subitem da ND</Button></div>{(isLoadingMaterialPermanente || isMovingMaterialPermanente) && (<div className="text-center py-2"><Loader2 className="h-5 w-5 animate-spin text-primary mx-auto" /><p className="text-xs text-muted-foreground mt-1">{isMovingMaterialPermanente ? "Movendo item..." : "Carregando subitens..."}</p></div>)}</div>
       );
