@@ -950,7 +950,7 @@ const PTrabManager = () => {
     }
   };
   
-  const simplePTrabsToConsolidate = useMemo(() => pTrabs.filter(p => selectedPTrabsToConsolidate.includes(p.id)).map(p => ({ id: p.id, numero_ptrab: p.numero_ptrab, nome_operacao: p.nome_operacao })), [pTrabs, selectedPTrabsToConsolidate]);
+  const simplePTrabsToConsolidate = useMemo(() => pTrabs.filter(p => selectedPTrabsToConsolidate.includes(p.id)).map(p => ({ id: p.id, numero_ptrab: p.numero_ptrab, nome_operacao: p.numero_ptrab })), [pTrabs, selectedPTrabsToConsolidate]);
 
   const handleOpenShareDialog = (ptrab: PTrab) => {
     if (!ptrab.share_token) {
@@ -1434,7 +1434,7 @@ const PTrabManager = () => {
                           </div>
 
                           <DropdownMenu>
-                            <DropdownMenuTrigger asChild><Button variant="ghost" size="sm" className="btn-acoes-dropdown"><MoreVertical className="h-4 w-4" /></Button></DropdownMenuTrigger>
+                            <DropdownMenuTrigger asChild><Button variant="ghost" size="sm" className="btn-acoes-ptrab"><MoreVertical className="h-4 w-4" /></Button></DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
                               <DropdownMenuLabel>Ações</DropdownMenuLabel>
                               <DropdownMenuSeparator />
@@ -1535,7 +1535,7 @@ const PTrabManager = () => {
           </DialogHeader>
           <div className="py-4"><Textarea placeholder="Digite seu comentário sobre este P Trab..." value={comentarioText} onChange={(e) => setComentarioText(e.target.value)} className="min-h-[150px]" /></div>
           <DialogFooter>
-            <Button onClick={handleSaveComentario} disabled={isActionLoading}>{isActionLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Salvar"}</Button>
+            <Button onClick={handleSaveComentario} disabled={isActionLoading}>{isActionLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : "Salvar"}</Button>
             <Button variant="outline" onClick={() => setShowComentarioDialog(false)}>Cancelar</Button>
           </DialogFooter>
         </DialogContent>
@@ -1554,7 +1554,7 @@ const PTrabManager = () => {
             </div>
           </div>
           <DialogFooter>
-            <Button onClick={handleApproveAndNumber} disabled={!suggestedApproveNumber.trim() || isActionLoading}>{isActionLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Confirmar Aprovação"}</Button>
+            <Button onClick={handleApproveAndNumber} disabled={!suggestedApproveNumber.trim() || isActionLoading}>{isActionLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : "Confirmar Aprovação"}</Button>
             <Button variant="outline" onClick={() => setShowApproveDialog(false)}>Cancelar</Button>
           </DialogFooter>
         </DialogContent>
@@ -1569,7 +1569,7 @@ const PTrabManager = () => {
       {ptrabToManageSharing && <ManageSharingDialog open={showManageSharingDialog} onOpenChange={setShowManageSharingDialog} ptrabId={ptrabToManageSharing.id} ptrabName={`${ptrabToManageSharing.numero_ptrab} - ${ptrabToManageSharing.nome_operacao}`} onApprove={handleApproveRequest} onReject={handleRejectRequest} onCancelSharing={handleCancelSharing} loading={isActionLoading} />}
       {ptrabToUnlink && <UnlinkPTrabDialog open={showUnlinkPTrabDialog} onOpenChange={setShowUnlinkPTrabDialog} ptrabName={`${ptrabToUnlink.numero_ptrab} - ${ptrabToUnlink.nome_operacao}`} onConfirm={handleConfirmUnlink} loading={isActionLoading} />}
       
-      <AIChatDrawer />
+      <AIChatDrawer className="btn-chat-ia" />
     </div>
   );
 };

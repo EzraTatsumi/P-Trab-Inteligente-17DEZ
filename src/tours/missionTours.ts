@@ -44,15 +44,21 @@ export const runMission01 = (onComplete: () => void) => {
       },
       {
         element: '.btn-configuracoes',
-        onHighlighted: (element) => {
-          // Pequeno delay para garantir que o overlay do tour não bloqueie o clique
-          setTimeout(() => {
-            if (element) (element as HTMLElement).click();
-          }, 200);
+        onAfterHighlighted: () => {
+          // Força a expansão do menu de configurações com um pequeno delay
+          const btn = document.querySelector('.btn-configuracoes') as HTMLElement;
+          if (btn) setTimeout(() => btn.click(), 300);
         },
         popover: {
           title: 'Configurações do Sistema',
           description: 'Gerencie OMs vinculadas, anos de referência para cálculos e dados de perfil que sairão nos cabeçalhos dos documentos.',
+        }
+      },
+      {
+        element: '.btn-chat-ia',
+        popover: {
+          title: 'Assistente IA',
+          description: 'Dúvidas sobre o DOR ou Natureza de Despesa? O ChatIA conhece todas as normas e ajuda você a redigir justificativas técnicas.',
         }
       },
       {
@@ -91,12 +97,11 @@ export const runMission01 = (onComplete: () => void) => {
         }
       },
       {
-        element: '.btn-acoes-dropdown',
-        onHighlighted: (element) => {
-          // Expande o menu de ações automaticamente ao chegar no passo
-          setTimeout(() => {
-            if (element) (element as HTMLElement).click();
-          }, 200);
+        element: '.btn-acoes-ptrab',
+        onAfterHighlighted: () => {
+          // Força a expansão do menu de ações na tabela
+          const btn = document.querySelector('.btn-acoes-ptrab') as HTMLElement;
+          if (btn) setTimeout(() => btn.click(), 300);
         },
         popover: {
           title: 'Agilidade e Colaboração',
