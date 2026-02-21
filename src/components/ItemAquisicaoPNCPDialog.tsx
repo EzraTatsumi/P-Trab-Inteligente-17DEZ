@@ -2,16 +2,14 @@
 
 import React, { useState, useRef } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Search, Package, List, CheckCircle2, Loader2, Info, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Search, Loader2, Info, CheckCircle, AlertCircle, ArrowRight } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ItemAquisicao } from '@/types/diretrizesMaterialConsumo';
-import { DetailedArpItem } from '@/types/pncp';
 import ArpUasgSearchForm from './pncp/ArpUasgSearchForm';
 import ArpCatmatSearchForm from './pncp/ArpCatmatSearchForm';
 import PriceSearchForm from './pncp/PriceSearchForm';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { formatCurrency, formatCodug, formatPregao } from '@/lib/formatUtils';
+import { DetailedArpItem } from '@/types/pncp';
 import { toast } from 'sonner';
 import { Badge } from './ui/badge';
 import { ScrollArea } from './ui/scroll-area';
@@ -21,9 +19,9 @@ interface ItemAquisicaoPNCPDialogProps {
     onOpenChange: (open: boolean) => void;
     onImport: (items: ItemAquisicao[]) => void;
     existingItemsInDiretriz: ItemAquisicao[];
-    onReviewItem: (item: ItemAquisicao) => void;
     selectedYear: number;
     mode?: 'material' | 'servico';
+    onReviewItem?: (item: ItemAquisicao) => void;
 }
 
 const ItemAquisicaoPNCPDialog: React.FC<ItemAquisicaoPNCPDialogProps> = ({
@@ -31,36 +29,50 @@ const ItemAquisicaoPNCPDialog: React.FC<ItemAquisicaoPNCPDialogProps> = ({
     onOpenChange,
     onImport,
     existingItemsInDiretriz,
-    onReviewItem,
     selectedYear,
-    mode = 'material'
+    mode = 'material',
+    onReviewItem
 }) => {
     const [selectedItems, setSelectedItems] = useState<ItemAquisicao[]>([]);
     const scrollContainerRef = useRef<HTMLDivElement>(null);
+    
+    const isTourActive = typeof window !== 'undefined' && localStorage.getItem('is_ghost_mode') === 'true';
 
-    const handleItemPreSelect = (item: DetailedArpItem | ItemAquisicao, pregaoFormatado?: string, uasg?: string) => {
-        const isDetailed = 'numeroControlePncpAta' in item;
-        const itemId = isDetailed ? (item as DetailedArpItem).id : (item as ItemAquisicao).id;
-        
-        if (selectedItems.find(i => i.id === itemId)) {
-            setSelectedItems(prev => prev.filter(i => i.id !== itemId));
+    const handleItemPreSelect = (item: DetailedArpItem, pregaoFormatado: string, uasg: string) => {
+        const isDuplicate = existingItemsInDiretriz.some(existing => 
+            existing.codigo_catmat === item.codigoItem && 
+            existing.numero_pregao === pregaoFormatado && 
+            existing.uasg === uasg
+        );
+
+        if (isDuplicate) {
+            toast.warning("Este item já existe nesta diretriz.");
             return;
         }
 
-        const newItem: ItemAquisicao = isDetailed 
-            ? {
-                id: (item as DetailedArpItem).id,
-                codigo_catmat: (item as DetailedArpItem).codigoItem,
-                descricao_item: (item as DetailedArpItem).descricaoItem,
-                descricao_reduzida: (item as DetailedArpItem).descricaoItem.substring(0, 50),
-                valor_unitario: (item as DetailedArpItem).valorUnitario,
-                numero_pregao: pregaoFormatado || 'N/A',
-                uasg: uasg || '',
-                nd: mode === 'material' ? '30' : '39',
-            }
-            : (item as ItemAquisicao);
+        const isAlreadySelected = selectedItems.some(s => 
+            s.codigo_catmat === item.codigoItem && 
+            s.numero_pregao === pregaoFormatado && 
+            s.uasg === uasg
+        );
 
-        setSelectedItems(prev => [...prev, newItem]);
+        if (isAlreadySelected) {
+            setSelectedItems(prev => prev.filter(s => 
+                !(s.codigo_catmat === item.codigoItem && s.numero_pregao === pregaoFormatado && s.uasg === uasg)
+            ));
+        } else {
+            const newItem: ItemAquisicao = {
+                id: Math.random().toString(36).substring(2, 9),
+                descricao_item: item.descricaoItem,
+                descricao_reduzida: item.descricaoItem.substring(0, 50),
+                valor_unitario: item.valorUnitario,
+                numero_pregao: pregaoFormatado,
+                uasg: uasg,
+                codigo_catmat: item.codigoItem,
+                nd: mode === 'material' ? '30' : '39',
+            };
+            setSelectedItems(prev => [...prev, newItem]);
+        }
     };
 
     const handleConfirmImport = () => {
@@ -72,86 +84,99 @@ const ItemAquisicaoPNCPDialog: React.FC<ItemAquisicaoPNCPDialogProps> = ({
     };
 
     return (
-        <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="max-w-5xl max-h-[90vh] flex flex-col p-0 overflow-hidden modal-importar-pncp z-tour-portal">
+        <Dialog 
+            open={open} 
+            onOpenChange={onOpenChange}
+            modal={!isTourActive}
+        >
+            <DialogContent className="max-w-5xl max-h-[90vh] flex flex-col p-0 overflow-hidden modal-importar-pncp">
                 <DialogHeader className="p-6 pb-0">
                     <DialogTitle className="flex items-center gap-2">
                         <Search className="h-5 w-5 text-primary" />
-                        Importar Dados do PNCP
+                        Integração API PNCP - {mode === 'material' ? 'Materiais' : 'Serviços'}
                     </DialogTitle>
                     <DialogDescription>
-                        Busque preços e itens diretamente no Portal Nacional de Contratações Públicas.
+                        Busque itens diretamente no Portal Nacional de Contratações Públicas.
                     </DialogDescription>
                 </DialogHeader>
 
                 <div className="flex-1 overflow-hidden flex flex-col">
                     <Tabs defaultValue="uasg" className="flex-1 flex flex-col overflow-hidden">
-                        <TabsList className="mx-6 mt-4 grid grid-cols-3">
-                            <TabsTrigger value="uasg" className="flex items-center gap-2">
-                                <Search className="h-4 w-4" />
-                                Por UASG
-                            </TabsTrigger>
-                            <TabsTrigger value="catmat" className="flex items-center gap-2">
-                                <List className="h-4 w-4" />
-                                Por Cód. Item
-                            </TabsTrigger>
-                            <TabsTrigger value="stats" className="flex items-center gap-2">
-                                <Info className="h-4 w-4" />
-                                Média de Preços
-                            </TabsTrigger>
-                        </TabsList>
-
-                        <div className="flex-1 overflow-hidden relative">
-                            <ScrollArea className="h-full" ref={scrollContainerRef}>
-                                <div className="p-6 pt-4">
-                                    <TabsContent value="uasg" className="mt-0 outline-none">
-                                        <ArpUasgSearchForm 
-                                            onItemPreSelect={handleItemPreSelect} 
-                                            selectedItemIds={selectedItems.map(i => i.id)}
-                                            onClearSelection={() => setSelectedItems([])}
-                                            scrollContainerRef={scrollContainerRef as any}
-                                        />
-                                    </TabsContent>
-                                    <TabsContent value="catmat" className="mt-0 outline-none">
-                                        <ArpCatmatSearchForm 
-                                            onItemPreSelect={handleItemPreSelect} 
-                                            selectedItemIds={selectedItems.map(i => i.id)}
-                                            onClearSelection={() => setSelectedItems([])}
-                                            scrollContainerRef={scrollContainerRef as any}
-                                            mode={mode}
-                                        />
-                                    </TabsContent>
-                                    <TabsContent value="stats" className="mt-0 outline-none">
-                                        <PriceSearchForm 
-                                            onPriceSelect={(item) => handleItemPreSelect(item)}
-                                            isInspecting={false}
-                                            onClearPriceSelection={() => setSelectedItems([])}
-                                            selectedItemForInspection={null}
-                                            mode={mode}
-                                        />
-                                    </TabsContent>
-                                </div>
-                            </ScrollArea>
+                        <div className="px-6">
+                            <TabsList className="grid w-full grid-cols-3 mt-2">
+                                <TabsTrigger value="uasg">Por UASG (ARP)</TabsTrigger>
+                                <TabsTrigger value="catmat">Por Código {mode === 'material' ? 'CATMAT' : 'CATSER'}</TabsTrigger>
+                                <TabsTrigger value="price">Pesquisa de Preços</TabsTrigger>
+                            </TabsList>
                         </div>
+
+                        <ScrollArea className="flex-1 px-6" ref={scrollContainerRef}>
+                            <div className="py-4 space-y-6">
+                                <TabsContent value="uasg" className="mt-0 focus-visible:outline-none">
+                                    <div className="form-busca-uasg-tour">
+                                        <ArpUasgSearchParams onArpSelect={() => {}} />
+                                        <ArpUasgSearchForm 
+                                            onItemPreSelect={handleItemPreSelect}
+                                            selectedItemIds={selectedItems.map(i => `${i.codigo_catmat}-${i.numero_pregao}-${i.uasg}`)}
+                                            onClearSelection={() => setSelectedItems([])}
+                                            scrollContainerRef={scrollContainerRef}
+                                        />
+                                    </div>
+                                </TabsContent>
+
+                                <TabsContent value="catmat" className="mt-0 focus-visible:outline-none">
+                                    <ArpCatmatSearchForm 
+                                        onItemPreSelect={handleItemPreSelect}
+                                        selectedItemIds={selectedItems.map(i => `${i.codigo_catmat}-${i.numero_pregao}-${i.uasg}`)}
+                                        onClearSelection={() => setSelectedItems([])}
+                                        scrollContainerRef={scrollContainerRef}
+                                        mode={mode}
+                                    />
+                                </TabsContent>
+
+                                <TabsContent value="price" className="mt-0 focus-visible:outline-none">
+                                    <PriceSearchForm 
+                                        onPriceSelect={(item) => {
+                                            setSelectedItems([item]);
+                                            if (onReviewItem) onReviewItem(item);
+                                        }}
+                                        isInspecting={false}
+                                        onClearPriceSelection={() => setSelectedItems([])}
+                                        selectedItemForInspection={null}
+                                        mode={mode}
+                                    />
+                                </TabsContent>
+                            </div>
+                        </ScrollArea>
                     </Tabs>
                 </div>
 
-                {selectedItems.length > 0 && (
-                    <div className="p-4 border-t bg-muted/30 flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                            <Badge variant="secondary" className="h-8 px-3">
+                <div className="p-4 border-t bg-muted/30 flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                        {selectedItems.length > 0 ? (
+                            <Badge variant="default" className="h-8 px-3 gap-2">
+                                <CheckCircle className="h-4 w-4" />
                                 {selectedItems.length} item(ns) selecionado(s)
                             </Badge>
-                            <Button variant="ghost" size="sm" onClick={() => setSelectedItems([])} className="text-xs text-muted-foreground hover:text-destructive">
-                                Limpar Seleção
-                            </Button>
-                        </div>
-                        <Button onClick={handleConfirmImport} className="bg-green-600 hover:bg-green-700">
-                            <CheckCircle2 className="mr-2 h-4 w-4" />
-                            Confirmar Importação
+                        ) : (
+                            <span className="text-sm text-muted-foreground flex items-center gap-2">
+                                <Info className="h-4 w-4" />
+                                Selecione os itens nos resultados acima
+                            </span>
+                        )}
+                    </div>
+                    <div className="flex gap-2">
+                        <Button variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
+                        <Button 
+                            onClick={handleConfirmImport} 
+                            disabled={selectedItems.length === 0}
+                            className="gap-2"
+                        >
+                            Importar Selecionados
+                            <ArrowRight className="h-4 w-4" />
                         </Button>
                     </div>
-                )}
+                </div>
             </DialogContent>
         </Dialog>
     );

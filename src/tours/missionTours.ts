@@ -186,9 +186,11 @@ export const runMission02 = (onComplete: () => void) => {
           }
         },
         onNextClick: () => {
-          console.log("🚀 [TOUR DEBUG] Disparando evento para abrir modal...");
-          // 1. Dispara o evento customizado que o React está escutando
-          window.dispatchEvent(new CustomEvent('tour:open-novo-subitem'));
+          console.log("🚀 [TOUR DEBUG] Disparando abertura forçada do modal...");
+          // 1. Manda o React abrir a janela IMEDIATAMENTE via função blindada
+          if ((window as any).__forceOpenModalNovoSubitem) {
+            (window as any).__forceOpenModalNovoSubitem();
+          }
           
           // 2. Aguarda o modal aparecer no DOM antes de avançar
           waitForElement('.modal-novo-subitem', d);
