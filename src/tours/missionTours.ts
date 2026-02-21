@@ -17,29 +17,78 @@ export const runMission01 = (onComplete: () => void) => {
     steps: [
       {
         popover: {
-          title: 'Bem-vindo ao Centro de Comando!',
-          description: 'Aqui você gerencia todos os seus Planos de Trabalho. Vamos conhecer as ferramentas principais.',
+          title: 'Missão 01: Centro de Comando',
+          description: 'Bem-vindo à sua mesa de operações. Aqui você controla o ciclo de vida completo dos seus Planos de Trabalho.',
         }
       },
       {
         element: '.btn-novo-ptrab',
         popover: {
-          title: 'Criação de Planos',
-          description: 'Este botão inicia um novo P Trab. Note que ele só habilita quando sua base (OM e Diretrizes) está configurada.',
+          title: 'Criar Novo Plano',
+          description: 'Aqui você inicia um novo P Trab do zero. Lembre-se: o sistema só permitirá a criação se as diretrizes de custos estiverem configuradas.',
         }
       },
       {
-        element: '.ptrab-original',
+        element: '.btn-consolidar',
         popover: {
-          title: 'Origem do Documento',
-          description: 'Identifique rapidamente se o P Trab é Original, Importado ou uma Consolidação de vários outros.',
+          title: 'Consolidar Planos',
+          description: 'Precisa unir vários P Trabs em um único relatório para um Comando Superior? Este botão faz a consolidação automática de dados e custos.',
         }
       },
       {
-        element: 'button:has(svg.lucide-copy)', // Seletor alternativo para o botão de clonar se estiver visível
+        element: '.btn-ajuda',
         popover: {
-          title: 'O Pulo do Gato',
-          description: 'Não refaça o trabalho! Use a clonagem para aproveitar dados de operações anteriores e apenas ajustar as quantidades.',
+          title: 'Suporte e Manuais',
+          description: 'Dúvidas sobre normas ou uso do sistema? Aqui você acessa os manuais e guias rápidos.',
+        }
+      },
+      {
+        element: '.btn-configuracoes',
+        popover: {
+          title: 'Configurações do Sistema',
+          description: 'Gerencie OMs vinculadas, anos de referência para cálculos e dados de perfil que sairão nos cabeçalhos dos documentos.',
+        }
+      },
+      {
+        element: '.tabela-ptrabs',
+        popover: {
+          title: 'Quadro de Situação',
+          description: 'Nesta grade, você acompanha o número, a operação e o status de cada plano em tempo real.',
+        }
+      },
+      {
+        element: '.btn-comentarios',
+        popover: {
+          title: 'Comunicação Interna',
+          description: 'Troque mensagens entre quem preenche e quem revisa, mantendo todo o histórico de alterações no mesmo lugar.',
+        }
+      },
+      {
+        element: '.btn-preencher-ptrab',
+        popover: {
+          title: 'Detalhamento de Custos',
+          description: 'Use este botão para entrar no formulário e detalhar todas as necessidades logísticas e operacionais da missão.',
+        }
+      },
+      {
+        element: '.btn-preencher-dor',
+        popover: {
+          title: 'Redação Técnica (DOR)',
+          description: 'Após os custos estarem prontos, o sistema gera automaticamente a sua justificativa técnica baseada nos números inseridos.',
+        }
+      },
+      {
+        element: '.btn-aprovar',
+        popover: {
+          title: 'Homologação Oficial',
+          description: 'Este é o selo de qualidade. Quando o plano atende aos requisitos, ele é Aprovado para emissão dos relatórios oficiais.',
+        }
+      },
+      {
+        element: '.btn-acoes-dropdown',
+        popover: {
+          title: 'Agilidade e Colaboração',
+          description: 'No menu de ações, você pode CLONAR planos complexos de anos anteriores para economizar tempo, ou COMPARTILHAR o acesso com outros militares para trabalho colaborativo.',
         }
       }
     ],
@@ -48,6 +97,7 @@ export const runMission01 = (onComplete: () => void) => {
   d.drive();
 };
 
+// ... runMission02, runMission03, runMission04 permanecem iguais
 export const runMission02 = (onComplete: () => void) => {
   const d = driver({
     ...commonConfig,

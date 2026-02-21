@@ -1,12 +1,10 @@
 "use client";
 
-import { PTrabData } from "./ptrabUtils";
-
 export const GHOST_DATA = {
   // Missão 01 e 03: Dados do P Trab
   p_trab_exemplo: {
     id: "ghost-ptrab-123",
-    numero_ptrab: "001/2026 - SIMULAÇÃO",
+    numero_ptrab: "Minuta 001/2026", // Começa com Minuta para habilitar o botão Aprovar
     nome_operacao: "OPERAÇÃO SENTINELA",
     comando_militar_area: "Comando Militar do Leste",
     nome_om: "1º Btl Inf Selva",
@@ -22,9 +20,10 @@ export const GHOST_DATA = {
     origem: "original",
     updated_at: new Date().toISOString(),
     user_id: "ghost-user",
+    comentario: "P Trab em fase final de revisão técnica.",
   } as any,
 
-  // Missão 02: Item do PNCP (Material de Construção)
+  // ... restante dos dados (item_pncp_exemplo, totais_exemplo) permanecem iguais
   item_pncp_exemplo: {
     id: "ghost-item-999",
     codigo_catmat: "123456",
@@ -37,7 +36,6 @@ export const GHOST_DATA = {
     nd: "30",
   },
 
-  // Missão 04: Totais para o Resumo de Custos
   totais_exemplo: {
     totalLogistica: 45000.50,
     totalOperacional: 12500.00,
