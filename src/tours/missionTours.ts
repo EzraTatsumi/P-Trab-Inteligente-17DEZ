@@ -151,31 +151,36 @@ export const runMission02 = (onComplete: () => void) => {
         }
       },
       {
-        element: '.aba-material-consumo',
+        element: '.gatilho-material-consumo',
         popover: {
           title: 'Organização por ND',
           description: 'A seção de Material de Consumo organiza tudo por Subitem da Natureza de Despesa (ND).',
-          side: 'left',
-          align: 'start',
-          offset: 40
+          side: 'bottom',
+          align: 'start'
         },
         onHighlighted: () => {
-          if ((window as any).expandMaterialConsumo) {
-            (window as any).expandMaterialConsumo();
-          }
+          if ((window as any).expandMaterialConsumo) (window as any).expandMaterialConsumo();
         },
         onNextClick: () => {
-          // 1. Clica no botão "Novo Subitem"
-          const btnNovo = document.querySelector('.btn-novo-subitem') as HTMLElement;
-          if (btnNovo) {
-            btnNovo.click();
-            // 2. Aguarda a animação do modal antes de avançar o tour
-            setTimeout(() => {
-              d.moveNext();
-            }, 500);
-          } else {
-            d.moveNext();
+          // 1. O clique no Cavalo de Troia (Infalível)
+          const trojanButton = document.getElementById('tour-trigger-novo-subitem');
+          if (trojanButton) {
+              trojanButton.click();
           }
+          
+          // 2. O Polling: Fica a olhar para o HTML até a janela existir
+          let attempts = 0;
+          const checker = setInterval(() => {
+            attempts++;
+            if (document.querySelector('.modal-novo-subitem')) {
+              console.log("Modal encontrado! Avançando tour.");
+              clearInterval(checker);
+              d.moveNext(); // Janela nasceu, avança o Tour!
+            } else if (attempts > 30) {
+              console.error("Timeout: Janela não abriu.");
+              clearInterval(checker);
+            }
+          }, 100);
         }
       },
       {
