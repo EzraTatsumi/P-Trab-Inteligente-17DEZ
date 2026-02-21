@@ -41,6 +41,22 @@ export const GHOST_DATA = {
             codigo_catmat: "445566"
           }
         ]
+      },
+      {
+        id: "ghost-subitem-07",
+        nr_subitem: "07",
+        nome_subitem: "Gêneros de Alimentação",
+        descricao_subitem: "Itens para subsistência",
+        itens_aquisicao: [
+          {
+            id: "ghost-item-arroz",
+            descricao_item: "Arroz Agulhinha Tipo 1 - Pacote 5kg",
+            valor_unitario: 28.90,
+            numero_pregao: "005/2025",
+            uasg: "160222",
+            codigo_catmat: "150544"
+          }
+        ]
       }
     ],
     // Resultado da busca por UASG no PNCP
