@@ -23,7 +23,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { toast } from "sonner";
-import { Plus, Edit, Trash2, LogOut, FileText, Printer, Settings, PenSquare, MoreVertical, Pencil, Copy, FileSpreadsheet, Download, MessageSquare, ArrowRight, HelpCircle, CheckCircle, GitBranch, Archive, RefreshCw, User, Loader2, Share2, Link, Users, XCircle, ArrowDownUp, ClipboardList } from "lucide-react";
+import { Plus, Edit, Trash2, LogOut, FileText, Printer, Settings, PenSquare, MoreVertical, Pencil, Copy, FileSpreadsheet, Download, MessageSquare, ArrowRight, HelpCircle, CheckCircle, GitBranch, Archive, RefreshCw, User, Loader2, Share2, Link, Users, XCircle, ArrowDownUp, ClipboardList, GraduationCap } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { sanitizeError } from "@/lib/errorUtils";
@@ -63,6 +63,9 @@ import { PTrabTableSkeleton } from "@/components/PTrabTableSkeleton";
 import { useOnboardingStatus } from "@/hooks/useOnboardingStatus";
 import { WelcomeModal } from "@/components/WelcomeModal";
 import { RequirementsAlert } from "@/components/RequirementsAlert";
+import { InstructionHub } from "@/components/InstructionHub";
+import { runMission01 } from "@/tours/missionTours";
+import { GHOST_DATA, isGhostMode } from "@/lib/ghostStore";
 
 // Define a base type for PTrab data fetched from DB, including the missing 'origem' field
 type PTrabDB = Tables<'p_trab'> & {
@@ -185,6 +188,8 @@ const PTrabManager = () => {
   const [showUnlinkPTrabDialog, setShowUnlinkPTrabDialog] = useState(false);
   const [ptrabToUnlink, setPtrabToUnlink] = useState<PTrab | null>(null);
 
+  const [showInstructionHub, setShowInstructionHub] = useState(false);
+
   // Onboarding States
   const { data: onboardingStatus, isLoading: isLoadingOnboarding } = useOnboardingStatus();
   const [showWelcomeModal, setShowWelcomeModal] = useState(false);
@@ -197,6 +202,23 @@ const PTrabManager = () => {
       hasShownWelcome.current = true;
     }
   }, [isLoadingOnboarding, onboardingStatus]);
+
+  // Lógica do Tour
+  useEffect(() => {
+    const startTour = searchParams.get('startTour') === 'true';
+    const missionId = localStorage.getItem('active_mission_id');
+    const ghost = isGhostMode();
+
+    if (startTour && ghost && missionId === '1') {
+      runMission01(() => {
+        const completed = JSON.parse(localStorage.getItem('completed_missions') || '[]');
+        if (!completed.includes(1)) {
+          localStorage.setItem('completed_missions', JSON.stringify([...completed, 1]));
+        }
+        setShowInstructionHub(true);
+      });
+    }
+  }, [searchParams]);
   
   const currentYear = new Date().getFullYear();
   const yearSuffix = `/${currentYear}`;
@@ -207,6 +229,21 @@ const PTrabManager = () => {
     queryFn: async () => {
       if (!user?.id) return [];
       
+      const ghost = isGhostMode();
+      if (ghost) {
+        return [{
+          ...GHOST_DATA.p_trab_exemplo,
+          isOwner: true,
+          isShared: false,
+          hasPendingRequests: false,
+          totalLogistica: GHOST_DATA.totais_exemplo.totalLogistica,
+          totalOperacional: GHOST_DATA.totais_exemplo.totalOperacional,
+          totalMaterialPermanente: GHOST_DATA.totais_exemplo.totalMaterialPermanente,
+          quantidadeRacaoOp: GHOST_DATA.totais_exemplo.quantidadeRacaoOp,
+          quantidadeHorasVoo: GHOST_DATA.totais_exemplo.quantidadeHorasVoo,
+        }] as PTrab[];
+      }
+
       const { data: pTrabsData, error: pTrabsError } = await supabase
         .from("p_trab")
         .select("*, comentario, origem, rotulo_versao, user_id, shared_with, share_token")
@@ -1231,6 +1268,33 @@ const PTrabManager = () => {
             <Button onClick={handleLogout} variant="outline"><LogOut className="mr-2 h-4 w-4" />Sair</Button>
           </div>
         </div>
+
+        {showInstructionHub ? (
+          <Card className="border-primary/20 bg-primary/5">
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <div className="flex items-center gap-2">
+                <GraduationCap className="h-6 w-6 text-primary" />
+                <CardTitle>Centro de Instrução</CardTitle>
+              </div>
+              <Button variant="ghost" size="sm" onClick={() => setShowInstructionHub(false)}>Ocultar</Button>
+            </CardHeader>
+            <CardContent>
+              <InstructionHub />
+            </CardContent>
+          </Card>
+        ) : (
+          <div className="flex justify-center mb-4">
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={() => setShowInstructionHub(true)}
+              className="gap-2 text-primary border-primary/30 hover:bg-primary/10"
+            >
+              <GraduationCap className="h-4 w-4" />
+              Abrir Centro de Instrução
+            </Button>
+          </div>
+        )}
 
         <Card>
           <CardHeader>

@@ -40,6 +40,7 @@ import MaterialPermanenteForm from "./pages/MaterialPermanenteForm";
 import ComplementoAlimentacaoForm from "./pages/ComplementoAlimentacaoForm";
 import ServicosTerceirosForm from "./pages/ServicosTerceirosForm";
 import ResetPasswordPage from "./pages/ResetPasswordPage";
+import { GhostModeBanner } from "./components/GhostModeBanner";
 
 const queryClient = new QueryClient();
 
@@ -49,6 +50,7 @@ const App = () => (
       <SessionContextProvider>
         <TooltipProvider>
           <Toaster />
+          <GhostModeBanner />
           <BrowserRouter>
             <Routes>
               <Route path="/" element={<Index />} />

@@ -1,5 +1,7 @@
+"use client";
+
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
+import { useNavigate, useLocation, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -59,6 +61,8 @@ import { useMaterialPermanenteDiretrizes } from "@/hooks/useMaterialPermanenteDi
 import MaterialPermanenteDiretrizRow from "@/components/MaterialPermanenteDiretrizRow";
 import MaterialPermanenteDiretrizFormDialog from "@/components/MaterialPermanenteDiretrizFormDialog";
 import MaterialPermanenteExportImportDialog from "@/components/MaterialPermanenteExportImportDialog";
+import { runMission02 } from "@/tours/missionTours";
+import { isGhostMode } from "@/lib/ghostStore";
 
 type DiretrizOperacional = Tables<'diretrizes_operacionais'>;
 
@@ -191,6 +195,7 @@ type IndexedItemPermanente = ItemAquisicao & {
 const CustosOperacionaisPage = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const [searchParams] = useSearchParams();
   const { user } = useSession();
   const queryClient = useQueryClient();
   const [loading, setLoading] = useState(true);
@@ -223,7 +228,7 @@ const CustosOperacionaisPage = () => {
     initialState['diarias_detalhe'] = false; 
     initialState['passagens_detalhe'] = shouldOpenPassagens || false; 
     initialState['concessionaria_detalhe'] = shouldOpenConcessionaria || false;
-    initialState['material_consumo_detalhe'] = shouldOpenMaterialConsumo || false;
+    initialState['material_consumo_detalhe'] = shouldOpenMaterialConsumo || true; // Padrão aberto para o tour
     initialState['servicos_terceiros_detalhe'] = shouldOpenServicosTerceiros || false;
     initialState['material_permanente_detalhe'] = shouldOpenMaterialPermanente || false;
     return initialState;
@@ -345,6 +350,23 @@ const CustosOperacionaisPage = () => {
       handleGlobalDragEnd();
     };
   }, []);
+
+  // Lógica do Tour
+  useEffect(() => {
+    const startTour = searchParams.get('startTour') === 'true';
+    const missionId = localStorage.getItem('active_mission_id');
+    const ghost = isGhostMode();
+
+    if (startTour && ghost && missionId === '2') {
+      runMission02(() => {
+        const completed = JSON.parse(localStorage.getItem('completed_missions') || '[]');
+        if (!completed.includes(2)) {
+          localStorage.setItem('completed_missions', JSON.stringify([...completed, 2]));
+        }
+        navigate('/ptrab');
+      });
+    }
+  }, [searchParams]);
 
   // --- 1. Hook unificado para carregar tudo em paralelo com Cache ---
   const { data: pageData, isLoading: isLoadingPageData, isFetching: isFetchingPageData } = useQuery({
@@ -1422,14 +1444,14 @@ const CustosOperacionaisPage = () => {
                   <div ref={el => collapsibleRefs.current['diarias_detalhe'] = el} className="border-b pb-4 last:border-b-0 last:pb-0"><Collapsible open={fieldCollapseState['diarias_detalhe']} onOpenChange={(open) => handleCollapseChange('diarias_detalhe', open)}><CollapsibleTrigger asChild><div className="flex items-center justify-between cursor-pointer py-2"><h2 className="text-base font-medium">Pagamento de Diárias</h2>{fieldCollapseState['diarias_detalhe'] ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}</div></CollapsibleTrigger><CollapsibleContent><div className="mt-2">{renderDiariaTable()}</div></CollapsibleContent></Collapsible></div>
                   <div ref={el => collapsibleRefs.current['passagens_detalhe'] = el} className="border-b pb-4 last:border-b-0 last:pb-0"><Collapsible open={fieldCollapseState['passagens_detalhe']} onOpenChange={(open) => handleCollapseChange('passagens_detalhe', open)}><CollapsibleTrigger asChild><div className="flex items-center justify-between cursor-pointer py-2"><h2 className="text-base font-medium flex items-center gap-2">Aquisição de Passagens</h2>{fieldCollapseState['passagens_detalhe'] ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}</div></CollapsibleTrigger><CollapsibleContent><div className="mt-2">{renderPassagensSection()}</div></CollapsibleContent></Collapsible></div>
                   <div ref={el => collapsibleRefs.current['concessionaria_detalhe'] = el} className="border-b pb-4 last:border-b-0 last:pb-0"><Collapsible open={fieldCollapseState['concessionaria_detalhe']} onOpenChange={(open) => handleCollapseChange('concessionaria_detalhe', open)}><CollapsibleTrigger asChild><div className="flex items-center justify-between cursor-pointer py-2"><h2 className="text-base font-medium flex items-center gap-2">Pagamento de Concessionárias</h2>{fieldCollapseState['concessionaria_detalhe'] ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}</div></CollapsibleTrigger><CollapsibleContent><div className="mt-2">{renderConcessionariaSection()}</div></CollapsibleContent></Collapsible></div>
-                  <div ref={el => collapsibleRefs.current['material_consumo_detalhe'] = el} className="border-b pb-4 last:border-b-0 last:pb-0"><Collapsible open={fieldCollapseState['material_consumo_detalhe']} onOpenChange={(open) => handleCollapseChange('material_consumo_detalhe', open)}><CollapsibleTrigger asChild><div className="flex items-center justify-between cursor-pointer py-2"><h2 className="text-base font-medium flex items-center gap-2">Aquisição de Material de Consumo</h2>{fieldCollapseState['material_consumo_detalhe'] ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}</div></CollapsibleTrigger><CollapsibleContent><div className="mt-2">{renderMaterialConsumoSection()}</div></CollapsibleContent></Collapsible></div>
+                  <div ref={el => collapsibleRefs.current['material_consumo_detalhe'] = el} className="border-b pb-4 last:border-b-0 last:pb-0 aba-material-consumo"><Collapsible open={fieldCollapseState['material_consumo_detalhe']} onOpenChange={(open) => handleCollapseChange('material_consumo_detalhe', open)}><CollapsibleTrigger asChild><div className="flex items-center justify-between cursor-pointer py-2"><h2 className="text-base font-medium flex items-center gap-2">Aquisição de Material de Consumo</h2>{fieldCollapseState['material_consumo_detalhe'] ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}</div></CollapsibleTrigger><CollapsibleContent><div className="mt-2">{renderMaterialConsumoSection()}</div></CollapsibleContent></Collapsible></div>
                   <div ref={el => collapsibleRefs.current['material_permanente_detalhe'] = el} className="border-b pb-4 last:border-b-0 last:pb-0"><Collapsible open={fieldCollapseState['material_permanente_detalhe']} onOpenChange={(open) => handleCollapseChange('material_permanente_detalhe', open)}><CollapsibleTrigger asChild><div className="flex items-center justify-between cursor-pointer py-2"><h2 className="text-base font-medium flex items-center gap-2">Aquisição de Material Permanente</h2>{fieldCollapseState['material_permanente_detalhe'] ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}</div></CollapsibleTrigger><CollapsibleContent><div className="mt-2">{renderMaterialPermanenteSection()}</div></CollapsibleContent></Collapsible></div>
                   <div ref={el => collapsibleRefs.current['servicos_terceiros_detalhe'] = el} className="border-b pb-4 last:border-b-0 last:pb-0"><Collapsible open={fieldCollapseState['servicos_terceiros_detalhe']} onOpenChange={(open) => handleCollapseChange('servicos_terceiros_detalhe', open)}><CollapsibleTrigger asChild><div className="flex items-center justify-between cursor-pointer py-2"><h2 className="text-base font-medium flex items-center gap-2">Contratação de Serviços de Terceiros / Locações (Transporte)</h2>{fieldCollapseState['servicos_terceiros_detalhe'] ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}</div></CollapsibleTrigger><CollapsibleContent><div className="mt-2">{renderServicosTerceirosSection()}</div></CollapsibleContent></Collapsible></div>
                   {OPERATIONAL_FIELDS.filter(f => f.key !== 'fator_material_consumo' && f.key !== 'fator_servicos_terceiros').map(field => { const fieldKey = field.key as string; const isOpen = fieldCollapseState[fieldKey] ?? false; return (<div key={fieldKey} ref={el => collapsibleRefs.current[fieldKey] = el} className="border-b pb-4 last:border-b-0 last:pb-0"><Collapsible open={isOpen} onOpenChange={(open) => handleCollapseChange(fieldKey, open)}><CollapsibleTrigger asChild><div className="flex items-center justify-between cursor-pointer py-2"><h2 className="text-base font-medium">{field.label}</h2>{isOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}</div></CollapsibleTrigger><CollapsibleContent><div className="mt-2">{renderDiretrizField(field)}</div></CollapsibleContent></Collapsible></div>); })}
                 </div>
               </div>
               <div className="space-y-2 border-t pt-4 mt-6"><Label>Observações</Label><Textarea value={diretrizes.observacoes || ""} onChange={(e) => setDiretrizes({ ...diretrizes, observacoes: e.target.value })} onKeyDown={handleEnterToNextField} /></div>
-              <div className="flex justify-end gap-3 mt-6"><Button type="button" variant="secondary" onClick={handleSetDefaultYear} disabled={isSaving || selectedYear === defaultYear || !selectedYear}>{selectedYear === defaultYear ? "Padrão Atual" : "Adotar como Padrão"}</Button><Button type="submit" disabled={isSaving}>{isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}Salvar Diretrizes</Button></div>
+              <div className="flex justify-end gap-3 mt-6"><Button type="button" variant="secondary" onClick={handleSetDefaultYear} disabled={isSaving || selectedYear === defaultYear || !selectedYear}>{selectedYear === defaultYear ? "Padrão Atual" : "Adotar como Padrão"}</Button><Button type="submit" disabled={isSaving} className="btn-adotar-padrao">{isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}Salvar Diretrizes</Button></div>
             </form>
           </CardContent>
         </Card>
