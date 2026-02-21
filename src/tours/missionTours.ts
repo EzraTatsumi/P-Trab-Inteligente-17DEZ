@@ -44,14 +44,15 @@ export const runMission01 = (onComplete: () => void) => {
       },
       {
         element: '.btn-configuracoes',
-        onAfterHighlighted: () => {
-          // Força a expansão do menu de configurações com um pequeno delay
-          const btn = document.querySelector('.btn-configuracoes') as HTMLElement;
-          if (btn) setTimeout(() => btn.click(), 300);
-        },
         popover: {
           title: 'Configurações do Sistema',
           description: 'Gerencie OMs vinculadas, anos de referência para cálculos e dados de perfil que sairão nos cabeçalhos dos documentos.',
+        },
+        onHighlighted: () => {
+          if ((window as any).openSettings) (window as any).openSettings();
+        },
+        onDeselected: () => {
+          if ((window as any).closeSettings) (window as any).closeSettings();
         }
       },
       {
@@ -98,14 +99,15 @@ export const runMission01 = (onComplete: () => void) => {
       },
       {
         element: '.btn-acoes-ptrab',
-        onAfterHighlighted: () => {
-          // Força a expansão do menu de ações na tabela
-          const btn = document.querySelector('.btn-acoes-ptrab') as HTMLElement;
-          if (btn) setTimeout(() => btn.click(), 300);
-        },
         popover: {
           title: 'Agilidade e Colaboração',
           description: 'No menu de ações, você pode CLONAR planos complexos de anos anteriores para economizar tempo, ou COMPARTILHAR o acesso com outros militares para trabalho colaborativo.',
+        },
+        onHighlighted: () => {
+          if ((window as any).openActions) (window as any).openActions();
+        },
+        onDeselected: () => {
+          if ((window as any).closeActions) (window as any).closeActions();
         }
       }
     ],

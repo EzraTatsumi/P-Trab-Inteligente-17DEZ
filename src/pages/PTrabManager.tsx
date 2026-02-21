@@ -82,15 +82,6 @@ interface PTrab extends PTrabDB {
   hasPendingRequests: boolean;
 }
 
-type PTrabLinkedTableName =
-    'classe_i_registros' | 'classe_ii_registros' | 'classe_iii_registros' | 
-    'classe_v_registros' | 'classe_vi_registros' | 'classe_vii_registros' | 
-    'classe_viii_saude_registros' | 'classe_viii_remonta_registros' | 
-    'classe_ix_registros' | 'p_trab_ref_lpc' | 'passagem_registros' | 
-    'diaria_registros' | 'verba_operacional_registros' | 'concessionaria_registros' | 
-    'horas_voo_registros' | 'material_consumo_registros' | 'complemento_alimentacao_registros' |
-    'material_permanente_registros' | 'servicos_terceiros_registros' | 'dor_registros';
-
 const COMANDOS_MILITARES_AREA = [
   "Comando Militar da Amazônia",
   "Comando Militar do Norte",
@@ -131,7 +122,10 @@ const PTrabManager = () => {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [userName, setUserName] = useState<string>("");
   
-  const [settingsDropdownOpen, setSettingsDropdownOpen] = useState(false);
+  // Estados para controle dos Dropdowns (Tour)
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [openActionsId, setOpenActionsId] = useState<string | null>(null);
+  
   const [isActionLoading, setIsActionLoading] = useState(false);
 
   const [showArchiveStatusDialog, setShowArchiveStatusDialog] = useState(false);
@@ -198,25 +192,6 @@ const PTrabManager = () => {
       hasShownWelcome.current = true;
     }
   }, [isLoadingOnboarding, onboardingStatus]);
-
-  useEffect(() => {
-    const startTour = searchParams.get('startTour') === 'true';
-    const missionId = localStorage.getItem('active_mission_id');
-    const ghost = isGhostMode();
-
-    if (startTour && ghost && missionId === '1') {
-      runMission01(() => {
-        const completed = JSON.parse(localStorage.getItem('completed_missions') || '[]');
-        if (!completed.includes(1)) {
-          localStorage.setItem('completed_missions', JSON.stringify([...completed, 1]));
-        }
-        setShowInstructionHub(true);
-      });
-    }
-  }, [searchParams]);
-  
-  const currentYear = new Date().getFullYear();
-  const yearSuffix = `/${currentYear}`;
 
   const { data: pTrabs = [], isLoading: loading, refetch: loadPTrabs } = useQuery({
     queryKey: ['pTrabs', user?.id],
@@ -287,6 +262,44 @@ const PTrabManager = () => {
     enabled: !!user?.id,
     staleTime: 1000 * 60 * 5,
   });
+
+  // Expondo funções para o tour
+  useEffect(() => {
+    (window as any).openSettings = () => setSettingsOpen(true);
+    (window as any).closeSettings = () => setSettingsOpen(false);
+    (window as any).openActions = () => {
+      if (pTrabs && pTrabs.length > 0) {
+        setOpenActionsId(pTrabs[0].id);
+      }
+    };
+    (window as any).closeActions = () => setOpenActionsId(null);
+    
+    return () => {
+      delete (window as any).openSettings;
+      delete (window as any).closeSettings;
+      delete (window as any).openActions;
+      delete (window as any).closeActions;
+    };
+  }, [pTrabs]);
+
+  useEffect(() => {
+    const startTour = searchParams.get('startTour') === 'true';
+    const missionId = localStorage.getItem('active_mission_id');
+    const ghost = isGhostMode();
+
+    if (startTour && ghost && missionId === '1') {
+      runMission01(() => {
+        const completed = JSON.parse(localStorage.getItem('completed_missions') || '[]');
+        if (!completed.includes(1)) {
+          localStorage.setItem('completed_missions', JSON.stringify([...completed, 1]));
+        }
+        setShowInstructionHub(true);
+      });
+    }
+  }, [searchParams]);
+  
+  const currentYear = new Date().getFullYear();
+  const yearSuffix = `/${currentYear}`;
 
   const existingPTrabNumbers = useMemo(() => pTrabs.map(p => p.numero_ptrab), [pTrabs]);
 
@@ -361,15 +374,6 @@ const PTrabManager = () => {
           return "Crie pelo menos dois P Trabs para iniciar a consolidação.";
       }
       return "É necessário ter pelo menos dois P Trabs ativos para consolidar.";
-  };
-  
-  const handlePromptConfirm = () => {
-      setShowCreditPrompt(false);
-      navigate(`/ptrab/form?ptrabId=${ptrabToFill?.id}&openCredit=true`);
-  };
-
-  const handlePromptCancel = () => {
-      setShowCreditPrompt(false);
   };
   
   const resetForm = useCallback(() => {
@@ -1236,11 +1240,11 @@ const PTrabManager = () => {
               <HelpDialog />
             </div>
 
-            <DropdownMenu open={settingsDropdownOpen} onOpenChange={setSettingsDropdownOpen}>
+            <DropdownMenu open={settingsOpen} onOpenChange={setSettingsOpen}>
               <DropdownMenuTrigger asChild>
                 <Button variant="outline" size="icon" className="btn-configuracoes"><Settings className="h-4 w-4" /></Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-56" onPointerLeave={() => setSettingsDropdownOpen(false)}>
+              <DropdownMenuContent align="end" className="w-56">
                 <DropdownMenuLabel>Configurações</DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={handleOpenLinkPTrabDialog}><Link className="mr-2 h-4 w-4" />Vincular P Trab</DropdownMenuItem>
@@ -1415,7 +1419,7 @@ const PTrabManager = () => {
                             </Button>
                           </div>
 
-                          <DropdownMenu>
+                          <DropdownMenu open={openActionsId === ptrab.id} onOpenChange={(open) => setOpenActionsId(open ? ptrab.id : null)}>
                             <DropdownMenuTrigger asChild><Button variant="ghost" size="sm" className="btn-acoes-ptrab"><MoreVertical className="h-4 w-4" /></Button></DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
                               <DropdownMenuLabel>Ações</DropdownMenuLabel>
@@ -1544,7 +1548,7 @@ const PTrabManager = () => {
 
       <PTrabConsolidationDialog open={showConsolidationDialog} onOpenChange={setShowConsolidationDialog} pTrabsList={pTrabs.filter(p => p.status !== 'arquivado').map(p => ({ id: p.id, numero_ptrab: p.numero_ptrab, nome_operacao: p.numero_ptrab }))} existingPTrabNumbers={existingPTrabNumbers} onConfirm={handleOpenConsolidationNumberDialog} loading={isActionLoading} />
       <ConsolidationNumberDialog open={showConsolidationNumberDialog} onOpenChange={setShowConsolidationNumberDialog} suggestedNumber={suggestedConsolidationNumber} existingNumbers={existingPTrabNumbers} selectedPTrabs={simplePTrabsToConsolidate} onConfirm={handleConfirmConsolidation} loading={isActionLoading} />
-      <CreditPromptDialog open={showCreditPrompt} onConfirm={handlePromptConfirm} onCancel={handlePromptCancel} />
+      <CreditPromptDialog open={showCreditPrompt} onConfirm={() => { setShowCreditPrompt(false); navigate(`/ptrab/form?ptrabId=${ptrabToFill?.id}&openCredit=true`); }} onCancel={() => setShowCreditPrompt(false)} />
       
       {ptrabToShare && <ShareLinkDialog open={showShareLinkDialog} onOpenChange={setShowShareLinkDialog} ptrabName={`${ptrabToShare.numero_ptrab} - ${ptrabToShare.nome_operacao}`} shareLink={shareLink} />}
       <LinkPTrabDialog open={showLinkPTrabDialog} onOpenChange={setShowLinkPTrabDialog} linkInput={linkPTrabInput} onLinkInputChange={setLinkPTrabInput} onRequestLink={handleRequestLink} loading={isActionLoading} />
