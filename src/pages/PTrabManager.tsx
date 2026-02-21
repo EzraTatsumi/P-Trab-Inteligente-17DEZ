@@ -1579,6 +1579,7 @@ const PTrabManager = () => {
         /* 3. A caixa de texto do tour - Fica acima de tudo */
         .driver-popover.driverjs-theme {
           z-index: 10002 !important;
+          max-width: 450px !important; /* Aumentando a largura para diminuir a altura */
         }
 
         /* Garante que o menu não herde opacidade do tour */
