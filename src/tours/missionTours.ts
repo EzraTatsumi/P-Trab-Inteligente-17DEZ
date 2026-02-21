@@ -54,7 +54,7 @@ export const runMission01 = (onComplete: () => void) => {
           title: 'Configurações do Sistema',
           description: 'Gerencie OMs vinculadas, anos de referência para cálculos e dados de perfil que sairão nos cabeçalhos dos documentos.',
           side: 'left', 
-          align: 'end', // Alinha pela base do botão e cresce para CIMA
+          align: 'end',
         },
         onHighlighted: () => {
           if ((window as any).openSettings) (window as any).openSettings();
@@ -143,30 +143,81 @@ export const runMission02 = (onComplete: () => void) => {
     ...commonConfig,
     steps: [
       {
+        element: '.card-diretrizes-operacionais',
+        popover: {
+          title: 'Missão 02: Inteligência PNCP',
+          description: 'Aqui definimos os preços de referência. É a base de cálculo que garante que nenhum P Trab use valores defasados.',
+          side: 'bottom'
+        }
+      },
+      {
         element: '.aba-material-consumo',
         popover: {
-          title: 'Diretrizes Operacionais',
-          description: 'Aqui definimos os preços de referência. Vamos ver como a inteligência do sistema funciona.',
+          title: 'Organização por ND',
+          description: 'A seção de Material de Consumo organiza tudo por Subitem da Natureza de Despesa (ND). Vamos criar um novo grupo para Materiais de Construção.',
+          side: 'right'
+        },
+        onHighlighted: () => {
+          const el = document.querySelector('.aba-material-consumo') as HTMLElement;
+          if (el) el.click();
+        }
+      },
+      {
+        element: '.btn-novo-subitem',
+        popover: {
+          title: 'Criando o Subitem',
+          description: 'Nesta janela, definimos a categoria. Para o exemplo, usaremos Material de Construção vinculado à ND 339030-24.',
+          side: 'top'
+        },
+        onHighlighted: () => {
+          setTimeout(() => {
+            const btn = document.querySelector('.btn-novo-subitem') as HTMLElement;
+            if (btn) btn.click();
+          }, 400);
         }
       },
       {
         element: '.btn-importar-pncp',
         popover: {
-          title: 'Inteligência PNCP',
-          description: 'Este é o nosso grande diferencial. Em vez de digitar preços, vamos buscar dados oficiais.',
+          title: 'O Salto Tecnológico',
+          description: 'Esqueça a digitação manual. Vamos buscar um preço oficial diretamente no Portal Nacional de Contratações Públicas.',
+          side: 'left'
+        },
+        onHighlighted: () => {
+          setTimeout(() => {
+            const btn = document.querySelector('.btn-importar-pncp') as HTMLElement;
+            if (btn) btn.click();
+          }, 400);
         }
       },
       {
-        element: 'input[placeholder*="Ex: 604269"]',
+        element: '.aba-pncp-arp',
         popover: {
-          title: 'Busca por Código',
-          description: 'Ao inserir o código CATMAT/CATSER, o sistema consulta o Portal Nacional de Contratações Públicas em tempo real.',
+          title: 'Explorando as Atas (ARP)',
+          description: 'Você pode buscar por UASG ou diretamente por Atas de Registro de Preços (ARP). Isso garante que você está usando um valor já licitado e homologado.',
+          side: 'bottom'
+        },
+        onHighlighted: () => {
+          setTimeout(() => {
+            const aba = document.querySelector('.aba-pncp-arp') as HTMLElement;
+            if (aba) aba.click();
+          }, 300);
         }
       },
       {
+        element: '.item-resultado-ghost',
         popover: {
-          title: 'Resultado da Simulação',
-          description: 'O sistema traria a descrição oficial e o preço homologado (ex: Cimento Portland por R$ 42,50), garantindo conformidade jurídica total.',
+          title: 'Seleção do Item Oficial',
+          description: 'Selecionamos este item da ARP vigente. Note que o sistema já traz a descrição técnica completa e o preço homologado.',
+          side: 'right'
+        }
+      },
+      {
+        element: '.btn-salvar-subitem',
+        popover: {
+          title: 'Finalização e Salvamento',
+          description: 'Ao salvar, este item passa a compor seu catálogo. Agora, qualquer P Trab que necessite deste material usará automaticamente este valor oficial.',
+          side: 'top'
         }
       }
     ],

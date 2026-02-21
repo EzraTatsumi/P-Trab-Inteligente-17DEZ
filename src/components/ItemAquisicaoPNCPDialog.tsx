@@ -1,29 +1,24 @@
 "use client";
 
-import React, { useState, useRef, useEffect } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import React, { useState } from 'react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Button } from "@/components/ui/button";
-import { Search, FileText, BarChart3, Loader2, AlertCircle, CheckCircle2, Info } from "lucide-react";
-import { toast } from "sonner";
-import ArpUasgSearch from './pncp/ArpUasgSearch';
-import ArpCatmatSearch from './pncp/ArpCatmatSearch';
+import { ItemAquisicao } from "@/types/diretrizesMaterialConsumo";
+import { DetailedArpItem } from "@/types/pncp";
+import ArpUasgSearchForm from './pncp/ArpUasgSearchForm';
+import ArpCatmatSearchForm from './pncp/ArpCatmatSearchForm';
 import PriceSearchForm from './pncp/PriceSearchForm';
-import { DetailedArpItem } from '@/types/pncp';
-import { ItemAquisicao } from '@/types/diretrizesMaterialConsumo';
-import { ItemAquisicaoServico } from '@/types/diretrizesServicosTerceiros';
-import { formatCurrency, formatCodug } from '@/lib/formatUtils';
-import { Badge } from './ui/badge';
-import { fetchCatalogEntry, saveNewCatalogEntry, fetchCatalogFullDescription } from '@/integrations/supabase/api';
+import { toast } from "sonner";
+import { GHOST_DATA, isGhostMode } from '@/lib/ghostStore';
 
 interface ItemAquisicaoPNCPDialogProps {
     open: boolean;
     onOpenChange: (open: boolean) => void;
-    onImport: (items: any[]) => void;
-    existingItemsInDiretriz: any[];
-    onReviewItem: (item: any) => void;
+    onImport: (items: ItemAquisicao[]) => void;
+    existingItemsInDiretriz: ItemAquisicao[];
+    onReviewItem: (item: ItemAquisicao) => void;
     selectedYear: number;
-    mode?: 'material' | 'servico' | 'permanente';
+    mode?: 'material' | 'servico';
 }
 
 const ItemAquisicaoPNCPDialog: React.FC<ItemAquisicaoPNCPDialogProps> = ({
@@ -35,189 +30,100 @@ const ItemAquisicaoPNCPDialog: React.FC<ItemAquisicaoPNCPDialogProps> = ({
     selectedYear,
     mode = 'material'
 }) => {
-    const [selectedTab, setSelectedTab] = useState("arp-uasg");
-    const [selectedItem, setSelectedItem] = useState<any | null>(null);
-    const [isImporting, setIsImporting] = useState(false);
-    const dialogContentRef = useRef<HTMLDivElement>(null);
+    const [activeTab, setActiveTab] = useState("uasg");
 
-    // Mapeia o modo do diálogo para o modo aceito pelas APIs do PNCP
-    const apiMode = mode === 'servico' ? 'servico' : 'material';
+    const handleArpItemSelect = (item: DetailedArpItem, pregaoFormatado: string, uasg: string) => {
+        const newItem: ItemAquisicao = {
+            id: item.id,
+            codigo_catmat: item.codigoItem,
+            descricao_item: item.descricaoItem,
+            descricao_reduzida: item.descricaoItem.substring(0, 50),
+            valor_unitario: item.valorUnitario,
+            numero_pregao: pregaoFormatado,
+            uasg: uasg,
+            quantidade: 0,
+            valor_total: 0,
+            nd: mode === 'material' ? '30' : '39',
+            nr_subitem: '',
+            nome_subitem: '',
+        };
 
-    const handleItemPreSelect = (item: DetailedArpItem, pregaoFormatado: string, uasg: string) => {
-        setSelectedItem({
-            ...item,
-            pregaoFormatado,
-            uasg,
-            source: 'PNCP_ARP'
-        });
+        if (existingItemsInDiretriz.some(i => i.codigo_catmat === newItem.codigo_catmat && i.uasg === newItem.uasg && i.numero_pregao === newItem.numero_pregao)) {
+            toast.warning("Este item já existe neste subitem.");
+            return;
+        }
+
+        onImport([newItem]);
+        toast.success("Item importado com sucesso!");
+        onOpenChange(false);
     };
 
     const handlePriceSelect = (item: ItemAquisicao) => {
-        setSelectedItem({
-            ...item,
-            source: 'PNCP_STATS'
-        });
+        onReviewItem(item);
+        onOpenChange(false);
     };
 
-    const handleClearSelection = () => {
-        setSelectedItem(null);
-    };
-
-    const handleConfirmImport = async () => {
-        if (!selectedItem) return;
-
-        setIsImporting(true);
-        try {
-            let itemToImport: any;
-
-            if (selectedItem.source === 'PNCP_ARP') {
-                const catalogStatus = await fetchCatalogEntry(selectedItem.codigoItem, apiMode);
-                
-                if (!catalogStatus.isCataloged) {
-                    const details = await fetchCatalogFullDescription(selectedItem.codigoItem, apiMode);
-                    const description = details.fullDescription || selectedItem.descricaoItem;
-                    const shortDescription = details.nomePdm || selectedItem.descricaoItem.substring(0, 50);
-                    
-                    await saveNewCatalogEntry(
-                        selectedItem.codigoItem,
-                        description,
-                        shortDescription,
-                        apiMode
-                    );
-                }
-
-                itemToImport = {
-                    id: Math.random().toString(36).substring(2, 9),
-                    descricao_item: selectedItem.descricaoItem,
-                    descricao_reduzida: selectedItem.descricaoItem.substring(0, 50),
-                    valor_unitario: selectedItem.valorUnitario,
-                    numero_pregao: selectedItem.pregaoFormatado,
-                    uasg: selectedItem.uasg,
-                    codigo_catmat: selectedItem.codigoItem,
-                    unidade_medida: 'UN',
-                    nd: apiMode === 'servico' ? '39' : '30'
-                };
-            } else {
-                itemToImport = {
-                    ...selectedItem,
-                    nd: apiMode === 'servico' ? '39' : '30'
-                };
-            }
-
-            onImport([itemToImport]);
+    // Lógica para o Ghost Mode na Missão 02
+    const handleGhostItemSelect = () => {
+        if (isGhostMode()) {
+            const ghostItem = GHOST_DATA.missao_02.item_cimento;
+            onImport([ghostItem as any]);
             toast.success("Item importado com sucesso!");
             onOpenChange(false);
-            setSelectedItem(null);
-        } catch (error) {
-            console.error("Erro ao importar item:", error);
-            toast.error("Falha ao processar importação do item.");
-        } finally {
-            setIsImporting(false);
         }
     };
 
-    const selectedItemIds = selectedItem ? [selectedItem.id || selectedItem.codigoItem] : [];
-
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="max-w-5xl max-h-[90vh] flex flex-col p-0 overflow-hidden">
-                <DialogHeader className="p-6 pb-0">
-                    <DialogTitle className="flex items-center gap-2">
-                        <Search className="h-5 w-5 text-primary" />
-                        Importar Itens do PNCP ({mode === 'servico' ? 'Serviços' : 'Materiais'})
-                    </DialogTitle>
-                    <DialogDescription>
-                        Pesquise atas de registro de preços ou estatísticas de preços públicos.
-                    </DialogDescription>
+            <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto z-tour-portal">
+                <DialogHeader>
+                    <DialogTitle>Importar Dados do PNCP</DialogTitle>
+                    <DialogDescription>Busque preços e especificações técnicas diretamente no Portal Nacional de Contratações Públicas.</DialogDescription>
                 </DialogHeader>
 
-                <div className="flex-1 overflow-hidden flex flex-col">
-                    <Tabs value={selectedTab} onValueChange={setSelectedTab} className="flex-1 flex flex-col overflow-hidden">
-                        <div className="px-6 border-b">
-                            <TabsList className="grid w-full grid-cols-3 mb-2">
-                                <TabsTrigger value="arp-uasg" className="flex items-center gap-2">
-                                    <FileText className="h-4 w-4" />
-                                    ARP por UASG
-                                </TabsTrigger>
-                                <TabsTrigger value="arp-catmat" className="flex items-center gap-2">
-                                    <Search className="h-4 w-4" />
-                                    ARP por Código
-                                </TabsTrigger>
-                                <TabsTrigger value="avg-price" className="flex items-center gap-2">
-                                    <BarChart3 className="h-4 w-4" />
-                                    Preço Médio
-                                </TabsTrigger>
-                            </TabsList>
-                        </div>
+                <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+                    <TabsList className="grid w-full grid-cols-3">
+                        <TabsTrigger value="uasg">Por UASG</TabsTrigger>
+                        <TabsTrigger value="catmat">Por Código</TabsTrigger>
+                        <TabsTrigger value="arp" className="aba-pncp-arp">Por ARP</TabsTrigger>
+                    </TabsList>
 
-                        <div className="flex-1 overflow-y-auto p-6" ref={dialogContentRef}>
-                            <TabsContent value="arp-uasg" className="mt-0 outline-none">
-                                <ArpUasgSearch 
-                                    onItemPreSelect={handleItemPreSelect} 
-                                    selectedItemIds={selectedItemIds} 
-                                    onClearSelection={handleClearSelection} 
-                                    scrollContainerRef={dialogContentRef} 
-                                    mode={apiMode} 
-                                />
-                            </TabsContent>
+                    <TabsContent value="uasg" className="mt-4">
+                        <ArpUasgSearchForm 
+                            onItemPreSelect={handleArpItemSelect} 
+                            selectedItemIds={existingItemsInDiretriz.map(i => i.id)} 
+                            onClearSelection={() => {}} 
+                            scrollContainerRef={{ current: null } as any}
+                        />
+                    </TabsContent>
 
-                            <TabsContent value="arp-catmat" className="mt-0 outline-none">
-                                <ArpCatmatSearch 
-                                    onItemPreSelect={handleItemPreSelect} 
-                                    selectedItemIds={selectedItemIds} 
-                                    onClearSelection={handleClearSelection} 
-                                    scrollContainerRef={dialogContentRef} 
-                                    mode={apiMode} 
-                                />
-                            </TabsContent>
+                    <TabsContent value="catmat" className="mt-4">
+                        <ArpCatmatSearchForm 
+                            onItemPreSelect={handleArpItemSelect} 
+                            selectedItemIds={existingItemsInDiretriz.map(i => i.id)} 
+                            onClearSelection={() => {}} 
+                            scrollContainerRef={{ current: null } as any}
+                            mode={mode}
+                        />
+                    </TabsContent>
 
-                            <TabsContent value="avg-price" className="mt-0 outline-none">
-                                <PriceSearchForm 
-                                    onPriceSelect={handlePriceSelect} 
-                                    isInspecting={false} 
-                                    onClearPriceSelection={handleClearSelection} 
-                                    selectedItemForInspection={null} 
-                                    mode={apiMode} 
-                                />
-                            </TabsContent>
-                        </div>
-                    </Tabs>
-                </div>
-
-                <DialogFooter className="p-6 border-t bg-muted/30">
-                    <div className="flex items-center justify-between w-full">
-                        <div className="flex-1 mr-4">
-                            {selectedItem ? (
-                                <div className="flex items-center gap-2 text-sm text-green-600 font-medium animate-in fade-in slide-in-from-left-2">
-                                    <CheckCircle2 className="h-4 w-4" />
-                                    Item selecionado: {selectedItem.descricaoItem || selectedItem.descricao_item}
-                                </div>
-                            ) : (
-                                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                                    <AlertCircle className="h-4 w-4" />
-                                    Selecione um item para importar
-                                </div>
-                            )}
-                        </div>
-                        <div className="flex gap-2">
-                            <Button variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
-                            <Button 
-                                onClick={handleConfirmImport} 
-                                disabled={!selectedItem || isImporting}
-                                className="min-w-[120px]"
-                            >
-                                {isImporting ? (
-                                    <>
-                                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                        Importando...
-                                    </>
-                                ) : (
-                                    "Importar Item"
-                                )}
-                            </Button>
-                        </div>
-                    </div>
-                </DialogFooter>
+                    <TabsContent value="arp" className="mt-4">
+                        {isGhostMode() ? (
+                            <div className="p-8 text-center border-2 border-dashed rounded-lg bg-muted/30">
+                                <h3 className="text-lg font-semibold mb-2">Simulação de Busca ARP</h3>
+                                <p className="text-muted-foreground mb-4">Na Missão 02, simulamos a busca pela UASG 160222.</p>
+                                <Button onClick={handleGhostItemSelect} className="item-resultado-ghost">
+                                    Importar Cimento Portland (UASG 160222)
+                                </Button>
+                            </div>
+                        ) : (
+                            <div className="p-8 text-center text-muted-foreground">
+                                <p>Busca direta por número de ARP em desenvolvimento.</p>
+                                <p className="text-sm">Utilize a busca por UASG ou Código para encontrar itens de Atas.</p>
+                            </div>
+                        )}
+                    </TabsContent>
+                </Tabs>
             </DialogContent>
         </Dialog>
     );

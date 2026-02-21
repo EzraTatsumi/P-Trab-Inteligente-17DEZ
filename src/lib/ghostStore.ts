@@ -4,7 +4,7 @@ export const GHOST_DATA = {
   // Missão 01 e 03: Dados do P Trab
   p_trab_exemplo: {
     id: "ghost-ptrab-123",
-    numero_ptrab: "Minuta 001/2026", // Começa com Minuta para habilitar o botão Aprovar
+    numero_ptrab: "Minuta 001/2026",
     nome_operacao: "OPERAÇÃO SENTINELA",
     comando_militar_area: "Comando Militar do Leste",
     nome_om: "1º Btl Inf Selva",
@@ -23,17 +23,24 @@ export const GHOST_DATA = {
     comentario: "P Trab em fase final de revisão técnica.",
   } as any,
 
-  // ... restante dos dados (item_pncp_exemplo, totais_exemplo) permanecem iguais
-  item_pncp_exemplo: {
-    id: "ghost-item-999",
-    codigo_catmat: "123456",
-    descricao_item: "Cimento Portland CP II-Z-32, saco com 50kg",
-    nome_reduzido: "Cimento Portland 50kg",
-    unidade_medida: "Saco",
-    valor_unitario: 42.50,
-    numero_pregao: "001/2025",
-    uasg: "160222",
-    nd: "30",
+  // Missão 02: Dados de Diretrizes e PNCP
+  missao_02: {
+    subitem_exemplo: {
+      nr_subitem: "24",
+      nome_subitem: "Material de Construção",
+      descricao_subitem: "Itens para manutenção de instalações",
+    },
+    item_cimento: {
+      id: "ghost-item-cimento",
+      codigo_catmat: "123456",
+      descricao_item: "Cimento Portland CP II-Z-32 (Saco 50kg)",
+      descricao_reduzida: "Cimento Portland 50kg",
+      unidade_medida: "Saco",
+      valor_unitario: 42.50,
+      numero_pregao: "005/2025",
+      uasg: "160222",
+      nd: "30",
+    }
   },
 
   totais_exemplo: {
