@@ -44,6 +44,11 @@ export const runMission01 = (onComplete: () => void) => {
       },
       {
         element: '.btn-configuracoes',
+        onHighlighted: () => {
+          // Abre o menu de configurações automaticamente
+          const btn = document.querySelector('.btn-configuracoes') as HTMLElement;
+          if (btn) btn.click();
+        },
         popover: {
           title: 'Configurações do Sistema',
           description: 'Gerencie OMs vinculadas, anos de referência para cálculos e dados de perfil que sairão nos cabeçalhos dos documentos.',
@@ -86,6 +91,11 @@ export const runMission01 = (onComplete: () => void) => {
       },
       {
         element: '.btn-acoes-dropdown',
+        onHighlighted: () => {
+          // Abre o menu de ações automaticamente
+          const btn = document.querySelector('.btn-acoes-dropdown') as HTMLElement;
+          if (btn) btn.click();
+        },
         popover: {
           title: 'Agilidade e Colaboração',
           description: 'No menu de ações, você pode CLONAR planos complexos de anos anteriores para economizar tempo, ou COMPARTILHAR o acesso com outros militares para trabalho colaborativo.',
@@ -97,7 +107,6 @@ export const runMission01 = (onComplete: () => void) => {
   d.drive();
 };
 
-// ... runMission02, runMission03, runMission04 permanecem iguais
 export const runMission02 = (onComplete: () => void) => {
   const d = driver({
     ...commonConfig,
