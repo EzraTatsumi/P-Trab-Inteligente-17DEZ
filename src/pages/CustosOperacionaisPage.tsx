@@ -320,16 +320,9 @@ const CustosOperacionaisPage = () => {
       }
   }, []);
 
-  // Expor funções para o Tour (Driver.js)
   useEffect(() => {
     (window as any).expandMaterialConsumo = () => {
       handleCollapseChange('material_consumo_detalhe', true);
-    };
-    
-    // NOVA FUNÇÃO: Abre a janela modal diretamente pelo estado do React
-    (window as any).openModalNovoSubitem = () => {
-      setDiretrizMaterialConsumoToEdit(null); // Garante que é um cadastro novo
-      setIsMaterialConsumoFormOpen(true);     // Altera o estado que abre o Dialog
     };
   }, [handleCollapseChange]);
   
