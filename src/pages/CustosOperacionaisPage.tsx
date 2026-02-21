@@ -334,9 +334,12 @@ const CustosOperacionaisPage = () => {
           setTimeout(() => {
               const element = collapsibleRefs.current[key];
               if (element) {
-                  element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                  // Ajuste para não colar no topo por causa do banner de simulação (Ghost Mode)
+                  const yOffset = -100; // Altura do banner + margem de segurança
+                  const y = element.getBoundingClientRect().top + window.pageYOffset + yOffset;
+                  window.scrollTo({ top: y, behavior: 'smooth' });
               }
-          }, 100);
+          }, 150);
       }
   }, []);
 
@@ -1264,7 +1267,7 @@ const CustosOperacionaisPage = () => {
   };
 
   const handleOpenNewServicosTerceiros = () => {
-      setDiretrizServicosTerceirosToEdit(null);
+      setDiretrizMaterialConsumoToEdit(null);
       setIsServicosTerceirosFormOpen(true);
   };
 
