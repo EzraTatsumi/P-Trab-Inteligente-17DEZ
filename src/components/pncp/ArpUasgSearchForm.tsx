@@ -1,6 +1,4 @@
-"use client";
-
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -10,31 +8,27 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Search, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { fetchArpsByUasg } from '@/integrations/supabase/api';
-import { ArpItemResult, DetailedArpItem } from '@/types/pncp';
+import { ArpItemResult } from '@/types/pncp';
 import ArpSearchResultsList from './ArpSearchResultsList';
+import { isGhostMode } from '@/lib/ghostStore';
 
 const formSchema = z.object({
-    uasg: z.string().min(6, { message: "A UASG deve ter 6 dígitos." }).max(6).regex(/^\d+$/, { message: "A UASG deve conter apenas números." }),
+    uasg: z.string().length(6, { message: "A UASG deve ter exatamente 6 dígitos." }).regex(/^\d+$/, { message: "A UASG deve conter apenas números." }),
 });
 
 type ArpUasgFormValues = z.infer<typeof formSchema>;
 
 interface ArpUasgSearchFormProps {
-    onItemPreSelect: (item: DetailedArpItem, pregaoFormatado: string, uasg: string) => void;
+    onItemPreSelect: (item: any, pregaoFormatado: string, uasg: string) => void;
     selectedItemIds: string[];
     onClearSelection: () => void;
     scrollContainerRef: React.RefObject<HTMLDivElement>;
 }
 
-const ArpUasgSearchForm: React.FC<ArpUasgSearchFormProps> = ({ 
-    onItemPreSelect, 
-    selectedItemIds, 
-    onClearSelection,
-    scrollContainerRef 
-}) => {
+const ArpUasgSearchForm: React.FC<ArpUasgSearchFormProps> = ({ onItemPreSelect, selectedItemIds, onClearSelection, scrollContainerRef }) => {
     const [isSearching, setIsSearching] = useState(false);
     const [results, setResults] = useState<ArpItemResult[]>([]);
-    const [searchedUasg, setSearchedUasg] = useState("");
+    const resultsRef = useRef<HTMLDivElement>(null);
 
     const form = useForm<ArpUasgFormValues>({
         resolver: zodResolver(formSchema),
@@ -50,7 +44,14 @@ const ArpUasgSearchForm: React.FC<ArpUasgSearchFormProps> = ({
             if (data.length === 0) toast.warning("Nenhuma ARP encontrada para esta UASG.");
             else toast.success(`${data.length} ARPs encontradas!`);
             setResults(data);
-            setSearchedUasg(values.uasg);
+            
+            if (isGhostMode()) {
+                window.dispatchEvent(new CustomEvent('tour:avancar'));
+            }
+
+            if (data.length > 0 && resultsRef.current) {
+                setTimeout(() => { resultsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 100);
+            }
         } catch (error: any) {
             toast.error(error.message || "Falha ao buscar ARPs.");
         } finally {
@@ -59,39 +60,27 @@ const ArpUasgSearchForm: React.FC<ArpUasgSearchFormProps> = ({
     };
 
     return (
-        <div className="space-y-6">
+        <>
             <Form {...form}>
-                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 p-4 border rounded-lg bg-muted/30 form-busca-uasg-tour">
-                    <FormField
-                        control={form.control}
-                        name="uasg"
-                        render={({ field }) => (
-                            <FormItem>
-                                <FormLabel>Código UASG da OM *</FormLabel>
-                                <div className="flex gap-2">
-                                    <FormControl>
-                                        <Input {...field} placeholder="Ex: 160222" maxLength={6} disabled={isSearching} />
-                                    </FormControl>
-                                    <Button type="submit" disabled={isSearching}>
-                                        {isSearching ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
-                                    </Button>
-                                </div>
-                                <FormMessage />
-                            </FormItem>
-                        )}
-                    />
+                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 p-4 form-busca-uasg-tour">
+                    <FormField control={form.control} name="uasg" render={({ field }) => (
+                        <FormItem>
+                            <FormLabel>Código UASG da Organização Militar *</FormLabel>
+                            <FormControl><Input {...field} placeholder="Ex: 160222" maxLength={6} disabled={isSearching} /></FormControl>
+                            <FormMessage />
+                        </FormItem>
+                    )} />
+                    <Button type="submit" disabled={isSearching} className="w-full">
+                        {isSearching ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Buscando...</> : <><Search className="h-4 w-4 mr-2" /> Buscar ARPs por UASG</>}
+                    </Button>
                 </form>
             </Form>
-
             {results.length > 0 && (
-                <ArpSearchResultsList 
-                    results={results} 
-                    onItemPreSelect={onItemPreSelect} 
-                    searchedUasg={searchedUasg}
-                    selectedItemIds={selectedItemIds}
-                />
+                <div ref={resultsRef}>
+                    <ArpSearchResultsList results={results} onItemPreSelect={onItemPreSelect} searchedUasg={form.getValues('uasg')} selectedItemIds={selectedItemIds} />
+                </div>
             )}
-        </div>
+        </>
     );
 };
 

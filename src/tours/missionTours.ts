@@ -168,7 +168,7 @@ export const runMission02 = (onComplete: () => void) => {
         element: '.aba-material-consumo',
         popover: {
           title: 'Organização por ND',
-          description: 'A seção de Material de Consumo organiza tudo por Subitem da Natureza de Despesa (ND).',
+          description: 'A seção de Material de Consumo organiza tudo por Subitem da Natureza de Despesa (ND). Veja que já temos alguns itens cadastrados.',
           side: 'left',
           align: 'start',
           offset: 40
@@ -186,87 +186,55 @@ export const runMission02 = (onComplete: () => void) => {
           description: 'Clique neste botão para abrir a janela de criação de Subitem. Eu espero por você!', 
           side: 'top', 
           align: 'center',
-          showButtons: [] // Esconde os botões para forçar o clique real
+          showButtons: [] 
         }
       },
       {
         element: '.modal-novo-subitem', 
         popover: { 
-          title: 'Criando o Subitem', 
-          description: 'Excelente! Nesta janela, definimos a categoria. Agora, clique no botão "Importar via API PNCP".', 
-          side: 'left', 
-          align: 'start', 
-          offset: 30,
-          showButtons: [] // Esconde novamente para forçar o próximo clique
-        }
-      },
-      {
-        element: '.modal-importar-pncp', 
-        popover: { 
-          title: 'O Salto Tecnológico', 
-          description: 'Esqueça a digitação manual. Vamos buscar um preço oficial diretamente no PNCP.', 
+          title: 'Campos Obrigatórios', 
+          description: 'Primeiro, preencha o "Número do Subitem" (ex: 22) e o "Nome do Subitem" (ex: Material de Limpeza). Estes campos são essenciais para a organização.', 
           side: 'left', 
           align: 'start', 
           offset: 30
+        }
+      },
+      {
+        element: '.btn-importar-pncp', 
+        popover: { 
+          title: 'O Salto Tecnológico', 
+          description: 'Agora, clique no botão "Importar via API PNCP" para buscar preços oficiais sem precisar digitar.', 
+          side: 'left', 
+          align: 'start', 
+          offset: 30,
+          showButtons: []
         }
       },
       {
         element: '.form-busca-uasg-tour',
         popover: {
           title: 'Busca por UASG',
-          description: 'Aqui informamos a UASG da Organização Militar para listar suas ARPs vigentes. Vamos simular a busca para a UASG 160222.',
+          description: 'Digite a UASG 160222 e clique em "Buscar ARPs por UASG". Vamos listar as atas vigentes desta Organização Militar.',
           side: 'bottom',
-          align: 'center'
-        },
-        onNextClick: () => {
-          const input = document.querySelector('.form-busca-uasg-tour input') as HTMLInputElement;
-          if (input) {
-              const nativeInputValueSetter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value")?.set;
-              nativeInputValueSetter?.call(input, '160222');
-              input.dispatchEvent(new Event('input', { bubbles: true }));
-              
-              const btnBusca = document.querySelector('.form-busca-uasg-tour button[type="submit"]') as HTMLElement;
-              if (btnBusca) btnBusca.click();
-          }
-
-          setTimeout(() => {
-            d.moveNext();
-          }, 1200);
+          align: 'center',
+          showButtons: []
         }
       },
       {
         element: '.modal-importar-pncp',
         popover: {
           title: 'Navegação de Resultados',
-          description: 'O sistema encontrou o Pregão Eletrônico, a ARP correspondente, e finalmente o "Cimento Portland".',
+          description: 'O sistema encontrou os resultados! Agora, clique em "Expandir" no Pregão, depois em "Ver Itens" na ARP, selecione o "Cimento Portland" e clique em "Importar Selecionados".',
           side: 'left',
-          offset: 30
-        },
-        onHighlighted: () => {
-          setTimeout(() => {
-            const btnPregao = document.querySelector('.tour-expand-pregao') as HTMLElement;
-            if (btnPregao) btnPregao.click();
-            
-            setTimeout(() => {
-              const btnArp = document.querySelector('.tour-expand-arp') as HTMLElement;
-              if (btnArp) btnArp.click();
-
-              setTimeout(() => {
-                const itemLinha = document.querySelector('.tour-item-mockado') as HTMLElement;
-                if (itemLinha) {
-                  itemLinha.style.transition = 'background-color 0.5s ease';
-                  itemLinha.style.backgroundColor = 'rgba(16, 185, 129, 0.2)';
-                }
-              }, 400);
-            }, 400);
-          }, 400);
+          offset: 30,
+          showButtons: []
         }
       },
       {
         element: '.btn-salvar-subitem',
         popover: {
           title: 'Finalização e Salvamento',
-          description: 'Ao salvar, este item passa a compor seu catálogo oficial.',
+          description: 'Excelente! O item foi importado com todos os dados oficiais. Agora basta clicar em "Cadastrar Subitem" para salvar no seu catálogo.',
           side: 'top',
           align: 'end'
         }
