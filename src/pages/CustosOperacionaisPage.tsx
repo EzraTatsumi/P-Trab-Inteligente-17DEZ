@@ -320,11 +320,6 @@ const CustosOperacionaisPage = () => {
       }
   }, []);
 
-  const handleOpenNewMaterialConsumo = useCallback(() => {
-      setDiretrizMaterialConsumoToEdit(null);
-      setIsMaterialConsumoFormOpen(true);
-  }, []);
-
   useEffect(() => {
     (window as any).expandMaterialConsumo = () => {
       handleCollapseChange('material_consumo_detalhe', true);
@@ -1239,7 +1234,7 @@ const CustosOperacionaisPage = () => {
       setIsMaterialPermanenteFormOpen(true);
   };
   
-  const handleOpenNewMaterialConsumoLocal = () => {
+  const handleOpenNewMaterialConsumo = () => {
       setDiretrizMaterialConsumoToEdit(null);
       setIsMaterialConsumoFormOpen(true);
   };
@@ -1396,7 +1391,7 @@ const CustosOperacionaisPage = () => {
   const renderMaterialConsumoSection = () => {
       const isDataLoading = isLoadingMaterialConsumo || isMovingMaterialConsumo;
       return (
-          <div className="space-y-4 lista-subitens-nd"><Card className="p-4"><div className="flex justify-between items-center mb-4"><CardTitle className="text-base font-semibold">Subitens da ND Cadastrados</CardTitle><Button type="button" variant="outline" size="sm" onClick={() => setIsExportImportDialogOpen(true)} disabled={isSaving || isDataLoading}><FileSpreadsheet className="h-4 w-4 mr-2" />Exportar/Importar</Button></div><div className="mb-4 relative"><Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" /><Input placeholder="Buscar item de aquisição (nome, CATMAT, pregão, subitem...)" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} disabled={isDataLoading} className="pl-10" /></div>{searchTerm ? renderSearchResults() : ((diretrizesMaterialConsumo?.length || 0) > 0 ? (<Table><TableHeader><TableRow><TableHead className="w-[150px] text-center">Nr Subitem</TableHead><TableHead>Nome do Subitem</TableHead><TableHead className="w-[100px] text-center">Ações</TableHead></TableRow></TableHeader><TableBody>{diretrizesMaterialConsumo.map(d => (<MaterialConsumoDiretrizRow key={d.id} diretriz={d} onEdit={handleStartEditMaterialConsumo} onDelete={handleDeleteMaterialConsumo} loading={isSaving || isDataLoading} onMoveItem={handleMoveItem} id={`diretriz-material-consumo-${d.id}`} forceOpen={subitemToOpenId === d.id} />))}</TableBody></Table>) : (<Card className="p-4 text-center text-muted-foreground">Nenhum subitem da ND cadastrado para o ano de referência.</Card>))}</Card><div className="flex justify-end"><Button type="button" onClick={handleOpenNewMaterialConsumoLocal} disabled={isSaving || isDataLoading || !!searchTerm} variant="outline" size="sm" className="w-full btn-novo-subitem"><Plus className="mr-2 h-4 w-4" />Adicionar Novo Subitem da ND</Button></div>{(isLoadingMaterialConsumo || isMovingMaterialConsumo) && (<div className="text-center py-2"><Loader2 className="h-5 w-5 animate-spin text-primary mx-auto" /><p className="text-xs text-muted-foreground mt-1">{isMovingMaterialConsumo ? "Movendo item..." : "Carregando subitens..."}</p></div>)}</div>
+          <div className="space-y-4 lista-subitens-nd"><Card className="p-4"><div className="flex justify-between items-center mb-4"><CardTitle className="text-base font-semibold">Subitens da ND Cadastrados</CardTitle><Button type="button" variant="outline" size="sm" onClick={() => setIsExportImportDialogOpen(true)} disabled={isSaving || isDataLoading}><FileSpreadsheet className="h-4 w-4 mr-2" />Exportar/Importar</Button></div><div className="mb-4 relative"><Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" /><Input placeholder="Buscar item de aquisição (nome, CATMAT, pregão, subitem...)" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} disabled={isDataLoading} className="pl-10" /></div>{searchTerm ? renderSearchResults() : ((diretrizesMaterialConsumo?.length || 0) > 0 ? (<Table><TableHeader><TableRow><TableHead className="w-[150px] text-center">Nr Subitem</TableHead><TableHead>Nome do Subitem</TableHead><TableHead className="w-[100px] text-center">Ações</TableHead></TableRow></TableHeader><TableBody>{diretrizesMaterialConsumo.map(d => (<MaterialConsumoDiretrizRow key={d.id} diretriz={d} onEdit={handleStartEditMaterialConsumo} onDelete={handleDeleteMaterialConsumo} loading={isSaving || isDataLoading} onMoveItem={handleMoveItem} id={`diretriz-material-consumo-${d.id}`} forceOpen={subitemToOpenId === d.id} />))}</TableBody></Table>) : (<Card className="p-4 text-center text-muted-foreground">Nenhum subitem da ND cadastrado para o ano de referência.</Card>))}</Card><div className="flex justify-end"><Button type="button" onClick={handleOpenNewMaterialConsumo} disabled={isSaving || isDataLoading || !!searchTerm} variant="outline" size="sm" className="w-full btn-novo-subitem"><Plus className="mr-2 h-4 w-4" />Adicionar Novo Subitem da ND</Button></div>{(isLoadingMaterialConsumo || isMovingMaterialConsumo) && (<div className="text-center py-2"><Loader2 className="h-5 w-5 animate-spin text-primary mx-auto" /><p className="text-xs text-muted-foreground mt-1">{isMovingMaterialConsumo ? "Movendo item..." : "Carregando subitens..."}</p></div>)}</div>
       );
   };
 
@@ -1450,18 +1445,6 @@ const CustosOperacionaisPage = () => {
           </CardContent>
         </Card>
       </div>
-
-      {/* CAVALO DE TROIA PARA O TOUR DO DRIVER.JS */}
-      <button 
-        id="tour-trigger-novo-subitem" 
-        className="hidden" 
-        type="button" 
-        onClick={() => {
-          console.log("Cavalo de Troia acionado! Abrindo modal...");
-          handleOpenNewMaterialConsumo();
-        }}
-      />
-
       <YearManagementDialog open={isYearManagementDialogOpen} onOpenChange={setIsYearManagementDialogOpen} availableYears={availableYears} defaultYear={defaultYear} onCopy={handleCopyDiretrizes} onDelete={handleDeleteDiretrizes} loading={isSaving} />
       <PassagemDiretrizFormDialog open={isPassagemFormOpen} onOpenChange={setIsPassagemFormOpen} selectedYear={selectedYear} diretrizToEdit={diretrizToEdit} onSave={handleSavePassagem} loading={isSaving} />
       <ConcessionariaDiretrizFormDialog open={isConcessionariaFormOpen} onOpenChange={setIsConcessionariaFormOpen} selectedYear={selectedYear} diretrizToEdit={diretrizConcessionariaToEdit} onSave={handleSaveConcessionaria} loading={isSaving} initialCategory={selectedConcessionariaTab} />
