@@ -11,6 +11,27 @@ const commonConfig = {
   doneBtnText: 'Concluir Missão',
 };
 
+/**
+ * Função auxiliar que vigia o DOM até que um elemento apareça.
+ * Quando o elemento é encontrado, avança o tour automaticamente.
+ */
+const waitForElement = (selector: string, driverInstance: any) => {
+  console.log(`🔍 [TOUR DEBUG] Aguardando elemento: ${selector}...`);
+  let attempts = 0;
+  const checker = setInterval(() => {
+    attempts++;
+    const element = document.querySelector(selector);
+    if (element) {
+      console.log(`✅ [TOUR DEBUG] Elemento ${selector} encontrado após ${attempts * 100}ms!`);
+      clearInterval(checker);
+      driverInstance.moveNext();
+    } else if (attempts > 30) { // Timeout de 3 segundos
+      clearInterval(checker);
+      console.error(`❌ [TOUR DEBUG] Timeout: O elemento ${selector} não apareceu no DOM.`);
+    }
+  }, 100);
+};
+
 export const runMission01 = (onComplete: () => void) => {
   const d = driver({
     ...commonConfig,
@@ -165,15 +186,12 @@ export const runMission02 = (onComplete: () => void) => {
           }
         },
         onNextClick: () => {
-          // 1. Manda o React criar o Portal da janela modal via função global
-          if ((window as any).openModalNovoSubitem) {
-            (window as any).openModalNovoSubitem();
-          }
+          console.log("🚀 [TOUR DEBUG] Disparando evento para abrir modal...");
+          // 1. Dispara o evento customizado que o React está escutando
+          window.dispatchEvent(new CustomEvent('tour:open-novo-subitem'));
           
-          // 2. Aguarda a animação do modal antes de avançar o tour
-          setTimeout(() => {
-            d.moveNext();
-          }, 500);
+          // 2. Aguarda o modal aparecer no DOM antes de avançar
+          waitForElement('.modal-novo-subitem', d);
         }
       },
       {
@@ -189,11 +207,11 @@ export const runMission02 = (onComplete: () => void) => {
           // 1. Clica no botão de Importar PNCP
           const btnImportar = document.querySelector('.btn-importar-pncp') as HTMLElement;
           if (btnImportar) {
+            console.log("🚀 [TOUR DEBUG] Clicando em Importar PNCP...");
             btnImportar.click();
-            // 2. Aguarda o segundo modal abrir
-            setTimeout(() => {
-              d.moveNext();
-            }, 500);
+            
+            // 2. Aguarda o segundo modal (PNCP) aparecer no DOM
+            waitForElement('.modal-importar-pncp', d);
           } else {
             d.moveNext();
           }

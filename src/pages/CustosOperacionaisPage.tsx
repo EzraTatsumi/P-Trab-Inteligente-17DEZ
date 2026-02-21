@@ -325,6 +325,19 @@ const CustosOperacionaisPage = () => {
       setIsMaterialConsumoFormOpen(true);
   }, []);
 
+  // Escutador de eventos para o Tour (mais resiliente que window.function)
+  useEffect(() => {
+    const openModalForTour = () => {
+      console.log("🎯 [TOUR DEBUG] Evento recebido: Abrindo modal de novo subitem...");
+      handleOpenNewMaterialConsumo();
+    };
+
+    window.addEventListener('tour:open-novo-subitem', openModalForTour);
+    return () => {
+      window.removeEventListener('tour:open-novo-subitem', openModalForTour);
+    };
+  }, [handleOpenNewMaterialConsumo]);
+
   useEffect(() => {
     (window as any).expandMaterialConsumo = () => {
       handleCollapseChange('material_consumo_detalhe', true);
