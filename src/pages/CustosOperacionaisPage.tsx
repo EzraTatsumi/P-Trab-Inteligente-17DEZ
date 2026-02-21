@@ -1259,21 +1259,6 @@ const CustosOperacionaisPage = () => {
       setIsMaterialPermanenteFormOpen(true);
   };
   
-  const handleOpenNewMaterialConsumo = () => {
-      setDiretrizMaterialConsumoToEdit(null);
-      setIsMaterialConsumoFormOpen(true);
-  };
-
-  const handleOpenNewServicosTerceiros = () => {
-      setDiretrizMaterialConsumoToEdit(null);
-      setIsServicosTerceirosFormOpen(true);
-  };
-
-  const handleOpenNewMaterialPermanente = () => {
-      setDiretrizMaterialPermanenteToEdit(null);
-      setIsMaterialPermanenteFormOpen(true);
-  };
-  
   const handleDeleteMaterialConsumo = async (id: string, nome: string) => {
       if (!confirm(`Tem certeza que deseja excluir o Subitem da ND "${nome}"?`)) return;
       setDiretrizesMaterialConsumo(current => current.filter(d => d.id !== id));
