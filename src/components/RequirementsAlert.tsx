@@ -29,6 +29,21 @@ interface RequirementsAlertProps {
 export const RequirementsAlert = ({ open, onOpenChange, status }: RequirementsAlertProps) => {
   const navigate = useNavigate();
 
+  const handleNavigateToConfig = () => {
+    if (!status) return;
+
+    // Lógica de navegação inteligente idêntica ao WelcomeModal
+    if (!status.hasOMs) {
+      navigate("/config/om");
+    } else if (!status.hasLogistica) {
+      navigate("/config/diretrizes");
+    } else if (!status.hasOperacional) {
+      navigate("/config/custos-operacionais");
+    } else {
+      navigate("/config/om");
+    }
+  };
+
   return (
     <AlertDialog open={open} onOpenChange={onOpenChange}>
       <AlertDialogContent className="max-w-md border-2 border-destructive/20">
@@ -60,7 +75,7 @@ export const RequirementsAlert = ({ open, onOpenChange, status }: RequirementsAl
 
         <AlertDialogFooter className="flex-col sm:flex-row gap-2">
           <AlertDialogCancel>Cancelar</AlertDialogCancel>
-          <AlertDialogAction onClick={() => navigate("/config/om")} className="bg-primary">
+          <AlertDialogAction onClick={handleNavigateToConfig} className="bg-primary">
             <Settings className="mr-2 h-4 w-4" /> Configurar agora
           </AlertDialogAction>
         </AlertDialogFooter>
