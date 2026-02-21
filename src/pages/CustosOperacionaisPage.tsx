@@ -337,6 +337,12 @@ const CustosOperacionaisPage = () => {
       }
   }, []);
 
+  // Função centralizada para abrir o modal de novo subitem
+  const handleOpenNewMaterialConsumo = useCallback(() => {
+    setDiretrizMaterialConsumoToEdit(null);
+    setIsMaterialConsumoFormOpen(true);
+  }, []);
+
   // Expor funções para o Tour (Driver.js)
   useEffect(() => {
     (window as any).expandMaterialConsumo = () => {
@@ -344,10 +350,9 @@ const CustosOperacionaisPage = () => {
     };
     
     (window as any).openModalNovoSubitem = () => {
-      setDiretrizMaterialConsumoToEdit(null);
-      setIsMaterialConsumoFormOpen(true);
+      handleOpenNewMaterialConsumo();
     };
-  }, [handleCollapseChange]);
+  }, [handleCollapseChange, handleOpenNewMaterialConsumo]);
   
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -1254,16 +1259,6 @@ const CustosOperacionaisPage = () => {
 
   const handleStartEditMaterialPermanente = (diretriz: DiretrizMaterialPermanente) => {
       setDiretrizMaterialPermanenteToEdit(diretriz);
-      setIsMaterialPermanenteFormOpen(true);
-  };
-  
-  const handleOpenNewServicosTerceiros = () => {
-      setDiretrizServicosTerceirosToEdit(null);
-      setIsServicosTerceirosFormOpen(true);
-  };
-
-  const handleOpenNewMaterialPermanente = () => {
-      setDiretrizMaterialPermanenteToEdit(null);
       setIsMaterialPermanenteFormOpen(true);
   };
   
