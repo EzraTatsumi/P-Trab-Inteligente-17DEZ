@@ -5,6 +5,7 @@ export const runMission01 = (onComplete: () => void) => {
   const driverObj = driver({
     showProgress: true,
     allowClose: false,
+    popoverClass: 'driverjs-theme',
     steps: [
       {
         element: '.btn-novo-ptrab',
@@ -27,6 +28,7 @@ export const runMission02 = (onComplete: () => void) => {
   const driverObj = driver({
     showProgress: true,
     allowClose: false,
+    popoverClass: 'driverjs-theme',
     steps: [
       {
         element: '.card-diretrizes-operacionais',
@@ -55,10 +57,9 @@ export const runMission02 = (onComplete: () => void) => {
           align: 'center'
         },
         onDeselected: () => {
-          // Quando o usuário sai deste passo (clica em Próximo), abrimos o formulário
-          if (typeof (window as any).openMaterialConsumoForm === 'function') {
-            (window as any).openMaterialConsumoForm();
-          }
+          // Força a abertura do formulário ao sair deste passo
+          const btn = document.querySelector('.btn-novo-subitem') as HTMLButtonElement;
+          if (btn) btn.click();
         }
       },
       {
@@ -92,6 +93,7 @@ export const runMission03 = (onComplete: () => void) => {
   const driverObj = driver({
     showProgress: true,
     allowClose: false,
+    popoverClass: 'driverjs-theme',
     steps: [
       {
         element: '.tabs-logistica',
@@ -114,6 +116,7 @@ export const runMission04 = (onComplete: () => void) => {
   const driverObj = driver({
     showProgress: true,
     allowClose: false,
+    popoverClass: 'driverjs-theme',
     steps: [
       {
         element: '.tabs-operacional',
