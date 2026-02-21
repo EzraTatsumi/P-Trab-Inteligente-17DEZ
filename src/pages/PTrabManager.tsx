@@ -82,15 +82,6 @@ interface PTrab extends PTrabDB {
   hasPendingRequests: boolean;
 }
 
-type PTrabLinkedTableName =
-    'classe_i_registros' | 'classe_ii_registros' | 'classe_iii_registros' | 
-    'classe_v_registros' | 'classe_vi_registros' | 'classe_vii_registros' | 
-    'classe_viii_saude_registros' | 'classe_viii_remonta_registros' | 
-    'classe_ix_registros' | 'p_trab_ref_lpc' | 'passagem_registros' | 
-    'diaria_registros' | 'verba_operacional_registros' | 'concessionaria_registros' | 
-    'horas_voo_registros' | 'material_consumo_registros' | 'complemento_alimentacao_registros' |
-    'material_permanente_registros' | 'servicos_terceiros_registros' | 'dor_registros';
-
 const COMANDOS_MILITARES_AREA = [
   "Comando Militar da Amazônia",
   "Comando Militar do Norte",
@@ -1253,7 +1244,7 @@ const PTrabManager = () => {
               <DropdownMenuTrigger asChild>
                 <Button variant="outline" size="icon" className="btn-configuracoes"><Settings className="h-4 w-4" /></Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-56 menu-configuracoes">
+              <DropdownMenuContent align="end" className="w-56 menu-configuracoes z-tour-portal">
                 <DropdownMenuLabel>Configurações</DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={handleOpenLinkPTrabDialog}><Link className="mr-2 h-4 w-4" />Vincular P Trab</DropdownMenuItem>
@@ -1430,7 +1421,7 @@ const PTrabManager = () => {
 
                           <DropdownMenu open={openActionsId === ptrab.id} onOpenChange={(open) => setOpenActionsId(open ? ptrab.id : null)}>
                             <DropdownMenuTrigger asChild><Button variant="ghost" size="sm" className="btn-acoes-ptrab"><MoreVertical className="h-4 w-4" /></Button></DropdownMenuTrigger>
-                            <DropdownMenuContent align="end" className="menu-acoes">
+                            <DropdownMenuContent align="end" className="menu-acoes z-tour-portal">
                               <DropdownMenuLabel>Ações</DropdownMenuLabel>
                               <DropdownMenuSeparator />
                               <DropdownMenuItem onClick={() => handleNavigateToPrintOrExport(ptrab.id)}><Printer className="mr-2 h-4 w-4" />Visualizar Impressão</DropdownMenuItem>
@@ -1567,10 +1558,24 @@ const PTrabManager = () => {
       <AIChatDrawer />
 
       <style>{`
-        /* Garante que os menus fiquem visíveis acima do overlay do tour */
-        .driver-js-opened .menu-configuracoes,
-        .driver-js-opened .menu-acoes {
-          z-index: 1000001 !important;
+        /* Correção Cirúrgica para o Tour - Não afeta cores ou botões */
+        .driver-popover.driverjs-theme {
+          z-index: 1000000 !important; /* Balão do Tour no topo máximo */
+        }
+
+        .driver-overlay {
+          z-index: 999998 !important; /* Sombra do Tour */
+        }
+
+        /* Garante que os Menus do App fiquem entre a sombra e o balão */
+        [data-radix-portal] {
+          z-index: 999999 !important;
+        }
+
+        /* Classe utilitária para os menus durante o tour */
+        .z-tour-portal {
+          opacity: 1 !important;
+          pointer-events: auto !important;
         }
       `}</style>
     </div>
