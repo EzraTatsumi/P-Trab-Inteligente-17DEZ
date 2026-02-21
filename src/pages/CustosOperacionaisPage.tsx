@@ -174,25 +174,6 @@ const handleGlobalDragEnd = () => {
     }
 };
 
-type IndexedItemAquisicao = ItemAquisicao & {
-    diretrizId: string;
-    subitemNr: string;
-    subitemNome: string;
-};
-
-type IndexedItemServico = ItemAquisicaoServico & {
-    diretrizId: string;
-    subitemNr: string;
-    subitemNome: string;
-};
-
-type IndexedItemPermanente = ItemAquisicao & {
-    diretrizId: string;
-    subitemNr: string;
-    subitemNome: string;
-};
-
-
 const CustosOperacionaisPage = () => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -246,7 +227,6 @@ const CustosOperacionaisPage = () => {
   const [diretrizConcessionariaToEdit, setDiretrizConcessionariaToEdit] = useState<DiretrizConcessionaria | null>(null);
   const [selectedConcessionariaTab, setSelectedConcessionariaTab] = useState<CategoriaConcessionaria>(CATEGORIAS_CONCESSIONARIA[0]);
   
-  // Hooks de dados
   const { 
       diretrizes: diretrizesMaterialConsumoHook, 
       isLoading: isLoadingMaterialConsumo, 
@@ -268,12 +248,10 @@ const CustosOperacionaisPage = () => {
       isMoving: isMovingMaterialPermanente,
   } = useMaterialPermanenteDiretrizes(selectedYear);
 
-  // ESTADOS LOCAIS PARA ATUALIZAÇÃO OTIMISTA (Instantânea)
   const [diretrizesMaterialConsumo, setDiretrizesMaterialConsumo] = useState<DiretrizMaterialConsumo[]>([]);
   const [diretrizesServicosTerceiros, setDiretrizesServicosTerceiros] = useState<DiretrizServicosTerceiros[]>([]);
   const [diretrizesMaterialPermanente, setDiretrizesMaterialPermanente] = useState<DiretrizMaterialPermanente[]>([]);
 
-  // Sincronização dos estados locais com os Hooks (com proteção contra loops infinitos)
   useEffect(() => { 
     if (isGhostMode()) {
       setDiretrizesMaterialConsumo(GHOST_DATA.missao_02.subitens_lista as any);
@@ -334,8 +312,7 @@ const CustosOperacionaisPage = () => {
           setTimeout(() => {
               const element = collapsibleRefs.current[key];
               if (element) {
-                  // Ajuste para não colar no topo por causa do banner de simulação (Ghost Mode)
-                  const yOffset = -100; // Altura do banner + margem de segurança
+                  const yOffset = -100; 
                   const y = element.getBoundingClientRect().top + window.pageYOffset + yOffset;
                   window.scrollTo({ top: y, behavior: 'smooth' });
               }
@@ -343,7 +320,6 @@ const CustosOperacionaisPage = () => {
       }
   }, []);
 
-  // Expor a função de expansão para o Tour
   useEffect(() => {
     (window as any).expandMaterialConsumo = () => {
       handleCollapseChange('material_consumo_detalhe', true);
@@ -367,7 +343,6 @@ const CustosOperacionaisPage = () => {
     };
   }, []);
 
-  // Lógica do Tour
   useEffect(() => {
     const startTour = searchParams.get('startTour') === 'true';
     const missionId = localStorage.getItem('active_mission_id');
@@ -384,7 +359,6 @@ const CustosOperacionaisPage = () => {
     }
   }, [searchParams]);
 
-  // --- 1. Hook unificado para carregar tudo em paralelo com Cache ---
   const { data: pageData, isLoading: isLoadingPageData, isFetching: isFetchingPageData } = useQuery({
     queryKey: ['diretrizesCustosOperacionais', selectedYear, user?.id],
     queryFn: async () => {
@@ -423,10 +397,9 @@ const CustosOperacionaisPage = () => {
       };
     },
     enabled: !!user?.id && !!selectedYear,
-    staleTime: 1000 * 60 * 5, // 5 minutos de cache
+    staleTime: 1000 * 60 * 5, 
   });
 
-  // --- 2. Sincronização com o estado local (para edição) ---
   useEffect(() => {
     if (pageData) {
       setLoading(true);
