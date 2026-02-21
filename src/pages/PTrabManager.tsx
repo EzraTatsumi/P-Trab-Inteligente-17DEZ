@@ -1244,7 +1244,7 @@ const PTrabManager = () => {
               <DropdownMenuTrigger asChild>
                 <Button variant="outline" size="icon" className="btn-configuracoes"><Settings className="h-4 w-4" /></Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-56 menu-configuracoes z-tour-portal">
+              <DropdownMenuContent align="end" className="w-56 z-tour-portal">
                 <DropdownMenuLabel>Configurações</DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={handleOpenLinkPTrabDialog}><Link className="mr-2 h-4 w-4" />Vincular P Trab</DropdownMenuItem>
@@ -1558,24 +1558,27 @@ const PTrabManager = () => {
       <AIChatDrawer />
 
       <style>{`
-        /* Correção Cirúrgica para o Tour - Não afeta cores ou botões */
-        .driver-popover.driverjs-theme {
-          z-index: 1000000 !important; /* Balão do Tour no topo máximo */
-        }
+        /* --- CORREÇÃO CIRÚRGICA PARA O TOUR --- */
 
+        /* 1. O fundo escuro do tour */
         .driver-overlay {
-          z-index: 999998 !important; /* Sombra do Tour */
+          z-index: 10000 !important;
         }
 
-        /* Garante que os Menus do App fiquem entre a sombra e o balão */
+        /* 2. O menu que abre (Portal do Radix) - Fica acima do fundo escuro */
         [data-radix-portal] {
-          z-index: 999999 !important;
+          z-index: 10001 !important;
         }
 
-        /* Classe utilitária para os menus durante o tour */
-        .z-tour-portal {
+        /* 3. A caixa de texto do tour - Fica acima de tudo */
+        .driver-popover.driverjs-theme {
+          z-index: 10002 !important;
+        }
+
+        /* Garante que o menu não herde opacidade do tour */
+        [data-radix-portal] * {
           opacity: 1 !important;
-          pointer-events: auto !important;
+          visibility: visible !important;
         }
       `}</style>
     </div>
