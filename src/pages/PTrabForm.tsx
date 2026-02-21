@@ -16,6 +16,8 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { fetchUserCredits, updateUserCredits } from "@/lib/creditUtils";
 import { CreditPromptDialog } from "@/components/CreditPromptDialog";
 import PageMetadata from "@/components/PageMetadata";
+import { GHOST_DATA, isGhostMode } from "@/lib/ghostStore";
+import { runMission03, runMission04 } from "@/tours/missionTours";
 
 interface PTrabData {
   numero_ptrab: string;
@@ -78,8 +80,11 @@ const PTrabForm = () => {
   
   const { data: totals, isLoading: isLoadingTotals } = useQuery({
     queryKey: ['ptrabTotals', ptrabId],
-    queryFn: () => fetchPTrabTotals(ptrabId!),
-    enabled: !!ptrabId,
+    queryFn: async () => {
+      if (isGhostMode()) return GHOST_DATA.totais_exemplo;
+      return fetchPTrabTotals(ptrabId!);
+    },
+    enabled: !!ptrabId || isGhostMode(),
     refetchInterval: 10000,
     initialData: {
       totalLogisticoGeral: 0,
@@ -109,6 +114,12 @@ const PTrabForm = () => {
 
   useEffect(() => {
     const loadPTrab = async () => {
+      if (isGhostMode()) {
+        setPtrabData(GHOST_DATA.p_trab_exemplo);
+        setLoadingPTrab(false);
+        return;
+      }
+
       if (!ptrabId) {
         toast.error("P Trab não selecionado");
         navigate('/ptrab');
@@ -136,13 +147,40 @@ const PTrabForm = () => {
 
     loadPTrab();
   }, [ptrabId, navigate, searchParams]);
+
+  // Lógica do Tour
+  useEffect(() => {
+    const startTour = searchParams.get('startTour') === 'true';
+    const missionId = localStorage.getItem('active_mission_id');
+    const ghost = isGhostMode();
+
+    if (startTour && ghost) {
+      if (missionId === '3') {
+        runMission03(() => {
+          const completed = JSON.parse(localStorage.getItem('completed_missions') || '[]');
+          if (!completed.includes(3)) {
+            localStorage.setItem('completed_missions', JSON.stringify([...completed, 3]));
+          }
+          navigate('/ptrab');
+        });
+      } else if (missionId === '4') {
+        runMission04(() => {
+          const completed = JSON.parse(localStorage.getItem('completed_missions') || '[]');
+          if (!completed.includes(4)) {
+            localStorage.setItem('completed_missions', JSON.stringify([...completed, 4]));
+          }
+          navigate('/ptrab');
+        });
+      }
+    }
+  }, [searchParams]);
   
   useEffect(() => {
     if (!loadingSession && !loadingPTrab && !isLoadingCredits && ptrabData && credits && !hasPromptedForCredit) {
       const isPTrabOpen = ptrabData.status === 'aberto';
       const hasZeroCredits = credits.credit_gnd3 === 0 && credits.credit_gnd4 === 0;
 
-      if (isPTrabOpen && hasZeroCredits) {
+      if (isPTrabOpen && hasZeroCredits && !isGhostMode()) {
         setShowCreditDialog(true);
         setHasPromptedForCredit(true);
       }
@@ -295,8 +333,8 @@ const PTrabForm = () => {
               <PTrabCostSummary 
                 ptrabId={ptrabId} 
                 onOpenCreditDialog={() => setShowCreditDialog(true)}
-                creditGND3={credits.credit_gnd3}
-                creditGND4={credits.credit_gnd4}
+                creditGND3={isGhostMode() ? GHOST_DATA.totais_exemplo.credit_gnd3 : credits.credit_gnd3}
+                creditGND4={isGhostMode() ? GHOST_DATA.totais_exemplo.credit_gnd4 : credits.credit_gnd4}
               />
             )}
           </div>
@@ -312,11 +350,11 @@ const PTrabForm = () => {
               <CardContent>
                 <Tabs value={selectedTab} onValueChange={setSelectedTab} className="w-full">
                   <TabsList className="grid w-full grid-cols-2 mb-6">
-                    <TabsTrigger value="logistica" className="flex items-center gap-2">
+                    <TabsTrigger value="logistica" className="flex items-center gap-2 tabs-logistica">
                       <Package className="h-4 w-4" />
                       Aba Logística
                     </TabsTrigger>
-                    <TabsTrigger value="operacional" className="flex items-center gap-2">
+                    <TabsTrigger value="operacional" className="flex items-center gap-2 tabs-operacional">
                       <Briefcase className="h-4 w-4" />
                       Aba Operacional
                     </TabsTrigger>

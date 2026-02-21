@@ -1086,7 +1086,7 @@ const PTrabManager = () => {
             </div>
             
             <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-              <Button onClick={handleOpenNewPTrabDialog}>
+              <Button onClick={handleOpenNewPTrabDialog} className="btn-novo-ptrab">
                 <Plus className="mr-2 h-4 w-4" />
                 Novo P Trab
               </Button>

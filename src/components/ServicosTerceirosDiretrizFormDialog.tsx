@@ -168,7 +168,7 @@ const ServicosTerceirosDiretrizFormDialog: React.FC<ServicosTerceirosDiretrizFor
                         <div className="flex justify-between items-center">
                             <CardTitle className="text-base font-semibold">{editingItemId ? "Editar Item" : "Adicionar Novo Item"}</CardTitle>
                             <div className="flex gap-2">
-                                <Button type="button" variant="secondary" size="sm" onClick={() => setIsPNCPSearchOpen(true)} disabled={loading}><Search className="h-4 w-4 mr-2" />Importar API PNCP</Button>
+                                <Button type="button" variant="secondary" size="sm" onClick={() => setIsPNCPSearchOpen(true)} disabled={loading} className="btn-importar-pncp"><Search className="h-4 w-4 mr-2" />Importar API PNCP</Button>
                                 <Button type="button" variant="secondary" size="sm" onClick={() => setIsBulkUploadOpen(true)} disabled={loading}><FileSpreadsheet className="h-4 w-4 mr-2" />Importar Excel</Button>
                             </div>
                         </div>
