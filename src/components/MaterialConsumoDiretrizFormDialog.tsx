@@ -7,7 +7,7 @@ import { Card, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Save, Plus, Pencil, Trash2, Loader2, BookOpen, FileSpreadsheet, Search, Info } from "lucide-react";
+import { Save, Plus, Pencil, Trash2, Loader2, BookOpen, FileSpreadsheet, Search, Download } from "lucide-react";
 import { toast } from "sonner";
 import { useFormNavigation } from "@/hooks/useFormNavigation";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -19,11 +19,10 @@ import {
     formatCodug, 
     formatPregao 
 } from "@/lib/formatUtils";
-import MaterialCatalogDialog from './MaterialCatalogDialog';
 import CatmatCatalogDialog from './CatmatCatalogDialog';
 import ItemAquisicaoBulkUploadDialog from './ItemAquisicaoBulkUploadDialog';
 import ItemAquisicaoPNCPDialog from './ItemAquisicaoPNCPDialog';
-import { cn } from '@/lib/utils';
+import { isGhostMode } from '@/lib/ghostStore';
 
 interface MaterialConsumoDiretrizFormDialogProps {
     open: boolean;
@@ -39,13 +38,11 @@ interface MaterialConsumoDiretrizFormDialogProps {
 const initialItemForm = {
     descricao_item: '',
     descricao_reduzida: '',
-    unidade_medida: 'UN',
     valor_unitario: 0,
     rawValor: numberToRawDigits(0),
     numero_pregao: '',
     uasg: '',
     codigo_catmat: '',
-    nd: '30' as string,
 };
 
 type InternalMaterialForm = Omit<DiretrizMaterialConsumo, 'user_id' | 'created_at' | 'updated_at'> & { 
@@ -73,7 +70,6 @@ const MaterialConsumoDiretrizFormDialog: React.FC<MaterialConsumoDiretrizFormDia
     const [itemForm, setItemForm] = useState<typeof initialItemForm>(initialItemForm);
     const [editingItemId, setEditingItemId] = useState<string | null>(null);
     
-    const [isCatalogOpen, setIsCatalogOpen] = useState(false);
     const [isCatmatCatalogOpen, setIsCatmatCatalogOpen] = useState(false);
     const [isBulkUploadOpen, setIsBulkUploadOpen] = useState(false);
     const [isPNCPSearchOpen, setIsPNCPSearchOpen] = useState(false);
@@ -99,8 +95,12 @@ const MaterialConsumoDiretrizFormDialog: React.FC<MaterialConsumoDiretrizFormDia
             valor_unitario: itemForm.valor_unitario,
             numero_pregao: itemForm.numero_pregao,
             uasg: itemForm.uasg,
-            codigo_catmat: itemForm.codigo_catmat, 
-            nd: itemForm.nd || '30',
+            codigo_catmat: itemForm.codigo_catmat,
+            quantidade: 0,
+            valor_total: 0,
+            nd: '30',
+            nr_subitem: subitemForm.nr_subitem,
+            nome_subitem: subitemForm.nome_subitem
         };
         const updatedItens = editingItemId ? subitemForm.itens_aquisicao.map(t => t.id === editingItemId ? newItem : t) : [...subitemForm.itens_aquisicao, newItem];
         setSubitemForm(prev => ({ ...prev, itens_aquisicao: updatedItens }));
@@ -110,12 +110,11 @@ const MaterialConsumoDiretrizFormDialog: React.FC<MaterialConsumoDiretrizFormDia
 
     const handleEditItem = (item: ItemAquisicao) => {
         setEditingItemId(item.id);
-        setItemForm({ ...item, rawValor: numberToRawDigits(item.valor_unitario), nd: item.nd || '30', unidade_medida: (item as any).unidade_medida || 'UN' });
+        setItemForm({ 
+            ...item, 
+            rawValor: numberToRawDigits(item.valor_unitario)
+        });
         itemFormRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    };
-
-    const handleReviewItem = (item: ItemAquisicao) => {
-        handleEditItem(item);
     };
 
     const handleSave = async () => {
@@ -129,27 +128,38 @@ const MaterialConsumoDiretrizFormDialog: React.FC<MaterialConsumoDiretrizFormDia
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="max-w-7xl max-h-[90vh] overflow-y-auto modal-novo-subitem z-tour-portal">
+            <DialogContent className="max-w-7xl max-h-[90vh] overflow-y-auto modal-novo-subitem">
                 <DialogHeader>
                     <DialogTitle>{subitemForm.id ? `Editar Subitem: ${subitemForm.nr_subitem}` : "Novo Subitem da Natureza da Despesa"}</DialogTitle>
-                    <DialogDescription>Cadastre o subitem da ND 339030 e seus itens de aquisição.</DialogDescription>
+                    <DialogDescription>Cadastre o subitem da ND e os itens de material de consumo associados.</DialogDescription>
                 </DialogHeader>
                 <div className="space-y-6 py-2">
                     <Card className="p-4">
-                        <div className="flex justify-between items-center mb-4">
-                            <CardTitle className="text-base">Dados do Subitem</CardTitle>
-                            <Button type="button" variant="outline" size="sm" onClick={() => setIsCatalogOpen(true)} disabled={loading}><BookOpen className="h-4 w-4 mr-2" />Catálogo ND 30</Button>
-                        </div>
+                        <CardTitle className="text-base mb-4">Dados do Subitem</CardTitle>
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                            <div className="space-y-2"><Label>Número do Subitem *</Label><Input value={subitemForm.nr_subitem} onChange={(e) => setSubitemForm({ ...subitemForm, nr_subitem: e.target.value })} placeholder="Ex: 24" disabled={loading} /></div>
-                            <div className="space-y-2 col-span-2"><Label>Nome do Subitem *</Label><Input value={subitemForm.nome_subitem} onChange={(e) => setSubitemForm({ ...subitemForm, nome_subitem: e.target.value })} placeholder="Ex: Material de Construção" disabled={loading} /></div>
+                            <div className="space-y-2"><Label>Número do Subitem *</Label><Input value={subitemForm.nr_subitem} onChange={(e) => setSubitemForm({ ...subitemForm, nr_subitem: e.target.value })} placeholder="Ex: 22" disabled={loading} /></div>
+                            <div className="space-y-2 col-span-2"><Label>Nome do Subitem *</Label><Input value={subitemForm.nome_subitem} onChange={(e) => setSubitemForm({ ...subitemForm, nome_subitem: e.target.value })} placeholder="Ex: Material de Limpeza" disabled={loading} /></div>
                         </div>
                     </Card>
                     <Card className="p-4 space-y-4">
                         <div className="flex justify-between items-center">
                             <CardTitle className="text-base font-semibold">{editingItemId ? "Editar Item" : "Adicionar Novo Item"}</CardTitle>
                             <div className="flex gap-2">
-                                <Button type="button" variant="secondary" size="sm" onClick={() => setIsPNCPSearchOpen(true)} disabled={loading} className="btn-importar-pncp"><Search className="h-4 w-4 mr-2" />Importar API PNCP</Button>
+                                <Button
+                                  type="button"
+                                  variant="secondary"
+                                  size="sm"
+                                  className="btn-importar-pncp"
+                                  onClick={() => {
+                                    setIsPNCPSearchOpen(true);
+                                    // GATILHO PARA O TOUR
+                                    if (isGhostMode()) {
+                                      window.dispatchEvent(new CustomEvent('tour:avancar'));
+                                    }
+                                  }}
+                                >
+                                  <Search className="h-4 w-4 mr-2" /> Importar via API PNCP
+                                </Button>
                                 <Button type="button" variant="secondary" size="sm" onClick={() => setIsBulkUploadOpen(true)} disabled={loading}><FileSpreadsheet className="h-4 w-4 mr-2" />Importar Excel</Button>
                             </div>
                         </div>
@@ -159,21 +169,22 @@ const MaterialConsumoDiretrizFormDialog: React.FC<MaterialConsumoDiretrizFormDia
                                     <Label>Cód. CATMAT</Label>
                                     <div className="flex gap-1">
                                         <Input value={itemForm.codigo_catmat} onChange={(e) => setItemForm({ ...itemForm, codigo_catmat: e.target.value })} placeholder="Ex: 12345" />
-                                        <Button type="button" variant="outline" size="icon" onClick={() => setIsCatmatCatalogOpen(true)} className="shrink-0"><BookOpen className="h-4 w-4" /></Button>
+                                        <Button type="button" variant="outline" size="icon" onClick={() => setIsCatmatCatalogOpen(true)}><BookOpen className="h-4 w-4" /></Button>
                                     </div>
                                 </div>
                                 <div className="space-y-2 col-span-4"><Label>Descrição do Item *</Label><Textarea value={itemForm.descricao_item} onChange={(e) => setItemForm({ ...itemForm, descricao_item: e.target.value })} rows={2} /></div>
                             </div>
                             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                                <div className="space-y-2"><Label>Nome Reduzido *</Label><Input value={itemForm.descricao_reduzida} onChange={(e) => setItemForm({ ...itemForm, descricao_reduzida: e.target.value })} /></div>
                                 <div className="space-y-2"><Label>Valor Unitário *</Label><CurrencyInput rawDigits={itemForm.rawValor} onChange={handleItemCurrencyChange} /></div>
                                 <div className="space-y-2"><Label>Pregão/Ref. *</Label><Input value={itemForm.numero_pregao} onChange={(e) => setItemForm({ ...itemForm, numero_pregao: e.target.value })} /></div>
                                 <div className="space-y-2"><Label>UASG *</Label><Input value={itemForm.uasg} onChange={handleUasgChange} maxLength={6} /></div>
-                                <div className="flex items-end"><Button type="button" className="w-full" onClick={handleAddItem}>{editingItemId ? "Atualizar Item" : "Adicionar Item"}</Button></div>
                             </div>
+                            <Button type="button" className="w-full" onClick={handleAddItem}>{editingItemId ? "Atualizar Item" : "Adicionar Item"}</Button>
                         </div>
                         {subitemForm.itens_aquisicao.length > 0 && (
                             <Table>
-                                <TableHeader><TableRow><TableHead>Descrição</TableHead><TableHead className="text-center">Cód. CATMAT</TableHead><TableHead className="text-center">Pregão</TableHead><TableHead className="text-center">UASG</TableHead><TableHead className="text-right">Valor</TableHead><TableHead className="text-right">Ações</TableHead></TableRow></TableHeader>
+                                <TableHeader><TableRow><TableHead>Descrição</TableHead><TableHead className="text-center">Cód.</TableHead><TableHead className="text-center">Pregão</TableHead><TableHead className="text-center">UASG</TableHead><TableHead className="text-right">Valor</TableHead><TableHead className="text-right">Ações</TableHead></TableRow></TableHeader>
                                 <TableBody>{subitemForm.itens_aquisicao.map(item => (
                                     <TableRow key={item.id}>
                                         <TableCell className="text-xs">{item.descricao_item}</TableCell>
@@ -189,14 +200,23 @@ const MaterialConsumoDiretrizFormDialog: React.FC<MaterialConsumoDiretrizFormDia
                     </Card>
                 </div>
                 <div className="flex justify-end gap-2 pt-4 border-t">
+                    <Button type="button" onClick={handleSave} disabled={loading || subitemForm.itens_aquisicao.length === 0} className="btn-salvar-subitem">{loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}{subitemForm.id ? "Salvar Alterações" : "Cadastrar Subitem"}</Button>
                     <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
-                    <Button type="button" onClick={handleSave} disabled={loading || subitemForm.itens_aquisicao.length === 0} className="btn-salvar-subitem">{loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}{subitemForm.id ? "Salvar Alterações" : "Salvar Subitem"}</Button>
                 </div>
             </DialogContent>
-            <MaterialCatalogDialog open={isCatalogOpen} onOpenChange={setIsCatalogOpen} onSelect={(c) => setSubitemForm(p => ({ ...p, nr_subitem: c.nr_subitem, nome_subitem: c.nome_subitem, descricao_subitem: c.descricao_subitem }))} />
             <CatmatCatalogDialog open={isCatmatCatalogOpen} onOpenChange={setIsCatmatCatalogOpen} onSelect={(c) => setItemForm(p => ({ ...p, codigo_catmat: c.code, descricao_item: c.description, descricao_reduzida: c.short_description || '' }))} />
-            <ItemAquisicaoBulkUploadDialog open={isBulkUploadOpen} onOpenChange={setIsBulkUploadOpen} onImport={(items) => setSubitemForm(p => ({ ...p, itens_aquisicao: [...p.itens_aquisicao, ...items] }))} existingItemsInDiretriz={subitemForm.itens_aquisicao} />
-            <ItemAquisicaoPNCPDialog open={isPNCPSearchOpen} onOpenChange={setIsPNCPSearchOpen} onImport={(items) => setSubitemForm(p => ({ ...p, itens_aquisicao: [...p.itens_aquisicao, ...items] }))} existingItemsInDiretriz={subitemForm.itens_aquisicao} onReviewItem={handleReviewItem} selectedYear={selectedYear} />
+            <ItemAquisicaoBulkUploadDialog open={isBulkUploadOpen} onOpenChange={setIsBulkUploadOpen} onImport={(items) => setSubitemForm(p => ({ ...p, itens_aquisicao: [...p.itens_aquisicao, ...items] }))} existingItemsInDiretriz={subitemForm.itens_aquisicao as any} mode="material" />
+            <ItemAquisicaoPNCPDialog 
+                open={isPNCPSearchOpen} 
+                onOpenChange={setIsPNCPSearchOpen} 
+                onImport={(items) => {
+                    setSubitemForm(p => ({ ...p, itens_aquisicao: [...p.itens_aquisicao, ...items] as ItemAquisicao[] }));
+                }} 
+                existingItemsInDiretriz={subitemForm.itens_aquisicao as any} 
+                onReviewItem={handleEditItem} 
+                selectedYear={selectedYear} 
+                mode="material" 
+            />
         </Dialog>
     );
 };

@@ -3,6 +3,20 @@
 import { driver } from "driver.js";
 import "driver.js/dist/driver.css";
 
+let activeMissionDriver: any = null;
+
+// Escuta o sinal do React para avançar o tour magicamente
+if (typeof window !== 'undefined') {
+  window.addEventListener('tour:avancar', () => {
+    if (activeMissionDriver) {
+      // O setTimeout garante que a janela do Shadcn termine de abrir antes de iluminar
+      setTimeout(() => {
+        activeMissionDriver.moveNext();
+      }, 400); 
+    }
+  });
+}
+
 const commonConfig = {
   showProgress: true,
   allowClose: true,
@@ -163,52 +177,37 @@ export const runMission02 = (onComplete: () => void) => {
           if ((window as any).expandMaterialConsumo) {
             (window as any).expandMaterialConsumo();
           }
-        },
-        onNextClick: () => {
-          // 1. Clica no botão "Novo Subitem"
-          const btnNovo = document.querySelector('.btn-novo-subitem') as HTMLElement;
-          if (btnNovo) {
-            btnNovo.click();
-            // 2. Aguarda a animação do modal antes de avançar o tour
-            setTimeout(() => {
-              d.moveNext();
-            }, 500);
-          } else {
-            d.moveNext();
-          }
         }
       },
       {
-        element: '.modal-novo-subitem',
-        popover: {
-          title: 'Novo Subitem de ND',
-          description: 'Nesta janela configuramos a categoria e importamos os itens de aquisição.',
-          side: 'top',
+        element: '.btn-novo-subitem', 
+        popover: { 
+          title: 'Sua Vez: Mão na Massa!', 
+          description: 'Clique neste botão para abrir a janela de criação de Subitem. Eu espero por você!', 
+          side: 'top', 
           align: 'center',
-          offset: 20
-        },
-        onNextClick: () => {
-          // 1. Clica no botão de Importar PNCP
-          const btnImportar = document.querySelector('.btn-importar-pncp') as HTMLElement;
-          if (btnImportar) {
-            btnImportar.click();
-            // 2. Aguarda o segundo modal abrir
-            setTimeout(() => {
-              d.moveNext();
-            }, 500);
-          } else {
-            d.moveNext();
-          }
+          showButtons: [] // Esconde os botões para forçar o clique real
         }
       },
       {
-        element: '.modal-importar-pncp',
-        popover: {
-          title: 'Portal Nacional (PNCP)',
-          description: 'Esta é a central de integração. Vamos buscar um preço oficial diretamente no PNCP.',
-          side: 'top',
-          align: 'center',
-          offset: 20
+        element: '.modal-novo-subitem', 
+        popover: { 
+          title: 'Criando o Subitem', 
+          description: 'Excelente! Nesta janela, definimos a categoria. Agora, clique no botão "Importar via API PNCP".', 
+          side: 'left', 
+          align: 'start', 
+          offset: 30,
+          showButtons: [] // Esconde novamente para forçar o próximo clique
+        }
+      },
+      {
+        element: '.modal-importar-pncp', 
+        popover: { 
+          title: 'O Salto Tecnológico', 
+          description: 'Esqueça a digitação manual. Vamos buscar um preço oficial diretamente no PNCP.', 
+          side: 'left', 
+          align: 'start', 
+          offset: 30
         }
       },
       {
@@ -275,6 +274,7 @@ export const runMission02 = (onComplete: () => void) => {
     ],
     onDestroyed: onComplete
   });
+  activeMissionDriver = d;
   d.drive();
 };
 
