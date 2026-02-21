@@ -220,9 +220,13 @@ export const runMission02 = (onComplete: () => void) => {
             // 1. Digita UASG e clica buscar
             const input = document.querySelector('input[placeholder="Ex: 160222"]') as HTMLInputElement;
             if (input) {
-                input.value = '160222';
+                // Simula a digitação para o React Hook Form
+                const nativeInputValueSetter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value")?.set;
+                nativeInputValueSetter?.call(input, '160222');
                 input.dispatchEvent(new Event('input', { bubbles: true }));
-                const btnBusca = input.nextElementSibling as HTMLElement;
+                
+                // Encontra o botão de busca dentro do formulário
+                const btnBusca = input.closest('form')?.querySelector('button[type="submit"]') as HTMLElement;
                 if (btnBusca) btnBusca.click();
             }
 
