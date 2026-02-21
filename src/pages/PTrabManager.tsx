@@ -82,6 +82,15 @@ interface PTrab extends PTrabDB {
   hasPendingRequests: boolean;
 }
 
+type PTrabLinkedTableName =
+    'classe_i_registros' | 'classe_ii_registros' | 'classe_iii_registros' | 
+    'classe_v_registros' | 'classe_vi_registros' | 'classe_vii_registros' | 
+    'classe_viii_saude_registros' | 'classe_viii_remonta_registros' | 
+    'classe_ix_registros' | 'p_trab_ref_lpc' | 'passagem_registros' | 
+    'diaria_registros' | 'verba_operacional_registros' | 'concessionaria_registros' | 
+    'horas_voo_registros' | 'material_consumo_registros' | 'complemento_alimentacao_registros' |
+    'material_permanente_registros' | 'servicos_terceiros_registros' | 'dor_registros';
+
 const COMANDOS_MILITARES_AREA = [
   "Comando Militar da Amazônia",
   "Comando Militar do Norte",
@@ -1244,7 +1253,7 @@ const PTrabManager = () => {
               <DropdownMenuTrigger asChild>
                 <Button variant="outline" size="icon" className="btn-configuracoes"><Settings className="h-4 w-4" /></Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-56">
+              <DropdownMenuContent align="end" className="w-56 menu-configuracoes">
                 <DropdownMenuLabel>Configurações</DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={handleOpenLinkPTrabDialog}><Link className="mr-2 h-4 w-4" />Vincular P Trab</DropdownMenuItem>
@@ -1421,7 +1430,7 @@ const PTrabManager = () => {
 
                           <DropdownMenu open={openActionsId === ptrab.id} onOpenChange={(open) => setOpenActionsId(open ? ptrab.id : null)}>
                             <DropdownMenuTrigger asChild><Button variant="ghost" size="sm" className="btn-acoes-ptrab"><MoreVertical className="h-4 w-4" /></Button></DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
+                            <DropdownMenuContent align="end" className="menu-acoes">
                               <DropdownMenuLabel>Ações</DropdownMenuLabel>
                               <DropdownMenuSeparator />
                               <DropdownMenuItem onClick={() => handleNavigateToPrintOrExport(ptrab.id)}><Printer className="mr-2 h-4 w-4" />Visualizar Impressão</DropdownMenuItem>
@@ -1478,7 +1487,7 @@ const PTrabManager = () => {
             <AlertDialogDescription>Tem certeza que deseja reativar o P Trab "{ptrabToReactivateName}"? Ele retornará ao status de "Aprovado" (se já numerado) ou "Aberto" (se for Minuta), permitindo novas edições.</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogAction onClick={handleConfirmReactivateStatus} disabled={isActionLoading}>{isActionLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Confirmar Reativação"}</AlertDialogAction>
+            <AlertDialogAction onClick={handleConfirmReactivateStatus} disabled={isActionLoading}>{isActionLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : "Confirmar Reativação"}</AlertDialogAction>
             <AlertDialogCancel onClick={handleCancelReactivateStatus}>Cancelar</AlertDialogCancel>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -1556,6 +1565,14 @@ const PTrabManager = () => {
       {ptrabToUnlink && <UnlinkPTrabDialog open={showUnlinkPTrabDialog} onOpenChange={setShowUnlinkPTrabDialog} ptrabName={`${ptrabToUnlink.numero_ptrab} - ${ptrabToUnlink.nome_operacao}`} onConfirm={handleConfirmUnlink} loading={isActionLoading} />}
       
       <AIChatDrawer />
+
+      <style>{`
+        /* Garante que os menus fiquem visíveis acima do overlay do tour */
+        .driver-js-opened .menu-configuracoes,
+        .driver-js-opened .menu-acoes {
+          z-index: 1000001 !important;
+        }
+      `}</style>
     </div>
   );
 };

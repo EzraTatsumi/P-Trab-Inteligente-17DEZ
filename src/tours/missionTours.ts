@@ -26,6 +26,8 @@ export const runMission01 = (onComplete: () => void) => {
         popover: {
           title: 'Criar Novo Plano',
           description: 'Aqui você inicia um novo P Trab do zero. Lembre-se: o sistema só permitirá a criação se as diretrizes de custos estiverem configuradas.',
+          side: 'bottom',
+          align: 'start'
         }
       },
       {
@@ -33,6 +35,8 @@ export const runMission01 = (onComplete: () => void) => {
         popover: {
           title: 'Consolidar Planos',
           description: 'Precisa unir vários P Trabs em um único relatório para um Comando Superior? Este botão faz a consolidação automática de dados e custos.',
+          side: 'bottom',
+          align: 'start'
         }
       },
       {
@@ -40,6 +44,8 @@ export const runMission01 = (onComplete: () => void) => {
         popover: {
           title: 'Suporte e Manuais',
           description: 'Dúvidas sobre normas ou uso do sistema? Aqui você acessa os manuais e guias rápidos.',
+          side: 'bottom',
+          align: 'start'
         }
       },
       {
@@ -47,6 +53,8 @@ export const runMission01 = (onComplete: () => void) => {
         popover: {
           title: 'Configurações do Sistema',
           description: 'Gerencie OMs vinculadas, anos de referência para cálculos e dados de perfil que sairão nos cabeçalhos dos documentos.',
+          side: 'left', // Move para a esquerda para não cobrir o menu que abre para baixo
+          align: 'start'
         },
         onHighlighted: () => {
           if ((window as any).openSettings) (window as any).openSettings();
@@ -60,6 +68,8 @@ export const runMission01 = (onComplete: () => void) => {
         popover: {
           title: 'Assistente IA',
           description: 'Dúvidas sobre o DOR ou Natureza de Despesa? O ChatIA conhece todas as normas e ajuda você a redigir justificativas técnicas.',
+          side: 'left',
+          align: 'end'
         }
       },
       {
@@ -67,6 +77,8 @@ export const runMission01 = (onComplete: () => void) => {
         popover: {
           title: 'Quadro de Situação',
           description: 'Nesta grade, você acompanha o número, a operação e o status de cada plano em tempo real.',
+          side: 'top',
+          align: 'center'
         }
       },
       {
@@ -74,6 +86,8 @@ export const runMission01 = (onComplete: () => void) => {
         popover: {
           title: 'Comunicação Interna',
           description: 'Troque mensagens entre quem preenche e quem revisa, mantendo todo o histórico de alterações no mesmo lugar.',
+          side: 'top',
+          align: 'center'
         }
       },
       {
@@ -81,6 +95,8 @@ export const runMission01 = (onComplete: () => void) => {
         popover: {
           title: 'Detalhamento de Custos',
           description: 'Use este botão para entrar no formulário e detalhar todas as necessidades logísticas e operacionais da missão.',
+          side: 'left',
+          align: 'center'
         }
       },
       {
@@ -88,6 +104,8 @@ export const runMission01 = (onComplete: () => void) => {
         popover: {
           title: 'Redação Técnica (DOR)',
           description: 'Após os custos estarem prontos, o sistema gera automaticamente a sua justificativa técnica baseada nos números inseridos.',
+          side: 'left',
+          align: 'center'
         }
       },
       {
@@ -95,6 +113,8 @@ export const runMission01 = (onComplete: () => void) => {
         popover: {
           title: 'Homologação Oficial',
           description: 'Este é o selo de qualidade. Quando o plano atende aos requisitos, ele é Aprovado para emissão dos relatórios oficiais.',
+          side: 'top',
+          align: 'center'
         }
       },
       {
@@ -102,6 +122,8 @@ export const runMission01 = (onComplete: () => void) => {
         popover: {
           title: 'Agilidade e Colaboração',
           description: 'No menu de ações, você pode CLONAR planos complexos de anos anteriores para economizar tempo, ou COMPARTILHAR o acesso com outros militares para trabalho colaborativo.',
+          side: 'left', // Move para a esquerda para não cobrir o menu
+          align: 'start'
         },
         onHighlighted: () => {
           if ((window as any).openActions) (window as any).openActions();
