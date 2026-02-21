@@ -25,6 +25,40 @@ export const GHOST_DATA = {
 
   // Missão 02: Dados de Diretrizes e PNCP
   missao_02: {
+    subitens_lista: [
+      {
+        id: "ghost-subitem-22",
+        nr_subitem: "22",
+        nome_subitem: "Material de Limpeza",
+        descricao_subitem: "Itens para higiene e conservação",
+        itens_aquisicao: [
+          {
+            id: "ghost-item-detergente",
+            descricao_item: "Detergente Líquido Neutro 500ml",
+            valor_unitario: 2.45,
+            numero_pregao: "010/2025",
+            uasg: "160222",
+            codigo_catmat: "445566"
+          }
+        ]
+      },
+      {
+        id: "ghost-subitem-07",
+        nr_subitem: "07",
+        nome_subitem: "Gêneros de Alimentação",
+        descricao_subitem: "Suprimento de víveres",
+        itens_aquisicao: [
+          {
+            id: "ghost-item-arroz",
+            descricao_item: "Arroz Agulhinha Tipo 1 (Saco 5kg)",
+            valor_unitario: 28.90,
+            numero_pregao: "015/2025",
+            uasg: "160222",
+            codigo_catmat: "778899"
+          }
+        ]
+      }
+    ],
     subitem_exemplo: {
       nr_subitem: "24",
       nome_subitem: "Material de Construção",

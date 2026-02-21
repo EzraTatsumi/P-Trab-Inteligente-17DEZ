@@ -62,7 +62,7 @@ import MaterialPermanenteDiretrizRow from "@/components/MaterialPermanenteDiretr
 import MaterialPermanenteDiretrizFormDialog from "@/components/MaterialPermanenteDiretrizFormDialog";
 import MaterialPermanenteExportImportDialog from "@/components/MaterialPermanenteExportImportDialog";
 import { runMission02 } from "@/tours/missionTours";
-import { isGhostMode } from "@/lib/ghostStore";
+import { GHOST_DATA, isGhostMode } from "@/lib/ghostStore";
 
 type DiretrizOperacional = Tables<'diretrizes_operacionais'>;
 
@@ -274,6 +274,11 @@ const CustosOperacionaisPage = () => {
 
   // Sincronização dos estados locais com os Hooks (com proteção contra loops infinitos)
   useEffect(() => { 
+    if (isGhostMode()) {
+      setDiretrizesMaterialConsumo(GHOST_DATA.missao_02.subitens_lista as any);
+      return;
+    }
+
     if (diretrizesMaterialConsumoHook && !isMovingMaterialConsumo) {
       setDiretrizesMaterialConsumo(current => {
         if (JSON.stringify(current) === JSON.stringify(diretrizesMaterialConsumoHook)) return current;

@@ -158,8 +158,9 @@ export const runMission02 = (onComplete: () => void) => {
           side: 'right'
         },
         onHighlighted: () => {
-          const el = document.querySelector('.aba-material-consumo') as HTMLElement;
-          if (el) el.click();
+          // Clica no gatilho do Collapsible para expandir a seção
+          const trigger = document.querySelector('.aba-material-consumo [data-radix-collapsible-trigger]') as HTMLElement;
+          if (trigger) trigger.click();
         }
       },
       {
