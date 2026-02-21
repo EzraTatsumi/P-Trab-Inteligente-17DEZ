@@ -151,12 +151,13 @@ export const runMission02 = (onComplete: () => void) => {
         }
       },
       {
-        element: '.gatilho-material-consumo',
+        element: '.aba-material-consumo',
         popover: {
           title: 'Organização por ND',
           description: 'A seção de Material de Consumo organiza tudo por Subitem da Natureza de Despesa (ND).',
-          side: 'bottom',
-          align: 'start'
+          side: 'left',
+          align: 'start',
+          offset: 40
         },
         onHighlighted: () => {
           if ((window as any).expandMaterialConsumo) {
@@ -164,74 +165,111 @@ export const runMission02 = (onComplete: () => void) => {
           }
         },
         onNextClick: () => {
-          // 1. Abre a janela modal usando a função React que criamos
-          if ((window as any).openModalNovoSubitem) {
-            (window as any).openModalNovoSubitem();
-          }
-          // 2. Aguarda 500ms para a animação da janela terminar e avança o tour
-          setTimeout(() => {
+          // 1. Clica no botão "Novo Subitem"
+          const btnNovo = document.querySelector('.btn-novo-subitem') as HTMLElement;
+          if (btnNovo) {
+            btnNovo.click();
+            // 2. Aguarda a animação do modal antes de avançar o tour
+            setTimeout(() => {
+              d.moveNext();
+            }, 500);
+          } else {
             d.moveNext();
-          }, 500);
+          }
         }
       },
       {
         element: '.modal-novo-subitem',
         popover: {
-          title: 'Criando o Subitem',
-          description: 'Nesta janela, definimos a categoria e os itens de aquisição.',
-          side: 'left',
-          align: 'start',
-          offset: 30
+          title: 'Novo Subitem de ND',
+          description: 'Nesta janela configuramos a categoria e importamos os itens de aquisição.',
+          side: 'top',
+          align: 'center',
+          offset: 20
         },
         onNextClick: () => {
-          // 1. Clica no botão de Importar PNCP que está dentro da janela
+          // 1. Clica no botão de Importar PNCP
           const btnImportar = document.querySelector('.btn-importar-pncp') as HTMLElement;
-          if (btnImportar) btnImportar.click();
-          
-          // 2. Aguarda a segunda janela (API PNCP) abrir e avança o tour
-          setTimeout(() => {
+          if (btnImportar) {
+            btnImportar.click();
+            // 2. Aguarda o segundo modal abrir
+            setTimeout(() => {
+              d.moveNext();
+            }, 500);
+          } else {
             d.moveNext();
-          }, 500);
+          }
         }
       },
       {
         element: '.modal-importar-pncp',
         popover: {
-          title: 'O Salto Tecnológico',
-          description: 'Esqueça a digitação manual. Vamos buscar um preço oficial diretamente no Portal Nacional de Contratações Públicas.',
-          side: 'left',
-          align: 'start',
-          offset: 30
+          title: 'Portal Nacional (PNCP)',
+          description: 'Esta é a central de integração. Vamos buscar um preço oficial diretamente no PNCP.',
+          side: 'top',
+          align: 'center',
+          offset: 20
         }
       },
       {
-        element: '.aba-pncp-arp',
+        element: '.form-busca-uasg-tour',
         popover: {
-          title: 'Explorando as Atas (ARP)',
-          description: 'Você pode buscar por UASG ou diretamente por Atas de Registro de Preços (ARP).',
-          side: 'bottom'
+          title: 'Busca por UASG',
+          description: 'Aqui informamos a UASG da Organização Militar para listar suas ARPs vigentes. Vamos simular a busca para a UASG 160222.',
+          side: 'bottom',
+          align: 'center'
+        },
+        onNextClick: () => {
+          const input = document.querySelector('.form-busca-uasg-tour input') as HTMLInputElement;
+          if (input) {
+              const nativeInputValueSetter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value")?.set;
+              nativeInputValueSetter?.call(input, '160222');
+              input.dispatchEvent(new Event('input', { bubbles: true }));
+              
+              const btnBusca = document.querySelector('.form-busca-uasg-tour button[type="submit"]') as HTMLElement;
+              if (btnBusca) btnBusca.click();
+          }
+
+          setTimeout(() => {
+            d.moveNext();
+          }, 1200);
+        }
+      },
+      {
+        element: '.modal-importar-pncp',
+        popover: {
+          title: 'Navegação de Resultados',
+          description: 'O sistema encontrou o Pregão Eletrônico, a ARP correspondente, e finalmente o "Cimento Portland".',
+          side: 'left',
+          offset: 30
         },
         onHighlighted: () => {
           setTimeout(() => {
-            const aba = document.querySelector('.aba-pncp-arp') as HTMLElement;
-            if (aba) aba.click();
-          }, 300);
-        }
-      },
-      {
-        element: '.item-resultado-ghost',
-        popover: {
-          title: 'Seleção do Item Oficial',
-          description: 'Selecionamos este item da ARP vigente. Note que o sistema já traz a descrição técnica completa.',
-          side: 'right'
+            const btnPregao = document.querySelector('.tour-expand-pregao') as HTMLElement;
+            if (btnPregao) btnPregao.click();
+            
+            setTimeout(() => {
+              const btnArp = document.querySelector('.tour-expand-arp') as HTMLElement;
+              if (btnArp) btnArp.click();
+
+              setTimeout(() => {
+                const itemLinha = document.querySelector('.tour-item-mockado') as HTMLElement;
+                if (itemLinha) {
+                  itemLinha.style.transition = 'background-color 0.5s ease';
+                  itemLinha.style.backgroundColor = 'rgba(16, 185, 129, 0.2)';
+                }
+              }, 400);
+            }, 400);
+          }, 400);
         }
       },
       {
         element: '.btn-salvar-subitem',
         popover: {
           title: 'Finalização e Salvamento',
-          description: 'Ao salvar, este item passa a compor seu catálogo para uso imediato.',
-          side: 'top'
+          description: 'Ao salvar, este item passa a compor seu catálogo oficial.',
+          side: 'top',
+          align: 'end'
         }
       }
     ],
