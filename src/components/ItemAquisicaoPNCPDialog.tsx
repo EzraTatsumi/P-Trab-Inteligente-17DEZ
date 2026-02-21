@@ -76,7 +76,7 @@ const ItemAquisicaoPNCPDialog: React.FC<ItemAquisicaoPNCPDialogProps> = ({
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto z-tour-portal">
+            <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto janela-importar-pncp z-tour-portal">
                 <DialogHeader>
                     <DialogTitle>Importar Dados do PNCP</DialogTitle>
                     <DialogDescription>Busque preços e especificações técnicas diretamente no Portal Nacional de Contratações Públicas.</DialogDescription>

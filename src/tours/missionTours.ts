@@ -151,26 +151,26 @@ export const runMission02 = (onComplete: () => void) => {
         }
       },
       {
-        element: '.gatilho-material-consumo',
+        element: '.lista-subitens-nd',
         popover: {
           title: 'Organização por ND',
           description: 'A seção de Material de Consumo organiza tudo por Subitem da Natureza de Despesa (ND). Veja os itens de exemplo já cadastrados.',
-          side: 'bottom',
+          side: 'left',
           align: 'start'
         },
         onHighlighted: () => {
-          // Em vez de simular um clique físico, forçamos o estado do React a abrir a aba
           if ((window as any).expandMaterialConsumo) {
             (window as any).expandMaterialConsumo();
           }
         }
       },
       {
-        element: '.btn-novo-subitem',
+        element: '.card-novo-subitem',
         popover: {
           title: 'Criando o Subitem',
           description: 'Nesta janela, definimos a categoria. Para o exemplo, usaremos Material de Construção vinculado à ND 339030-24.',
-          side: 'top'
+          side: 'left',
+          align: 'center'
         },
         onHighlighted: () => {
           setTimeout(() => {
@@ -180,11 +180,12 @@ export const runMission02 = (onComplete: () => void) => {
         }
       },
       {
-        element: '.btn-importar-pncp',
+        element: '.janela-importar-pncp',
         popover: {
           title: 'O Salto Tecnológico',
           description: 'Esqueça a digitação manual. Vamos buscar um preço oficial diretamente no Portal Nacional de Contratações Públicas.',
-          side: 'left'
+          side: 'left',
+          align: 'center'
         },
         onHighlighted: () => {
           setTimeout(() => {
