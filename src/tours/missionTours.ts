@@ -151,31 +151,32 @@ export const runMission02 = (onComplete: () => void) => {
         }
       },
       {
-        element: '.aba-material-consumo',
+        element: '.gatilho-material-consumo',
         popover: {
           title: 'Organização por ND',
           description: 'A seção de Material de Consumo organiza tudo por Subitem da Natureza de Despesa (ND).',
-          side: 'left',
-          align: 'start',
-          offset: 40
+          side: 'bottom',
+          align: 'start'
         },
         onHighlighted: () => {
-          if ((window as any).expandMaterialConsumo) {
-            (window as any).expandMaterialConsumo();
-          }
+          if ((window as any).expandMaterialConsumo) (window as any).expandMaterialConsumo();
         },
         onNextClick: () => {
-          // 1. Clica no botão "Novo Subitem"
-          const btnNovo = document.querySelector('.btn-novo-subitem') as HTMLElement;
-          if (btnNovo) {
-            btnNovo.click();
-            // 2. Aguarda a animação do modal antes de avançar o tour
-            setTimeout(() => {
-              d.moveNext();
-            }, 500);
-          } else {
-            d.moveNext();
+          // 1. Aciona a abertura imediata contornando o clique (Opção Nuclear)
+          if ((window as any).__abrirModalNuclear) {
+            (window as any).__abrirModalNuclear();
           }
+          
+          // 2. Espera 800ms (Tempo suficiente para a animação do Shadcn terminar)
+          setTimeout(() => {
+            const modalExists = document.querySelector('.modal-novo-subitem');
+            if (modalExists) {
+              console.log("☢️ [TOUR] Janela confirmada. Avançando!");
+              d.moveNext(); 
+            } else {
+              console.error("☢️ [TOUR] FALHA: A janela não renderizou.");
+            }
+          }, 800);
         }
       },
       {
