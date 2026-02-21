@@ -146,7 +146,7 @@ const PTrabManager = () => {
 
   const [showApproveDialog, setShowApproveDialog] = useState(false);
   const [ptrabToApprove, setPtrabToApprove] = useState<PTrab | null>(null);
-  const [suggestedApproveNumber, setSuggestedApproveNumber] = useState<string>("");
+  const [suggestveApproveNumber, setSuggestedApproveNumber] = useState<string>("");
 
   const [showComentarioDialog, setShowComentarioDialog] = useState(false);
   const [ptrabComentario, setPtrabComentario] = useState<PTrab | null>(null);
@@ -1244,7 +1244,7 @@ const PTrabManager = () => {
               <DropdownMenuTrigger asChild>
                 <Button variant="outline" size="icon" className="btn-configuracoes"><Settings className="h-4 w-4" /></Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-56 z-tour-portal">
+              <DropdownMenuContent align="end" className="w-56 menu-configuracoes z-tour-portal">
                 <DropdownMenuLabel>Configurações</DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={handleOpenLinkPTrabDialog}><Link className="mr-2 h-4 w-4" />Vincular P Trab</DropdownMenuItem>
@@ -1566,8 +1566,14 @@ const PTrabManager = () => {
         }
 
         /* 2. O menu que abre (Portal do Radix) - Fica acima do fundo escuro */
-        [data-radix-portal] {
+        [data-radix-portal], 
+        [data-radix-menu-content],
+        .menu-acoes,
+        .menu-configuracoes {
           z-index: 10001 !important;
+          opacity: 1 !important;
+          visibility: visible !important;
+          pointer-events: auto !important;
         }
 
         /* 3. A caixa de texto do tour - Fica acima de tudo */

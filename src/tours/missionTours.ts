@@ -55,7 +55,7 @@ export const runMission01 = (onComplete: () => void) => {
           description: 'Gerencie OMs vinculadas, anos de referência para cálculos e dados de perfil que sairão nos cabeçalhos dos documentos.',
           side: 'left', 
           align: 'start',
-          popoverOffset: 80 // Aumentado para 80px para garantir que não cubra o menu
+          offset: 120 // Distância segura para não cobrir o menu aberto
         },
         onHighlighted: () => {
           if ((window as any).openSettings) (window as any).openSettings();
@@ -125,7 +125,7 @@ export const runMission01 = (onComplete: () => void) => {
           description: 'No menu de ações, você pode CLONAR planos complexos de anos anteriores para economizar tempo, ou COMPARTILHAR o acesso com outros militares para trabalho colaborativo.',
           side: 'left', 
           align: 'start',
-          popoverOffset: 80 // Aumentado para 80px para garantir que não cubra o menu
+          offset: 120 // Distância segura para não cobrir o menu aberto
         },
         onHighlighted: () => {
           if ((window as any).openActions) (window as any).openActions();
