@@ -320,11 +320,20 @@ const CustosOperacionaisPage = () => {
       }
   }, []);
 
+  const handleOpenNewMaterialConsumo = useCallback(() => {
+      setDiretrizMaterialConsumoToEdit(null);
+      setIsMaterialConsumoFormOpen(true);
+  }, []);
+
   useEffect(() => {
     (window as any).expandMaterialConsumo = () => {
       handleCollapseChange('material_consumo_detalhe', true);
     };
-  }, [handleCollapseChange]);
+
+    (window as any).openModalNovoSubitem = () => {
+      handleOpenNewMaterialConsumo();
+    };
+  }, [handleCollapseChange, handleOpenNewMaterialConsumo]);
   
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -1231,21 +1240,6 @@ const CustosOperacionaisPage = () => {
 
   const handleStartEditMaterialPermanente = (diretriz: DiretrizMaterialPermanente) => {
       setDiretrizMaterialPermanenteToEdit(diretriz);
-      setIsMaterialPermanenteFormOpen(true);
-  };
-  
-  const handleOpenNewMaterialConsumo = () => {
-      setDiretrizMaterialConsumoToEdit(null);
-      setIsMaterialConsumoFormOpen(true);
-  };
-
-  const handleOpenNewServicosTerceiros = () => {
-      setDiretrizMaterialConsumoToEdit(null);
-      setIsServicosTerceirosFormOpen(true);
-  };
-
-  const handleOpenNewMaterialPermanente = () => {
-      setDiretrizMaterialPermanenteToEdit(null);
       setIsMaterialPermanenteFormOpen(true);
   };
   

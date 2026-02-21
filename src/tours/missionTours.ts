@@ -160,22 +160,18 @@ export const runMission02 = (onComplete: () => void) => {
           offset: 40
         },
         onHighlighted: () => {
-          if ((window as any).expandMaterialConsumo) {
-            (window as any).expandMaterialConsumo();
-          }
+          if ((window as any).expandMaterialConsumo) (window as any).expandMaterialConsumo();
         },
         onNextClick: () => {
-          // 1. Clica no botão "Novo Subitem"
-          const btnNovo = document.querySelector('.btn-novo-subitem') as HTMLElement;
-          if (btnNovo) {
-            btnNovo.click();
-            // 2. Aguarda a animação do modal antes de avançar o tour
-            setTimeout(() => {
-              d.moveNext();
-            }, 500);
-          } else {
-            d.moveNext();
+          // ABRE A JANELA DIRETAMENTE PELO ESTADO DO REACT (Infalível)
+          if ((window as any).openModalNovoSubitem) {
+            (window as any).openModalNovoSubitem();
           }
+          
+          // Aguarda 500ms para a animação da janela terminar de surgir na tela
+          setTimeout(() => {
+            d.moveNext();
+          }, 500);
         }
       },
       {
@@ -188,17 +184,12 @@ export const runMission02 = (onComplete: () => void) => {
           offset: 20
         },
         onNextClick: () => {
-          // 1. Clica no botão de Importar PNCP
           const btnImportar = document.querySelector('.btn-importar-pncp') as HTMLElement;
-          if (btnImportar) {
-            btnImportar.click();
-            // 2. Aguarda o segundo modal abrir
-            setTimeout(() => {
-              d.moveNext();
-            }, 500);
-          } else {
+          if (btnImportar) btnImportar.click();
+
+          setTimeout(() => {
             d.moveNext();
-          }
+          }, 500);
         }
       },
       {
