@@ -114,7 +114,6 @@ const ItemAquisicaoPNCPDialog: React.FC<ItemAquisicaoPNCPDialogProps> = ({
                             <div className="py-4 space-y-6">
                                 <TabsContent value="uasg" className="mt-0 focus-visible:outline-none">
                                     <div className="form-busca-uasg-tour">
-                                        <ArpUasgSearchParams onArpSelect={() => {}} />
                                         <ArpUasgSearchForm 
                                             onItemPreSelect={handleItemPreSelect}
                                             selectedItemIds={selectedItems.map(i => `${i.codigo_catmat}-${i.numero_pregao}-${i.uasg}`)}
