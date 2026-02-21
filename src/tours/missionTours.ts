@@ -44,10 +44,11 @@ export const runMission01 = (onComplete: () => void) => {
       },
       {
         element: '.btn-configuracoes',
-        onHighlighted: () => {
-          // Abre o menu de configurações automaticamente
-          const btn = document.querySelector('.btn-configuracoes') as HTMLElement;
-          if (btn) btn.click();
+        onHighlighted: (element) => {
+          // Pequeno delay para garantir que o overlay do tour não bloqueie o clique
+          setTimeout(() => {
+            if (element) (element as HTMLElement).click();
+          }, 200);
         },
         popover: {
           title: 'Configurações do Sistema',
@@ -91,10 +92,11 @@ export const runMission01 = (onComplete: () => void) => {
       },
       {
         element: '.btn-acoes-dropdown',
-        onHighlighted: () => {
-          // Abre o menu de ações automaticamente
-          const btn = document.querySelector('.btn-acoes-dropdown') as HTMLElement;
-          if (btn) btn.click();
+        onHighlighted: (element) => {
+          // Expande o menu de ações automaticamente ao chegar no passo
+          setTimeout(() => {
+            if (element) (element as HTMLElement).click();
+          }, 200);
         },
         popover: {
           title: 'Agilidade e Colaboração',
