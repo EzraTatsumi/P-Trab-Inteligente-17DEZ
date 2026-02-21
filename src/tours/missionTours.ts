@@ -163,6 +163,16 @@ export const runMission02 = (onComplete: () => void) => {
           if ((window as any).expandMaterialConsumo) {
             (window as any).expandMaterialConsumo();
           }
+        },
+        onNextClick: () => {
+          // 1. Clica no botão "Novo Subitem"
+          const btnNovo = document.querySelector('.btn-novo-subitem') as HTMLElement;
+          if (btnNovo) btnNovo.click();
+          
+          // 2. Aguarda a animação do modal antes de avançar o tour
+          setTimeout(() => {
+            d.moveNext();
+          }, 500);
         }
       },
       {
@@ -174,11 +184,15 @@ export const runMission02 = (onComplete: () => void) => {
           align: 'center',
           offset: 50
         },
-        onHighlighted: () => {
+        onNextClick: () => {
+          // 1. Clica no botão de Importar PNCP
+          const btnImportar = document.querySelector('.btn-importar-pncp') as HTMLElement;
+          if (btnImportar) btnImportar.click();
+
+          // 2. Aguarda o segundo modal abrir
           setTimeout(() => {
-            const btn = document.querySelector('.btn-novo-subitem') as HTMLElement;
-            if (btn) btn.click();
-          }, 400);
+            d.moveNext();
+          }, 500);
         }
       },
       {
@@ -189,12 +203,6 @@ export const runMission02 = (onComplete: () => void) => {
           side: 'left',
           align: 'start',
           offset: 50
-        },
-        onHighlighted: () => {
-          setTimeout(() => {
-            const btn = document.querySelector('.btn-importar-pncp') as HTMLElement;
-            if (btn) btn.click();
-          }, 400);
         }
       },
       {
@@ -204,50 +212,52 @@ export const runMission02 = (onComplete: () => void) => {
           description: 'Aqui informamos a UASG da Organização Militar para listar suas ARPs vigentes. Vamos simular a busca para a UASG 160222.',
           side: 'bottom',
           align: 'center'
+        },
+        onNextClick: () => {
+          // 1. Preenche o campo UASG e dispara a busca
+          const input = document.querySelector('.form-busca-uasg-tour input') as HTMLInputElement;
+          if (input) {
+              const nativeInputValueSetter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value")?.set;
+              nativeInputValueSetter?.call(input, '160222');
+              input.dispatchEvent(new Event('input', { bubbles: true }));
+              
+              const btnBusca = document.querySelector('.form-busca-uasg-tour button[type="submit"]') as HTMLElement;
+              if (btnBusca) btnBusca.click();
+          }
+
+          // 2. Aguarda o carregamento dos dados mockados (Ghost Mode)
+          setTimeout(() => {
+            d.moveNext();
+          }, 1200);
         }
       },
       {
         element: '.modal-importar-pncp',
         popover: {
           title: 'Navegação de Resultados',
-          description: 'Veja a hierarquia: o sistema encontrou o Pregão Eletrônico, dentro dele a ARP correspondente, e finalmente o "Cimento Portland".',
+          description: 'O sistema encontrou o Pregão Eletrônico, a ARP correspondente, e finalmente o "Cimento Portland".',
           side: 'left',
           offset: 50
         },
         onHighlighted: () => {
-          // Automação em cascata
+          // Automação de expansão em cascata
           setTimeout(() => {
-            // 1. Digita UASG e clica buscar
-            const input = document.querySelector('input[placeholder="Ex: 160222"]') as HTMLInputElement;
-            if (input) {
-                // Simula a digitação para o React Hook Form
-                const nativeInputValueSetter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value")?.set;
-                nativeInputValueSetter?.call(input, '160222');
-                input.dispatchEvent(new Event('input', { bubbles: true }));
-                
-                // Encontra o botão de busca dentro do formulário
-                const btnBusca = input.closest('form')?.querySelector('button[type="submit"]') as HTMLElement;
-                if (btnBusca) btnBusca.click();
-            }
-
+            const btnPregao = document.querySelector('.tour-expand-pregao') as HTMLElement;
+            if (btnPregao) btnPregao.click();
+            
             setTimeout(() => {
-              // 2. Expande Pregão
-              const btnPregao = document.querySelector('.tour-expand-pregao') as HTMLElement;
-              if (btnPregao) btnPregao.click();
-              
-              setTimeout(() => {
-                // 3. Expande ARP
-                const btnArp = document.querySelector('.tour-expand-arp') as HTMLElement;
-                if (btnArp) btnArp.click();
+              const btnArp = document.querySelector('.tour-expand-arp') as HTMLElement;
+              if (btnArp) btnArp.click();
 
-                setTimeout(() => {
-                  // 4. Destaca o item
-                  const itemLinha = document.querySelector('.tour-item-mockado') as HTMLElement;
-                  if (itemLinha) itemLinha.style.backgroundColor = 'rgba(16, 185, 129, 0.1)';
-                }, 400);
+              setTimeout(() => {
+                const itemLinha = document.querySelector('.tour-item-mockado') as HTMLElement;
+                if (itemLinha) {
+                  itemLinha.style.transition = 'background-color 0.5s ease';
+                  itemLinha.style.backgroundColor = 'rgba(16, 185, 129, 0.2)';
+                }
               }, 400);
-            }, 1200); // Espera o mock carregar
-          }, 300);
+            }, 400);
+          }, 400);
         }
       },
       {
