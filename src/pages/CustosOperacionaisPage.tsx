@@ -67,6 +67,24 @@ import { cn } from "@/lib/utils";
 
 type DiretrizOperacional = Tables<'diretrizes_operacionais'>;
 
+interface IndexedItemAquisicao extends ItemAquisicao {
+    diretrizId: string;
+    subitemNr: string;
+    subitemNome: string;
+}
+
+interface IndexedItemServico extends ItemAquisicaoServico {
+    diretrizId: string;
+    subitemNr: string;
+    subitemNome: string;
+}
+
+interface IndexedItemPermanente extends ItemAquisicao {
+    diretrizId: string;
+    subitemNr: string;
+    subitemNome: string;
+}
+
 const DIARIA_RANKS_CONFIG = [
   { key: 'of_gen', label: 'Of Gen', fieldPrefix: 'diaria_of_gen' },
   { key: 'of_sup', label: 'Of Sup', fieldPrefix: 'diaria_of_sup' },
@@ -1134,6 +1152,108 @@ const CustosOperacionaisPage = () => {
           toast.success("Diretriz de Concessionária excluída!");
           queryClient.invalidateQueries({ queryKey: ['diretrizesCustosOperacionais', selectedYear, user?.id] });
       } catch (error) {
+          toast.error(sanitizeError(error));
+      } finally {
+          setIsSaving(false);
+      }
+  };
+
+  const handleSaveMaterialConsumo = async (data: Partial<DiretrizMaterialConsumo> & { ano_referencia: number }) => {
+      try {
+          setIsSaving(true);
+          const { data: { user: authUser } } = await supabase.auth.getUser();
+          if (!authUser) throw new Error("Usuário não autenticado");
+          
+          const dbData: TablesInsert<'diretrizes_material_consumo'> = {
+              user_id: authUser.id,
+              ano_referencia: data.ano_referencia,
+              nr_subitem: data.nr_subitem!,
+              nome_subitem: data.nome_subitem!,
+              descricao_subitem: data.descricao_subitem || null,
+              itens_aquisicao: data.itens_aquisicao as unknown as Json,
+              ativo: data.ativo ?? true,
+          };
+          
+          if (data.id) {
+              await supabase.from('diretrizes_material_consumo').update(dbData as TablesUpdate<'diretrizes_material_consumo'>).eq('id', data.id);
+              toast.success("Subitem de Material de Consumo atualizado!");
+          } else {
+              await supabase.from('diretrizes_material_consumo').insert([dbData]);
+              toast.success("Novo Subitem de Material de Consumo cadastrado!");
+          }
+          
+          queryClient.invalidateQueries({ queryKey: ['diretrizesMaterialConsumo', selectedYear, authUser.id] });
+          setDiretrizMaterialConsumoToEdit(null);
+          setIsMaterialConsumoFormOpen(false);
+      } catch (error: any) {
+          toast.error(sanitizeError(error));
+      } finally {
+          setIsSaving(false);
+      }
+  };
+
+  const handleSaveServicosTerceiros = async (data: Partial<DiretrizServicosTerceiros> & { ano_referencia: number }) => {
+      try {
+          setIsSaving(true);
+          const { data: { user: authUser } } = await supabase.auth.getUser();
+          if (!authUser) throw new Error("Usuário não autenticado");
+          
+          const dbData = {
+              user_id: authUser.id,
+              ano_referencia: data.ano_referencia,
+              nr_subitem: data.nr_subitem!,
+              nome_subitem: data.nome_subitem!,
+              descricao_subitem: data.descricao_subitem || null,
+              itens_aquisicao: data.itens_aquisicao as unknown as Json,
+              ativo: data.ativo ?? true,
+          };
+          
+          if (data.id) {
+              await supabase.from('diretrizes_servicos_terceiros' as any).update(dbData).eq('id', data.id);
+              toast.success("Subitem de Serviços de Terceiros atualizado!");
+          } else {
+              await supabase.from('diretrizes_servicos_terceiros' as any).insert([dbData]);
+              toast.success("Novo Subitem de Serviços de Terceiros cadastrado!");
+          }
+          
+          queryClient.invalidateQueries({ queryKey: ['diretrizesServicosTerceiros', selectedYear, authUser.id] });
+          setDiretrizServicosTerceirosToEdit(null);
+          setIsServicosTerceirosFormOpen(false);
+      } catch (error: any) {
+          toast.error(sanitizeError(error));
+      } finally {
+          setIsSaving(false);
+      }
+  };
+
+  const handleSaveMaterialPermanente = async (data: Partial<DiretrizMaterialPermanente> & { ano_referencia: number }) => {
+      try {
+          setIsSaving(true);
+          const { data: { user: authUser } } = await supabase.auth.getUser();
+          if (!authUser) throw new Error("Usuário não autenticado");
+          
+          const dbData = {
+              user_id: authUser.id,
+              ano_referencia: data.ano_referencia,
+              nr_subitem: data.nr_subitem!,
+              nome_subitem: data.nome_subitem!,
+              descricao_subitem: data.descricao_subitem || null,
+              itens_aquisicao: data.itens_aquisicao as unknown as Json,
+              ativo: data.ativo ?? true,
+          };
+          
+          if (data.id) {
+              await supabase.from('diretrizes_material_permanente' as any).update(dbData).eq('id', data.id);
+              toast.success("Subitem de Material Permanente atualizado!");
+          } else {
+              await supabase.from('diretrizes_material_permanente' as any).insert([dbData]);
+              toast.success("Novo Subitem de Material Permanente cadastrado!");
+          }
+          
+          queryClient.invalidateQueries({ queryKey: ['diretrizesMaterialPermanente', selectedYear, authUser.id] });
+          setDiretrizMaterialPermanenteToEdit(null);
+          setIsMaterialPermanenteFormOpen(false);
+      } catch (error: any) {
           toast.error(sanitizeError(error));
       } finally {
           setIsSaving(false);
