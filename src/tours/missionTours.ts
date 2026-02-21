@@ -154,55 +154,49 @@ export const runMission02 = (onComplete: () => void) => {
         element: '.aba-material-consumo',
         popover: {
           title: 'Organização por ND',
-          description: 'A seção de Material de Consumo organiza tudo por Subitem da Natureza de Despesa (ND). Veja os itens de exemplo já cadastrados.',
+          description: 'A seção de Material de Consumo organiza tudo por Subitem da Natureza de Despesa (ND).',
           side: 'left',
           align: 'start',
           offset: 40
         },
         onHighlighted: () => {
-          if ((window as any).expandMaterialConsumo) {
-            (window as any).expandMaterialConsumo();
-          }
+          if ((window as any).expandMaterialConsumo) (window as any).expandMaterialConsumo();
         },
         onNextClick: () => {
-          // 1. Clica no botão "Novo Subitem"
           const btnNovo = document.querySelector('.btn-novo-subitem') as HTMLElement;
           if (btnNovo) btnNovo.click();
           
-          // 2. Aguarda a animação do modal antes de avançar o tour
           setTimeout(() => {
             d.moveNext();
-          }, 500);
+          }, 400);
         }
       },
       {
         element: '.modal-novo-subitem',
         popover: {
-          title: 'Estrutura de Itens',
-          description: 'Nesta janela completa, você define a Natureza de Despesa e tem acesso aos métodos de importação de itens.',
-          side: 'left',
+          title: 'Novo Subitem de ND',
+          description: 'Nesta janela configuramos a categoria e importamos os itens de aquisição.',
+          side: 'top',
           align: 'center',
-          offset: 50
+          offset: 20
         },
         onNextClick: () => {
-          // 1. Clica no botão de Importar PNCP
           const btnImportar = document.querySelector('.btn-importar-pncp') as HTMLElement;
           if (btnImportar) btnImportar.click();
 
-          // 2. Aguarda o segundo modal abrir
           setTimeout(() => {
             d.moveNext();
-          }, 500);
+          }, 400);
         }
       },
       {
         element: '.modal-importar-pncp',
         popover: {
           title: 'Portal Nacional (PNCP)',
-          description: 'Esta é a central de integração. Esqueça a digitação manual: vamos buscar um preço oficial diretamente no PNCP.',
-          side: 'left',
-          align: 'start',
-          offset: 50
+          description: 'Esta é a central de integração. Vamos buscar um preço oficial diretamente no PNCP.',
+          side: 'top',
+          align: 'center',
+          offset: 20
         }
       },
       {
@@ -214,7 +208,6 @@ export const runMission02 = (onComplete: () => void) => {
           align: 'center'
         },
         onNextClick: () => {
-          // 1. Preenche o campo UASG e dispara a busca
           const input = document.querySelector('.form-busca-uasg-tour input') as HTMLInputElement;
           if (input) {
               const nativeInputValueSetter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value")?.set;
@@ -225,7 +218,6 @@ export const runMission02 = (onComplete: () => void) => {
               if (btnBusca) btnBusca.click();
           }
 
-          // 2. Aguarda o carregamento dos dados mockados (Ghost Mode)
           setTimeout(() => {
             d.moveNext();
           }, 1200);
@@ -237,10 +229,9 @@ export const runMission02 = (onComplete: () => void) => {
           title: 'Navegação de Resultados',
           description: 'O sistema encontrou o Pregão Eletrônico, a ARP correspondente, e finalmente o "Cimento Portland".',
           side: 'left',
-          offset: 50
+          offset: 30
         },
         onHighlighted: () => {
-          // Automação de expansão em cascata
           setTimeout(() => {
             const btnPregao = document.querySelector('.tour-expand-pregao') as HTMLElement;
             if (btnPregao) btnPregao.click();
@@ -264,7 +255,7 @@ export const runMission02 = (onComplete: () => void) => {
         element: '.btn-salvar-subitem',
         popover: {
           title: 'Finalização e Salvamento',
-          description: 'Ao salvar, este item passa a compor seu catálogo. Agora, qualquer P Trab que necessite deste material usará automaticamente este valor oficial.',
+          description: 'Ao salvar, este item passa a compor seu catálogo oficial.',
           side: 'top',
           align: 'end'
         }

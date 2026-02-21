@@ -14,6 +14,7 @@ import {
 import { formatPregao } from "@/lib/formatUtils";
 import { TablesInsert, TablesUpdate } from "./types"; 
 import { ItemAquisicao } from "@/types/diretrizesMaterialConsumo"; 
+import { GHOST_DATA, isGhostMode } from "@/lib/ghostStore";
 
 interface EdgeFunctionResponse {
   diesel: { price: number, source: string };
@@ -99,9 +100,6 @@ interface CatalogEntryStatus {
     isCataloged: boolean;
 }
 
-/**
- * Busca os dados de um item no catálogo local (CATMAT ou CATSER).
- */
 export async function fetchCatalogEntry(codigo: string, mode: 'material' | 'servico'): Promise<CatalogEntryStatus> {
     if (!codigo) return { description: null, shortDescription: null, isCataloged: false };
     const table = mode === 'material' ? 'catalogo_catmat' : 'catalogo_catser';
@@ -143,9 +141,6 @@ export async function fetchCatalogEntry(codigo: string, mode: 'material' | 'serv
     }
 }
 
-/**
- * Salva uma nova entrada no catálogo (CATMAT ou CATSER).
- */
 export async function saveNewCatalogEntry(code: string, description: string, shortDescription: string, mode: 'material' | 'servico'): Promise<void> {
     const cleanCode = code.replace(/\D/g, '');
     if (mode === 'material') {
@@ -166,9 +161,6 @@ export async function saveNewCatalogEntry(code: string, description: string, sho
     }
 }
 
-/**
- * Busca a descrição completa de um item no PNCP.
- */
 export async function fetchCatalogFullDescription(codigo: string, mode: 'material' | 'servico'): Promise<{ fullDescription: string | null, nomePdm: string | null }> {
     if (!codigo) return { fullDescription: null, nomePdm: null };
     try {
@@ -191,6 +183,10 @@ export async function fetchCatalogFullDescription(codigo: string, mode: 'materia
 }
 
 export async function fetchArpsByUasg(params: ArpUasgSearchParams): Promise<ArpItemResult[]> {
+    if (isGhostMode() && params.uasg === '160222') {
+        return GHOST_DATA.missao_02.arp_search_results;
+    }
+
     try {
         const { data, error } = await supabase.functions.invoke('fetch-arps-by-uasg', { body: params });
         if (error) {
@@ -268,6 +264,10 @@ export async function fetchArpItemsByCatmat(params: { codigoItem: string, dataVi
 }
 
 export async function fetchArpItemsById(numeroControlePncpAta: string): Promise<DetailedArpItem[]> {
+    if (isGhostMode() && numeroControlePncpAta === '160222-ARP-001-2025') {
+        return GHOST_DATA.missao_02.arp_detailed_items;
+    }
+
     try {
         const { data, error } = await supabase.functions.invoke('fetch-arp-items-by-id', { body: { numeroControlePncpAta } });
         if (error) throw new Error(error.message || "Falha na execução da Edge Function.");
@@ -301,9 +301,6 @@ export async function fetchArpItemsById(numeroControlePncpAta: string): Promise<
     }
 }
 
-/**
- * Busca todos os itens de aquisição existentes para um dado ano e usuário, considerando o modo.
- */
 export async function fetchAllExistingAcquisitionItems(year: number, userId: string, mode: 'material' | 'servico' | 'permanente'): Promise<ItemAquisicao[]> {
     if (!year || typeof year !== 'number' || year <= 0) return [];
     

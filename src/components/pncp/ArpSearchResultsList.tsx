@@ -1,229 +1,115 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Button } from "@/components/ui/button";
-import { ChevronDown, ChevronUp, Loader2, Package, Info, CheckCircle2 } from "lucide-react";
+import React, { useState } from 'react';
 import { ArpItemResult, DetailedArpItem } from '@/types/pncp';
-import { formatCurrency, formatCodug, capitalizeFirstLetter } from '@/lib/formatUtils';
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { ChevronDown, ChevronUp, Package, Loader2, CheckCircle2 } from "lucide-react";
 import { fetchArpItemsById } from '@/integrations/supabase/api';
-import { toast } from 'sonner';
-import { Badge } from '@/components/ui/badge';
+import { formatCurrency, formatDate } from '@/lib/formatUtils';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { cn } from '@/lib/utils';
-import { isGhostMode, GHOST_DATA } from '@/lib/ghostStore';
 
 interface ArpSearchResultsListProps {
     results: ArpItemResult[];
     onItemPreSelect: (item: DetailedArpItem, pregaoFormatado: string, uasg: string) => void;
     searchedUasg: string;
-    searchedOmName: string;
+    searchedOmName?: string;
     selectedItemIds: string[];
 }
 
 const ArpSearchResultsList: React.FC<ArpSearchResultsListProps> = ({ 
     results, 
     onItemPreSelect, 
-    searchedUasg, 
+    searchedUasg,
     searchedOmName,
     selectedItemIds 
 }) => {
-    const [openGroups, setOpenGroups] = useState<Set<string>>(new Set());
-    const [openArps, setOpenArps] = useState<Set<string>>(new Set());
+    const [expandedArpId, setExpandedArpId] = useState<string | null>(null);
     const [arpItems, setArpItems] = useState<Record<string, DetailedArpItem[]>>({});
-    const [loadingArps, setLoadingArps] = useState<Set<string>>(new Set());
-
-    const groupedResults = results.reduce((acc, item) => {
-        const key = item.pregaoFormatado;
-        if (!acc[key]) acc[key] = [];
-        acc[key].push(item);
-        return acc;
-    }, {} as Record<string, ArpItemResult[]>);
-
-    const toggleGroup = (pregao: string) => {
-        setOpenGroups(prev => {
-            const next = new Set(prev);
-            if (next.has(pregao)) next.delete(pregao);
-            else next.add(pregao);
-            return next;
-        });
-    };
+    const [loadingArpId, setLoadingArpId] = useState<string | null>(null);
 
     const toggleArp = async (arp: ArpItemResult) => {
-        const key = arp.numeroControlePncpAta;
-        if (openArps.has(key)) {
-            setOpenArps(prev => {
-                const next = new Set(prev);
-                next.delete(key);
-                return next;
-            });
+        if (expandedArpId === arp.id) {
+            setExpandedArpId(null);
             return;
         }
 
-        if (!arpItems[key]) {
-            setLoadingArps(prev => new Set(prev).add(key));
+        if (!arpItems[arp.id]) {
+            setLoadingArpId(arp.id);
             try {
-                let items: DetailedArpItem[] = [];
-                if (isGhostMode() && key === '160222-ARP-001-2025') {
-                    await new Promise(resolve => setTimeout(resolve, 800));
-                    items = GHOST_DATA.missao_02.arp_detailed_items;
-                } else {
-                    items = await fetchArpItemsById(key);
-                }
-                setArpItems(prev => ({ ...prev, [key]: items }));
-            } catch (error: any) {
-                toast.error(`Falha ao carregar itens da ARP: ${error.message}`);
+                const items = await fetchArpItemsById(arp.numeroControlePncpAta);
+                setArpItems(prev => ({ ...prev, [arp.id]: items }));
+            } catch (error) {
+                console.error("Erro ao carregar itens da ARP:", error);
             } finally {
-                setLoadingArps(prev => {
-                    const next = new Set(prev);
-                    next.delete(key);
-                    return next;
-                });
+                setLoadingArpId(null);
             }
         }
-
-        setOpenArps(prev => new Set(prev).add(key));
+        setExpandedArpId(arp.id);
     };
 
     return (
         <div className="space-y-4">
-            <div className="flex items-center justify-between px-2">
-                <h3 className="text-sm font-semibold text-muted-foreground">
-                    Resultados para {searchedOmName || `UASG ${searchedUasg}`}
-                </h3>
-                <Badge variant="outline">{results.length} ARP(s) encontrada(s)</Badge>
-            </div>
-
-            <div className="border rounded-md overflow-hidden">
-                <Table>
-                    <TableHeader className="bg-muted/50">
-                        <TableRow>
-                            <TableHead className="w-[40px]"></TableHead>
-                            <TableHead>Pregão / ARP</TableHead>
-                            <TableHead className="hidden md:table-cell">Objeto</TableHead>
-                            <TableHead className="text-right">Vigência</TableHead>
-                        </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                        {Object.entries(groupedResults).map(([pregao, arps]) => {
-                            const isGroupOpen = openGroups.has(pregao);
-                            return (
-                                <React.Fragment key={pregao}>
-                                    <TableRow 
-                                        className="cursor-pointer hover:bg-muted/30 bg-muted/10"
-                                        onClick={() => toggleGroup(pregao)}
-                                    >
-                                        <TableCell className="text-center">
-                                            {isGroupOpen ? <ChevronUp className="h-4 w-4 tour-expand-pregao" /> : <ChevronDown className="h-4 w-4 tour-expand-pregao" />}
-                                        </TableCell>
-                                        <TableCell className="font-bold text-primary">
-                                            Pregão {pregao}
-                                            <span className="ml-2 text-xs font-normal text-muted-foreground">({arps.length} ARP)</span>
-                                        </TableCell>
-                                        <TableCell className="hidden md:table-cell text-xs text-muted-foreground italic">
-                                            {arps[0].objeto.substring(0, 80)}...
-                                        </TableCell>
-                                        <TableCell className="text-right text-xs">
-                                            Várias
-                                        </TableCell>
-                                    </TableRow>
-
-                                    {isGroupOpen && arps.map(arp => {
-                                        const isArpOpen = openArps.has(arp.numeroControlePncpAta);
-                                        const isLoading = loadingArps.has(arp.numeroControlePncpAta);
-                                        
-                                        return (
-                                            <React.Fragment key={arp.numeroControlePncpAta}>
-                                                <TableRow 
-                                                    className={cn(
-                                                        "cursor-pointer hover:bg-primary/5 border-l-4 border-l-primary/20",
-                                                        isArpOpen && "bg-primary/5 border-l-primary"
-                                                    )}
-                                                    onClick={() => toggleArp(arp)}
-                                                >
+            <h3 className="text-sm font-semibold text-muted-foreground px-1">
+                {searchedOmName || `Resultados para UASG ${searchedUasg}`}
+            </h3>
+            {results.map((arp) => (
+                <Card key={arp.id} className="overflow-hidden border-primary/20">
+                    <CardHeader className="p-4 cursor-pointer hover:bg-muted/50 transition-colors tour-expand-pregao" onClick={() => toggleArp(arp)}>
+                        <div className="flex items-center justify-between">
+                            <div className="space-y-1">
+                                <CardTitle className="text-base flex items-center gap-2">
+                                    Pregão {arp.pregaoFormatado} - Ata {arp.numeroAta}
+                                </CardTitle>
+                                <p className="text-xs text-muted-foreground line-clamp-1">{arp.objeto}</p>
+                            </div>
+                            {expandedArpId === arp.id ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
+                        </div>
+                    </CardHeader>
+                    {expandedArpId === arp.id && (
+                        <CardContent className="p-0 border-t tour-expand-arp">
+                            {loadingArpId === arp.id ? (
+                                <div className="p-8 text-center"><Loader2 className="h-6 w-6 animate-spin mx-auto text-primary" /></div>
+                            ) : (
+                                <Table>
+                                    <TableHeader>
+                                        <TableRow>
+                                            <TableHead className="w-[10%] text-center">Item</TableHead>
+                                            <TableHead className="w-[60%]">Descrição</TableHead>
+                                            <TableHead className="w-[20%] text-right">Valor Unit.</TableHead>
+                                            <TableHead className="w-[10%]"></TableHead>
+                                        </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {arpItems[arp.id]?.map((item) => {
+                                            const isSelected = selectedItemIds.includes(item.id);
+                                            const isMocked = item.id === 'ghost-item-cimento';
+                                            return (
+                                                <TableRow key={item.id} className={cn(isSelected && "bg-primary/5", isMocked && "tour-item-mockado")}>
+                                                    <TableCell className="text-center font-mono text-xs">{item.codigoItem}</TableCell>
+                                                    <TableCell className="text-xs font-medium">{item.descricaoItem}</TableCell>
+                                                    <TableCell className="text-right font-bold">{formatCurrency(item.valorUnitario)}</TableCell>
                                                     <TableCell className="text-center">
-                                                        {isLoading ? (
-                                                            <Loader2 className="h-3 w-3 animate-spin text-primary" />
-                                                        ) : (
-                                                            isArpOpen ? <ChevronUp className="h-3 w-3 tour-expand-arp" /> : <ChevronDown className="h-3 w-3 tour-expand-arp" />
-                                                        )}
-                                                    </TableCell>
-                                                    <TableCell className="pl-8 text-sm font-medium">
-                                                        ARP {arp.numeroAta}
-                                                    </TableCell>
-                                                    <TableCell className="hidden md:table-cell text-[0.7rem] text-muted-foreground leading-tight">
-                                                        {arp.objeto}
-                                                    </TableCell>
-                                                    <TableCell className="text-right text-[0.7rem] whitespace-nowrap">
-                                                        {new Date(arp.dataVigenciaFinal).toLocaleDateString('pt-BR')}
+                                                        <Button 
+                                                            variant={isSelected ? "default" : "outline"} 
+                                                            size="icon" 
+                                                            className="h-8 w-8"
+                                                            onClick={() => onItemPreSelect(item, arp.pregaoFormatado, arp.uasg)}
+                                                        >
+                                                            {isSelected ? <CheckCircle2 className="h-4 w-4" /> : <Package className="h-4 w-4" />}
+                                                        </Button>
                                                     </TableCell>
                                                 </TableRow>
-
-                                                {isArpOpen && arpItems[arp.numeroControlePncpAta] && (
-                                                    <TableRow className="bg-muted/5 hover:bg-transparent">
-                                                        <TableCell colSpan={4} className="p-0">
-                                                            <div className="p-4 bg-background/50 border-y">
-                                                                <Table>
-                                                                    <TableHeader>
-                                                                        <TableRow className="hover:bg-transparent">
-                                                                            <TableHead className="h-8 text-[0.65rem] uppercase">Cód. Item</TableHead>
-                                                                            <TableHead className="h-8 text-[0.65rem] uppercase">Descrição Técnica</TableHead>
-                                                                            <TableHead className="h-8 text-[0.65rem] uppercase text-right">Valor Unit.</TableHead>
-                                                                            <TableHead className="h-8 text-[0.65rem] uppercase text-center">Ação</TableHead>
-                                                                        </TableRow>
-                                                                    </TableHeader>
-                                                                    <TableBody>
-                                                                        {arpItems[arp.numeroControlePncpAta].map(item => {
-                                                                            const isSelected = selectedItemIds.includes(item.id);
-                                                                            const isMockItem = item.id === 'ghost-item-cimento';
-                                                                            
-                                                                            return (
-                                                                                <TableRow 
-                                                                                    key={item.id} 
-                                                                                    className={cn(
-                                                                                        "hover:bg-primary/5 transition-colors",
-                                                                                        isSelected && "bg-green-50 hover:bg-green-100",
-                                                                                        isMockItem && "tour-item-mockado"
-                                                                                    )}
-                                                                                >
-                                                                                    <TableCell className="text-xs font-medium py-2">{item.codigoItem}</TableCell>
-                                                                                    <TableCell className="text-[0.7rem] max-w-lg whitespace-normal py-2 leading-relaxed">
-                                                                                        {capitalizeFirstLetter(item.descricaoItem)}
-                                                                                    </TableCell>
-                                                                                    <TableCell className="text-right text-xs font-bold py-2">
-                                                                                        {formatCurrency(item.valorUnitario)}
-                                                                                    </TableCell>
-                                                                                    <TableCell className="text-center py-2">
-                                                                                        <Button 
-                                                                                            size="sm" 
-                                                                                            variant={isSelected ? "default" : "outline"}
-                                                                                            className={cn("h-7 px-2 text-[10px]", isSelected && "bg-green-600 hover:bg-green-700")}
-                                                                                            onClick={(e) => {
-                                                                                                e.stopPropagation();
-                                                                                                onItemPreSelect(item, arp.pregaoFormatado, arp.uasg);
-                                                                                            }}
-                                                                                        >
-                                                                                            {isSelected ? <CheckCircle2 className="h-3 w-3 mr-1" /> : <Package className="h-3 w-3 mr-1" />}
-                                                                                            {isSelected ? "Selecionado" : "Selecionar"}
-                                                                                        </Button>
-                                                                                    </TableCell>
-                                                                                </TableRow>
-                                                                            );
-                                                                        })}
-                                                                    </TableBody>
-                                                                </Table>
-                                                            </div>
-                                                        </TableCell>
-                                                    </TableRow>
-                                                )}
-                                            </React.Fragment>
-                                        );
-                                    })}
-                                </React.Fragment>
-                            );
-                        })}
-                    </TableBody>
-                </Table>
-            </div>
+                                            );
+                                        })}
+                                    </TableBody>
+                                </Table>
+                            )}
+                        </CardContent>
+                    )}
+                </Card>
+            ))}
         </div>
     );
 };
