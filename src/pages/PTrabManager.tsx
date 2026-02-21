@@ -951,7 +951,7 @@ const PTrabManager = () => {
     }
   };
   
-  const simplePTrabsToConsolidate = useMemo(() => pTrabs.filter(p => selectedPTrabsToConsolidate.includes(p.id)).map(p => ({ id: p.id, numero_ptrab: p.numero_ptrab, nome_operacao: p.nome_operacao })), [pTrabs, selectedPTrabsToConsolidate]);
+  const simplePTrabsToConsolidate = useMemo(() => pTrabs.filter(p => selectedPTrabsToConsolidate.includes(p.id)).map(p => ({ id: p.id, numero_ptrab: p.numero_ptrab, nome_operacao: p.numero_ptrab })), [pTrabs, selectedPTrabsToConsolidate]);
 
   const handleOpenShareDialog = (ptrab: PTrab) => {
     if (!ptrab.share_token) {
@@ -1239,7 +1239,7 @@ const PTrabManager = () => {
               <Tooltip>
                 <TooltipTrigger asChild>
                   <span className="inline-block">
-                    <Button onClick={() => !isConsolidationDisabled && setShowConsolidationDialog(true)} variant="secondary" disabled={isConsolidationDisabled}>
+                    <Button onClick={() => !isConsolidationDisabled && setShowConsolidationDialog(true)} variant="secondary" disabled={isConsolidationDisabled} className="btn-consolidar">
                       <ArrowRight className="mr-2 h-4 w-4" />
                       Consolidar P Trab
                     </Button>
@@ -1251,11 +1251,13 @@ const PTrabManager = () => {
               </Tooltip>
             </TooltipProvider>
 
-            <HelpDialog />
+            <div className="btn-ajuda">
+              <HelpDialog />
+            </div>
 
             <DropdownMenu open={settingsDropdownOpen} onOpenChange={setSettingsDropdownOpen}>
               <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="icon"><Settings className="h-4 w-4" /></Button>
+                <Button variant="outline" size="icon" className="btn-configuracoes"><Settings className="h-4 w-4" /></Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-56" onPointerLeave={() => setSettingsDropdownOpen(false)}>
                 <DropdownMenuLabel>Configurações</DropdownMenuLabel>
@@ -1303,7 +1305,7 @@ const PTrabManager = () => {
           </div>
         )}
 
-        <Card>
+        <Card className="tabela-ptrabs">
           <CardHeader>
             <h2 className="text-xl font-bold">Planos de Trabalho Cadastrados</h2>
           </CardHeader>
@@ -1400,7 +1402,7 @@ const PTrabManager = () => {
                         <TooltipProvider>
                           <Tooltip>
                             <TooltipTrigger asChild>
-                              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleOpenComentario(ptrab)}><MessageSquare className={`h-5 w-5 transition-all ${ptrab.comentario && ptrab.status !== 'arquivado' ? "text-green-600 fill-green-600" : "text-gray-300"}`} /></Button>
+                              <Button variant="ghost" size="icon" className="h-8 w-8 btn-comentarios" onClick={() => handleOpenComentario(ptrab)}><MessageSquare className={`h-5 w-5 transition-all ${ptrab.comentario && ptrab.status !== 'arquivado' ? "text-green-600 fill-green-600" : "text-gray-300"}`} /></Button>
                             </TooltipTrigger>
                             <TooltipContent><p>{ptrab.comentario && ptrab.status !== 'arquivado' ? "Editar comentário" : "Adicionar comentário"}</p></TooltipContent>
                           </Tooltip>
@@ -1408,13 +1410,13 @@ const PTrabManager = () => {
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-2 items-start">
-                          {(needsNumbering(ptrab) || isApprovedOrArchived) && <Button onClick={() => handleOpenApproveDialog(ptrab)} size="sm" className="flex items-center gap-2 bg-green-600 hover:bg-green-700" disabled={isApprovedOrArchived || isActionDisabledForNonOwner}><CheckCircle className="h-4 w-4" />Aprovar</Button>}
+                          {(needsNumbering(ptrab) || isApprovedOrArchived) && <Button onClick={() => handleOpenApproveDialog(ptrab)} size="sm" className="flex items-center gap-2 bg-green-600 hover:bg-green-700 btn-aprovar" disabled={isApprovedOrArchived || isActionDisabledForNonOwner}><CheckCircle className="h-4 w-4" />Aprovar</Button>}
                           
                           <div className="flex flex-col gap-1">
                             <Button 
                               onClick={() => handleSelectPTrab(ptrab)} 
                               size="sm" 
-                              className="flex items-center gap-2 w-full justify-start" 
+                              className="flex items-center gap-2 w-full justify-start btn-preencher-ptrab" 
                               disabled={!isEditable}
                             >
                               <FileText className="h-4 w-4" />
@@ -1424,7 +1426,7 @@ const PTrabManager = () => {
                               onClick={() => navigate(`/ptrab/dor?ptrabId=${ptrab.id}`)} 
                               size="sm" 
                               variant="outline"
-                              className="flex items-center gap-2 w-full justify-start" 
+                              className="flex items-center gap-2 w-full justify-start btn-preencher-dor" 
                               disabled={!isEditable}
                             >
                               <ClipboardList className="h-4 w-4" />
@@ -1433,15 +1435,15 @@ const PTrabManager = () => {
                           </div>
 
                           <DropdownMenu>
-                            <DropdownMenuTrigger asChild><Button variant="ghost" size="sm"><MoreVertical className="h-4 w-4" /></Button></DropdownMenuTrigger>
+                            <DropdownMenuTrigger asChild><Button variant="ghost" size="sm" className="btn-acoes"><MoreVertical className="h-4 w-4" /></Button></DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
                               <DropdownMenuLabel>Ações</DropdownMenuLabel>
                               <DropdownMenuSeparator />
                               <DropdownMenuItem onClick={() => handleNavigateToPrintOrExport(ptrab.id)}><Printer className="mr-2 h-4 w-4" />Visualizar Impressão</DropdownMenuItem>
                               <DropdownMenuItem onClick={() => isEditable && handleEdit(ptrab)} disabled={!isEditable} className={!isEditable ? "opacity-50 cursor-not-allowed" : ""}><Pencil className="mr-2 h-4 w-4" />Editar P Trab</DropdownMenuItem>
-                              {isOwnedByCurrentUser && <DropdownMenuItem onClick={() => !isSharingDisabled && handleOpenShareDialog(ptrab)} disabled={isSharingDisabled} className={isSharingDisabled ? "opacity-50 cursor-not-allowed" : ""}><Share2 className="mr-2 h-4 w-4" />Compartilhar</DropdownMenuItem>}
+                              {isOwnedByCurrentUser && <DropdownMenuItem onClick={() => !isSharingDisabled && handleOpenShareDialog(ptrab)} disabled={isSharingDisabled} className={cn("btn-compartilhar", isSharingDisabled ? "opacity-50 cursor-not-allowed" : "")}><Share2 className="mr-2 h-4 w-4" />Compartilhar</DropdownMenuItem>}
                               {isSharedWithCurrentUser && <DropdownMenuItem onClick={() => handleOpenUnlinkDialog(ptrab)} className="text-red-600"><XCircle className="mr-2 h-4 w-4" />Desvincular</DropdownMenuItem>}
-                              <DropdownMenuItem onClick={() => ptrab.status !== 'arquivado' && handleOpenCloneOptions(ptrab)} disabled={ptrab.status === 'arquivado'} className={ptrab.status === 'arquivado' ? "opacity-50 cursor-not-allowed" : ""}><Copy className="mr-2 h-4 w-4" />Clonar P Trab</DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => ptrab.status !== 'arquivado' && handleOpenCloneOptions(ptrab)} disabled={ptrab.status === 'arquivado'} className={cn("btn-clonar", ptrab.status === 'arquivado' ? "opacity-50 cursor-not-allowed" : "")}><Copy className="mr-2 h-4 w-4" />Clonar P Trab</DropdownMenuItem>
                               {ptrab.status !== 'arquivado' && <DropdownMenuItem onClick={() => isOwnedByCurrentUser && handleArchive(ptrab.id, `${ptrab.numero_ptrab} - ${ptrab.nome_operacao}`)} disabled={isActionDisabledForNonOwner} className={isActionDisabledForNonOwner ? "opacity-50 cursor-not-allowed" : ""}><Archive className="mr-2 h-4 w-4" />Arquivar</DropdownMenuItem>}
                               {ptrab.status === 'arquivado' && <DropdownMenuItem onClick={() => isOwnedByCurrentUser && setShowReactivateStatusDialog(true)} disabled={isActionDisabledForNonOwner} className={isActionDisabledForNonOwner ? "opacity-50 cursor-not-allowed" : ""}><RefreshCw className="mr-2 h-4 w-4" />Reativar</DropdownMenuItem>}
                               <DropdownMenuSeparator />
@@ -1534,7 +1536,7 @@ const PTrabManager = () => {
           </DialogHeader>
           <div className="py-4"><Textarea placeholder="Digite seu comentário sobre este P Trab..." value={comentarioText} onChange={(e) => setComentarioText(e.target.value)} className="min-h-[150px]" /></div>
           <DialogFooter>
-            <Button onClick={handleSaveComentario} disabled={isActionLoading}>{isActionLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Salvar"}</Button>
+            <Button onClick={handleSaveComentario} disabled={isActionLoading}>{isActionLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : "Salvar"}</Button>
             <Button variant="outline" onClick={() => setShowComentarioDialog(false)}>Cancelar</Button>
           </DialogFooter>
         </DialogContent>
@@ -1553,7 +1555,7 @@ const PTrabManager = () => {
             </div>
           </div>
           <DialogFooter>
-            <Button onClick={handleApproveAndNumber} disabled={!suggestedApproveNumber.trim() || isActionLoading}>{isActionLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Confirmar Aprovação"}</Button>
+            <Button onClick={handleApproveAndNumber} disabled={!suggestedApproveNumber.trim() || isActionLoading}>{isActionLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : "Confirmar Aprovação"}</Button>
             <Button variant="outline" onClick={() => setShowApproveDialog(false)}>Cancelar</Button>
           </DialogFooter>
         </DialogContent>
