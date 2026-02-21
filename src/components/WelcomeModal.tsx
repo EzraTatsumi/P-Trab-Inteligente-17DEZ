@@ -3,7 +3,7 @@
 import React from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { CheckCircle2, Circle, Rocket, PlayCircle, Settings } from "lucide-react";
+import { CheckCircle2, Circle, Rocket, PlayCircle, Settings, ArrowRight } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
 interface WelcomeModalProps {
@@ -24,6 +24,21 @@ export const WelcomeModal = ({ open, onOpenChange, status }: WelcomeModalProps) 
 
   if (!status) return null;
 
+  const handleNavigateToConfig = () => {
+    // Lógica de navegação inteligente baseada no que falta
+    if (!status.hasOMs) {
+      navigate("/config/om");
+    } else if (!status.hasLogistica) {
+      navigate("/config/diretrizes");
+    } else if (!status.hasOperacional) {
+      navigate("/config/custos-operacionais");
+    } else {
+      // Se tudo estiver pronto, leva para a página de OMs por padrão ou fecha
+      navigate("/config/om");
+    }
+    onOpenChange(false);
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
@@ -35,7 +50,7 @@ export const WelcomeModal = ({ open, onOpenChange, status }: WelcomeModalProps) 
           </div>
           <DialogTitle className="text-center text-2xl">Bem-vindo ao PTrab Inteligente!</DialogTitle>
           <DialogDescription className="text-center">
-            Para que o sistema realize os cálculos corretamente, precisamos completar a missão de configuração inicial.
+            Para que o sistema realize os cálculos corretamente, precisamos completar a Configuração Inicial.
           </DialogDescription>
         </DialogHeader>
 
@@ -61,8 +76,10 @@ export const WelcomeModal = ({ open, onOpenChange, status }: WelcomeModalProps) 
           <Button onClick={() => onOpenChange(false)} className="w-full">
             {status.isReady ? "Começar a Operar" : "Entendido, vou configurar"}
           </Button>
-          <Button variant="outline" onClick={() => navigate("/config/om")} className="w-full gap-2">
-            <Settings className="h-4 w-4" /> Ir para Configurações
+          <Button variant="outline" onClick={handleNavigateToConfig} className="w-full gap-2">
+            <Settings className="h-4 w-4" /> 
+            {status.isReady ? "Ir para Configurações" : "Próxima Configuração"}
+            {!status.isReady && <ArrowRight className="h-4 w-4 ml-auto" />}
           </Button>
         </div>
       </DialogContent>
