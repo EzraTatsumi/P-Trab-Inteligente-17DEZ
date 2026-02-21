@@ -1,81 +1,66 @@
-import React, { useState, useRef } from 'react';
+import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { Search, Loader2, BookOpen } from "lucide-react";
+import { Search, Loader2 } from "lucide-react";
 import { toast } from "sonner";
-import { formatCodug } from '@/lib/formatUtils';
-import OmSelectorDialog from '@/components/OmSelectorDialog';
-import { format, subDays } from 'date-fns';
 import { fetchArpsByUasg } from '@/integrations/supabase/api';
-import { ArpItemResult, DetailedArpItem } from '@/types/pncp'; 
+import { ArpItemResult, DetailedArpItem } from '@/types/pncp';
 import ArpSearchResultsList from './ArpSearchResultsList';
+import { isGhostMode, GHOST_DATA } from '@/lib/ghostStore';
 
 const formSchema = z.object({
-    uasg: z.string().min(6, { message: "A UASG deve ter 6 dígitos." }).max(6, { message: "A UASG deve ter 6 dígitos." }).regex(/^\d{6}$/, { message: "A UASG deve conter apenas números." }),
-    dataInicio: z.string().min(1, { message: "Data de Início é obrigatória." }),
-    dataFim: z.string().min(1, { message: "Data de Fim é obrigatória." }),
-}).refine(data => new Date(data.dataFim) >= new Date(data.dataInicio), {
-    message: "A Data de Fim deve ser posterior ou igual à Data de Início.",
-    path: ["dataFim"],
+    uasg: z.string().min(6, { message: "A UASG deve ter 6 dígitos." }).max(6, { message: "A UASG deve ter 6 dígitos." }).regex(/^\d+$/, { message: "A UASG deve conter apenas números." }),
 });
 
 type ArpUasgFormValues = z.infer<typeof formSchema>;
 
 interface ArpUasgSearchFormProps {
     onItemPreSelect: (item: DetailedArpItem, pregaoFormatado: string, uasg: string) => void;
-    onClearSelection: () => void;
     selectedItemIds: string[];
+    onClearSelection: () => void;
     scrollContainerRef: React.RefObject<HTMLDivElement>;
-    mode?: 'material' | 'servico';
 }
 
-const today = new Date();
-const oneYearAgo = subDays(today, 365);
-const defaultDataFim = format(today, 'yyyy-MM-dd');
-const defaultDataInicio = format(oneYearAgo, 'yyyy-MM-dd');
-
-const ArpUasgSearchForm: React.FC<ArpUasgSearchFormProps> = ({ onItemPreSelect, selectedItemIds, onClearSelection, scrollContainerRef, mode = 'material' }) => {
+const ArpUasgSearchForm: React.FC<ArpUasgSearchFormProps> = ({ onItemPreSelect, selectedItemIds, onClearSelection, scrollContainerRef }) => {
     const [isSearching, setIsSearching] = useState(false);
-    const [isOmSelectorOpen, setIsOmSelectorOpen] = useState(false);
-    const [arpResults, setArpResults] = useState<ArpItemResult[]>([]); 
-    const [searchedOmName, setSearchedOmName] = useState<string>(""); 
-    const resultsRef = useRef<HTMLDivElement>(null);
+    const [arpResults, setArpResults] = useState<ArpItemResult[]>([]);
+    const [searchedUasg, setSearchedUasg] = useState("");
+    const [searchedOmName, setSearchedOmName] = useState("");
 
     const form = useForm<ArpUasgFormValues>({
         resolver: zodResolver(formSchema),
-        defaultValues: { uasg: "", dataInicio: defaultDataInicio, dataFim: defaultDataFim },
+        defaultValues: { uasg: "" },
     });
-    
+
     const handleUasgChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        form.setValue('uasg', e.target.value.replace(/\D/g, '').slice(0, 6), { shouldValidate: true });
-        setSearchedOmName(""); 
-    };
-    
-    const handleOmSelect = (omData: any) => {
-        // omData agora é o objeto completo da tabela organizacoes_militares
-        if (omData && omData.codug_om) {
-            form.setValue('uasg', omData.codug_om, { shouldValidate: true });
-            setSearchedOmName(omData.nome_om);
-        }
+        const value = e.target.value.replace(/\D/g, '').slice(0, 6);
+        form.setValue('uasg', value, { shouldValidate: true });
     };
 
     const onSubmit = async (values: ArpUasgFormValues) => {
         setIsSearching(true);
         setArpResults([]);
-        onClearSelection(); 
+        onClearSelection();
+        
         try {
-            toast.info(`Buscando ARPs para UASG ${formatCodug(values.uasg)}...`);
-            if (!searchedOmName) setSearchedOmName(`UASG ${values.uasg}`);
-            const results = await fetchArpsByUasg({ codigoUnidadeGerenciadora: values.uasg, dataVigenciaInicialMin: values.dataInicio, dataVigenciaInicialMax: values.dataFim });
-            if (results.length === 0) toast.warning("Nenhuma ARP encontrada.");
-            else toast.success(`${results.length} ARPs encontradas!`);
-            setArpResults(results);
-            if (results.length > 0 && resultsRef.current) {
-                setTimeout(() => resultsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100); 
+            if (isGhostMode() && values.uasg === '160222') {
+                await new Promise(resolve => setTimeout(resolve, 1000));
+                const mockResults = GHOST_DATA.missao_02.arp_search_results;
+                setArpResults(mockResults);
+                setSearchedUasg(values.uasg);
+                setSearchedOmName(mockResults[0].omNome);
+                toast.success("Resultados simulados carregados!");
+            } else {
+                const results = await fetchArpsByUasg({ uasg: values.uasg });
+                if (results.length === 0) toast.warning("Nenhuma ARP encontrada para esta UASG.");
+                else toast.success(`${results.length} ARPs encontradas!`);
+                setArpResults(results);
+                setSearchedUasg(values.uasg);
+                setSearchedOmName(results.length > 0 ? results[0].omNome : "");
             }
         } catch (error: any) {
             toast.error(error.message || "Falha ao buscar ARPs.");
@@ -83,65 +68,37 @@ const ArpUasgSearchForm: React.FC<ArpUasgSearchFormProps> = ({ onItemPreSelect, 
             setIsSearching(false);
         }
     };
-    
+
     return (
-        <>
+        <div className="space-y-6 p-4 form-busca-uasg-tour">
             <Form {...form}>
-                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 p-4">
-                    <div className="grid grid-cols-4 gap-4">
-                        <FormField control={form.control} name="uasg" render={({ field }) => (
-                            <FormItem className="col-span-2">
-                                <FormLabel>UASG (Unidade Gestora) *</FormLabel>
-                                <div className="flex gap-2 items-center">
-                                    <FormControl>
-                                        <Input {...field} onChange={handleUasgChange} placeholder="Ex: 160001" maxLength={6} disabled={isSearching} />
-                                    </FormControl>
-                                    <Button 
-                                        type="button" 
-                                        variant="outline" 
-                                        size="sm" 
-                                        onClick={() => setIsOmSelectorOpen(true)} 
-                                        disabled={isSearching}
-                                        className="h-8 px-2 text-[10px]"
-                                    >
-                                        <BookOpen className="h-3 w-3 mr-1" /> CODUG
-                                    </Button>
-                                </div>
-                                <FormMessage />
-                            </FormItem>
-                        )} />
-                        <FormField control={form.control} name="dataInicio" render={({ field }) => (
-                            <FormItem className="col-span-1">
-                                <FormLabel>Início *</FormLabel>
+                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                    <FormField control={form.control} name="uasg" render={({ field }) => (
+                        <FormItem>
+                            <FormLabel>Código UASG da OM *</FormLabel>
+                            <div className="flex gap-2">
                                 <FormControl>
-                                    <Input type="date" {...field} disabled={isSearching} />
+                                    <Input {...field} onChange={handleUasgChange} placeholder="Ex: 160222" maxLength={6} disabled={isSearching} />
                                 </FormControl>
-                                <FormMessage />
-                            </FormItem>
-                        )} />
-                        <FormField control={form.control} name="dataFim" render={({ field }) => (
-                            <FormItem className="col-span-1">
-                                <FormLabel>Fim *</FormLabel>
-                                <FormControl>
-                                    <Input type="date" {...field} disabled={isSearching} />
-                                </FormControl>
-                                <FormMessage />
-                            </FormItem>
-                        )} />
-                    </div>
-                    <Button type="submit" disabled={isSearching} className="w-full">
-                        {isSearching ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Search className="h-4 w-4 mr-2" />}
-                        Buscar ARPs por UASG
-                    </Button>
+                                <Button type="submit" disabled={isSearching}>
+                                    {isSearching ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
+                                </Button>
+                            </div>
+                            <FormMessage />
+                        </FormItem>
+                    )} />
                 </form>
             </Form>
             {arpResults.length > 0 && (
-                <div ref={resultsRef}>
-                    <ArpSearchResultsList results={arpResults} onItemPreSelect={onItemPreSelect} searchedUasg={form.getValues('uasg')} searchedOmName={searchedOmName} selectedItemIds={selectedItemIds} />
-                </div>
+                <ArpSearchResultsList 
+                    results={arpResults} 
+                    onItemPreSelect={onItemPreSelect} 
+                    searchedUasg={searchedUasg} 
+                    searchedOmName={searchedOmName}
+                    selectedItemIds={selectedItemIds}
+                />
             )}
-            <OmSelectorDialog open={isOmSelectorOpen} onOpenChange={setIsOmSelectorOpen} onSelect={handleOmSelect} />
-        </>
+        </div>
     );
 };
 

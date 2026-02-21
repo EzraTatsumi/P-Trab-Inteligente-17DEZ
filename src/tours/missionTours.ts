@@ -151,7 +151,7 @@ export const runMission02 = (onComplete: () => void) => {
         }
       },
       {
-        element: '.lista-subitens-nd',
+        element: '.aba-material-consumo',
         popover: {
           title: 'Organização por ND',
           description: 'A seção de Material de Consumo organiza tudo por Subitem da Natureza de Despesa (ND). Veja os itens de exemplo já cadastrados.',
@@ -172,7 +172,7 @@ export const runMission02 = (onComplete: () => void) => {
           description: 'Nesta janela completa, você define a Natureza de Despesa e tem acesso aos métodos de importação de itens.',
           side: 'left',
           align: 'center',
-          offset: 30
+          offset: 50
         },
         onHighlighted: () => {
           setTimeout(() => {
@@ -188,7 +188,7 @@ export const runMission02 = (onComplete: () => void) => {
           description: 'Esta é a central de integração. Esqueça a digitação manual: vamos buscar um preço oficial diretamente no PNCP.',
           side: 'left',
           align: 'start',
-          offset: 30
+          offset: 50
         },
         onHighlighted: () => {
           setTimeout(() => {
@@ -198,25 +198,52 @@ export const runMission02 = (onComplete: () => void) => {
         }
       },
       {
-        element: '.aba-pncp-arp',
+        element: '.form-busca-uasg-tour',
         popover: {
-          title: 'Explorando as Atas (ARP)',
-          description: 'Você pode buscar por UASG ou diretamente por Atas de Registro de Preços (ARP). Isso garante que você está usando um valor já licitado e homologado.',
-          side: 'bottom'
-        },
-        onHighlighted: () => {
-          setTimeout(() => {
-            const aba = document.querySelector('.aba-pncp-arp') as HTMLElement;
-            if (aba) aba.click();
-          }, 300);
+          title: 'Busca por UASG',
+          description: 'Aqui informamos a UASG da Organização Militar para listar suas ARPs vigentes. Vamos simular a busca para a UASG 160222.',
+          side: 'bottom',
+          align: 'center'
         }
       },
       {
-        element: '.item-resultado-ghost',
+        element: '.modal-importar-pncp',
         popover: {
-          title: 'Seleção do Item Oficial',
-          description: 'Selecionamos este item da ARP vigente. Note que o sistema já traz a descrição técnica completa e o preço homologado.',
-          side: 'right'
+          title: 'Navegação de Resultados',
+          description: 'Veja a hierarquia: o sistema encontrou o Pregão Eletrônico, dentro dele a ARP correspondente, e finalmente o "Cimento Portland".',
+          side: 'left',
+          offset: 50
+        },
+        onHighlighted: () => {
+          // Automação em cascata
+          setTimeout(() => {
+            // 1. Digita UASG e clica buscar
+            const input = document.querySelector('input[placeholder="Ex: 160222"]') as HTMLInputElement;
+            if (input) {
+                input.value = '160222';
+                input.dispatchEvent(new Event('input', { bubbles: true }));
+                const btnBusca = input.nextElementSibling as HTMLElement;
+                if (btnBusca) btnBusca.click();
+            }
+
+            setTimeout(() => {
+              // 2. Expande Pregão
+              const btnPregao = document.querySelector('.tour-expand-pregao') as HTMLElement;
+              if (btnPregao) btnPregao.click();
+              
+              setTimeout(() => {
+                // 3. Expande ARP
+                const btnArp = document.querySelector('.tour-expand-arp') as HTMLElement;
+                if (btnArp) btnArp.click();
+
+                setTimeout(() => {
+                  // 4. Destaca o item
+                  const itemLinha = document.querySelector('.tour-item-mockado') as HTMLElement;
+                  if (itemLinha) itemLinha.style.backgroundColor = 'rgba(16, 185, 129, 0.1)';
+                }, 400);
+              }, 400);
+            }, 1200); // Espera o mock carregar
+          }, 300);
         }
       },
       {
@@ -224,7 +251,8 @@ export const runMission02 = (onComplete: () => void) => {
         popover: {
           title: 'Finalização e Salvamento',
           description: 'Ao salvar, este item passa a compor seu catálogo. Agora, qualquer P Trab que necessite deste material usará automaticamente este valor oficial.',
-          side: 'top'
+          side: 'top',
+          align: 'end'
         }
       }
     ],

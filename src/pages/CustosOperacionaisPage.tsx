@@ -63,6 +63,7 @@ import MaterialPermanenteDiretrizFormDialog from "@/components/MaterialPermanent
 import MaterialPermanenteExportImportDialog from "@/components/MaterialPermanenteExportImportDialog";
 import { runMission02 } from "@/tours/missionTours";
 import { GHOST_DATA, isGhostMode } from "@/lib/ghostStore";
+import { cn } from "@/lib/utils";
 
 type DiretrizOperacional = Tables<'diretrizes_operacionais'>;
 
@@ -1448,7 +1449,7 @@ const CustosOperacionaisPage = () => {
         <div className="flex items-center justify-between"><Button variant="ghost" onClick={() => navigate("/ptrab")} className="mb-2"><ArrowLeft className="mr-2 h-4 w-4" />Voltar para Planos de Trabalho</Button><Button variant="outline" onClick={() => setIsYearManagementDialogOpen(true)} disabled={isSaving || isLoadingDefaultYear}><Settings className="mr-2 h-4 w-4" />Gerenciar Anos</Button></div>
         <Card className="card-diretrizes-operacionais">
           <CardHeader><h1 className="text-2xl font-bold">Configurações dos Custos Operacionais</h1><CardDescription>Defina os valores e fatores de referência para o cálculo de despesas operacionais (GND 3 e GND4).</CardDescription></CardHeader>
-          <CardContent className="space-y-6">
+          <CardContent className={cn("space-y-6", "aba-material-consumo-container")}>
             <form onSubmit={(e) => { e.preventDefault(); handleSaveDiretrizes(); }}>
               <div className="space-y-2 mb-6"><Label>Ano de Referência</Label><Select value={selectedYear.toString()} onValueChange={(value) => setSelectedYear(parseInt(value))}><SelectTrigger><SelectValue placeholder="Selecione o ano" /></SelectTrigger><SelectContent>{availableYears.map((year) => (<SelectItem key={year} value={year.toString()}>{year} {year === defaultYear && "(Padrão)"}</SelectItem>))}</SelectContent></Select><p className="text-sm text-muted-foreground pt-1">Ano Padrão de Cálculo: <span className="font-semibold text-primary ml-1">{defaultYear ? defaultYear : 'Não definido (usando o mais recente)'}</span>{defaultYear && defaultYear !== selectedYear && (<span className="text-xs text-gray-500 ml-2">(Selecione este ano para editar o padrão)</span>)}</p></div>
               <div className="border-t pt-4 mt-6">

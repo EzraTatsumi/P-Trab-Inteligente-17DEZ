@@ -41,33 +41,45 @@ export const GHOST_DATA = {
             codigo_catmat: "445566"
           }
         ]
-      },
-      {
-        id: "ghost-subitem-07",
-        nr_subitem: "07",
-        nome_subitem: "Gêneros de Alimentação",
-        descricao_subitem: "Suprimento de víveres",
-        itens_aquisicao: [
-          {
-            id: "ghost-item-arroz",
-            descricao_item: "Arroz Agulhinha Tipo 1 (Saco 5kg)",
-            valor_unitario: 28.90,
-            numero_pregao: "015/2025",
-            uasg: "160222",
-            codigo_catmat: "778899"
-          }
-        ]
       }
     ],
-    subitem_exemplo: {
-      nr_subitem: "24",
-      nome_subitem: "Material de Construção",
-      descricao_subitem: "Itens para manutenção de instalações",
-    },
+    // Resultado da busca por UASG no PNCP
+    arp_search_results: [
+      {
+        id: "ghost-compra-1",
+        numeroAta: "05/2025",
+        objeto: "Aquisição de materiais de construção civil para obras de engenharia.",
+        uasg: "160222",
+        omNome: "1º Batalhão de Engenharia de Construção",
+        dataVigenciaInicial: "2025-01-01",
+        dataVigenciaFinal: "2025-12-31",
+        valorTotalEstimado: 150000.00,
+        quantidadeItens: 12,
+        pregaoFormatado: "000.005/25",
+        numeroControlePncpAta: "160222-ARP-001-2025",
+      }
+    ],
+    // Itens detalhados da ARP
+    arp_detailed_items: [
+      {
+        id: "ghost-item-cimento",
+        numeroAta: "05/2025",
+        codigoItem: "123456",
+        descricaoItem: "Cimento Portland CP II-Z-32, Resistência à Compressão 32 MPa, Saco 50kg",
+        valorUnitario: 42.50,
+        quantidadeHomologada: 5000,
+        numeroControlePncpAta: "160222-ARP-001-2025",
+        pregaoFormatado: "000.005/25",
+        uasg: "160222",
+        omNome: "1º Batalhão de Engenharia de Construção",
+        dataVigenciaInicial: "2025-01-01",
+        dataVigenciaFinal: "2025-12-31",
+      }
+    ],
     item_cimento: {
       id: "ghost-item-cimento",
       codigo_catmat: "123456",
-      descricao_item: "Cimento Portland CP II-Z-32 (Saco 50kg)",
+      descricao_item: "Cimento Portland CP II-Z-32, Resistência à Compressão 32 MPa, Saco 50kg",
       descricao_reduzida: "Cimento Portland 50kg",
       unidade_medida: "Saco",
       valor_unitario: 42.50,
