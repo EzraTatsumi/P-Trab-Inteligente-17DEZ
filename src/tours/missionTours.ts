@@ -165,10 +165,10 @@ export const runMission02 = (onComplete: () => void) => {
           }
         },
         onNextClick: () => {
-          // 1. Clica no botão "Novo Subitem"
-          const btnNovo = document.querySelector('.btn-novo-subitem') as HTMLElement;
-          if (btnNovo) {
-            btnNovo.click();
+          // 1. Chama a função oficial do React para abrir o modal
+          if ((window as any).openNewSubitemModal) {
+            (window as any).openNewSubitemModal();
+            
             // 2. Aguarda a animação do modal antes de avançar o tour
             setTimeout(() => {
               d.moveNext();
