@@ -325,14 +325,23 @@ const CustosOperacionaisPage = () => {
       setIsMaterialConsumoFormOpen(true);
   }, []);
 
+  const handleOpenNewServicosTerceiros = useCallback(() => {
+      setDiretrizServicosTerceirosToEdit(null);
+      setIsServicosTerceirosFormOpen(true);
+  }, []);
+
+  const handleOpenNewMaterialPermanente = useCallback(() => {
+      setDiretrizMaterialPermanenteToEdit(null);
+      setIsMaterialPermanenteFormOpen(true);
+  }, []);
+
   // ☢️ OPÇÃO NUCLEAR: Expondo a função de abertura diretamente para o objeto window
   useEffect(() => {
     (window as any).__abrirModalNuclear = () => {
       console.log("☢️ [TOUR] Acionando Opção Nuclear: Forçando estado da janela para TRUE");
-      setDiretrizMaterialConsumoToEdit(null);
-      setIsMaterialConsumoFormOpen(true);
+      handleOpenNewMaterialConsumo();
     };
-  }, []);
+  }, [handleOpenNewMaterialConsumo]);
 
   useEffect(() => {
     (window as any).expandMaterialConsumo = () => {
@@ -1153,84 +1162,6 @@ const CustosOperacionaisPage = () => {
       return (
           <Card><CardContent className="pt-4"><Tabs value={selectedConcessionariaTab} onValueChange={(value) => setSelectedConcessionariaTab(value as CategoriaConcessionaria)}><TabsList className="grid w-full grid-cols-2">{CATEGORIAS_CONCESSIONARIA.map(cat => (<TabsTrigger key={cat} value={cat}>{cat}</TabsTrigger>))}</TabsList>{CATEGORIAS_CONCESSIONARIA.map(cat => (<TabsContent key={cat} value={cat}>{renderConcessionariaList(cat)}</TabsContent>))}</Tabs></CardContent></Card>
       );
-  };
-  
-  const handleSaveMaterialConsumo = async (data: Partial<DiretrizMaterialConsumo> & { ano_referencia: number }) => {
-      try {
-          setIsSaving(true);
-          const { data: { user: authUser } } = await supabase.auth.getUser();
-          if (!authUser) throw new Error("Usuário não autenticado");
-          
-          const dbData: TablesInsert<'diretrizes_material_consumo'> = { user_id: authUser.id, ano_referencia: data.ano_referencia, nr_subitem: data.nr_subitem!, nome_subitem: data.nome_subitem!, descricao_subitem: data.descricao_subitem || null, itens_aquisicao: data.itens_aquisicao as unknown as Json, ativo: data.ativo ?? true };
-
-          if (data.id) {
-              await supabase.from('diretrizes_material_consumo').update(dbData as TablesUpdate<'diretrizes_material_consumo'>).eq('id', data.id);
-              toast.success("Subitem da ND atualizado!");
-          } else {
-              await supabase.from('diretrizes_material_consumo').insert([dbData]);
-              toast.success("Novo Subitem da ND cadastrado!");
-          }
-          
-          queryClient.invalidateQueries({ queryKey: ['diretrizesMaterialConsumo', selectedYear, authUser.id] });
-          setDiretrizMaterialConsumoToEdit(null);
-          setIsMaterialConsumoFormOpen(false);
-      } catch (error: any) {
-          toast.error(sanitizeError(error));
-      } finally {
-          setIsSaving(false);
-      }
-  };
-
-  const handleSaveServicosTerceiros = async (data: Partial<DiretrizServicosTerceiros> & { ano_referencia: number }) => {
-      try {
-          setIsSaving(true);
-          const { data: { user: authUser } } = await supabase.auth.getUser();
-          if (!authUser) throw new Error("Usuário não autenticado");
-          
-          const dbData: any = { user_id: authUser.id, ano_referencia: data.ano_referencia, nr_subitem: data.nr_subitem!, nome_subitem: data.nome_subitem!, descricao_subitem: data.descricao_subitem || null, itens_aquisicao: data.itens_aquisicao as unknown as Json, ativo: data.ativo ?? true };
-
-          if (data.id) {
-              await supabase.from('diretrizes_servicos_terceiros' as any).update(dbData).eq('id', data.id);
-              toast.success("Subitem da ND atualizado!");
-          } else {
-              await supabase.from('diretrizes_servicos_terceiros' as any).insert([dbData]);
-              toast.success("Novo Subitem da ND cadastrado!");
-          }
-          
-          queryClient.invalidateQueries({ queryKey: ['diretrizesServicosTerceiros', selectedYear, authUser.id] });
-          setDiretrizServicosTerceirosToEdit(null);
-          setIsServicosTerceirosFormOpen(false);
-      } catch (error: any) {
-          toast.error(sanitizeError(error));
-      } finally {
-          setIsSaving(false);
-      }
-  };
-
-  const handleSaveMaterialPermanente = async (data: Partial<DiretrizMaterialPermanente> & { ano_referencia: number }) => {
-      try {
-          setIsSaving(true);
-          const { data: { user: authUser } } = await supabase.auth.getUser();
-          if (!authUser) throw new Error("Usuário não autenticado");
-          
-          const dbData: any = { user_id: authUser.id, ano_referencia: data.ano_referencia, nr_subitem: data.nr_subitem!, nome_subitem: data.nome_subitem!, descricao_subitem: data.descricao_subitem || null, itens_aquisicao: data.itens_aquisicao as unknown as Json, ativo: data.ativo ?? true };
-
-          if (data.id) {
-              await supabase.from('diretrizes_material_permanente' as any).update(dbData).eq('id', data.id);
-              toast.success("Subitem da ND atualizado!");
-          } else {
-              await supabase.from('diretrizes_material_permanente' as any).insert([dbData]);
-              toast.success("Novo Subitem da ND cadastrado!");
-          }
-          
-          queryClient.invalidateQueries({ queryKey: ['diretrizesMaterialPermanente', selectedYear, authUser.id] });
-          setDiretrizMaterialPermanenteToEdit(null);
-          setIsMaterialPermanenteFormOpen(false);
-      } catch (error: any) {
-          toast.error(sanitizeError(error));
-      } finally {
-          setIsSaving(false);
-      }
   };
   
   const handleStartEditMaterialConsumo = (diretriz: DiretrizMaterialConsumo) => {
