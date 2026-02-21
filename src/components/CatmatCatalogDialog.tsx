@@ -1,216 +1,120 @@
-import React, { useState, useEffect } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Loader2, Check, Search, Import } from "lucide-react";
-import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
-import { toast } from "sonner";
-import { Input } from "@/components/ui/input";
-import { CatalogoCatmat } from "@/types/catalogoCatmat";
+"use client";
 
-// Definindo o tipo de item selecionável para o estado
-type SelectedItem = { code: string, description: string, short_description: string | null } | null;
+import React, { useState, useEffect } from 'react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Button } from "@/components/ui/button";
+import { Search, Loader2, Package } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+
+interface CatmatEntry {
+    code: string;
+    description: string;
+    short_description: string | null;
+}
 
 interface CatmatCatalogDialogProps {
     open: boolean;
     onOpenChange: (open: boolean) => void;
-    onSelect: (item: { code: string, description: string, short_description: string | null }) => void;
+    onSelect: (entry: CatmatEntry) => void;
 }
 
-// Limite de resultados para evitar sobrecarga
-const RESULT_LIMIT = 500;
-
-const fetchCatalogItems = async (searchTerm: string): Promise<CatalogoCatmat[]> => {
-    let query = supabase
-        .from('catalogo_catmat')
-        .select('*')
-        .order('code', { ascending: true })
-        .limit(RESULT_LIMIT);
-
-    const search = searchTerm.trim();
-
-    if (search) {
-        // Implementa a busca no lado do servidor usando ilike para código, descrição ou nome reduzido
-        query = query.or(`code.ilike.%${search}%,description.ilike.%${search}%,short_description.ilike.%${search}%`);
-    }
-
-    const { data, error } = await query;
-
-    if (error) {
-        console.error("Erro ao buscar catálogo CATMAT:", error);
-        throw new Error("Falha ao carregar o catálogo CATMAT.");
-    }
-    
-    return data as CatalogoCatmat[];
-};
-
-const CatmatCatalogDialog: React.FC<CatmatCatalogDialogProps> = ({
-    open,
-    onOpenChange,
-    onSelect,
-}) => {
-    const [searchTerm, setSearchTerm] = useState('');
-    const [selectedItem, setSelectedItem] = useState<SelectedItem>(null);
-    
-    // Usamos um debounce para evitar consultas excessivas enquanto o usuário digita
-    const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
+const CatmatCatalogDialog: React.FC<CatmatCatalogDialogProps> = ({ open, onOpenChange, onSelect }) => {
+    const [searchTerm, setSearchTerm] = useState("");
+    const [entries, setEntries] = useState<CatmatEntry[]>([]);
+    const [loading, setLoading] = useState(false);
 
     useEffect(() => {
-        const timer = setTimeout(() => {
-            setDebouncedSearchTerm(searchTerm);
-        }, 300); // 300ms de debounce
+        if (open) {
+            fetchEntries();
+        }
+    }, [open]);
 
-        return () => clearTimeout(timer);
-    }, [searchTerm]);
+    const fetchEntries = async () => {
+        setLoading(true);
+        try {
+            const { data, error } = await supabase
+                .from('catalogo_catmat')
+                .select('code, description, short_description')
+                .order('description', { ascending: true });
 
-    const { data: items, isLoading, error } = useQuery({
-        queryKey: ['catmatCatalog', debouncedSearchTerm],
-        queryFn: () => fetchCatalogItems(debouncedSearchTerm),
-        // Só executa a query se o diálogo estiver aberto
-        enabled: open,
-    });
-    
-    // A filtragem agora é feita no backend, então 'items' já contém os resultados filtrados.
-    const filteredItems = items || [];
-    
-    const handlePreSelect = (item: CatalogoCatmat) => {
-        const newItem = {
-            code: item.code,
-            description: item.description,
-            short_description: item.short_description,
-        };
-
-        if (selectedItem?.code === item.code) {
-            // Desselecionar se já estiver selecionado
-            setSelectedItem(null);
-        } else {
-            // Selecionar o novo item
-            setSelectedItem(newItem);
+            if (error) throw error;
+            setEntries(data || []);
+        } catch (error) {
+            console.error("Erro ao carregar catálogo CATMAT:", error);
+        } finally {
+            setLoading(false);
         }
     };
 
-    const handleConfirmImport = () => {
-        if (selectedItem) {
-            onSelect(selectedItem);
-            onOpenChange(false);
-            toast.success(`Item CATMAT ${selectedItem.code} importado com sucesso.`);
-        }
-    };
-
-    if (error) {
-        // Exibir erro apenas se houver um erro de carregamento
-        toast.error(error.message);
-    }
+    const filteredEntries = entries.filter(entry => 
+        entry.code.includes(searchTerm) || 
+        entry.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (entry.short_description && entry.short_description.toLowerCase().includes(searchTerm.toLowerCase()))
+    );
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
+            <DialogContent className="max-w-4xl max-h-[80vh] overflow-hidden flex flex-col">
                 <DialogHeader>
-                    <DialogTitle>Catálogo de Material (CATMAT)</DialogTitle>
-                    <DialogDescription>
-                        Selecione um item do catálogo para preencher o código e a descrição.
-                    </DialogDescription>
+                    <DialogTitle className="flex items-center gap-2">
+                        <Package className="h-5 w-5 text-primary" />
+                        Catálogo de Itens (CATMAT)
+                    </DialogTitle>
                 </DialogHeader>
-
-                <div className="space-y-4 py-2">
-                    <div className="relative">
-                        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                        <Input
-                            placeholder="Buscar por código, descrição ou nome reduzido..."
-                            value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
-                            className="pl-10"
-                        />
-                    </div>
-                    
-                    {isLoading ? (
-                        <div className="text-center py-8">
-                            <Loader2 className="h-6 w-6 animate-spin text-primary mx-auto" />
-                            <p className="text-sm text-muted-foreground mt-2">Carregando catálogo...</p>
-                        </div>
-                    ) : filteredItems.length === 0 ? (
-                        <div className="text-center py-8 text-muted-foreground">
-                            Nenhum item CATMAT encontrado.
-                        </div>
-                    ) : (
-                        <>
-                            <p className="text-sm text-muted-foreground">
-                                Exibindo {filteredItems.length} resultados. Refine sua busca se não encontrar o item desejado.
-                            </p>
-                            <div className="max-h-[50vh] overflow-y-auto border rounded-md">
-                                <Table>
-                                    <TableHeader className="sticky top-0 bg-background z-10">
-                                        <TableRow>
-                                            <TableHead className="w-[120px] text-center">Código</TableHead>
-                                            <TableHead className="w-[200px] text-center">Nome Reduzido</TableHead>
-                                            <TableHead className="text-center">Descrição Completa</TableHead>
-                                            <TableHead className="w-[120px] text-center">Ação</TableHead>
-                                        </TableRow>
-                                    </TableHeader>
-                                    <TableBody>
-                                        {filteredItems.map(item => {
-                                            const isSelected = selectedItem?.code === item.code;
-                                            return (
-                                                <TableRow 
-                                                    key={item.id} 
-                                                    className={`cursor-pointer transition-colors ${isSelected ? "bg-primary/10 hover:bg-primary/20" : "hover:bg-muted/50"}`}
-                                                    onClick={() => handlePreSelect(item)}
-                                                >
-                                                    <TableCell className="font-semibold text-center">{item.code}</TableCell>
-                                                    <TableCell className="font-medium">{item.short_description || 'N/A'}</TableCell>
-                                                    <TableCell className="text-sm text-muted-foreground max-w-lg whitespace-normal">
-                                                        <span className="block">{item.description || 'N/A'}</span>
-                                                    </TableCell>
-                                                    <TableCell className="text-center">
-                                                        <Button
-                                                            variant={isSelected ? "default" : "outline"}
-                                                            size="sm"
-                                                            onClick={(e) => {
-                                                                e.stopPropagation(); 
-                                                                handlePreSelect(item);
-                                                            }}
-                                                        >
-                                                            {isSelected ? (
-                                                                <>
-                                                                    <Check className="h-4 w-4 mr-1" />
-                                                                    Selecionado
-                                                                </>
-                                                            ) : (
-                                                                <>
-                                                                    <Check className="h-4 w-4 mr-1" />
-                                                                    Selecionar
-                                                                </>
-                                                            )}
-                                                        </Button>
-                                                    </TableCell>
-                                                </TableRow>
-                                            );
-                                        })}
-                                    </TableBody>
-                                </Table>
-                            </div>
-                        </>
-                    )}
+                
+                <div className="relative my-4">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input 
+                        placeholder="Buscar por código ou descrição do item..." 
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        className="pl-10"
+                    />
                 </div>
 
-                {/* Ajuste do rodapé para alinhar à direita */}
-                <div className="flex justify-end gap-2 pt-4 border-t">
-                    <Button 
-                        type="button" 
-                        onClick={handleConfirmImport}
-                        disabled={!selectedItem}
-                    >
-                        <Import className="h-4 w-4 mr-2" />
-                        Confirmar Importação
-                    </Button>
-                    <Button 
-                        type="button" 
-                        variant="outline" 
-                        onClick={() => onOpenChange(false)}
-                    >
-                        Fechar
-                    </Button>
+                <div className="flex-1 overflow-y-auto border rounded-md">
+                    {loading ? (
+                        <div className="flex items-center justify-center py-12">
+                            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                        </div>
+                    ) : (
+                        <Table>
+                            <TableHeader>
+                                <TableRow>
+                                    <TableHead className="w-[120px]">Código</TableHead>
+                                    <TableHead>Descrição</TableHead>
+                                    <TableHead className="text-right">Ação</TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {filteredEntries.map((entry) => (
+                                    <TableRow key={entry.code}>
+                                        <TableCell className="font-mono text-xs">{entry.code}</TableCell>
+                                        <TableCell>
+                                            <div className="font-medium text-sm">{entry.description}</div>
+                                            {entry.short_description && (
+                                                <div className="text-xs text-muted-foreground">
+                                                    Reduzido: {entry.short_description}
+                                                </div>
+                                            )}
+                                        </TableCell>
+                                        <TableCell className="text-right">
+                                            <Button size="sm" onClick={() => onSelect(entry)}>Selecionar</Button>
+                                        </TableCell>
+                                    </TableRow>
+                                ))}
+                                {filteredEntries.length === 0 && (
+                                    <TableRow>
+                                        <TableCell colSpan={3} className="text-center py-8 text-muted-foreground">
+                                            Nenhum item encontrado no catálogo local.
+                                        </TableCell>
+                                    </TableRow>
+                                )}
+                            </TableBody>
+                        </Table>
+                    )}
                 </div>
             </DialogContent>
         </Dialog>

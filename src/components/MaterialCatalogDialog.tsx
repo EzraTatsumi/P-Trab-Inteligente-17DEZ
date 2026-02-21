@@ -5,24 +5,24 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { Search, Loader2, Briefcase } from "lucide-react";
+import { Search, Loader2, BookOpen } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
-interface CatserEntry {
-    code: string;
-    description: string;
-    short_description: string | null;
+interface MaterialCatalogEntry {
+    nr_subitem: string;
+    nome_subitem: string;
+    descricao_subitem: string | null;
 }
 
-interface CatserCatalogDialogProps {
+interface MaterialCatalogDialogProps {
     open: boolean;
     onOpenChange: (open: boolean) => void;
-    onSelect: (entry: CatserEntry) => void;
+    onSelect: (entry: MaterialCatalogEntry) => void;
 }
 
-const CatserCatalogDialog: React.FC<CatserCatalogDialogProps> = ({ open, onOpenChange, onSelect }) => {
+const MaterialCatalogDialog: React.FC<MaterialCatalogDialogProps> = ({ open, onOpenChange, onSelect }) => {
     const [searchTerm, setSearchTerm] = useState("");
-    const [entries, setEntries] = useState<CatserEntry[]>([]);
+    const [entries, setEntries] = useState<MaterialCatalogEntry[]>([]);
     const [loading, setLoading] = useState(false);
 
     useEffect(() => {
@@ -35,39 +35,39 @@ const CatserCatalogDialog: React.FC<CatserCatalogDialogProps> = ({ open, onOpenC
         setLoading(true);
         try {
             const { data, error } = await supabase
-                .from('catalogo_catser' as any)
-                .select('code, description, short_description')
-                .order('description', { ascending: true });
+                .from('catalogo_subitens_nd')
+                .select('nr_subitem, nome_subitem, descricao_subitem')
+                .eq('ativo', true)
+                .order('nr_subitem', { ascending: true });
 
             if (error) throw error;
             setEntries(data || []);
         } catch (error) {
-            console.error("Erro ao carregar catálogo CATSER:", error);
+            console.error("Erro ao carregar catálogo de materiais:", error);
         } finally {
             setLoading(false);
         }
     };
 
     const filteredEntries = entries.filter(entry => 
-        entry.code.includes(searchTerm) || 
-        entry.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (entry.short_description && entry.short_description.toLowerCase().includes(searchTerm.toLowerCase()))
+        entry.nr_subitem.includes(searchTerm) || 
+        entry.nome_subitem.toLowerCase().includes(searchTerm.toLowerCase())
     );
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="max-w-4xl max-h-[80vh] overflow-hidden flex flex-col">
+            <DialogContent className="max-w-3xl max-h-[80vh] overflow-hidden flex flex-col">
                 <DialogHeader>
                     <DialogTitle className="flex items-center gap-2">
-                        <Briefcase className="h-5 w-5 text-primary" />
-                        Catálogo de Serviços (CATSER)
+                        <BookOpen className="h-5 w-5 text-primary" />
+                        Catálogo de Subitens (ND 339030)
                     </DialogTitle>
                 </DialogHeader>
                 
                 <div className="relative my-4">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                     <Input 
-                        placeholder="Buscar por código ou descrição do serviço..." 
+                        placeholder="Buscar por número ou nome do subitem..." 
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
                         className="pl-10"
@@ -83,20 +83,20 @@ const CatserCatalogDialog: React.FC<CatserCatalogDialogProps> = ({ open, onOpenC
                         <Table>
                             <TableHeader>
                                 <TableRow>
-                                    <TableHead className="w-[120px]">Código</TableHead>
-                                    <TableHead>Descrição</TableHead>
+                                    <TableHead className="w-[100px]">Número</TableHead>
+                                    <TableHead>Nome do Subitem</TableHead>
                                     <TableHead className="text-right">Ação</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
                                 {filteredEntries.map((entry) => (
-                                    <TableRow key={entry.code}>
-                                        <TableCell className="font-mono text-xs">{entry.code}</TableCell>
+                                    <TableRow key={entry.nr_subitem}>
+                                        <TableCell className="font-bold">{entry.nr_subitem}</TableCell>
                                         <TableCell>
-                                            <div className="font-medium text-sm">{entry.description}</div>
-                                            {entry.short_description && (
-                                                <div className="text-xs text-muted-foreground">
-                                                    Reduzido: {entry.short_description}
+                                            <div className="font-medium">{entry.nome_subitem}</div>
+                                            {entry.descricao_subitem && (
+                                                <div className="text-xs text-muted-foreground line-clamp-1">
+                                                    {entry.descricao_subitem}
                                                 </div>
                                             )}
                                         </TableCell>
@@ -108,7 +108,7 @@ const CatserCatalogDialog: React.FC<CatserCatalogDialogProps> = ({ open, onOpenC
                                 {filteredEntries.length === 0 && (
                                     <TableRow>
                                         <TableCell colSpan={3} className="text-center py-8 text-muted-foreground">
-                                            Nenhum serviço encontrado no catálogo local.
+                                            Nenhum subitem encontrado.
                                         </TableCell>
                                     </TableRow>
                                 )}
@@ -121,4 +121,4 @@ const CatserCatalogDialog: React.FC<CatserCatalogDialogProps> = ({ open, onOpenC
     );
 };
 
-export default CatserCatalogDialog;
+export default MaterialCatalogDialog;
