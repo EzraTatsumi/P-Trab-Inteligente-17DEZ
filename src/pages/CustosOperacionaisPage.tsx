@@ -67,6 +67,24 @@ import { cn } from "@/lib/utils";
 
 type DiretrizOperacional = Tables<'diretrizes_operacionais'>;
 
+interface IndexedItemAquisicao extends ItemAquisicao {
+    diretrizId: string;
+    subitemNr: string;
+    subitemNome: string;
+}
+
+interface IndexedItemServico extends ItemAquisicaoServico {
+    diretrizId: string;
+    subitemNr: string;
+    subitemNome: string;
+}
+
+interface IndexedItemPermanente extends ItemAquisicao {
+    diretrizId: string;
+    subitemNr: string;
+    subitemNome: string;
+}
+
 const DIARIA_RANKS_CONFIG = [
   { key: 'of_gen', label: 'Of Gen', fieldPrefix: 'diaria_of_gen' },
   { key: 'of_sup', label: 'Of Sup', fieldPrefix: 'diaria_of_sup' },
@@ -318,6 +336,26 @@ const CustosOperacionaisPage = () => {
               }
           }, 150);
       }
+  }, []);
+
+  const handleOpenNewMaterialConsumo = useCallback(() => {
+      setDiretrizMaterialConsumoToEdit(null);
+      setIsMaterialConsumoFormOpen(true);
+      
+      // O GATILHO DO TOUR: Se estiver em simulação, avisa o Driver.js para pular para o próximo passo
+      if (isGhostMode()) {
+        window.dispatchEvent(new CustomEvent('tour:avancar-passo'));
+      }
+  }, []);
+
+  const handleOpenNewServicosTerceiros = useCallback(() => {
+      setDiretrizServicosTerceirosToEdit(null);
+      setIsServicosTerceirosFormOpen(true);
+  }, []);
+
+  const handleOpenNewMaterialPermanente = useCallback(() => {
+      setDiretrizMaterialPermanenteToEdit(null);
+      setIsMaterialPermanenteFormOpen(true);
   }, []);
 
   useEffect(() => {
@@ -1138,253 +1176,6 @@ const CustosOperacionaisPage = () => {
   const renderConcessionariaSection = () => {
       return (
           <Card><CardContent className="pt-4"><Tabs value={selectedConcessionariaTab} onValueChange={(value) => setSelectedConcessionariaTab(value as CategoriaConcessionaria)}><TabsList className="grid w-full grid-cols-2">{CATEGORIAS_CONCESSIONARIA.map(cat => (<TabsTrigger key={cat} value={cat}>{cat}</TabsTrigger>))}</TabsList>{CATEGORIAS_CONCESSIONARIA.map(cat => (<TabsContent key={cat} value={cat}>{renderConcessionariaList(cat)}</TabsContent>))}</Tabs></CardContent></Card>
-      );
-  };
-  
-  const handleSaveMaterialConsumo = async (data: Partial<DiretrizMaterialConsumo> & { ano_referencia: number }) => {
-      try {
-          setIsSaving(true);
-          const { data: { user: authUser } } = await supabase.auth.getUser();
-          if (!authUser) throw new Error("Usuário não autenticado");
-          
-          const dbData: TablesInsert<'diretrizes_material_consumo'> = { user_id: authUser.id, ano_referencia: data.ano_referencia, nr_subitem: data.nr_subitem!, nome_subitem: data.nome_subitem!, descricao_subitem: data.descricao_subitem || null, itens_aquisicao: data.itens_aquisicao as unknown as Json, ativo: data.ativo ?? true };
-
-          if (data.id) {
-              await supabase.from('diretrizes_material_consumo').update(dbData as TablesUpdate<'diretrizes_material_consumo'>).eq('id', data.id);
-              toast.success("Subitem da ND atualizado!");
-          } else {
-              await supabase.from('diretrizes_material_consumo').insert([dbData]);
-              toast.success("Novo Subitem da ND cadastrado!");
-          }
-          
-          queryClient.invalidateQueries({ queryKey: ['diretrizesMaterialConsumo', selectedYear, authUser.id] });
-          setDiretrizMaterialConsumoToEdit(null);
-          setIsMaterialConsumoFormOpen(false);
-      } catch (error: any) {
-          toast.error(sanitizeError(error));
-      } finally {
-          setIsSaving(false);
-      }
-  };
-
-  const handleSaveServicosTerceiros = async (data: Partial<DiretrizServicosTerceiros> & { ano_referencia: number }) => {
-      try {
-          setIsSaving(true);
-          const { data: { user: authUser } } = await supabase.auth.getUser();
-          if (!authUser) throw new Error("Usuário não autenticado");
-          
-          const dbData: any = { user_id: authUser.id, ano_referencia: data.ano_referencia, nr_subitem: data.nr_subitem!, nome_subitem: data.nome_subitem!, descricao_subitem: data.descricao_subitem || null, itens_aquisicao: data.itens_aquisicao as unknown as Json, ativo: data.ativo ?? true };
-
-          if (data.id) {
-              await supabase.from('diretrizes_servicos_terceiros' as any).update(dbData).eq('id', data.id);
-              toast.success("Subitem da ND atualizado!");
-          } else {
-              await supabase.from('diretrizes_servicos_terceiros' as any).insert([dbData]);
-              toast.success("Novo Subitem da ND cadastrado!");
-          }
-          
-          queryClient.invalidateQueries({ queryKey: ['diretrizesServicosTerceiros', selectedYear, authUser.id] });
-          setDiretrizServicosTerceirosToEdit(null);
-          setIsServicosTerceirosFormOpen(false);
-      } catch (error: any) {
-          toast.error(sanitizeError(error));
-      } finally {
-          setIsSaving(false);
-      }
-  };
-
-  const handleSaveMaterialPermanente = async (data: Partial<DiretrizMaterialPermanente> & { ano_referencia: number }) => {
-      try {
-          setIsSaving(true);
-          const { data: { user: authUser } } = await supabase.auth.getUser();
-          if (!authUser) throw new Error("Usuário não autenticado");
-          
-          const dbData: any = { user_id: authUser.id, ano_referencia: data.ano_referencia, nr_subitem: data.nr_subitem!, nome_subitem: data.nome_subitem!, descricao_subitem: data.descricao_subitem || null, itens_aquisicao: data.itens_aquisicao as unknown as Json, ativo: data.ativo ?? true };
-
-          if (data.id) {
-              await supabase.from('diretrizes_material_permanente' as any).update(dbData).eq('id', data.id);
-              toast.success("Subitem da ND atualizado!");
-          } else {
-              await supabase.from('diretrizes_material_permanente' as any).insert([dbData]);
-              toast.success("Novo Subitem da ND cadastrado!");
-          }
-          
-          queryClient.invalidateQueries({ queryKey: ['diretrizesMaterialPermanente', selectedYear, authUser.id] });
-          setDiretrizMaterialPermanenteToEdit(null);
-          setIsMaterialPermanenteFormOpen(false);
-      } catch (error: any) {
-          toast.error(sanitizeError(error));
-      } finally {
-          setIsSaving(false);
-      }
-  };
-  
-  const handleStartEditMaterialConsumo = (diretriz: DiretrizMaterialConsumo) => {
-      setDiretrizMaterialConsumoToEdit(diretriz);
-      setIsMaterialConsumoFormOpen(true);
-  };
-
-  const handleStartEditServicosTerceiros = (diretriz: DiretrizServicosTerceiros) => {
-      setDiretrizServicosTerceirosToEdit(diretriz);
-      setIsServicosTerceirosFormOpen(true);
-  };
-
-  const handleStartEditMaterialPermanente = (diretriz: DiretrizMaterialPermanente) => {
-      setDiretrizMaterialPermanenteToEdit(diretriz);
-      setIsMaterialPermanenteFormOpen(true);
-  };
-  
-  const handleOpenNewMaterialConsumo = () => {
-      setDiretrizMaterialConsumoToEdit(null);
-      setIsMaterialConsumoFormOpen(true);
-  };
-
-  const handleOpenNewServicosTerceiros = () => {
-      setDiretrizMaterialConsumoToEdit(null);
-      setIsServicosTerceirosFormOpen(true);
-  };
-
-  const handleOpenNewMaterialPermanente = () => {
-      setDiretrizMaterialPermanenteToEdit(null);
-      setIsMaterialPermanenteFormOpen(true);
-  };
-  
-  const handleDeleteMaterialConsumo = async (id: string, nome: string) => {
-      if (!confirm(`Tem certeza que deseja excluir o Subitem da ND "${nome}"?`)) return;
-      setDiretrizesMaterialConsumo(current => current.filter(d => d.id !== id));
-      try {
-          const { error } = await supabase.from('diretrizes_material_consumo').delete().eq('id', id);
-          if (error) throw error;
-          toast.success("Subitem da ND excluído!");
-      } catch (error) {
-          toast.error(sanitizeError(error));
-          queryClient.invalidateQueries({ queryKey: ['diretrizesMaterialConsumo', selectedYear, user?.id] });
-      } finally {
-          queryClient.invalidateQueries({ queryKey: ['diretrizesMaterialConsumo', selectedYear, user?.id] });
-      }
-  };
-
-  const handleDeleteServicosTerceiros = async (id: string, nome: string) => {
-      if (!confirm(`Tem certeza que deseja excluir o Subitem da ND "${nome}"?`)) return;
-      setDiretrizesServicosTerceiros(current => current.filter(d => d.id !== id));
-      try {
-          const { error } = await supabase.from('diretrizes_servicos_terceiros' as any).delete().eq('id', id);
-          if (error) throw error;
-          toast.success("Subitem da ND excluído!");
-      } catch (error) {
-          toast.error(sanitizeError(error));
-          queryClient.invalidateQueries({ queryKey: ['diretrizesServicosTerceiros', selectedYear, user?.id] });
-      } finally {
-          queryClient.invalidateQueries({ queryKey: ['diretrizesServicosTerceiros', selectedYear, user?.id] });
-      }
-  };
-
-  const handleDeleteMaterialPermanente = async (id: string, nome: string) => {
-      if (!confirm(`Tem certeza que deseja excluir o Subitem da ND "${nome}"?`)) return;
-      setDiretrizesMaterialPermanente(current => current.filter(d => d.id !== id));
-      try {
-          const { error } = await supabase.from('diretrizes_material_permanente' as any).delete().eq('id', id);
-          if (error) throw error;
-          toast.success("Subitem da ND excluído!");
-      } catch (error) {
-          toast.error(sanitizeError(error));
-          queryClient.invalidateQueries({ queryKey: ['diretrizesMaterialPermanente', selectedYear, user?.id] });
-      } finally {
-          queryClient.invalidateQueries({ queryKey: ['diretrizesMaterialPermanente', selectedYear, user?.id] });
-      }
-  };
-  
-  const indexedItems = useMemo<IndexedItemAquisicao[]>(() => {
-    if (!diretrizesMaterialConsumo) return [];
-    return diretrizesMaterialConsumo.flatMap(diretriz => {
-        const itens = (diretriz.itens_aquisicao || []) as ItemAquisicao[];
-        return itens.map(item => ({ ...item, diretrizId: diretriz.id, subitemNr: diretriz.nr_subitem, subitemNome: diretriz.nome_subitem }));
-    });
-  }, [diretrizesMaterialConsumo]);
-
-  const indexedItemsServicos = useMemo<IndexedItemServico[]>(() => {
-    if (!diretrizesServicosTerceiros) return [];
-    return diretrizesServicosTerceiros.flatMap(diretriz => {
-        const itens = (diretriz.itens_aquisicao || []) as ItemAquisicaoServico[];
-        return itens.map(item => ({ ...item, diretrizId: diretriz.id, subitemNr: diretriz.nr_subitem, subitemNome: diretriz.nome_subitem }));
-    });
-  }, [diretrizesServicosTerceiros]);
-
-  const indexedItemsPermanente = useMemo<IndexedItemPermanente[]>(() => {
-    if (!diretrizesMaterialPermanente) return [];
-    return diretrizesMaterialPermanente.flatMap(diretriz => {
-        const itens = (diretriz.itens_aquisicao || []) as ItemAquisicao[];
-        return itens.map(item => ({ ...item, diretrizId: diretriz.id, subitemNr: diretriz.nr_subitem, subitemNome: diretriz.nome_subitem }));
-    });
-  }, [diretrizesMaterialPermanente]);
-
-  const filteredItems = useMemo(() => {
-    if (!searchTerm) return [];
-    const lowerCaseSearch = searchTerm.toLowerCase().trim();
-    if (lowerCaseSearch.length < 3) return [];
-    return indexedItems.filter(item => [item.descricao_item, item.codigo_catmat, item.numero_pregao, item.uasg, item.subitemNr, item.subitemNome].join(' ').toLowerCase().includes(lowerCaseSearch));
-  }, [searchTerm, indexedItems]);
-
-  const filteredItemsServicos = useMemo(() => {
-    if (!searchTermServicos) return [];
-    const lowerCaseSearch = searchTermServicos.toLowerCase().trim();
-    if (lowerCaseSearch.length < 3) return [];
-    return indexedItemsServicos.filter(item => [item.descricao_item, item.codigo_catmat, item.numero_pregao, item.uasg, item.subitemNr, item.subitemNome].join(' ').toLowerCase().includes(lowerCaseSearch));
-  }, [searchTermServicos, indexedItemsServicos]);
-
-  const filteredItemsPermanente = useMemo(() => {
-    if (!searchTermPermanente) return [];
-    const lowerCaseSearch = searchTermPermanente.toLowerCase().trim();
-    if (lowerCaseSearch.length < 3) return [];
-    return indexedItemsPermanente.filter(item => [item.descricao_item, item.codigo_catmat, item.numero_pregao, item.uasg, item.subitemNr, item.subitemNome].join(' ').toLowerCase().includes(lowerCaseSearch));
-  }, [searchTermPermanente, indexedItemsPermanente]);
-
-  const handleGoToSubitem = (diretrizId: string) => {
-      handleCollapseChange('material_consumo_detalhe', true);
-      setSubitemToOpenId(diretrizId);
-      setTimeout(() => { const element = document.getElementById(`diretriz-material-consumo-${diretrizId}`); if (element) element.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 100);
-      setSearchTerm("");
-  };
-
-  const handleGoToSubitemServico = (diretrizId: string) => {
-      handleCollapseChange('servicos_terceiros_detalhe', true);
-      setSubitemServicoToOpenId(diretrizId);
-      setTimeout(() => { const element = document.getElementById(`diretriz-servicos-terceiros-${diretrizId}`); if (element) element.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 100);
-      setSearchTermServicos("");
-  };
-
-  const handleGoToSubitemPermanente = (diretrizId: string) => {
-      handleCollapseChange('material_permanente_detalhe', true);
-      setSubitemPermanenteToOpenId(diretrizId);
-      setTimeout(() => { const element = document.getElementById(`diretriz-material-permanente-${diretrizId}`); if (element) element.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 100);
-      setSearchTermPermanente("");
-  };
-  
-  useEffect(() => { if (subitemToOpenId) { const timer = setTimeout(() => setSubitemToOpenId(null), 500); return () => clearTimeout(timer); } }, [subitemToOpenId]);
-  useEffect(() => { if (subitemServicoToOpenId) { const timer = setTimeout(() => setSubitemServicoToOpenId(null), 500); return () => clearTimeout(timer); } }, [subitemServicoToOpenId]);
-  useEffect(() => { if (subitemPermanenteToOpenId) { const timer = setTimeout(() => setSubitemPermanenteToOpenId(null), 500); return () => clearTimeout(timer); } }, [subitemPermanenteToOpenId]);
-
-  const renderSearchResults = () => {
-      if (searchTerm.length < 3) return (<Card className="p-4 text-center text-muted-foreground">Digite pelo menos 3 caracteres para iniciar a busca.</Card>);
-      if (filteredItems.length === 0) return (<Card className="p-4 text-center text-muted-foreground">Nenhum item de aquisição encontrado com este termo.</Card>);
-      return (
-          <Card className="p-4"><CardTitle className="text-base font-semibold mb-3">Resultados da Busca ({filteredItems.length})</CardTitle><Table><TableHeader><TableRow><TableHead className="w-[40%]">Item de Aquisição</TableHead><TableHead className="w-[40%]">Subitem ND</TableHead><TableHead className="w-[20%] text-center">Ações</TableHead></TableRow></TableHeader><TableBody>{filteredItems.map((item, index) => (<TableRow key={`${item.diretrizId}-${index}`}><TableCell className="font-medium">{item.descricao_item}<p className="text-xs text-muted-foreground">Cód. CATMAT: {item.codigo_catmat || 'N/A'}</p><p className="text-xs text-muted-foreground truncate">Pregão: {item.numero_pregao} | UASG: {formatCodug(item.uasg) || 'N/A'}</p></TableCell><TableCell className="text-left"><span className="font-semibold mr-1 whitespace-nowrap">{item.subitemNr}</span><span className="text-sm text-muted-foreground">{item.subitemNome}</span></TableCell><TableCell className="text-right"><Button variant="outline" size="sm" onClick={() => handleGoToSubitem(item.diretrizId)} className="w-full justify-start"><Package className="h-4 w-4 mr-1" />Ver Local</Button></TableCell></TableRow>))}</TableBody></Table></Card>
-      );
-  };
-
-  const renderSearchResultsServicos = () => {
-      if (searchTermServicos.length < 3) return (<Card className="p-4 text-center text-muted-foreground">Digite pelo menos 3 caracteres para iniciar a busca.</Card>);
-      if (filteredItemsServicos.length === 0) return (<Card className="p-4 text-center text-muted-foreground">Nenhum item de serviço encontrado com este termo.</Card>);
-      return (
-          <Card className="p-4"><CardTitle className="text-base font-semibold mb-3">Resultados da Busca ({filteredItemsServicos.length})</CardTitle><Table><TableHeader><TableRow><TableHead className="w-[40%]">Item de Serviço</TableHead><TableHead className="w-[40%]">Subitem ND</TableHead><TableHead className="w-[20%] text-center">Ações</TableHead></TableRow></TableHeader><TableBody>{filteredItemsServicos.map((item, index) => (<TableRow key={`${item.diretrizId}-${index}`}><TableCell className="font-medium">{item.descricao_item}<p className="text-xs text-muted-foreground">Cód. CATMAT: {item.codigo_catmat || 'N/A'}</p><p className="text-xs text-muted-foreground truncate">Pregão: {item.numero_pregao} | UASG: {formatCodug(item.uasg) || 'N/A'}</p></TableCell><TableCell className="text-left"><span className="font-semibold mr-1 whitespace-nowrap">{item.subitemNr}</span><span className="text-sm text-muted-foreground">{item.subitemNome}</span></TableCell><TableCell className="text-right"><Button variant="outline" size="sm" onClick={() => handleGoToSubitemServico(item.diretrizId)} className="w-full justify-start"><Package className="h-4 w-4 mr-1" />Ver Local</Button></TableCell></TableRow>))}</TableBody></Table></Card>
-      );
-  };
-
-  const renderSearchResultsPermanente = () => {
-      if (searchTermPermanente.length < 3) return (<Card className="p-4 text-center text-muted-foreground">Digite pelo menos 3 caracteres para iniciar a busca.</Card>);
-      if (filteredItemsPermanente.length === 0) return (<Card className="p-4 text-center text-muted-foreground">Nenhum item de material permanente encontrado com este termo.</Card>);
-      return (
-          <Card className="p-4"><CardTitle className="text-base font-semibold mb-3">Resultados da Busca ({filteredItemsPermanente.length})</CardTitle><Table><TableHeader><TableRow><TableHead className="w-[40%]">Item Permanente</TableHead><TableHead className="w-[40%]">Subitem ND</TableHead><TableHead className="w-[20%] text-center">Ações</TableHead></TableRow></TableHeader><TableBody>{filteredItemsPermanente.map((item, index) => (<TableRow key={`${item.diretrizId}-${index}`}><TableCell className="font-medium">{item.descricao_item}<p className="text-xs text-muted-foreground">Cód. CATMAT: {item.codigo_catmat || 'N/A'}</p><p className="text-xs text-muted-foreground truncate">Pregão: {item.numero_pregao} | UASG: {formatCodug(item.uasg) || 'N/A'}</p></TableCell><TableCell className="text-left"><span className="font-semibold mr-1 whitespace-nowrap">{item.subitemNr}</span><span className="text-sm text-muted-foreground">{item.subitemNome}</span></TableCell><TableCell className="text-right"><Button variant="outline" size="sm" onClick={() => handleGoToSubitemPermanente(item.diretrizId)} className="w-full justify-start"><Package className="h-4 w-4 mr-1" />Ver Local</Button></TableCell></TableRow>))}</TableBody></Table></Card>
       );
   };
   
