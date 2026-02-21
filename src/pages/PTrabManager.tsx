@@ -197,6 +197,13 @@ const PTrabManager = () => {
   const hasShownWelcome = useRef(false);
 
   useEffect(() => {
+    // Inibe o checklist de configuração inicial se estiver no Modo Fantasma
+    if (isGhostMode()) {
+      setShowWelcomeModal(false);
+      setShowRequirementsAlert(false);
+      return;
+    }
+
     if (!isLoadingOnboarding && onboardingStatus && !onboardingStatus.isReady && !hasShownWelcome.current) {
       setShowWelcomeModal(true);
       hasShownWelcome.current = true;
@@ -576,7 +583,7 @@ const PTrabManager = () => {
   };
 
   const handleOpenNewPTrabDialog = () => {
-    if (onboardingStatus?.isReady) {
+    if (onboardingStatus?.isReady || isGhostMode()) {
       resetForm();
       setDialogOpen(true);
       window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -1552,7 +1559,7 @@ const PTrabManager = () => {
         </DialogContent>
       </Dialog>
 
-      <PTrabConsolidationDialog open={showConsolidationDialog} onOpenChange={setShowConsolidationDialog} pTrabsList={pTrabs.filter(p => p.status !== 'arquivado').map(p => ({ id: p.id, numero_ptrab: p.numero_ptrab, nome_operacao: p.nome_operacao }))} existingPTrabNumbers={existingPTrabNumbers} onConfirm={handleOpenConsolidationNumberDialog} loading={isActionLoading} />
+      <PTrabConsolidationDialog open={showConsolidationDialog} onOpenChange={setShowConsolidationDialog} pTrabsList={pTrabs.filter(p => p.status !== 'arquivado').map(p => ({ id: p.id, numero_ptrab: p.numero_ptrab, nome_operacao: p.numero_ptrab }))} existingPTrabNumbers={existingPTrabNumbers} onConfirm={handleOpenConsolidationNumberDialog} loading={isActionLoading} />
       <ConsolidationNumberDialog open={showConsolidationNumberDialog} onOpenChange={setShowConsolidationNumberDialog} suggestedNumber={suggestedConsolidationNumber} existingNumbers={existingPTrabNumbers} selectedPTrabs={simplePTrabsToConsolidate} onConfirm={handleConfirmConsolidation} loading={isActionLoading} />
       <CreditPromptDialog open={showCreditPrompt} onConfirm={handlePromptConfirm} onCancel={handlePromptCancel} />
       
