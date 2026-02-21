@@ -60,6 +60,9 @@ import PageMetadata from "@/components/PageMetadata";
 import { fetchBatchPTrabTotals } from "@/lib/ptrabUtils";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { PTrabTableSkeleton } from "@/components/PTrabTableSkeleton";
+import { useOnboardingStatus } from "@/hooks/useOnboardingStatus";
+import { WelcomeModal } from "@/components/WelcomeModal";
+import { RequirementsAlert } from "@/components/RequirementsAlert";
 
 // Define a base type for PTrab data fetched from DB, including the missing 'origem' field
 type PTrabDB = Tables<'p_trab'> & {
@@ -181,6 +184,19 @@ const PTrabManager = () => {
   
   const [showUnlinkPTrabDialog, setShowUnlinkPTrabDialog] = useState(false);
   const [ptrabToUnlink, setPtrabToUnlink] = useState<PTrab | null>(null);
+
+  // Onboarding States
+  const { data: onboardingStatus, isLoading: isLoadingOnboarding } = useOnboardingStatus();
+  const [showWelcomeModal, setShowWelcomeModal] = useState(false);
+  const [showRequirementsAlert, setShowRequirementsAlert] = useState(false);
+  const hasShownWelcome = useRef(false);
+
+  useEffect(() => {
+    if (!isLoadingOnboarding && onboardingStatus && !onboardingStatus.isReady && !hasShownWelcome.current) {
+      setShowWelcomeModal(true);
+      hasShownWelcome.current = true;
+    }
+  }, [isLoadingOnboarding, onboardingStatus]);
   
   const currentYear = new Date().getFullYear();
   const yearSuffix = `/${currentYear}`;
@@ -466,7 +482,7 @@ const PTrabManager = () => {
       if (fetchError || !ptrab) throw new Error("P Trab não encontrado.");
       const isMinuta = ptrab.numero_ptrab.startsWith("Minuta");
       const newStatus = isMinuta ? 'aberto' : 'aprovado';
-      const { error: updateError } = await supabase.from("p_trab").update({ status: newStatus }).eq("id", ptrabToReactivateId);
+      const { error: updateError = null } = await supabase.from("p_trab").update({ status: newStatus }).eq("id", ptrabToReactivateId);
       if (updateError) throw updateError;
       toast.success(`P Trab ${ptrabToReactivateName} reativado para "${newStatus.toUpperCase()}"!`);
       setShowReactivateStatusDialog(false);
@@ -520,6 +536,16 @@ const PTrabManager = () => {
 
   const handleNumeroPTrabChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData((prev) => ({ ...prev, numero_ptrab: e.target.value }));
+  };
+
+  const handleOpenNewPTrabDialog = () => {
+    if (onboardingStatus?.isReady) {
+      resetForm();
+      setDialogOpen(true);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    } else {
+      setShowRequirementsAlert(true);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -1023,12 +1049,10 @@ const PTrabManager = () => {
             </div>
             
             <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-              <DialogTrigger asChild>
-                <Button onClick={() => { resetForm(); setDialogOpen(true); window.scrollTo({ top: 0, behavior: 'smooth' }); }}>
-                  <Plus className="mr-2 h-4 w-4" />
-                  Novo P Trab
-                </Button>
-              </DialogTrigger>
+              <Button onClick={handleOpenNewPTrabDialog}>
+                <Plus className="mr-2 h-4 w-4" />
+                Novo P Trab
+              </Button>
               <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
                   <DialogTitle>{editingId ? "Editar P Trab" : "Novo P Trab"}</DialogTitle>
@@ -1363,6 +1387,18 @@ const PTrabManager = () => {
           </CardContent>
         </Card>
       </div>
+
+      <WelcomeModal 
+        open={showWelcomeModal} 
+        onOpenChange={setShowWelcomeModal} 
+        status={onboardingStatus || null} 
+      />
+
+      <RequirementsAlert 
+        open={showRequirementsAlert} 
+        onOpenChange={setShowRequirementsAlert} 
+        status={onboardingStatus || null} 
+      />
 
       <AlertDialog open={showArchiveStatusDialog} onOpenChange={setShowArchiveStatusDialog}>
         <AlertDialogContent>
