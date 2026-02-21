@@ -23,19 +23,13 @@ const AIChatDrawer = () => {
   const [inputMessage, setInputMessage] = useState('');
   const [loading, setLoading] = useState(false);
   
-  // Ref para o viewport da ScrollArea (necessário para acessar o elemento DOM)
-  const scrollViewportRef = useRef<HTMLDivElement>(null);
-  // Ref para a âncora no final da lista de mensagens
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
-    // Rola o elemento âncora para a visualização dentro do viewport da ScrollArea
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
-  // Efeito para rolar para baixo sempre que as mensagens mudam ou o drawer é aberto
   useEffect(() => {
-    // Pequeno delay para garantir que o DOM foi atualizado após a nova mensagem
     const timer = setTimeout(() => {
         scrollToBottom();
     }, 50);
@@ -52,7 +46,6 @@ const AIChatDrawer = () => {
     setLoading(true);
 
     try {
-      // Invoca a Edge Function
       const { data, error } = await supabase.functions.invoke('chat-ai', {
         body: { message },
       });
@@ -89,7 +82,7 @@ const AIChatDrawer = () => {
       <Drawer.Trigger asChild>
         <Button 
           size="icon" 
-          className="fixed bottom-6 right-6 z-50 rounded-full shadow-xl h-14 w-14 bg-primary/50 hover:bg-primary transition-all"
+          className="fixed bottom-6 right-6 z-50 rounded-full shadow-xl h-14 w-14 bg-primary/50 hover:bg-primary transition-all btn-chat-ia"
           aria-label="Abrir Chat com IA"
         >
           <MessageSquare className="h-6 w-6" />
@@ -120,7 +113,6 @@ const AIChatDrawer = () => {
             </div>
           </div>
           
-          {/* FIX: Removido viewportRef, que não é suportado pelo shadcn ScrollArea */}
           <ScrollArea className="flex-1 p-4 overflow-y-auto">
             <div className="space-y-4">
               {messages.length === 0 && (
@@ -159,7 +151,6 @@ const AIChatDrawer = () => {
                   </div>
                 </div>
               )}
-              {/* Âncora para rolagem automática */}
               <div ref={messagesEndRef} />
             </div>
           </ScrollArea>
@@ -187,9 +178,7 @@ const AIChatDrawer = () => {
         </Drawer.Content>
       </Drawer.Portal>
       
-      {/* FIX: Usar tag <style> padrão */}
       <style>{`
-        /* Estilos para o conteúdo Markdown dentro do chat */
         .markdown-content p {
             margin-bottom: 0.5rem;
         }
