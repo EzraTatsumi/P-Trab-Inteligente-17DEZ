@@ -1,6 +1,28 @@
 import { driver } from "driver.js";
 import "driver.js/dist/driver.css";
 
+export const runMission01 = (onComplete: () => void) => {
+  const driverObj = driver({
+    showProgress: true,
+    allowClose: false,
+    steps: [
+      {
+        element: '.btn-novo-ptrab',
+        popover: {
+          title: 'Missão 01: Criar P Trab',
+          description: 'Vamos começar criando um novo Plano de Trabalho.',
+          side: "bottom",
+          align: 'start'
+        }
+      }
+    ],
+    onDestroyed: () => {
+      onComplete();
+    }
+  });
+  driverObj.drive();
+};
+
 export const runMission02 = (onComplete: () => void) => {
   const driverObj = driver({
     showProgress: true,
@@ -57,5 +79,49 @@ export const runMission02 = (onComplete: () => void) => {
     }
   });
 
+  driverObj.drive();
+};
+
+export const runMission03 = (onComplete: () => void) => {
+  const driverObj = driver({
+    showProgress: true,
+    allowClose: false,
+    steps: [
+      {
+        element: '.tabs-logistica',
+        popover: {
+          title: 'Missão 03: Logística',
+          description: 'Vamos explorar a aba de logística do P Trab.',
+          side: "bottom",
+          align: 'start'
+        }
+      }
+    ],
+    onDestroyed: () => {
+      onComplete();
+    }
+  });
+  driverObj.drive();
+};
+
+export const runMission04 = (onComplete: () => void) => {
+  const driverObj = driver({
+    showProgress: true,
+    allowClose: false,
+    steps: [
+      {
+        element: '.tabs-operacional',
+        popover: {
+          title: 'Missão 04: Operacional',
+          description: 'Vamos explorar a aba operacional do P Trab.',
+          side: "bottom",
+          align: 'start'
+        }
+      }
+    ],
+    onDestroyed: () => {
+      onComplete();
+    }
+  });
   driverObj.drive();
 };
