@@ -128,70 +128,6 @@ const defaultDiretrizes = (year: number): Partial<DiretrizOperacional> => ({
   taxa_embarque: 95.00,
 });
 
-const SCROLL_ZONE_HEIGHT = 50;
-const SCROLL_SPEED = 10;
-let scrollAnimationFrame: number | null = null;
-let scrollDirection: 'up' | 'down' | null = null;
-
-const autoScroll = () => {
-    if (scrollDirection === 'up') {
-        window.scrollBy(0, -SCROLL_SPEED);
-    } else if (scrollDirection === 'down') {
-        window.scrollBy(0, SCROLL_SPEED);
-    }
-
-    if (scrollDirection) {
-        scrollAnimationFrame = requestAnimationFrame(autoScroll);
-    } else {
-        scrollAnimationFrame = null;
-    }
-};
-
-const handleGlobalDragOver = (e: DragEvent) => {
-    if (!e.dataTransfer?.types.includes("application/json")) {
-        return;
-    }
-    
-    e.preventDefault();
-
-    const viewportHeight = window.innerHeight;
-    const cursorY = e.clientY;
-
-    if (cursorY < SCROLL_ZONE_HEIGHT) {
-        if (scrollDirection !== 'up') {
-            scrollDirection = 'up';
-            if (!scrollAnimationFrame) {
-                scrollAnimationFrame = requestAnimationFrame(autoScroll);
-            }
-        }
-    } 
-    else if (cursorY > viewportHeight - SCROLL_ZONE_HEIGHT) {
-        if (scrollDirection !== 'down') {
-            scrollDirection = 'down';
-            if (!scrollAnimationFrame) {
-                scrollAnimationFrame = requestAnimationFrame(autoScroll);
-            }
-        }
-    } 
-    else {
-        if (scrollDirection) {
-            scrollDirection = null;
-            if (scrollAnimationFrame) {
-                cancelAnimationFrame(scrollAnimationFrame);
-                scrollAnimationFrame = null;
-            }
-        }
-    }
-};
-
-const handleGlobalDragEnd = () => {
-    scrollDirection = null;
-    if (scrollAnimationFrame) {
-        cancelAnimationFrame(scrollAnimationFrame);
-        scrollAnimationFrame = null;
-    }
-};
-
 const CustosOperacionaisPage = () => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -270,41 +206,12 @@ const CustosOperacionaisPage = () => {
   const [diretrizesServicosTerceiros, setDiretrizesServicosTerceiros] = useState<DiretrizServicosTerceiros[]>([]);
   const [diretrizesMaterialPermanente, setDiretrizesMaterialPermanente] = useState<DiretrizMaterialPermanente[]>([]);
 
-  useEffect(() => { 
-    if (isGhostMode()) {
-      setDiretrizesMaterialConsumo(GHOST_DATA.missao_02.subitens_lista as any);
-      return;
-    }
-
-    if (diretrizesMaterialConsumoHook && !isMovingMaterialConsumo) {
-      setDiretrizesMaterialConsumo(current => {
-        if (JSON.stringify(current) === JSON.stringify(diretrizesMaterialConsumoHook)) return current;
-        return diretrizesMaterialConsumoHook;
-      });
-    }
-  }, [diretrizesMaterialConsumoHook, isMovingMaterialConsumo]);
-
-  useEffect(() => { 
-    if (diretrizesServicosTerceirosHook && !isMovingServicosTerceiros) {
-      setDiretrizesServicosTerceiros(current => {
-        if (JSON.stringify(current) === JSON.stringify(diretrizesServicosTerceirosHook)) return current;
-        return diretrizesServicosTerceirosHook;
-      });
-    }
-  }, [diretrizesServicosTerceirosHook, isMovingServicosTerceiros]);
-
-  useEffect(() => { 
-    if (diretrizesMaterialPermanenteHook && !isMovingMaterialPermanente) {
-      setDiretrizesMaterialPermanente(current => {
-        if (JSON.stringify(current) === JSON.stringify(diretrizesMaterialPermanenteHook)) return current;
-        return diretrizesMaterialPermanenteHook;
-      });
-    }
-  }, [diretrizesMaterialPermanenteHook, isMovingMaterialPermanente]);
-  
   const [isMaterialConsumoFormOpen, setIsMaterialConsumoFormOpen] = useState(false);
   const [diretrizMaterialConsumoToEdit, setDiretrizMaterialConsumoToEdit] = useState<DiretrizMaterialConsumo | null>(null);
-  
+  const [searchTerm, setSearchTerm] = useState("");
+  const [subitemToOpenId, setSubitemToOpenId] = useState<string | null>(null);
+  const [isExportImportDialogOpen, setIsExportImportDialogOpen] = useState(false);
+
   const [isServicosTerceirosFormOpen, setIsServicosTerceirosFormOpen] = useState(false);
   const [diretrizServicosTerceirosToEdit, setDiretrizServicosTerceirosToEdit] = useState<DiretrizServicosTerceiros | null>(null);
   const [searchTermServicos, setSearchTermServicos] = useState("");
@@ -317,13 +224,35 @@ const CustosOperacionaisPage = () => {
   const [subitemPermanenteToOpenId, setSubitemPermanenteToOpenId] = useState<string | null>(null);
   const [isExportImportPermanenteDialogOpen, setIsExportImportPermanenteDialogOpen] = useState(false);
 
-  const [searchTerm, setSearchTerm] = useState("");
-  const [subitemToOpenId, setSubitemToOpenId] = useState<string | null>(null);
-  const [isExportImportDialogOpen, setIsExportImportDialogOpen] = useState(false);
-  
   const collapsibleRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
   // --- Handlers ---
+
+  const handleCollapseChange = useCallback((key: string, open: boolean) => {
+      setFieldCollapseState(prev => ({ ...prev, [key]: open }));
+
+      if (open) {
+          setTimeout(() => {
+              const element = collapsibleRefs.current[key];
+              if (element) {
+                  const yOffset = -100; 
+                  const y = element.getBoundingClientRect().top + window.pageYOffset + yOffset;
+                  window.scrollTo({ top: y, behavior: 'smooth' });
+              }
+          }, 150);
+      }
+  }, []);
+
+  const handleCurrencyChange = (field: keyof DiretrizOperacional, rawValue: string) => {
+    const { numericValue, digits } = formatCurrencyInput(rawValue);
+    setRawInputs(prev => ({ ...prev, [field]: digits }));
+    setDiretrizes(prev => ({ ...prev, [field]: numericValue }));
+  };
+  
+  const handleFactorChange = (field: keyof DiretrizOperacional, value: string) => {
+    const numericValue = parseFloat(value) || 0;
+    setDiretrizes(prev => ({ ...prev, [field]: numericValue }));
+  };
 
   const handleStartEditMaterialConsumo = (diretriz: DiretrizMaterialConsumo) => {
       setDiretrizMaterialConsumoToEdit(diretriz);
@@ -339,6 +268,25 @@ const CustosOperacionaisPage = () => {
       setDiretrizMaterialPermanenteToEdit(diretriz);
       setIsMaterialPermanenteFormOpen(true);
   };
+
+  const handleOpenNewMaterialConsumo = useCallback(() => {
+      setDiretrizMaterialConsumoToEdit(null);
+      setIsMaterialConsumoFormOpen(true);
+      
+      if (isGhostMode()) {
+        window.dispatchEvent(new CustomEvent('tour:avancar'));
+      }
+  }, []);
+
+  const handleOpenNewServicosTerceiros = useCallback(() => {
+      setDiretrizServicosTerceirosToEdit(null);
+      setIsServicosTerceirosFormOpen(true);
+  }, []);
+
+  const handleOpenNewMaterialPermanente = useCallback(() => {
+      setDiretrizMaterialPermanenteToEdit(null);
+      setIsMaterialPermanenteFormOpen(true);
+  }, []);
 
   const handleSaveMaterialConsumo = async (data: Partial<DiretrizMaterialConsumo> & { ano_referencia: number }) => {
       try {
@@ -487,40 +435,117 @@ const CustosOperacionaisPage = () => {
       }
   };
 
-  const handleCollapseChange = useCallback((key: string, open: boolean) => {
-      setFieldCollapseState(prev => ({ ...prev, [key]: open }));
-
-      if (open) {
-          setTimeout(() => {
-              const element = collapsibleRefs.current[key];
-              if (element) {
-                  const yOffset = -100; 
-                  const y = element.getBoundingClientRect().top + window.pageYOffset + yOffset;
-                  window.scrollTo({ top: y, behavior: 'smooth' });
-              }
-          }, 150);
+  const handleSavePassagem = async (data: Partial<DiretrizPassagem> & { ano_referencia: number, om_referencia: string, ug_referencia: string }) => {
+      try {
+          setIsSaving(true);
+          const { data: { user: authUser } } = await supabase.auth.getUser();
+          if (!authUser) throw new Error("Usuário não autenticado");
+          
+          const dbData: TablesInsert<'diretrizes_passagens'> = {
+              user_id: authUser.id,
+              ano_referencia: data.ano_referencia,
+              om_referencia: data.om_referencia,
+              ug_referencia: data.ug_referencia,
+              numero_pregao: data.numero_pregao || null,
+              trechos: data.trechos as unknown as Json,
+              ativo: data.ativo ?? true,
+              data_inicio_vigencia: data.data_inicio_vigencia || null,
+              data_fim_vigencia: data.data_fim_vigencia || null,
+          };
+          
+          if (data.id) {
+              await supabase.from('diretrizes_passagens').update(dbData as TablesUpdate<'diretrizes_passagens'>).eq('id', data.id);
+              toast.success("Contrato de Passagens atualizado!");
+          } else {
+              await supabase.from('diretrizes_passagens').insert([dbData]);
+              toast.success("Novo Contrato de Passagens cadastrado!");
+          }
+          
+          queryClient.invalidateQueries({ queryKey: ['diretrizesCustosOperacionais', selectedYear, authUser.id] });
+          setDiretrizToEdit(null);
+          setIsPassagemFormOpen(false);
+      } catch (error: any) {
+          toast.error(sanitizeError(error));
+      } finally {
+          setIsSaving(false);
       }
-  }, []);
-
-  const handleOpenNewMaterialConsumo = useCallback(() => {
-      setDiretrizMaterialConsumoToEdit(null);
-      setIsMaterialConsumoFormOpen(true);
-      
-      // GATILHO PARA O TOUR
-      if (isGhostMode()) {
-        window.dispatchEvent(new CustomEvent('tour:avancar'));
+  };
+  
+  const handleStartEditPassagem = (diretriz: DiretrizPassagem) => {
+      setDiretrizToEdit(diretriz);
+      setIsPassagemFormOpen(true);
+  };
+  
+  const handleOpenNewPassagem = () => {
+      setDiretrizToEdit(null);
+      setIsPassagemFormOpen(true);
+  };
+  
+  const handleDeletePassagem = async (id: string, omName: string) => {
+      if (!confirm(`Tem certeza que deseja excluir o contrato de passagens da OM ${omName}?`)) return;
+      try {
+          setIsSaving(true);
+          await supabase.from('diretrizes_passagens').delete().eq('id', id);
+          toast.success("Contrato de Passagens excluído!");
+          queryClient.invalidateQueries({ queryKey: ['diretrizesCustosOperacionais', selectedYear, user?.id] });
+      } catch (error) {
+          toast.error(sanitizeError(error));
+      } finally {
+          setIsSaving(false);
       }
-  }, []);
+  };
 
-  const handleOpenNewServicosTerceiros = useCallback(() => {
-      setDiretrizServicosTerceirosToEdit(null);
-      setIsServicosTerceirosFormOpen(true);
-  }, []);
+  const handleSaveConcessionaria = async (data: DiretrizConcessionariaForm & { id?: string }) => {
+      try {
+          setIsSaving(true);
+          const { data: { user: authUser } } = await supabase.auth.getUser();
+          if (!authUser) throw new Error("Usuário não autenticado");
+          
+          const consumoValue = typeof data.consumo_pessoa_dia === 'string' ? parseFloat(data.consumo_pessoa_dia.replace(',', '.')) || 0 : data.consumo_pessoa_dia;
+          const dbData: TablesInsert<'diretrizes_concessionaria'> = { user_id: authUser.id, ano_referencia: selectedYear, categoria: data.categoria, nome_concessionaria: data.nome_concessionaria, consumo_pessoa_dia: consumoValue, fonte_consumo: data.fonte_consumo || null, custo_unitario: data.custo_unitario, fonte_custo: data.fonte_custo || null, unidade_custo: data.unidade_custo };
 
-  const handleOpenNewMaterialPermanente = useCallback(() => {
-      setDiretrizMaterialPermanenteToEdit(null);
-      setIsMaterialPermanenteFormOpen(true);
-  }, []);
+          if (data.id) {
+              await supabase.from('diretrizes_concessionaria').update(dbData as TablesUpdate<'diretrizes_concessionaria'>).eq('id', data.id);
+              toast.success("Diretriz de Concessionária atualizada!");
+          } else {
+              await supabase.from('diretrizes_concessionaria').insert([dbData]);
+              toast.success("Nova Diretriz de Concessionária cadastrada!");
+          }
+          
+          queryClient.invalidateQueries({ queryKey: ['diretrizesCustosOperacionais', selectedYear, authUser.id] });
+          setDiretrizConcessionariaToEdit(null);
+          setIsConcessionariaFormOpen(false);
+      } catch (error: any) {
+          toast.error(sanitizeError(error));
+      } finally {
+          setIsSaving(false);
+      }
+  };
+  
+  const handleStartEditConcessionaria = (diretriz: DiretrizConcessionaria) => {
+      setDiretrizConcessionariaToEdit(diretriz);
+      setIsConcessionariaFormOpen(true);
+  };
+  
+  const handleOpenNewConcessionaria = (category: CategoriaConcessionaria) => {
+      setDiretrizConcessionariaToEdit(null);
+      setSelectedConcessionariaTab(category);
+      setIsConcessionariaFormOpen(true);
+  };
+  
+  const handleDeleteConcessionaria = async (id: string, nome: string) => {
+      if (!confirm(`Tem certeza que deseja excluir a diretriz da concessionária ${nome}?`)) return;
+      try {
+          setIsSaving(true);
+          await supabase.from('diretrizes_concessionaria').delete().eq('id', id);
+          toast.success("Diretriz de Concessionária excluída!");
+          queryClient.invalidateQueries({ queryKey: ['diretrizesCustosOperacionais', selectedYear, user?.id] });
+      } catch (error) {
+          toast.error(sanitizeError(error));
+      } finally {
+          setIsSaving(false);
+      }
+  };
 
   // --- Search Logic ---
 
@@ -616,6 +641,118 @@ const CustosOperacionaisPage = () => {
       );
   };
 
+  const renderDiretrizField = (field: { key: string, label: string, type: 'currency' | 'factor', placeholder: string }) => {
+    const value = diretrizes[field.key as keyof DiretrizOperacional] as number;
+    
+    if (field.type === 'currency') {
+      const rawDigits = rawInputs[field.key] || numberToRawDigits(value);
+      const { formatted: displayValue } = formatCurrencyInput(rawDigits);
+      
+      return (
+        <div className="space-y-2">
+          <Label htmlFor={field.key}>{field.label}</Label>
+          <div className="relative">
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">R$</span>
+            <Input
+              id={field.key}
+              type="text"
+              inputMode="numeric"
+              className="pl-8 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+              value={value === 0 && rawDigits.length === 0 ? "" : displayValue}
+              onChange={(e) => handleCurrencyChange(field.key as keyof DiretrizOperacional, e.target.value)}
+              onKeyDown={handleEnterToNextField}
+              placeholder={field.placeholder}
+            />
+          </div>
+        </div>
+      );
+    } else {
+      return (
+        <div className="space-y-2">
+          <Label htmlFor={field.key}>{field.label}</Label>
+          <Input
+            id={field.key}
+            type="number"
+            step="0.01"
+            className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+            value={value === 0 ? "" : value}
+            onChange={(e) => handleFactorChange(field.key as keyof DiretrizOperacional, e.target.value)}
+            placeholder={field.placeholder}
+            onKeyDown={handleEnterToNextField}
+          />
+        </div>
+      );
+    }
+  };
+
+  const renderDiariaTable = () => {
+    const handleDiariaChange = (rankKey: string, destination: 'bsb' | 'capitais' | 'demais', rawValue: string) => {
+      const fieldKey = `diaria_${rankKey}_${destination}` as keyof DiretrizOperacional;
+      handleCurrencyChange(fieldKey, rawValue);
+    };
+    
+    const getDiariaProps = (rankKey: string, destination: 'bsb' | 'capitais' | 'demais') => {
+      const fieldKey = `${DIARIA_RANKS_CONFIG.find(r => r.key === rankKey)?.fieldPrefix}_${destination}` as keyof DiretrizOperacional;
+      const value = diretrizes[fieldKey] as number;
+      const rawDigits = rawInputs[fieldKey as string] || numberToRawDigits(value);
+      
+      return {
+        value: value,
+        rawDigits: rawDigits,
+        onChange: (val: number) => handleDiariaChange(rankKey, destination, numberToRawDigits(val)),
+        onKeyDown: handleEnterToNextField,
+        placeholder: "0,00",
+        className: "text-center",
+      };
+    };
+    
+    const taxaEmbarqueProps = renderDiretrizField({
+        key: 'taxa_embarque', 
+        label: 'Taxa de Embarque (R$)', 
+        type: 'currency', 
+        placeholder: 'Ex: 95,00'
+    });
+    
+    return (
+      <div className="space-y-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <Label htmlFor="diaria_referencia_legal">Referência Legal (Lei/Portaria)</Label>
+            <Input
+              id="diaria_referencia_legal"
+              value={diretrizes.diaria_referencia_legal || ""}
+              onChange={(e) => setDiretrizes({ ...diretrizes, diaria_referencia_legal: e.target.value })}
+              placeholder="Decreto Nº 12.324 de 19DEZ24"
+              onKeyDown={handleEnterToNextField}
+            />
+          </div>
+          {taxaEmbarqueProps}
+        </div>
+        
+        <Table className="rounded-lg overflow-hidden border">
+          <TableHeader>
+            <TableRow>
+              <TableHead className="w-[35%] rounded-tl-lg">Posto/Graduação</TableHead>
+              <TableHead className="text-center">Dslc BSB/MAO/RJ/SP</TableHead>
+              <TableHead className="text-center">Dslc demais capitais</TableHead>
+              <TableHead className="text-center rounded-tr-lg">Demais Dslc</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {DIARIA_RANKS_CONFIG.map((rank, index) => (
+              <TableRow key={rank.key}>
+                <TableCell className="font-medium whitespace-nowrap">{rank.label}</TableCell>
+                <TableCell><CurrencyInput {...getDiariaProps(rank.key, 'bsb')} /></TableCell>
+                <TableCell><CurrencyInput {...getDiariaProps(rank.key, 'capitais')} /></TableCell>
+                <TableCell><CurrencyInput {...getDiariaProps(rank.key, 'demais')} /></TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </div>
+    );
+  };
+
   const renderMaterialConsumoSection = () => {
       const isDataLoading = isLoadingMaterialConsumo || isMovingMaterialConsumo;
       return (
@@ -637,6 +774,47 @@ const CustosOperacionaisPage = () => {
       );
   };
 
+  const renderPassagensSection = () => {
+      return (
+          <div className="space-y-4">
+              {diretrizesPassagens.length > 0 ? (
+                  <Card className="p-4">
+                      <CardTitle className="text-base font-semibold mb-3">Contratos Cadastrados</CardTitle>
+                      <Table>
+                          <TableHeader><TableRow><TableHead>OM Referência</TableHead><TableHead>Pregão</TableHead><TableHead className="text-center">Vigência</TableHead><TableHead className="text-center">Trechos</TableHead><TableHead className="w-[100px] text-center">Ações</TableHead></TableRow></TableHeader>
+                          <TableBody>{diretrizesPassagens.map(d => (<PassagemDiretrizRow key={d.id} diretriz={d} onEdit={handleStartEditPassagem} onDelete={handleDeletePassagem} loading={isSaving} />))}</TableBody>
+                      </Table>
+                  </Card>
+              ) : (<Card className="p-4 text-center text-muted-foreground">Nenhum contrato de passagens cadastrado para o ano de referência.</Card>)}
+              <div className="flex justify-end"><Button type="button" onClick={handleOpenNewPassagem} disabled={isSaving} variant="outline" size="sm" className="w-full"><Plus className="mr-2 h-4 w-4" />Adicionar Novo Contrato</Button></div>
+          </div>
+      );
+  };
+
+  const renderConcessionariaList = (category: CategoriaConcessionaria) => {
+      const filteredDiretrizes = diretrizesConcessionaria.filter(d => d.categoria === category);
+      return (
+          <div className="space-y-4">
+              {filteredDiretrizes.length > 0 ? (
+                  <Card className="p-4">
+                      <CardTitle className="text-base font-semibold mb-3">Diretrizes Cadastradas</CardTitle>
+                      <Table>
+                          <TableHeader><TableRow><TableHead>Concessionária</TableHead><TableHead className="text-center">Consumo/Pessoa/Dia</TableHead><TableHead className="text-right">Custo Unitário</TableHead><TableHead className="w-[100px] text-center">Ações</TableHead></TableRow></TableHeader>
+                          <TableBody>{filteredDiretrizes.map(d => (<ConcessionariaDiretrizRow key={d.id} diretriz={d} onEdit={handleStartEditConcessionaria} onDelete={handleDeleteConcessionaria} loading={isSaving} />))}</TableBody>
+                      </Table>
+                  </Card>
+              ) : (<Card className="p-4 text-center text-muted-foreground">Nenhuma diretriz de {category} cadastrada para o ano de referência.</Card>)}
+              <div className="flex justify-end"><Button type="button" onClick={() => handleOpenNewConcessionaria(category)} disabled={isSaving} variant="outline" size="sm" className="w-full"><Plus className="mr-2 h-4 w-4" />Adicionar Nova Diretriz de {category}</Button></div>
+          </div>
+      );
+  };
+  
+  const renderConcessionariaSection = () => {
+      return (
+          <Card><CardContent className="pt-4"><Tabs value={selectedConcessionariaTab} onValueChange={(value) => setSelectedConcessionariaTab(value as CategoriaConcessionaria)}><TabsList className="grid w-full grid-cols-2">{CATEGORIAS_CONCESSIONARIA.map(cat => (<TabsTrigger key={cat} value={cat}>{cat}</TabsTrigger>))}</TabsList>{CATEGORIAS_CONCESSIONARIA.map(cat => (<TabsContent key={cat} value={cat}>{renderConcessionariaList(cat)}</TabsContent>))}</Tabs></CardContent></Card>
+      );
+  };
+
   // --- Lifecycle ---
 
   useEffect(() => {
@@ -649,19 +827,6 @@ const CustosOperacionaisPage = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }, []);
   
-  useEffect(() => {
-    window.addEventListener('dragover', handleGlobalDragOver);
-    window.addEventListener('dragend', handleGlobalDragEnd);
-    window.addEventListener('drop', handleGlobalDragEnd);
-
-    return () => {
-      window.removeEventListener('dragover', handleGlobalDragOver);
-      window.removeEventListener('dragend', handleGlobalDragEnd);
-      window.removeEventListener('drop', handleGlobalDragEnd);
-      handleGlobalDragEnd();
-    };
-  }, []);
-
   useEffect(() => {
     const startTour = searchParams.get('startTour') === 'true';
     const missionId = localStorage.getItem('active_mission_id');
@@ -1184,6 +1349,15 @@ const CustosOperacionaisPage = () => {
     }
   };
 
+  if (loading || isLoadingDefaultYear || isLoadingPageData || isFetchingPageData) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <Loader2 className="h-6 w-6 animate-spin text-primary" />
+        <p className="text-muted-foreground ml-2">Carregando configurações...</p>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-background p-4 md:p-8">
       <PageMetadata title="Configurações de Custos Operacionais" description="Defina os valores de diárias, contratos de passagens, concessionárias e fatores de custeio operacional para o cálculo do P Trab." canonicalPath="/config/custos-operacionais" />
@@ -1211,7 +1385,6 @@ const CustosOperacionaisPage = () => {
           </CardContent>
         </Card>
       </div>
-
       <YearManagementDialog open={isYearManagementDialogOpen} onOpenChange={setIsYearManagementDialogOpen} availableYears={availableYears} defaultYear={defaultYear} onCopy={handleCopyDiretrizes} onDelete={handleDeleteDiretrizes} loading={isSaving} />
       <PassagemDiretrizFormDialog open={isPassagemFormOpen} onOpenChange={setIsPassagemFormOpen} selectedYear={selectedYear} diretrizToEdit={diretrizToEdit} onSave={handleSavePassagem} loading={isSaving} />
       <ConcessionariaDiretrizFormDialog open={isConcessionariaFormOpen} onOpenChange={setIsConcessionariaFormOpen} selectedYear={selectedYear} diretrizToEdit={diretrizConcessionariaToEdit} onSave={handleSaveConcessionaria} loading={isSaving} initialCategory={selectedConcessionariaTab} />
