@@ -342,6 +342,16 @@ const CustosOperacionaisPage = () => {
       setIsMaterialConsumoFormOpen(true);
   }, []);
 
+  const handleOpenNewServicosTerceiros = useCallback(() => {
+      setDiretrizServicosTerceirosToEdit(null);
+      setIsServicosTerceirosFormOpen(true);
+  }, []);
+
+  const handleOpenNewMaterialPermanente = useCallback(() => {
+      setDiretrizMaterialPermanenteToEdit(null);
+      setIsMaterialPermanenteFormOpen(true);
+  }, []);
+
   useEffect(() => {
     (window as any).expandMaterialConsumo = () => {
       handleCollapseChange('material_consumo_detalhe', true);
