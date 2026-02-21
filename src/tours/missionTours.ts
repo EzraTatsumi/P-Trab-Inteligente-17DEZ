@@ -151,16 +151,18 @@ export const runMission02 = (onComplete: () => void) => {
         }
       },
       {
-        element: '.aba-material-consumo',
+        element: '.gatilho-material-consumo',
         popover: {
           title: 'Organização por ND',
-          description: 'A seção de Material de Consumo organiza tudo por Subitem da Natureza de Despesa (ND). Vamos criar um novo grupo para Materiais de Construção.',
-          side: 'right'
+          description: 'A seção de Material de Consumo organiza tudo por Subitem da Natureza de Despesa (ND). Veja os itens de exemplo já cadastrados.',
+          side: 'bottom',
+          align: 'start'
         },
         onHighlighted: () => {
-          // Clica no gatilho do Collapsible para expandir a seção
-          const trigger = document.querySelector('.aba-material-consumo [data-radix-collapsible-trigger]') as HTMLElement;
-          if (trigger) trigger.click();
+          // Em vez de simular um clique físico, forçamos o estado do React a abrir a aba
+          if ((window as any).expandMaterialConsumo) {
+            (window as any).expandMaterialConsumo();
+          }
         }
       },
       {
