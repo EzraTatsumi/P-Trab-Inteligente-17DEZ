@@ -118,6 +118,15 @@ export const runMission01 = (onComplete: () => void) => {
         }
       },
       {
+        element: '.btn-aprovar',
+        popover: {
+          title: 'Homologação Oficial',
+          description: 'Este é o selo de qualidade. Quando o plano atende aos requisitos, ele é Aprovado para emissão dos relatórios oficiais.',
+          side: 'top',
+          align: 'center'
+        }
+      },
+      {
         element: '.btn-acoes-ptrab',
         popover: {
           title: 'Agilidade e Colaboração',
@@ -151,13 +160,12 @@ export const runMission02 = (onComplete: () => void) => {
         }
       },
       {
-        element: '.aba-material-consumo',
+        element: '.gatilho-material-consumo',
         popover: {
           title: 'Organização por ND',
           description: 'A seção de Material de Consumo organiza tudo por Subitem da Natureza de Despesa (ND).',
-          side: 'left',
-          align: 'start',
-          offset: 40
+          side: 'bottom',
+          align: 'start'
         },
         onHighlighted: () => {
           if ((window as any).expandMaterialConsumo) {
@@ -165,10 +173,10 @@ export const runMission02 = (onComplete: () => void) => {
           }
         },
         onNextClick: () => {
-          // 1. Chama a função oficial do React para abrir o modal
-          if ((window as any).openNewSubitemModal) {
-            (window as any).openNewSubitemModal();
-            
+          // 1. Clica no botão "Novo Subitem"
+          const btnNovo = document.querySelector('.btn-novo-subitem') as HTMLElement;
+          if (btnNovo) {
+            btnNovo.click();
             // 2. Aguarda a animação do modal antes de avançar o tour
             setTimeout(() => {
               d.moveNext();
