@@ -7,7 +7,7 @@ import { Card, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Save, Plus, Pencil, Trash2, Loader2, BookOpen, FileSpreadsheet, Search, Info } from "lucide-react";
+import { Save, Plus, Pencil, Trash2, Loader2, BookOpen, FileSpreadsheet, Search } from "lucide-react";
 import { toast } from "sonner";
 import { useFormNavigation } from "@/hooks/useFormNavigation";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -23,6 +23,7 @@ import MaterialCatalogDialog from './MaterialCatalogDialog';
 import CatmatCatalogDialog from './CatmatCatalogDialog';
 import ItemAquisicaoBulkUploadDialog from './ItemAquisicaoBulkUploadDialog';
 import ItemAquisicaoPNCPDialog from './ItemAquisicaoPNCPDialog';
+import { cn } from '@/lib/utils';
 
 interface MaterialConsumoDiretrizFormDialogProps {
     open: boolean;
@@ -38,18 +39,13 @@ interface MaterialConsumoDiretrizFormDialogProps {
 const initialItemForm = {
     descricao_item: '',
     descricao_reduzida: '',
-    unidade_medida: '',
+    unidade_medida: 'UN',
     valor_unitario: 0,
     rawValor: numberToRawDigits(0),
     numero_pregao: '',
     uasg: '',
     codigo_catmat: '',
-    nd: '30' as string,
-};
-
-type InternalMaterialForm = Omit<DiretrizMaterialConsumo, 'user_id' | 'created_at' | 'updated_at'> & { 
-    id?: string,
-    ano_referencia: number;
+    nd: '30',
 };
 
 const MaterialConsumoDiretrizFormDialog: React.FC<MaterialConsumoDiretrizFormDialogProps> = ({
@@ -63,13 +59,16 @@ const MaterialConsumoDiretrizFormDialog: React.FC<MaterialConsumoDiretrizFormDia
     const { handleEnterToNextField } = useFormNavigation();
     const itemFormRef = useRef<HTMLDivElement>(null);
 
-    const getInitialFormState = (editData: DiretrizMaterialConsumo | null): InternalMaterialForm => {
-        if (editData) return { ...editData, itens_aquisicao: editData.itens_aquisicao || [], ano_referencia: editData.ano_referencia };
-        return { id: undefined, nr_subitem: '', nome_subitem: '', descricao_subitem: '', itens_aquisicao: [], ano_referencia: selectedYear, ativo: true };
-    };
+    const [subitemForm, setSubitemForm] = useState<Partial<DiretrizMaterialConsumo>>({
+        nr_subitem: '',
+        nome_subitem: '',
+        descricao_subitem: '',
+        itens_aquisicao: [],
+        ano_referencia: selectedYear,
+        ativo: true
+    });
 
-    const [subitemForm, setSubitemForm] = useState<InternalMaterialForm>(() => getInitialFormState(diretrizToEdit));
-    const [itemForm, setItemForm] = useState<typeof initialItemForm>(initialItemForm);
+    const [itemForm, setItemForm] = useState(initialItemForm);
     const [editingItemId, setEditingItemId] = useState<string | null>(null);
     
     const [isCatalogOpen, setIsCatalogOpen] = useState(false);
@@ -78,128 +77,189 @@ const MaterialConsumoDiretrizFormDialog: React.FC<MaterialConsumoDiretrizFormDia
     const [isPNCPSearchOpen, setIsPNCPSearchOpen] = useState(false);
 
     useEffect(() => {
-        setSubitemForm(getInitialFormState(diretrizToEdit));
+        if (diretrizToEdit) {
+            setSubitemForm({ ...diretrizToEdit });
+        } else {
+            setSubitemForm({
+                nr_subitem: '',
+                nome_subitem: '',
+                descricao_subitem: '',
+                itens_aquisicao: [],
+                ano_referencia: selectedYear,
+                ativo: true
+            });
+        }
         setItemForm(initialItemForm);
         setEditingItemId(null);
     }, [diretrizToEdit, open, selectedYear]);
 
-    const handleItemCurrencyChange = (numericValue: number, digits: string) => setItemForm(prev => ({ ...prev, valor_unitario: numericValue, rawValor: digits }));
-    const handleUasgChange = (e: React.ChangeEvent<HTMLInputElement>) => setItemForm({ ...itemForm, uasg: e.target.value.replace(/\D/g, '').slice(0, 6) });
-
     const handleAddItem = () => {
-        if (!itemForm.descricao_item || !itemForm.descricao_reduzida || !itemForm.unidade_medida || itemForm.valor_unitario <= 0 || !itemForm.numero_pregao || itemForm.uasg.length !== 6) {
-            toast.error("Preencha todos os campos obrigatórios do item.");
+        if (!itemForm.descricao_item || itemForm.valor_unitario <= 0 || !itemForm.numero_pregao || itemForm.uasg.length !== 6) {
+            toast.error("Preencha os campos obrigatórios do item.");
             return;
         }
         const newItem: ItemAquisicao = {
-            id: editingItemId || Math.random().toString(36).substring(2, 9), 
-            descricao_item: itemForm.descricao_item,
-            descricao_reduzida: itemForm.descricao_reduzida,
-            unidade_medida: itemForm.unidade_medida,
-            valor_unitario: itemForm.valor_unitario,
-            numero_pregao: itemForm.numero_pregao,
-            uasg: itemForm.uasg,
-            codigo_catmat: itemForm.codigo_catmat, 
-            nd: itemForm.nd || '30',
-            quantidade: 0, valor_total: 0, nr_subitem: '', nome_subitem: '',
+            id: editingItemId || Math.random().toString(36).substring(2, 9),
+            ...itemForm,
+            valor_total: 0,
+            quantidade: 0,
+            nr_subitem: subitemForm.nr_subitem || '',
+            nome_subitem: subitemForm.nome_subitem || '',
         };
-        const updatedItens = editingItemId ? subitemForm.itens_aquisicao.map(t => t.id === editingItemId ? newItem : t) : [...subitemForm.itens_aquisicao, newItem];
+        const updatedItens = editingItemId 
+            ? (subitemForm.itens_aquisicao || []).map(t => t.id === editingItemId ? newItem : t) 
+            : [...(subitemForm.itens_aquisicao || []), newItem];
+            
         setSubitemForm(prev => ({ ...prev, itens_aquisicao: updatedItens }));
         setEditingItemId(null);
         setItemForm(initialItemForm);
     };
 
-    const handleEditItem = (item: any) => {
-        setEditingItemId(item.id);
-        setItemForm({ ...item, rawValor: numberToRawDigits(item.valor_unitario), nd: item.nd || '30' });
-        itemFormRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    };
-
-    const handleReviewItem = (item: any) => {
-        handleEditItem(item);
-    };
-
     const handleSave = async () => {
-        if (!subitemForm.nr_subitem || !subitemForm.nome_subitem || subitemForm.itens_aquisicao.length === 0) {
-            toast.error("Preencha os dados do subitem e adicione itens.");
+        if (!subitemForm.nr_subitem || !subitemForm.nome_subitem) {
+            toast.error("Preencha os dados do subitem.");
             return;
         }
-        await onSave({ ...subitemForm, ano_referencia: selectedYear });
+        await onSave({ ...subitemForm, ano_referencia: selectedYear } as any);
         onOpenChange(false);
     };
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="max-w-7xl max-h-[90vh] overflow-y-auto card-novo-subitem z-tour-portal">
+            <DialogContent className={cn("max-w-7xl max-h-[90vh] overflow-y-auto z-tour-portal modal-novo-subitem")}>
                 <DialogHeader>
-                    <DialogTitle>{subitemForm.id ? `Editar Subitem: ${subitemForm.nr_subitem}` : "Novo Subitem da Natureza da Despesa"}</DialogTitle>
-                    <DialogDescription>Cadastre o subitem da ND e os itens de aquisição associados.</DialogDescription>
+                    <DialogTitle>{subitemForm.id ? "Editar Subitem" : "Novo Subitem da Natureza da Despesa"}</DialogTitle>
+                    <DialogDescription>Cadastre o subitem da ND 339030 e seus itens de aquisição.</DialogDescription>
                 </DialogHeader>
+                
                 <div className="space-y-6 py-2">
-                    <Card className="p-4">
+                    <Card className="p-4 card-novo-subitem">
                         <div className="flex justify-between items-center mb-4">
                             <CardTitle className="text-base">Dados do Subitem</CardTitle>
-                            <Button type="button" variant="outline" size="sm" onClick={() => setIsCatalogOpen(true)} disabled={loading}><BookOpen className="h-4 w-4 mr-2" />Catálogo de Subitens</Button>
+                            <Button type="button" variant="outline" size="sm" onClick={() => setIsCatalogOpen(true)}>
+                                <BookOpen className="h-4 w-4 mr-2" />Catálogo ND 30
+                            </Button>
                         </div>
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                            <div className="space-y-2"><Label>Número do Subitem *</Label><Input value={subitemForm.nr_subitem} onChange={(e) => setSubitemForm({ ...subitemForm, nr_subitem: e.target.value })} placeholder="Ex: 07" disabled={loading} /></div>
-                            <div className="space-y-2 col-span-2"><Label>Nome do Subitem *</Label><Input value={subitemForm.nome_subitem} onChange={(e) => setSubitemForm({ ...subitemForm, nome_subitem: e.target.value })} placeholder="Ex: Gêneros de Alimentação" disabled={loading} /></div>
-                        </div>
-                    </Card>
-                    <Card className="p-4 space-y-4">
-                        <div className="flex justify-between items-center">
-                            <CardTitle className="text-base font-semibold">{editingItemId ? "Editar Item" : "Adicionar Novo Item"}</CardTitle>
-                            <div className="flex gap-2">
-                                <Button type="button" variant="secondary" size="sm" onClick={() => setIsPNCPSearchOpen(true)} disabled={loading} className="btn-importar-pncp"><Search className="h-4 w-4 mr-2" />Importar API PNCP</Button>
-                                <Button type="button" variant="secondary" size="sm" onClick={() => setIsBulkUploadOpen(true)} disabled={loading}><FileSpreadsheet className="h-4 w-4 mr-2" />Importar Excel</Button>
+                            <div className="space-y-2">
+                                <Label>Número do Subitem *</Label>
+                                <Input value={subitemForm.nr_subitem} onChange={(e) => setSubitemForm({ ...subitemForm, nr_subitem: e.target.value })} placeholder="Ex: 24" />
+                            </div>
+                            <div className="space-y-2 col-span-2">
+                                <Label>Nome do Subitem *</Label>
+                                <Input value={subitemForm.nome_subitem} onChange={(e) => setSubitemForm({ ...subitemForm, nome_subitem: e.target.value })} placeholder="Ex: Material de Construção" />
                             </div>
                         </div>
+                    </Card>
+
+                    <Card className="p-4 space-y-4">
+                        <div className="flex justify-between items-center">
+                            <CardTitle className="text-base font-semibold">Itens de Aquisição</CardTitle>
+                            <div className="flex gap-2">
+                                <Button type="button" variant="secondary" size="sm" onClick={() => setIsPNCPSearchOpen(true)} className="btn-importar-pncp">
+                                    <Search className="h-4 w-4 mr-2" />Importar API PNCP
+                                </Button>
+                                <Button type="button" variant="secondary" size="sm" onClick={() => setIsBulkUploadOpen(true)}>
+                                    <FileSpreadsheet className="h-4 w-4 mr-2" />Importar Excel
+                                </Button>
+                            </div>
+                        </div>
+
                         <div className="border p-3 rounded-lg bg-muted/50 space-y-4" ref={itemFormRef}>
                             <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
                                 <div className="space-y-2 col-span-1">
                                     <Label>Cód. CATMAT</Label>
-                                    <Input value={itemForm.codigo_catmat} onChange={(e) => setItemForm({ ...itemForm, codigo_catmat: e.target.value })} placeholder="Ex: 12345" />
-                                    <Button type="button" variant="outline" size="sm" onClick={() => setIsCatmatCatalogOpen(true)} className="w-full mt-2"><BookOpen className="h-4 w-4 mr-2" />CATMAT</Button>
+                                    <div className="flex gap-1">
+                                        <Input value={itemForm.codigo_catmat} onChange={(e) => setItemForm({ ...itemForm, codigo_catmat: e.target.value })} placeholder="Ex: 12345" />
+                                        <Button type="button" variant="outline" size="icon" onClick={() => setIsCatmatCatalogOpen(true)}><BookOpen className="h-4 w-4" /></Button>
+                                    </div>
                                 </div>
-                                <div className="space-y-2 col-span-4"><Label>Descrição do Item *</Label><Textarea value={itemForm.descricao_item} onChange={(e) => setItemForm({ ...itemForm, descricao_item: e.target.value })} rows={2} /></div>
+                                <div className="space-y-2 col-span-4">
+                                    <Label>Descrição do Item *</Label>
+                                    <Textarea value={itemForm.descricao_item} onChange={(e) => setItemForm({ ...itemForm, descricao_item: e.target.value })} rows={2} />
+                                </div>
                             </div>
-                            <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-                                <div className="space-y-2"><Label>Nome Reduzido *</Label><Input value={itemForm.descricao_reduzida} onChange={(e) => setItemForm({ ...itemForm, descricao_reduzida: e.target.value })} /></div>
-                                <div className="space-y-2"><Label>Unidade *</Label><Input value={itemForm.unidade_medida} onChange={(e) => setItemForm({ ...itemForm, unidade_medida: e.target.value })} placeholder="Ex: UN/KG/LT" /></div>
-                                <div className="space-y-2"><Label>Valor Unitário *</Label><CurrencyInput rawDigits={itemForm.rawValor} onChange={handleItemCurrencyChange} /></div>
-                                <div className="space-y-2"><Label>Pregão/Ref. *</Label><Input value={itemForm.numero_pregao} onChange={(e) => setItemForm({ ...itemForm, numero_pregao: e.target.value })} /></div>
-                                <div className="space-y-2"><Label>UASG *</Label><Input value={itemForm.uasg} onChange={handleUasgChange} maxLength={6} /></div>
+                            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                                <div className="space-y-2">
+                                    <Label>Valor Unitário *</Label>
+                                    <CurrencyInput rawDigits={itemForm.rawValor} onChange={(val, digits) => setItemForm({...itemForm, valor_unitario: val, rawValor: digits})} />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label>Pregão/Ref. *</Label>
+                                    <Input value={itemForm.numero_pregao} onChange={(e) => setItemForm({ ...itemForm, numero_pregao: e.target.value })} />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label>UASG *</Label>
+                                    <Input value={itemForm.uasg} onChange={(e) => setItemForm({ ...itemForm, uasg: e.target.value.replace(/\D/g, '').slice(0, 6) })} maxLength={6} />
+                                </div>
+                                <div className="flex items-end">
+                                    <Button type="button" className="w-full" onClick={handleAddItem}>
+                                        {editingItemId ? "Atualizar Item" : "Adicionar Item"}
+                                    </Button>
+                                </div>
                             </div>
-                            <Button type="button" className="w-full btn-salvar-subitem" onClick={handleAddItem}>{editingItemId ? "Atualizar Item" : "Adicionar Item"}</Button>
                         </div>
-                        {subitemForm.itens_aquisicao.length > 0 && (
+
+                        {(subitemForm.itens_aquisicao?.length || 0) > 0 && (
                             <Table>
-                                <TableHeader><TableRow><TableHead>Descrição</TableHead><TableHead>Nome Reduzido</TableHead><TableHead className="text-center">Unid.</TableHead><TableHead className="text-center">Cód.</TableHead><TableHead className="text-center">Pregão</TableHead><TableHead className="text-center">UASG</TableHead><TableHead className="text-right">Valor</TableHead><TableHead className="text-right">Ações</TableHead></TableRow></TableHeader>
-                                <TableBody>{subitemForm.itens_aquisicao.map(item => (
-                                    <TableRow key={item.id}>
-                                        <TableCell className="text-xs">{item.descricao_item}</TableCell>
-                                        <TableCell className="text-xs">{item.descricao_reduzida}</TableCell>
-                                        <TableCell className="text-center text-xs">{item.unidade_medida}</TableCell>
-                                        <TableCell className="text-center text-sm">{item.codigo_catmat || 'N/A'}</TableCell>
-                                        <TableCell className="text-center text-sm">{formatPregao(item.numero_pregao)}</TableCell>
-                                        <TableCell className="text-center text-sm">{formatCodug(item.uasg)}</TableCell>
-                                        <TableCell className="text-right font-bold text-sm">{formatCurrency(item.valor_unitario)}</TableCell>
-                                        <TableCell className="text-right"><div className="flex justify-end gap-1"><Button variant="ghost" size="icon" onClick={() => handleEditItem(item)}><Pencil className="h-4 w-4" /></Button><Button variant="ghost" size="icon" onClick={() => setSubitemForm(p => ({ ...p, itens_aquisicao: p.itens_aquisicao.filter(i => i.id !== item.id) }))} className="text-destructive"><Trash2 className="h-4 w-4" /></Button></div></TableCell>
+                                <TableHeader>
+                                    <TableRow>
+                                        <TableHead>Descrição</TableHead>
+                                        <TableHead className="text-center">Pregão</TableHead>
+                                        <TableHead className="text-center">UASG</TableHead>
+                                        <TableHead className="text-right">Valor</TableHead>
+                                        <TableHead className="text-right">Ações</TableHead>
                                     </TableRow>
-                                ))}</TableBody>
+                                </TableHeader>
+                                <TableBody>
+                                    {subitemForm.itens_aquisicao?.map(item => (
+                                        <TableRow key={item.id}>
+                                            <TableCell className="text-xs">{item.descricao_item}</TableCell>
+                                            <TableCell className="text-center text-sm">{formatPregao(item.numero_pregao)}</TableCell>
+                                            <TableCell className="text-center text-sm">{formatCodug(item.uasg)}</TableCell>
+                                            <TableCell className="text-right font-bold text-sm">{formatCurrency(item.valor_unitario)}</TableCell>
+                                            <TableCell className="text-right">
+                                                <div className="flex justify-end gap-1">
+                                                    <Button variant="ghost" size="icon" onClick={() => {
+                                                        setEditingItemId(item.id);
+                                                        setItemForm({ ...item as any, rawValor: numberToRawDigits(item.valor_unitario) });
+                                                        itemFormRef.current?.scrollIntoView({ behavior: 'smooth' });
+                                                    }}><Pencil className="h-4 w-4" /></Button>
+                                                    <Button variant="ghost" size="icon" onClick={() => setSubitemForm(p => ({ ...p, itens_aquisicao: p.itens_aquisicao?.filter(i => i.id !== item.id) }))} className="text-destructive"><Trash2 className="h-4 w-4" /></Button>
+                                                </div>
+                                            </TableCell>
+                                        </TableRow>
+                                    ))}
+                                </TableBody>
                             </Table>
                         )}
                     </Card>
                 </div>
+
                 <div className="flex justify-end gap-2 pt-4 border-t">
-                    <Button type="button" onClick={handleSave} disabled={loading || subitemForm.itens_aquisicao.length === 0}>{loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}{subitemForm.id ? "Salvar Alterações" : "Cadastrar Subitem"}</Button>
                     <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
+                    <Button type="button" onClick={handleSave} disabled={loading} className="btn-salvar-subitem">
+                        {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+                        Salvar Subitem
+                    </Button>
                 </div>
             </DialogContent>
+
             <MaterialCatalogDialog open={isCatalogOpen} onOpenChange={setIsCatalogOpen} onSelect={(c) => setSubitemForm(p => ({ ...p, nr_subitem: c.nr_subitem, nome_subitem: c.nome_subitem, descricao_subitem: c.descricao_subitem }))} />
             <CatmatCatalogDialog open={isCatmatCatalogOpen} onOpenChange={setIsCatmatCatalogOpen} onSelect={(c) => setItemForm(p => ({ ...p, codigo_catmat: c.code, descricao_item: c.description, descricao_reduzida: c.short_description || '' }))} />
-            <ItemAquisicaoBulkUploadDialog open={isBulkUploadOpen} onOpenChange={setIsBulkUploadOpen} onImport={(items) => setSubitemForm(p => ({ ...p, itens_aquisicao: [...p.itens_aquisicao, ...items] }))} existingItemsInDiretriz={subitemForm.itens_aquisicao} mode="material" />
-            <ItemAquisicaoPNCPDialog open={isPNCPSearchOpen} onOpenChange={setIsPNCPSearchOpen} onImport={(items) => setSubitemForm(p => ({ ...p, itens_aquisicao: [...p.itens_aquisicao, ...items] }))} existingItemsInDiretriz={subitemForm.itens_aquisicao} onReviewItem={handleReviewItem} selectedYear={selectedYear} mode="material" />
+            <ItemAquisicaoBulkUploadDialog open={isBulkUploadOpen} onOpenChange={setIsBulkUploadOpen} onImport={(items) => setSubitemForm(p => ({ ...p, itens_aquisicao: [...(p.itens_aquisicao || []), ...items] }))} existingItemsInDiretriz={subitemForm.itens_aquisicao || []} mode="material" />
+            <ItemAquisicaoPNCPDialog 
+                open={isPNCPSearchOpen} 
+                onOpenChange={setIsPNCPSearchOpen} 
+                onImport={(items) => setSubitemForm(p => ({ ...p, itens_aquisicao: [...(p.itens_aquisicao || []), ...items] }))} 
+                existingItemsInDiretriz={subitemForm.itens_aquisicao || []} 
+                onReviewItem={(item) => {
+                    setEditingItemId(item.id);
+                    setItemForm({ ...item as any, rawValor: numberToRawDigits(item.valor_unitario) });
+                }}
+                selectedYear={selectedYear} 
+                mode="material" 
+            />
         </Dialog>
     );
 };

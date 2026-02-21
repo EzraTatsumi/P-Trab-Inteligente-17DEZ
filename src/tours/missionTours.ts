@@ -156,7 +156,8 @@ export const runMission02 = (onComplete: () => void) => {
           title: 'Organização por ND',
           description: 'A seção de Material de Consumo organiza tudo por Subitem da Natureza de Despesa (ND). Veja os itens de exemplo já cadastrados.',
           side: 'left',
-          align: 'start'
+          align: 'start',
+          offset: 40
         },
         onHighlighted: () => {
           if ((window as any).expandMaterialConsumo) {
@@ -165,12 +166,13 @@ export const runMission02 = (onComplete: () => void) => {
         }
       },
       {
-        element: '.card-novo-subitem',
+        element: '.modal-novo-subitem',
         popover: {
-          title: 'Criando o Subitem',
-          description: 'Nesta janela, definimos a categoria. Para o exemplo, usaremos Material de Construção vinculado à ND 339030-24.',
+          title: 'Estrutura de Itens',
+          description: 'Nesta janela completa, você define a Natureza de Despesa e tem acesso aos métodos de importação de itens.',
           side: 'left',
-          align: 'center'
+          align: 'center',
+          offset: 30
         },
         onHighlighted: () => {
           setTimeout(() => {
@@ -180,12 +182,13 @@ export const runMission02 = (onComplete: () => void) => {
         }
       },
       {
-        element: '.janela-importar-pncp',
+        element: '.modal-importar-pncp',
         popover: {
-          title: 'O Salto Tecnológico',
-          description: 'Esqueça a digitação manual. Vamos buscar um preço oficial diretamente no Portal Nacional de Contratações Públicas.',
+          title: 'Portal Nacional (PNCP)',
+          description: 'Esta é a central de integração. Esqueça a digitação manual: vamos buscar um preço oficial diretamente no PNCP.',
           side: 'left',
-          align: 'center'
+          align: 'start',
+          offset: 30
         },
         onHighlighted: () => {
           setTimeout(() => {

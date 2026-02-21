@@ -3,14 +3,16 @@
 import React, { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Button } from "@/components/ui/button";
+import { Search, Globe, FileText, ListChecks, Info } from "lucide-react";
 import { ItemAquisicao } from "@/types/diretrizesMaterialConsumo";
-import { DetailedArpItem } from "@/types/pncp";
 import ArpUasgSearchForm from './pncp/ArpUasgSearchForm';
 import ArpCatmatSearchForm from './pncp/ArpCatmatSearchForm';
 import PriceSearchForm from './pncp/PriceSearchForm';
-import { toast } from "sonner";
-import { GHOST_DATA, isGhostMode } from '@/lib/ghostStore';
+import { DetailedArpItem } from '@/types/pncp';
+import { Badge } from './ui/badge';
+import { formatCurrency } from '@/lib/formatUtils';
+import { cn } from '@/lib/utils';
+import { isGhostMode, GHOST_DATA } from '@/lib/ghostStore';
 
 interface ItemAquisicaoPNCPDialogProps {
     open: boolean;
@@ -19,7 +21,7 @@ interface ItemAquisicaoPNCPDialogProps {
     existingItemsInDiretriz: ItemAquisicao[];
     onReviewItem: (item: ItemAquisicao) => void;
     selectedYear: number;
-    mode?: 'material' | 'servico';
+    mode?: 'material' | 'servico' | 'permanente';
 }
 
 const ItemAquisicaoPNCPDialog: React.FC<ItemAquisicaoPNCPDialogProps> = ({
@@ -31,100 +33,123 @@ const ItemAquisicaoPNCPDialog: React.FC<ItemAquisicaoPNCPDialogProps> = ({
     selectedYear,
     mode = 'material'
 }) => {
-    const [activeTab, setActiveTab] = useState("uasg");
+    const [selectedItems, setSelectedItems] = useState<ItemAquisicao[]>([]);
+    const ghost = isGhostMode();
 
-    const handleArpItemSelect = (item: DetailedArpItem, pregaoFormatado: string, uasg: string) => {
+    const handleItemPreSelect = (item: DetailedArpItem, pregao: string, uasg: string) => {
         const newItem: ItemAquisicao = {
             id: item.id,
-            codigo_catmat: item.codigoItem,
             descricao_item: item.descricaoItem,
             descricao_reduzida: item.descricaoItem.substring(0, 50),
+            unidade_medida: 'UN',
             valor_unitario: item.valorUnitario,
-            numero_pregao: pregaoFormatado,
+            numero_pregao: pregao,
             uasg: uasg,
+            codigo_catmat: item.codigoItem,
             quantidade: 0,
             valor_total: 0,
-            nd: mode === 'material' ? '30' : '39',
+            nd: mode === 'material' ? '30' : mode === 'servico' ? '39' : '52',
             nr_subitem: '',
             nome_subitem: '',
         };
-
-        if (existingItemsInDiretriz.some(i => i.codigo_catmat === newItem.codigo_catmat && i.uasg === newItem.uasg && i.numero_pregao === newItem.numero_pregao)) {
-            toast.warning("Este item já existe neste subitem.");
-            return;
+        
+        if (selectedItems.find(i => i.id === newItem.id)) {
+            setSelectedItems(prev => prev.filter(i => i.id !== newItem.id));
+        } else {
+            setSelectedItems(prev => [...prev, newItem]);
         }
-
-        onImport([newItem]);
-        toast.success("Item importado com sucesso!");
-        onOpenChange(false);
     };
 
-    const handlePriceSelect = (item: ItemAquisicao) => {
-        onReviewItem(item);
+    const handleConfirmImport = () => {
+        onImport(selectedItems);
+        setSelectedItems([]);
         onOpenChange(false);
-    };
-
-    // Lógica para o Ghost Mode na Missão 02
-    const handleGhostItemSelect = () => {
-        if (isGhostMode()) {
-            const ghostItem = GHOST_DATA.missao_02.item_cimento;
-            onImport([ghostItem as any]);
-            toast.success("Item importado com sucesso!");
-            onOpenChange(false);
-        }
     };
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto janela-importar-pncp z-tour-portal">
+            <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto z-tour-portal modal-importar-pncp">
                 <DialogHeader>
-                    <DialogTitle>Importar Dados do PNCP</DialogTitle>
-                    <DialogDescription>Busque preços e especificações técnicas diretamente no Portal Nacional de Contratações Públicas.</DialogDescription>
+                    <DialogTitle className="flex items-center gap-2">
+                        <Globe className="h-5 w-5 text-primary" />
+                        Importar Dados do PNCP
+                    </DialogTitle>
+                    <DialogDescription>
+                        Busque preços e itens diretamente no Portal Nacional de Contratações Públicas.
+                    </DialogDescription>
                 </DialogHeader>
 
-                <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+                <Tabs defaultValue="arp-uasg" className="w-full">
                     <TabsList className="grid w-full grid-cols-3">
-                        <TabsTrigger value="uasg">Por UASG</TabsTrigger>
-                        <TabsTrigger value="catmat">Por Código</TabsTrigger>
-                        <TabsTrigger value="arp" className="aba-pncp-arp">Por ARP</TabsTrigger>
+                        <TabsTrigger value="arp-uasg" className="flex items-center gap-2">
+                            <Search className="h-4 w-4" /> Por UASG
+                        </TabsTrigger>
+                        <TabsTrigger value="arp-catmat" className="flex items-center gap-2 aba-pncp-arp">
+                            <FileText className="h-4 w-4" /> Por Cód. Item
+                        </TabsTrigger>
+                        <TabsTrigger value="price-stats" className="flex items-center gap-2">
+                            <ListChecks className="h-4 w-4" /> Média de Preços
+                        </TabsTrigger>
                     </TabsList>
 
-                    <TabsContent value="uasg" className="mt-4">
-                        <ArpUasgSearchForm 
-                            onItemPreSelect={handleArpItemSelect} 
-                            selectedItemIds={existingItemsInDiretriz.map(i => i.id)} 
-                            onClearSelection={() => {}} 
-                            scrollContainerRef={{ current: null } as any}
-                        />
-                    </TabsContent>
-
-                    <TabsContent value="catmat" className="mt-4">
-                        <ArpCatmatSearchForm 
-                            onItemPreSelect={handleArpItemSelect} 
-                            selectedItemIds={existingItemsInDiretriz.map(i => i.id)} 
-                            onClearSelection={() => {}} 
-                            scrollContainerRef={{ current: null } as any}
-                            mode={mode}
-                        />
-                    </TabsContent>
-
-                    <TabsContent value="arp" className="mt-4">
-                        {isGhostMode() ? (
-                            <div className="p-8 text-center border-2 border-dashed rounded-lg bg-muted/30">
-                                <h3 className="text-lg font-semibold mb-2">Simulação de Busca ARP</h3>
-                                <p className="text-muted-foreground mb-4">Na Missão 02, simulamos a busca pela UASG 160222.</p>
-                                <Button onClick={handleGhostItemSelect} className="item-resultado-ghost">
-                                    Importar Cimento Portland (UASG 160222)
-                                </Button>
-                            </div>
-                        ) : (
-                            <div className="p-8 text-center text-muted-foreground">
-                                <p>Busca direta por número de ARP em desenvolvimento.</p>
-                                <p className="text-sm">Utilize a busca por UASG ou Código para encontrar itens de Atas.</p>
-                            </div>
-                        )}
-                    </TabsContent>
+                    <div className="mt-4 border rounded-lg bg-background min-h-[400px]">
+                        <TabsContent value="arp-uasg" className="m-0">
+                            <ArpUasgSearchForm 
+                                onItemPreSelect={handleItemPreSelect} 
+                                selectedItemIds={selectedItems.map(i => i.id)}
+                                onClearSelection={() => setSelectedItems([])}
+                                scrollContainerRef={{ current: null } as any}
+                            />
+                        </TabsContent>
+                        <TabsContent value="arp-catmat" className="m-0">
+                            {ghost ? (
+                                <div className="p-8 text-center space-y-4">
+                                    <div className="p-4 border-2 border-dashed border-primary/30 rounded-xl bg-primary/5 item-resultado-ghost">
+                                        <h4 className="font-bold text-primary">Item Encontrado (Simulação)</h4>
+                                        <p className="text-sm text-muted-foreground">{GHOST_DATA.missao_02.item_cimento.descricao_item}</p>
+                                        <div className="flex justify-center gap-4 mt-2">
+                                            <Badge variant="outline">UASG: {GHOST_DATA.missao_02.item_cimento.uasg}</Badge>
+                                            <Badge variant="secondary">{formatCurrency(GHOST_DATA.missao_02.item_cimento.valor_unitario)}</Badge>
+                                        </div>
+                                        <Button 
+                                            className="mt-4" 
+                                            onClick={() => setSelectedItems([GHOST_DATA.missao_02.item_cimento as any])}
+                                        >
+                                            Selecionar para Importação
+                                        </Button>
+                                    </div>
+                                </div>
+                            ) : (
+                                <ArpCatmatSearchForm 
+                                    onItemPreSelect={handleItemPreSelect}
+                                    selectedItemIds={selectedItems.map(i => i.id)}
+                                    onClearSelection={() => setSelectedItems([])}
+                                    scrollContainerRef={{ current: null } as any}
+                                    mode={mode === 'material' ? 'material' : 'servico'}
+                                />
+                            )}
+                        </TabsContent>
+                        <TabsContent value="price-stats" className="m-0">
+                            <PriceSearchForm 
+                                onPriceSelect={(item) => setSelectedItems([item])}
+                                isInspecting={false}
+                                onClearPriceSelection={() => setSelectedItems([])}
+                                selectedItemForInspection={null}
+                                mode={mode === 'material' ? 'material' : 'servico'}
+                            />
+                        </TabsContent>
+                    </div>
                 </Tabs>
+
+                {selectedItems.length > 0 && (
+                    <div className="flex items-center justify-between p-4 bg-primary/5 border border-primary/20 rounded-lg mt-4">
+                        <div className="flex items-center gap-2">
+                            <Info className="h-4 w-4 text-primary" />
+                            <span className="text-sm font-medium">{selectedItems.length} item(ns) selecionado(s)</span>
+                        </div>
+                        <Button onClick={handleConfirmImport}>Confirmar Importação</Button>
+                    </div>
+                )}
             </DialogContent>
         </Dialog>
     );
