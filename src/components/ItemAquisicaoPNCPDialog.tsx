@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Button } from "@/components/ui/button";
 import { ItemAquisicao } from "@/types/diretrizesMaterialConsumo";
 import { DetailedArpItem } from "@/types/pncp";
 import ArpUasgSearchForm from './pncp/ArpUasgSearchForm';
