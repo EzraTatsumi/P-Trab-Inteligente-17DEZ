@@ -1244,7 +1244,7 @@ const PTrabManager = () => {
               <DropdownMenuTrigger asChild>
                 <Button variant="outline" size="icon" className="btn-configuracoes"><Settings className="h-4 w-4" /></Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-56 menu-configuracoes z-tour-portal">
+              <DropdownMenuContent align="end" className="w-56 z-tour-portal">
                 <DropdownMenuLabel>Configurações</DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={handleOpenLinkPTrabDialog}><Link className="mr-2 h-4 w-4" />Vincular P Trab</DropdownMenuItem>
@@ -1540,7 +1540,7 @@ const PTrabManager = () => {
             </div>
           </div>
           <DialogFooter>
-            <Button onClick={handleApproveAndNumber} disabled={!suggestedApproveNumber.trim() || isActionLoading}>{isActionLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : "Confirmar Aprovação"}</Button>
+            <Button onClick={handleApproveAndNumber} disabled={!suggestedApproveNumber.trim() || isActionLoading}>{isActionLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : "Confirmar Aprovação"}</Button}
             <Button variant="outline" onClick={() => setShowApproveDialog(false)}>Cancelar</Button>
           </DialogFooter>
         </DialogContent>
@@ -1556,6 +1556,19 @@ const PTrabManager = () => {
       {ptrabToUnlink && <UnlinkPTrabDialog open={showUnlinkPTrabDialog} onOpenChange={setShowUnlinkPTrabDialog} ptrabName={`${ptrabToUnlink.numero_ptrab} - ${ptrabToUnlink.nome_operacao}`} onConfirm={handleConfirmUnlink} loading={isActionLoading} />}
       
       <AIChatDrawer />
+
+      <style>{`
+        /* Garante que os menus fiquem visíveis acima do overlay do tour */
+        [data-radix-portal] {
+          z-index: 999999 !important;
+        }
+        
+        .z-tour-portal {
+          z-index: 999999 !important;
+          opacity: 1 !important;
+          pointer-events: auto !important;
+        }
+      `}</style>
     </div>
   );
 };
