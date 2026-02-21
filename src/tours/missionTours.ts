@@ -142,135 +142,84 @@ export const runMission02 = (onComplete: () => void) => {
   const d = driver({
     ...commonConfig,
     steps: [
-      {
-        element: '.card-diretrizes-operacionais',
-        popover: {
-          title: 'Missão 02: Inteligência PNCP',
-          description: 'Aqui definimos os preços de referência. É a base de cálculo que garante que nenhum P Trab use valores defasados.',
-          side: 'bottom'
-        }
+      { 
+        element: '.card-diretrizes-operacionais', 
+        popover: { 
+          title: 'Missão 02: Inteligência PNCP', 
+          description: 'Aqui definimos os preços de referência. É a base de cálculo que garante que nenhum P Trab use valores defasados.', 
+          side: 'bottom' 
+        } 
       },
-      {
-        element: '.aba-material-consumo',
-        popover: {
-          title: 'Organização por ND',
-          description: 'A seção de Material de Consumo organiza tudo por Subitem da Natureza de Despesa (ND).',
-          side: 'left',
-          align: 'start',
-          offset: 40
+      { 
+        element: '.gatilho-material-consumo', 
+        popover: { 
+          title: 'Organização por ND', 
+          description: 'A seção de Material de Consumo organiza tudo por Subitem da Natureza de Despesa (ND).', 
+          side: 'bottom', align: 'start' 
         },
         onHighlighted: () => {
-          if ((window as any).expandMaterialConsumo) {
-            (window as any).expandMaterialConsumo();
-          }
+          if ((window as any).expandMaterialConsumo) (window as any).expandMaterialConsumo();
         },
         onNextClick: () => {
-          // 1. Clica no botão "Novo Subitem"
-          const btnNovo = document.querySelector('.btn-novo-subitem') as HTMLElement;
-          if (btnNovo) {
-            btnNovo.click();
-            // 2. Aguarda a animação do modal antes de avançar o tour
-            setTimeout(() => {
-              d.moveNext();
-            }, 500);
-          } else {
-            d.moveNext();
+          if ((window as any).openModalNovoSubitem) {
+            (window as any).openModalNovoSubitem();
           }
+          setTimeout(() => {
+            d.moveNext();
+          }, 500);
         }
       },
-      {
-        element: '.modal-novo-subitem',
-        popover: {
-          title: 'Novo Subitem de ND',
-          description: 'Nesta janela configuramos a categoria e importamos os itens de aquisição.',
-          side: 'top',
-          align: 'center',
-          offset: 20
+      { 
+        element: '.modal-novo-subitem', 
+        popover: { 
+          title: 'Criando o Subitem', 
+          description: 'Nesta janela, definimos a categoria e os itens de aquisição.', 
+          side: 'left', align: 'start', offset: 30
         },
         onNextClick: () => {
-          // 1. Clica no botão de Importar PNCP
           const btnImportar = document.querySelector('.btn-importar-pncp') as HTMLElement;
-          if (btnImportar) {
-            btnImportar.click();
-            // 2. Aguarda o segundo modal abrir
-            setTimeout(() => {
-              d.moveNext();
-            }, 500);
-          } else {
-            d.moveNext();
-          }
-        }
-      },
-      {
-        element: '.modal-importar-pncp',
-        popover: {
-          title: 'Portal Nacional (PNCP)',
-          description: 'Esta é a central de integração. Vamos buscar um preço oficial diretamente no PNCP.',
-          side: 'top',
-          align: 'center',
-          offset: 20
-        }
-      },
-      {
-        element: '.form-busca-uasg-tour',
-        popover: {
-          title: 'Busca por UASG',
-          description: 'Aqui informamos a UASG da Organização Militar para listar suas ARPs vigentes. Vamos simular a busca para a UASG 160222.',
-          side: 'bottom',
-          align: 'center'
-        },
-        onNextClick: () => {
-          const input = document.querySelector('.form-busca-uasg-tour input') as HTMLInputElement;
-          if (input) {
-              const nativeInputValueSetter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value")?.set;
-              nativeInputValueSetter?.call(input, '160222');
-              input.dispatchEvent(new Event('input', { bubbles: true }));
-              
-              const btnBusca = document.querySelector('.form-busca-uasg-tour button[type="submit"]') as HTMLElement;
-              if (btnBusca) btnBusca.click();
-          }
-
+          if (btnImportar) btnImportar.click();
+          
           setTimeout(() => {
             d.moveNext();
-          }, 1200);
+          }, 500);
         }
       },
-      {
-        element: '.modal-importar-pncp',
-        popover: {
-          title: 'Navegação de Resultados',
-          description: 'O sistema encontrou o Pregão Eletrônico, a ARP correspondente, e finalmente o "Cimento Portland".',
-          side: 'left',
-          offset: 30
+      { 
+        element: '.modal-importar-pncp', 
+        popover: { 
+          title: 'O Salto Tecnológico', 
+          description: 'Esqueça a digitação manual. Vamos buscar um preço oficial diretamente no Portal Nacional de Contratações Públicas.', 
+          side: 'left', align: 'start', offset: 30
+        }
+      },
+      { 
+        element: '.aba-pncp-arp', 
+        popover: { 
+          title: 'Explorando as Atas (ARP)', 
+          description: 'Você pode buscar por UASG ou diretamente por Atas de Registro de Preços (ARP).', 
+          side: 'bottom' 
         },
         onHighlighted: () => {
-          setTimeout(() => {
-            const btnPregao = document.querySelector('.tour-expand-pregao') as HTMLElement;
-            if (btnPregao) btnPregao.click();
-            
-            setTimeout(() => {
-              const btnArp = document.querySelector('.tour-expand-arp') as HTMLElement;
-              if (btnArp) btnArp.click();
-
-              setTimeout(() => {
-                const itemLinha = document.querySelector('.tour-item-mockado') as HTMLElement;
-                if (itemLinha) {
-                  itemLinha.style.transition = 'background-color 0.5s ease';
-                  itemLinha.style.backgroundColor = 'rgba(16, 185, 129, 0.2)';
-                }
-              }, 400);
-            }, 400);
-          }, 400);
+          const aba = document.querySelector('.aba-pncp-arp') as HTMLElement;
+          if (aba) aba.click();
         }
       },
-      {
-        element: '.btn-salvar-subitem',
-        popover: {
-          title: 'Finalização e Salvamento',
-          description: 'Ao salvar, este item passa a compor seu catálogo oficial.',
-          side: 'top',
-          align: 'end'
-        }
+      { 
+        element: '.item-resultado-ghost', 
+        popover: { 
+          title: 'Seleção do Item Oficial', 
+          description: 'Selecionamos este item da ARP vigente. Note que o sistema já traz a descrição técnica completa.', 
+          side: 'right' 
+        } 
+      },
+      { 
+        element: '.btn-salvar-subitem', 
+        popover: { 
+          title: 'Finalização e Salvamento', 
+          description: 'Ao salvar, este item passa a compor seu catálogo para uso imediato.', 
+          side: 'top' 
+        } 
       }
     ],
     onDestroyed: onComplete
