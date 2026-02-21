@@ -146,7 +146,7 @@ const PTrabManager = () => {
 
   const [showApproveDialog, setShowApproveDialog] = useState(false);
   const [ptrabToApprove, setPtrabToApprove] = useState<PTrab | null>(null);
-  const [suggestveApproveNumber, setSuggestedApproveNumber] = useState<string>("");
+  const [suggestedApproveNumber, setSuggestedApproveNumber] = useState<string>("");
 
   const [showComentarioDialog, setShowComentarioDialog] = useState(false);
   const [ptrabComentario, setPtrabComentario] = useState<PTrab | null>(null);
@@ -609,7 +609,7 @@ const PTrabManager = () => {
         setIsActionLoading(false);
         return;
       }
-      if (new Date(formData.periodo_fim) < new Date(formData.periodo_inicio)) {
+      if (new Date(formData.periodo_inicio) > new Date(formData.periodo_fim)) {
         toast.error("A Data Fim deve ser posterior ou igual à Data Início.");
         setIsActionLoading(false);
         return;
