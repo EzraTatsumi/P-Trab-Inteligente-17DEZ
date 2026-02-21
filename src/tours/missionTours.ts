@@ -18,77 +18,28 @@ export const runMission01 = (onComplete: () => void) => {
       {
         popover: {
           title: 'Bem-vindo ao Centro de Comando!',
-          description: 'Aqui você gerencia o ciclo de vida completo dos seus Planos de Trabalho. Vamos conhecer as ferramentas de controle.',
+          description: 'Aqui você gerencia todos os seus Planos de Trabalho. Vamos conhecer as ferramentas principais.',
         }
       },
       {
         element: '.btn-novo-ptrab',
         popover: {
-          title: 'Criar Novo Plano',
-          description: 'Aqui você inicia um novo P Trab do zero. O sistema só permite a criação se as OMs e Diretrizes de custos estiverem configuradas no seu perfil.',
+          title: 'Criação de Planos',
+          description: 'Este botão inicia um novo P Trab. Note que ele só habilita quando sua base (OM e Diretrizes) está configurada.',
         }
       },
       {
-        element: '.btn-consolidar',
+        element: '.ptrab-original',
         popover: {
-          title: 'Consolidar Planos',
-          description: 'Precisa unir vários P Trabs em um único relatório para um Comando Superior? Este botão realiza a soma automática de todos os dados e custos de planos selecionados.',
+          title: 'Origem do Documento',
+          description: 'Identifique rapidamente se o P Trab é Original, Importado ou uma Consolidação de vários outros.',
         }
       },
       {
-        element: '.btn-ajuda',
+        element: 'button:has(svg.lucide-copy)', // Seletor alternativo para o botão de clonar se estiver visível
         popover: {
-          title: 'Central de Ajuda',
-          description: 'Acesse manuais, regras de negócio e documentação técnica sempre que tiver dúvidas sobre o preenchimento ou cálculos.',
-        }
-      },
-      {
-        element: '.btn-configuracoes',
-        popover: {
-          title: 'Configurações do Sistema',
-          description: 'Gerencie suas OMs vinculadas, defina os anos de referência para os cálculos e ajuste seus dados de perfil que sairão nos cabeçalhos dos documentos.',
-        }
-      },
-      {
-        element: '.tabela-ptrabs',
-        popover: {
-          title: 'Quadro de Situação',
-          description: 'Nesta grade você acompanha o número, a operação, o status e os valores totais de cada projeto em tempo real.',
-        }
-      },
-      {
-        element: '.btn-comentarios',
-        popover: {
-          title: 'Comunicação Interna',
-          description: 'Utilize os comentários para trocar mensagens entre quem preenche e quem revisa, mantendo o histórico de orientações no próprio documento.',
-        }
-      },
-      {
-        element: '.btn-preencher-ptrab',
-        popover: {
-          title: 'Detalhamento de Custos',
-          description: 'Este é o coração do sistema. Aqui você lança todos os itens logísticos e operacionais da sua missão.',
-        }
-      },
-      {
-        element: '.btn-preencher-dor',
-        popover: {
-          title: 'Justificativa Técnica (DOR)',
-          description: 'Após concluir os custos, o sistema gera automaticamente a sua Documentação de Oficialização de Demanda baseada nos números inseridos.',
-        }
-      },
-      {
-        element: '.btn-aprovar',
-        popover: {
-          title: 'Homologação e Numeração',
-          description: 'O selo de qualidade. Quando o plano está pronto, este botão atribui o número oficial e encerra a fase de minuta para emissão dos relatórios.',
-        }
-      },
-      {
-        element: '.btn-acoes',
-        popover: {
-          title: 'Clonagem e Compartilhamento',
-          description: 'No menu de ações, você pode CLONAR planos de anos anteriores para ganhar tempo, ou COMPARTILHAR o acesso para que outros militares ajudem no preenchimento.',
+          title: 'O Pulo do Gato',
+          description: 'Não refaça o trabalho! Use a clonagem para aproveitar dados de operações anteriores e apenas ajustar as quantidades.',
         }
       }
     ],
