@@ -69,9 +69,9 @@ export const runMission01 = (onComplete: () => void) => {
           title: 'Configurações do Sistema',
           description: 'Vincule trabalhos colaborativos, Diretrizes de Custeio Logístico e de Custos Operacionais e Importe/Exporte dados de P Trab.',
           side: 'left',
-          align: 'end',
+          align: 'end', // Alteração manual do usuário consolidada aqui
           popoverClass: 'popover-wide',
-          offset: 20 // Adiciona 20px de distância do botão para não bater no menu
+          offset: 20
         },
         onHighlighted: () => {
           if ((window as any).openSettings) (window as any).openSettings();
