@@ -2,15 +2,13 @@
 
 import { driver } from "driver.js";
 import "driver.js/dist/driver.css";
-import "./tour.css"; // Importando estilos customizados centralizados
+import "./tour.css"; 
 
 let activeMissionDriver: any = null;
 
-// Escuta o sinal do React para avançar o tour magicamente
 if (typeof window !== 'undefined') {
   window.addEventListener('tour:avancar', () => {
     if (activeMissionDriver) {
-      // Aumentado o delay para garantir que o modal do Shadcn termine a animação de abertura
       setTimeout(() => {
         activeMissionDriver.moveNext();
       }, 600); 
@@ -70,7 +68,6 @@ export const runMission01 = (onComplete: () => void) => {
           description: 'Vincule trabalhos colaborativos, Diretrizes de Custeio Logístico e de Custos Operacionais e Importe/Exporte dados de P Trab.',
           side: 'left',
           align: 'end',
-          popoverClass: 'popover-wide',
           offset: 20
         },
         onHighlighted: () => {
@@ -169,7 +166,6 @@ export const runMission02 = (onComplete: () => void) => {
           offset: 20
         },
         onHighlighted: () => {
-          // Força a rolagem para o topo da página para mostrar os botões e o banner
           window.scrollTo({ top: 0, behavior: 'smooth' });
         }
       },
@@ -202,7 +198,7 @@ export const runMission02 = (onComplete: () => void) => {
         element: '.tour-dados-subitem', 
         popover: { 
           title: 'Campos Obrigatórios', 
-          description: 'Primeiro, preencha o "Número do Subitem" (ex: 24) e o "Nome do Subitem" (ex: Material p/ Manutenção de Bens Imóveis/Instalações). Estes campos são essenciais para a definição do subitem.', 
+          description: 'Primeiro, preencha o "Número do Subitem" (ex: 24) e o "Nome do Subitem" (ex: Material p/ Manutenção de Bens Imóveis/Instalações).', 
           side: 'top', 
           align: 'center', 
           offset: 30
@@ -234,9 +230,9 @@ export const runMission02 = (onComplete: () => void) => {
         popover: {
           title: 'Navegação de Resultados',
           description: 'O sistema encontrou os resultados! Agora, clique em "Expandir" no Pregão, depois em "Ver Itens" na ARP, selecione o "Cimento Portland" e clique em "Importar Selecionados".',
-          side: 'top', // Posicionado no topo do modal
-          align: 'center',
-          offset: 10, // Reduzido o offset para ficar mais próximo do topo
+          side: 'left', // Mudado para a esquerda para não cobrir os botões centrais
+          align: 'start',
+          offset: 40,
           showButtons: []
         }
       },

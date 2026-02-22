@@ -1,34 +1,20 @@
-/* 1. Estilo Geral do Balão */
-.driver-popover.driverjs-theme {
-  z-index: 10002 !important;
-  max-width: 450px !important;
-  border-radius: 12px !important;
-  padding: 20px !important;
-  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1) !important;
-}
-
-/* 2. Classe Específica para o passo de Configurações */
-/* Usando seletores mais genéricos para garantir a aplicação */
-.driver-popover.popover-wide {
-  min-width: 550px !important; /* Força uma largura mínima maior */
-  max-width: 700px !important;
-  padding: 15px 25px !important;
-}
-
-.driver-popover.driverjs-theme .driver-popover-title {
-  font-size: 18px !important;
-  font-weight: 700 !important;
-  margin-bottom: 8px !important;
-  color: #1a1a1a !important;
-}
-
-.driver-popover.driverjs-theme .driver-popover-description {
-  font-size: 14px !important;
-  line-height: 1.6 !important;
-  color: #4a4a4a !important;
-}
-
-/* Ajuste para garantir que o menu do Shadcn fique visível durante o tour */
-.z-tour-portal {
+/* Garante que o popover do tour fique acima dos modais do Shadcn (Radix UI) */
+.driver-popover.driverjs-popover {
   z-index: 10001 !important;
+  max-width: 350px !important;
+}
+
+.driver-overlay {
+  z-index: 10000 !important;
+}
+
+/* Classe para popovers que precisam ser deslocados para a lateral */
+.popover-side-fix {
+  margin-left: -20px !important;
+}
+
+/* Estilo para destacar o elemento focado mesmo dentro de modais */
+.driver-active-element {
+  box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.5) !important;
+  outline: 2px solid #3b82f6 !important;
 }
