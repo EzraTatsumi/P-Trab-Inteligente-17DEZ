@@ -242,7 +242,7 @@ const MaterialConsumoForm = () => {
     }, [isLoadingPTrab, isLoadingRegistros]);
 
     // Lógica de Preenchimento Automático para Missão 03
-    useEffect(() => {
+    const prefillMission03 = useCallback(() => {
         if (isGhostMode() && getActiveMission() === '3') {
             setFormData(prev => ({
                 ...prev,
@@ -266,8 +266,12 @@ const MaterialConsumoForm = () => {
                 efetivo: 150,
             }));
         };
-        return () => { delete (window as any).prefillSection2; };
-    }, []);
+        (window as any).forcePrefillMission03 = prefillMission03;
+        return () => { 
+            delete (window as any).prefillSection2; 
+            delete (window as any).forcePrefillMission03;
+        };
+    }, [prefillMission03]);
 
     // --- Mutations ---
 
@@ -404,21 +408,26 @@ const MaterialConsumoForm = () => {
         const shouldResetContext = !editingId && formData.acquisitionGroups.length === 0;
 
         if (ptrabData && shouldResetContext) {
-            // Modo Novo Registro: Limpar
-            setFormData(prev => ({
-                ...initialFormState,
-                om_favorecida: "", 
-                ug_favorecida: "", 
-                om_destino: "",
-                ug_destino: "",
-            }));
-            setSelectedOmFavorecidaId(undefined); 
-            setSelectedOmDestinoId(undefined);
+            // Se estiver na Missão 03, preenche automaticamente em vez de limpar
+            if (isGhostMode() && getActiveMission() === '3') {
+                prefillMission03();
+            } else {
+                // Modo Novo Registro: Limpar
+                setFormData(prev => ({
+                    ...initialFormState,
+                    om_favorecida: "", 
+                    ug_favorecida: "", 
+                    om_destino: "",
+                    ug_destino: "",
+                }));
+                setSelectedOmFavorecidaId(undefined); 
+                setSelectedOmDestinoId(undefined);
+            }
             
         } else if (ptrabData && editingId) {
             // Modo Edição: Preencher (A ser preenchido por handleEdit)
         }
-    }, [ptrabData, oms, editingId]);
+    }, [ptrabData, oms, editingId, prefillMission03]);
     
     // =================================================================
     // LÓGICA DE GRUPOS DE AQUISIÇÃO (SEÇÃO 2)

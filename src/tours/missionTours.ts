@@ -326,6 +326,9 @@ export const runMission03 = (onComplete: () => void) => {
           side: 'top',
           align: 'center',
           offset: 100
+        },
+        onHighlighted: () => {
+          if ((window as any).forcePrefillMission03) (window as any).forcePrefillMission03();
         }
       },
       {
