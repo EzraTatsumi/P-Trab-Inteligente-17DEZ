@@ -47,6 +47,17 @@ const PTrabForm = () => {
   const [showCreditDialog, setShowCreditDialog] = useState(false);
   const [hasPromptedForCredit, setHasPromptedForCredit] = useState(false);
 
+  // Expondo a troca de aba para o Tour
+  useEffect(() => {
+    (window as any).setTabOperacional = () => setSelectedTab("operacional");
+    (window as any).setTabLogistica = () => setSelectedTab("logistica");
+    
+    return () => {
+      delete (window as any).setTabOperacional;
+      delete (window as any).setTabLogistica;
+    };
+  }, []);
+
   const classesLogistica = [
     { id: "classe-i", name: "Classe I - Subsistência" },
     { id: "classe-ii", name: "Classe II - Material de Intendência" },
@@ -175,7 +186,7 @@ const PTrabForm = () => {
             navigate('/ptrab');
           });
         }
-      }, 500); // Pequeno delay para garantir o paint da UI
+      }, 500);
       return () => clearTimeout(timer);
     }
   }, [loadingPTrab, isLoadingTotals, isLoadingCredits, searchParams, navigate]);

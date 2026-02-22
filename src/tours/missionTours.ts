@@ -300,16 +300,9 @@ export const runMission03 = (onComplete: () => void) => {
           description: 'Diárias, passagens e serviços de terceiros são lançados aqui, integrando-se ao cálculo global.',
           side: 'bottom',
           align: 'center'
-        }
-      },
-      {
-        element: '.tabs-operacional',
-        popover: {
-          title: 'Navegação Operacional',
-          description: 'Clique na aba "Aba Operacional" para ver as opções de custos de missão.',
-          side: 'bottom',
-          align: 'center',
-          showButtons: []
+        },
+        onHighlighted: () => {
+          if ((window as any).setTabOperacional) (window as any).setTabOperacional();
         }
       },
       {
@@ -336,7 +329,6 @@ export const runMission03 = (onComplete: () => void) => {
   });
   activeMissionDriver = d;
   
-  // Pequeno atraso para garantir que o DOM está estável antes de iniciar
   setTimeout(() => {
     d.drive();
   }, 300);
