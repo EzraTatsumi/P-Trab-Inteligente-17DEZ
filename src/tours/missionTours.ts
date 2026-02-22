@@ -92,7 +92,7 @@ export const runMission01 = (onComplete: () => void) => {
           title: 'Quadro de  Dados do P Trab',
           description: 'Nesta grade, você acompanha o número, a operação e o status de cada plano em tempo real.',
           side: 'top',
-          align: 'center'
+          align: 'end'
         }
       },
       {
@@ -137,7 +137,7 @@ export const runMission01 = (onComplete: () => void) => {
           title: 'Agilidade e Colaboração',
           description: 'No menu de ações, você pode CLONAR planos complexos de anos anteriores para economizar tempo, ou COMPARTILHAR o acesso com outros militares para trabalho colaborativo.',
           side: 'top',
-          align: 'start',
+          align: 'end',
         },
         onHighlighted: () => {
           if ((window as any).openActions) (window as any).openActions();
