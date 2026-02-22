@@ -53,6 +53,8 @@ const MaterialConsumoForm = () => {
                   selectedOmId={selectedOm?.id}
                   onChange={setSelectedOm}
                   placeholder="Selecione a OM..."
+                  // Injetando OMs simuladas se estiver em modo Ghost
+                  customOms={isGhostMode() ? GHOST_DATA.oms_exemplo : undefined}
                 />
               </div>
               <div className="space-y-2">
