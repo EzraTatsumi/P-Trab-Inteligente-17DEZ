@@ -32,8 +32,8 @@ export const runMission01 = (onComplete: () => void) => {
     steps: [
       {
         popover: {
-          title: 'Missão 01: Centro de Comando',
-          description: 'Bem-vindo à sua mesa de operações. Aqui você controla o ciclo de vida completo dos seus Planos de Trabalho.',
+          title: 'Missão 01: Gerencie o seu P Trab',
+          description: 'Bem-vindo ao Gerenciamento de P Trab. Aqui você controla o ciclo de vida completo dos seus Planos de Trabalho.',
         }
       },
       {
@@ -49,7 +49,7 @@ export const runMission01 = (onComplete: () => void) => {
         element: '.btn-consolidar',
         popover: {
           title: 'Consolidar Planos',
-          description: 'Precisa unir vários P Trabs em um único relatório para um Comando Superior? Este botão faz a consolidação automática de dados e custos.',
+          description: 'Precisa unir vários P Trabs em um único relatório? Este botão faz a consolidação automática de dados e custos.',
           side: 'bottom',
           align: 'start'
         }
@@ -67,8 +67,8 @@ export const runMission01 = (onComplete: () => void) => {
         element: '.btn-configuracoes',
         popover: {
           title: 'Configurações do Sistema',
-          description: 'Gerencie OMs vinculadas, anos de referência para cálculos e dados de perfil que sairão nos cabeçalhos dos documentos.',
-          side: 'left', 
+          description: 'Vincule trabalhos colaborativos, Diretrizes de Custeio Logístico e de Custos Operacionais e Importe/Exporte dados de P Trab.',
+          side: 'right', 
           align: 'end',
         },
         onHighlighted: () => {
@@ -90,10 +90,10 @@ export const runMission01 = (onComplete: () => void) => {
       {
         element: '.tabela-ptrabs',
         popover: {
-          title: 'Quadro de Situação',
+          title: 'Quadro de Dados do P Trab',
           description: 'Nesta grade, você acompanha o número, a operação e o status de cada plano em tempo real.',
           side: 'top',
-          align: 'center'
+          align: 'start'
         }
       },
       {
@@ -108,8 +108,8 @@ export const runMission01 = (onComplete: () => void) => {
       {
         element: '.btn-preencher-ptrab',
         popover: {
-          title: 'Detalhamento de Custos',
-          description: 'Use este botão para entrar no formulário e detalhar todas as necessidades logísticas e operacionais da missão.',
+          title: 'Detalhamento de Necessidades',
+          description: 'Use este botão para entrar no formulário e detalhar todas as necessidades logísticas e operacionais da operação.',
           side: 'left',
           align: 'center'
         }
@@ -117,8 +117,8 @@ export const runMission01 = (onComplete: () => void) => {
       {
         element: '.btn-preencher-dor',
         popover: {
-          title: 'Redação Técnica (DOR)',
-          description: 'Após os custos estarem prontos, o sistema gera automaticamente a sua justificativa técnica baseada nos números inseridos.',
+          title: 'Preenchimento do DOR',
+          description: 'Finalizado o P Trab, essa ferramenta auxilia na montagem do DOR, expecialmente ao agrupar os custos conforme a sua necessidade.',
           side: 'left',
           align: 'center'
         }
@@ -126,8 +126,8 @@ export const runMission01 = (onComplete: () => void) => {
       {
         element: '.btn-aprovar',
         popover: {
-          title: 'Homologação Oficial',
-          description: 'Este é o selo de qualidade. Quando o plano atende aos requisitos, ele é Aprovado para emissão dos relatórios oficiais.',
+          title: 'Pronto para Despacho',
+          description: 'Quando finalizado o P Trab e deseja gerar o seu número de controle, basta APROVAR que ficará registrado como finalizado',
           side: 'top',
           align: 'center'
         }
@@ -138,7 +138,7 @@ export const runMission01 = (onComplete: () => void) => {
           title: 'Agilidade e Colaboração',
           description: 'No menu de ações, você pode CLONAR planos complexos de anos anteriores para economizar tempo, ou COMPARTILHAR o acesso com outros militares para trabalho colaborativo.',
           side: 'top',
-          align: 'start',
+          align: 'end',
         },
         onHighlighted: () => {
           if ((window as any).openActions) (window as any).openActions();
