@@ -340,7 +340,7 @@ const PTrabForm = () => {
           </div>
 
           <div className="lg:col-span-2">
-            <Card className="shadow-lg">
+            <Card className="shadow-lg card-selecao-material">
               <CardHeader>
                 <h2 className="text-xl font-bold">Selecione o Tipo de Material</h2>
                 <CardDescription>
@@ -393,7 +393,7 @@ const PTrabForm = () => {
                         <Button
                           key={item.id}
                           variant="outline"
-                          className="h-auto py-4 px-6 justify-start text-left hover:bg-primary/10 hover:border-primary transition-all"
+                          className={`h-auto py-4 px-6 justify-start text-left hover:bg-primary/10 hover:border-primary transition-all ${item.id === 'material-consumo' ? 'btn-material-consumo' : ''}`}
                           onClick={() => handleItemClick(item.id, item.name, "operacional")}
                           disabled={ptrabData?.status === 'completo' || ptrabData?.status === 'arquivado'}
                         >

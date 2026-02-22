@@ -276,10 +276,12 @@ export const runMission03 = (onComplete: () => void) => {
     ...commonConfig,
     steps: [
       {
-        element: '.lg\\:col-span-2',
+        element: '.card-selecao-material',
         popover: {
-          title: 'O Formulário Padrão',
-          description: 'Todos os itens seguem a mesma lógica de preenchimento, facilitando o aprendizado.',
+          title: 'Missão 03: Detalhamento Operacional',
+          description: 'Nesta missão, vamos aprender a detalhar as necessidades operacionais do seu P Trab.',
+          side: 'top',
+          align: 'center'
         }
       },
       {
@@ -287,6 +289,8 @@ export const runMission03 = (onComplete: () => void) => {
         popover: {
           title: 'Classes de Suprimento',
           description: 'Aqui você detalha itens de Classe I a IX. O sistema já conhece os fatores de consumo baseados nas suas diretrizes.',
+          side: 'bottom',
+          align: 'center'
         }
       },
       {
@@ -294,11 +298,43 @@ export const runMission03 = (onComplete: () => void) => {
         popover: {
           title: 'Custos de Missão',
           description: 'Diárias, passagens e serviços de terceiros são lançados aqui, integrando-se ao cálculo global.',
+          side: 'bottom',
+          align: 'center'
+        }
+      },
+      {
+        element: '.tabs-operacional',
+        popover: {
+          title: 'Navegação Operacional',
+          description: 'Clique na aba "Aba Operacional" para ver as opções de custos de missão.',
+          side: 'bottom',
+          align: 'center',
+          showButtons: []
+        }
+      },
+      {
+        element: '.btn-material-consumo',
+        popover: {
+          title: 'Material de Consumo',
+          description: 'Agora, clique em "Material de Consumo" para iniciar o detalhamento desta categoria.',
+          side: 'top',
+          align: 'center',
+          showButtons: []
+        }
+      },
+      {
+        element: '.secao-1-form-material',
+        popover: {
+          title: 'Seção 1: Identificação da OM',
+          description: 'Nesta primeira seção, você deve selecionar a Organização Militar responsável e a fase da atividade.',
+          side: 'top',
+          align: 'center'
         }
       }
     ],
     onDestroyed: onComplete
   });
+  activeMissionDriver = d;
   d.drive();
 };
 

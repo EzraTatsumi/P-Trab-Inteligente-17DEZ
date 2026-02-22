@@ -136,6 +136,13 @@ export const GHOST_DATA = {
     }
   },
 
+  // Missão 03: OMs para o formulário
+  oms_exemplo: [
+    { id: "om-1", nome_om: "1º Btl Inf Selva", codug_om: "160222", rm_vinculacao: "12ª RM", codug_rm_vinculacao: "160060" },
+    { id: "om-2", nome_om: "2º Btl Inf Selva", codug_om: "160223", rm_vinculacao: "12ª RM", codug_rm_vinculacao: "160060" },
+    { id: "om-3", nome_om: "3º Btl Inf Selva", codug_om: "160224", rm_vinculacao: "12ª RM", codug_rm_vinculacao: "160060" },
+  ],
+
   totais_exemplo: {
     totalLogistica: 45000.50,
     totalOperacional: 12500.00,
