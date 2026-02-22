@@ -274,6 +274,7 @@ export const runMission02 = (onComplete: () => void) => {
 export const runMission03 = (onComplete: () => void) => {
   const d = driver({
     ...commonConfig,
+    overlayClickable: false, // Impede que cliques fora fechem o tour
     steps: [
       {
         element: '.card-selecao-material',
@@ -317,13 +318,13 @@ export const runMission03 = (onComplete: () => void) => {
       },
       {
         element: '.secao-1-form-material',
-        padding: 40, // Aumentado para cobrir a abertura dos selects
+        padding: 120, // Padding extra para acomodar a abertura dos menus suspensos
         popover: {
           title: 'Seção 1: Identificação da OM',
           description: 'Nesta primeira seção, você deve selecionar a Organização Militar responsável e a fase da atividade.',
           side: 'top',
           align: 'center',
-          offset: 60 // Offset maior para não sobrepor o conteúdo
+          offset: 100
         }
       }
     ],

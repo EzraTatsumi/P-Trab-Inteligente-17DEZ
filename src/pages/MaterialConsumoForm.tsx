@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
-import { ArrowLeft, Loader2, Save, Plus, Trash2, FileText, Package, Info } from "lucide-react";
+import { ArrowLeft, Loader2, Save, Plus, Trash2, FileText, Package, Pencil, Search } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { OmSelector } from "@/components/OmSelector";
@@ -14,18 +14,24 @@ import { OMData } from "@/lib/omUtils";
 import { GHOST_DATA, isGhostMode } from "@/lib/ghostStore";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { PTrabCostSummary } from "@/components/PTrabCostSummary";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { fetchPTrabData } from "@/lib/ptrabUtils";
 import PageMetadata from "@/components/PageMetadata";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { formatCurrency } from "@/lib/formatUtils";
 
 const MaterialConsumoForm = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const ptrabId = searchParams.get('ptrabId');
+  const queryClient = useQueryClient();
+  
   const [loading, setLoading] = useState(true);
   const [selectedOm, setSelectedOm] = useState<OMData | null>(null);
   const [fase, setFase] = useState("");
+  
+  // Estado para simular itens no modo Ghost
+  const [items, setItems] = useState<any[]>([]);
 
   // Busca dados do P Trab para o cabeçalho
   const { data: ptrabData } = useQuery({
@@ -34,12 +40,12 @@ const MaterialConsumoForm = () => {
     enabled: !!ptrabId || isGhostMode(),
   });
 
-  // Avança o tour assim que o formulário carregar e os dados estiverem prontos
+  // Sincronismo do Tour: Avança quando a página está pronta
   useEffect(() => {
     if (!loading && isGhostMode()) {
       const timer = setTimeout(() => {
         window.dispatchEvent(new CustomEvent('tour:avancar'));
-      }, 800);
+      }, 1000);
       return () => clearTimeout(timer);
     }
   }, [loading]);
@@ -49,6 +55,12 @@ const MaterialConsumoForm = () => {
       navigate('/ptrab');
       return;
     }
+    
+    if (isGhostMode()) {
+      // Inicia com um item de exemplo para o tour ficar "bonito"
+      setItems([GHOST_DATA.missao_02.item_cimento]);
+    }
+    
     setLoading(false);
   }, [ptrabId, navigate]);
 
@@ -175,7 +187,7 @@ const MaterialConsumoForm = () => {
                   <CardTitle className="text-base">Seção 2: Itens de Material de Consumo</CardTitle>
                   <CardDescription>Adicione os itens necessários para esta OM e fase.</CardDescription>
                 </div>
-                <Button size="sm" disabled={!selectedOm || !fase} className="gap-2">
+                <Button size="sm" disabled={!selectedOm || !fase} className="gap-2 btn-adicionar-item-material">
                   <Plus className="h-4 w-4" />
                   Adicionar Item
                 </Button>
@@ -189,17 +201,37 @@ const MaterialConsumoForm = () => {
                         <TableHead className="text-center">Qtd</TableHead>
                         <TableHead className="text-right">Vlr Unit.</TableHead>
                         <TableHead className="text-right">Total</TableHead>
-                        <TableHead className="w-[80px]"></TableHead>
+                        <TableHead className="w-[100px]"></TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      <TableRow>
-                        <TableCell colSpan={5} className="h-24 text-center text-muted-foreground italic">
-                          {!selectedOm || !fase 
-                            ? "Preencha a Seção 1 para habilitar a adição de itens." 
-                            : "Nenhum item adicionado ainda."}
-                        </TableCell>
-                      </TableRow>
+                      {items.length > 0 ? (
+                        items.map((item, idx) => (
+                          <TableRow key={idx}>
+                            <TableCell>
+                              <div className="font-medium text-sm">{item.descricao_item}</div>
+                              <div className="text-xs text-muted-foreground">CATMAT: {item.codigo_catmat} | Pregão: {item.numero_pregao}</div>
+                            </TableCell>
+                            <TableCell className="text-center">{item.quantidade || 10}</TableCell>
+                            <TableCell className="text-right">{formatCurrency(item.valor_unitario)}</TableCell>
+                            <TableCell className="text-right font-bold">{formatCurrency(item.valor_unitario * (item.quantidade || 10))}</TableCell>
+                            <TableCell className="text-right">
+                              <div className="flex justify-end gap-1">
+                                <Button variant="ghost" size="icon" className="h-8 w-8"><Pencil className="h-4 w-4" /></Button>
+                                <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive"><Trash2 className="h-4 w-4" /></Button>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        ))
+                      ) : (
+                        <TableRow>
+                          <TableCell colSpan={5} className="h-24 text-center text-muted-foreground italic">
+                            {!selectedOm || !fase 
+                              ? "Preencha a Seção 1 para habilitar a adição de itens." 
+                              : "Nenhum item adicionado ainda."}
+                          </TableCell>
+                        </TableRow>
+                      )}
                     </TableBody>
                   </Table>
                 </div>
