@@ -1,377 +1,237 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-import { Plus, Save, Package, FileText, Loader2, Trash2, Pencil } from "lucide-react";
-import { AcquisitionGroup } from "@/lib/materialConsumoUtils";
-import { ItemAquisicao } from "@/types/diretrizesMaterialConsumo";
-import { formatCurrency, formatNumber, formatCodug, formatPregao } from "@/lib/formatUtils";
-import { toast } from "sonner";
+import { Textarea } from "@/components/ui/textarea";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { ChevronDown, ChevronUp } from "lucide-react";
-import { cn } from "@/lib/utils";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-
-// Tipo para agrupar itens por subitem para exibição
-interface GroupedItem {
-    subitemNr: string;
-    subitemNome: string;
-    items: ItemAquisicao[];
-    totalValue: number; // NOVO: Valor total dos itens neste subitem
-}
+import { Trash2, Plus, Package, Check, X, Minus, Search } from "lucide-react";
+import { AcquisitionGroup, calculateGroupTotals } from "@/lib/materialConsumoUtils";
+import { ItemAquisicao } from "@/types/diretrizesMaterialConsumo";
+import { formatCurrency, formatCodug, formatPregao } from "@/lib/formatUtils";
+import { toast } from "sonner";
+import { isGhostMode } from "@/lib/ghostStore";
 
 interface AcquisitionGroupFormProps {
     initialGroup?: AcquisitionGroup;
     onSave: (group: AcquisitionGroup) => void;
     onCancel: () => void;
     isSaving: boolean;
-    // NOVO: Handler para abrir o seletor de itens
-    onOpenItemSelector: (currentItems: ItemAquisicao[]) => void; 
-    // NOVO: Lista de itens selecionados (retorno do seletor)
+    // Callback para abrir o seletor de itens externo
+    onOpenItemSelector: (currentItems: ItemAquisicao[]) => void;
+    // Itens que retornaram do seletor externo
     selectedItemsFromSelector: ItemAquisicao[] | null;
-    // NOVO: Handler para limpar os itens selecionados do seletor
     onClearSelectedItems: () => void;
 }
 
-const AcquisitionGroupForm: React.FC<AcquisitionGroupFormProps> = ({ 
-    initialGroup, 
-    onSave, 
-    onCancel, 
+const AcquisitionGroupForm: React.FC<AcquisitionGroupFormProps> = ({
+    initialGroup,
+    onSave,
+    onCancel,
     isSaving,
     onOpenItemSelector,
     selectedItemsFromSelector,
     onClearSelectedItems,
 }) => {
-    const [groupName, setGroupName] = useState(initialGroup?.groupName || '');
-    const [groupPurpose, setGroupPurpose] = useState(initialGroup?.groupPurpose || '');
-    // Usamos um ID temporário para cada item para garantir que a quantidade seja rastreada
+    const [groupName, setGroupName] = useState(initialGroup?.groupName || "");
+    const [groupPurpose, setGroupPurpose] = useState(initialGroup?.groupPurpose || "");
     const [items, setItems] = useState<ItemAquisicao[]>(initialGroup?.items || []);
-    const [tempId] = useState(initialGroup?.tempId || crypto.randomUUID());
     
-    // Estado para controlar a expansão dos subitens. Inicialmente, todos abertos se houver itens.
-    const [expandedSubitems, setExpandedSubitems] = useState<Record<string, boolean>>({});
-
-    // Efeito para processar itens retornados do seletor
+    // Sincroniza itens vindos do seletor externo
     useEffect(() => {
         if (selectedItemsFromSelector) {
-            // 1. Criar um mapa de IDs dos itens existentes para fácil verificação
-            const existingItemIds = new Set(items.map(i => i.id));
-            
-            // 2. Processar os itens selecionados
-            const newItemsMap: Record<string, ItemAquisicao> = {};
-            
-            selectedItemsFromSelector.forEach(selectedItem => {
+            // Mescla os itens selecionados com os já existentes, preservando quantidades se o item já existia
+            const newItems = selectedItemsFromSelector.map(selectedItem => {
                 const existingItem = items.find(i => i.id === selectedItem.id);
-                
-                if (existingItem) {
-                    // Item já existia: mantém a quantidade e o valor total atual
-                    newItemsMap[selectedItem.id] = existingItem;
-                } else {
-                    // Novo item: quantidade 1, recalcula valor total
-                    const quantity = 1;
-                    const valorTotal = selectedItem.valor_unitario * quantity;
-                    
-                    newItemsMap[selectedItem.id] = {
-                        ...selectedItem,
-                        quantidade: quantity,
-                        valor_total: valorTotal,
-                    };
-                }
+                return {
+                    ...selectedItem,
+                    quantidade: existingItem ? existingItem.quantidade : 1,
+                    valor_total: (existingItem ? existingItem.quantidade : 1) * selectedItem.valor_unitario,
+                };
             });
-            
-            // 3. Atualiza a lista de itens (mantendo apenas os selecionados)
-            setItems(Object.values(newItemsMap));
-            onClearSelectedItems(); // Limpa o estado global do seletor
-            
-            // 4. FECHA TODOS OS GRUPOS DE SUBITENS APÓS A SELEÇÃO
-            setExpandedSubitems({}); 
-            
-            // Calcula quantos itens foram adicionados/removidos
-            const addedCount = Object.values(newItemsMap).filter(item => !existingItemIds.has(item.id)).length;
-            const removedCount = items.filter(item => !newItemsMap[item.id]).length;
-            
-            if (addedCount > 0 || removedCount > 0) {
-                toast.success(`Seleção atualizada. Adicionados: ${addedCount}, Removidos: ${removedCount}.`);
-            }
+            setItems(newItems);
+            onClearSelectedItems(); // Limpa o buffer do seletor
         }
-    }, [selectedItemsFromSelector]); // Depende apenas dos itens retornados do seletor
+    }, [selectedItemsFromSelector, items, onClearSelectedItems]);
 
-    // Calcula o valor total do grupo
-    const totalValue = useMemo(() => {
-        return items.reduce((sum, item) => sum + Number(item.valor_total || 0), 0);
-    }, [items]);
-    
-    // Agrupa os itens por subitem para exibição
-    const groupedItems = useMemo<GroupedItem[]>(() => {
-        const groups: Record<string, GroupedItem> = {};
-        
-        items.forEach(item => {
-            // Chave de agrupamento: Nr Subitem + Nome Subitem
-            // Usamos nr_subitem e nome_subitem que agora são injetados pelo seletor
-            const key = `${item.nr_subitem}-${item.nome_subitem}`;
-            if (!groups[key]) {
-                groups[key] = {
-                    subitemNr: item.nr_subitem,
-                    subitemNome: item.nome_subitem,
-                    items: [],
-                    totalValue: 0, // Inicializa o total
+    const handleUpdateQuantity = (id: string, quantity: number) => {
+        if (quantity < 1) return;
+        setItems(prev => prev.map(item => {
+            if (item.id === id) {
+                return {
+                    ...item,
+                    quantidade: quantity,
+                    valor_total: quantity * item.valor_unitario,
                 };
             }
-            groups[key].items.push(item);
-            groups[key].totalValue += Number(item.valor_total || 0); // Soma o valor
-        });
-        
-        return Object.values(groups).sort((a, b) => a.subitemNr.localeCompare(b.subitemNr));
-    }, [items]);
-    
-    // Handler para mudança de quantidade
-    const handleQuantityChange = (itemId: string, rawValue: string) => {
-        const quantity = parseInt(rawValue) || 0;
-        
-        setItems(prevItems => {
-            return prevItems.map(item => {
-                if (item.id === itemId) {
-                    const newQuantity = Math.max(0, quantity);
-                    const newValorTotal = newQuantity * item.valor_unitario;
-                    return {
-                        ...item,
-                        quantidade: newQuantity,
-                        valor_total: newValorTotal,
-                    };
-                }
-                return item;
-            });
-        });
-    };
-    
-    // Handler para remover item
-    const handleRemoveItem = (itemId: string) => {
-        setItems(prevItems => prevItems.filter(item => item.id !== itemId));
-        toast.info("Item removido do grupo.");
+            return item;
+        }));
     };
 
-    // FUNÇÃO DE SALVAMENTO (AGORA CHAMADA POR ONCLICK)
-    const handleSaveGroupClick = () => {
-        console.log("[AcquisitionGroupForm] Tentativa de salvar grupo iniciada.");
-        
+    const handleRemoveItem = (id: string) => {
+        setItems(prev => prev.filter(item => item.id !== id));
+    };
+
+    const handleSubmit = (e: React.FormEvent) => {
+        e.preventDefault();
         if (!groupName.trim()) {
-            toast.error("O Nome do Grupo de Aquisição é obrigatório.");
-            console.log("[AcquisitionGroupForm] Falha: Nome do grupo vazio.");
+            toast.error("O nome do grupo é obrigatório.");
             return;
         }
         if (items.length === 0) {
-            toast.error("Adicione pelo menos um item de aquisição ao grupo.");
-            console.log("[AcquisitionGroupForm] Falha: Nenhum item adicionado.");
+            toast.error("Adicione pelo menos um item ao grupo.");
             return;
         }
-        
-        // Verifica se há alguma quantidade zero
-        const hasZeroQuantity = items.some(item => item.quantidade === 0);
-        if (hasZeroQuantity) {
-            toast.error("A quantidade de todos os itens deve ser maior que zero.");
-            console.log("[AcquisitionGroupForm] Falha: Quantidade zero encontrada.");
-            return;
-        }
-        
-        // Nota: totalND30 e totalND39 serão calculados no MaterialConsumoForm.tsx antes de salvar no DB.
-        // Aqui, apenas passamos o totalValue e os itens.
+
+        const { totalValue, totalND30, totalND39 } = calculateGroupTotals(items);
+
         onSave({
-            tempId,
-            groupName: groupName.trim(),
+            tempId: initialGroup?.tempId || crypto.randomUUID(),
+            groupName,
             groupPurpose: groupPurpose.trim() || null,
             items,
             totalValue,
-            totalND30: 0, // Placeholder
-            totalND39: 0, // Placeholder
-        } as AcquisitionGroup);
-        
-        // Fecha todos os subitens após salvar o grupo
-        setExpandedSubitems({});
-        
-        console.log("[AcquisitionGroupForm] onSave chamado com sucesso.");
+            totalND30,
+            totalND39,
+        });
     };
-    
-    const displayTitle = groupName.trim() || (initialGroup ? 'Editando Grupo' : 'Novo Grupo');
+
+    const { totalValue } = calculateGroupTotals(items);
 
     return (
-        <Card className="border border-gray-300 bg-gray-50 p-4 shadow-lg">
-            <h4 className="font-bold text-lg mb-4">{displayTitle}</h4>
-            {/* REMOVIDO: <form onSubmit={handleSubmit} className="space-y-4"> */}
-            <div className="space-y-4">
+        <Card className="border-2 border-primary/20 bg-primary/5 mb-6">
+            <CardHeader className="py-3">
+                <CardTitle className="text-base font-bold flex items-center gap-2">
+                    {initialGroup ? "Editar Grupo de Aquisição" : "Novo Grupo de Aquisição"}
+                </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-2">
                         <Label htmlFor="groupName">Nome do Grupo *</Label>
                         <Input
                             id="groupName"
+                            placeholder="Ex: Material de Construção"
                             value={groupName}
-                            onChange={(e) => setGroupName(e.target.value)}
-                            placeholder="Ex: Material de Expediente"
+                            onChange={(e) => {
+                                setGroupName(e.target.value);
+                                if (isGhostMode() && e.target.value.toLowerCase().includes('material de construção')) {
+                                    window.dispatchEvent(new CustomEvent('tour:avancar'));
+                                }
+                            }}
+                            className="bg-background tour-nome-grupo"
                             required
-                            disabled={isSaving}
                         />
-                        <p className="text-xs text-muted-foreground">
-                            Coluna Despesas (P Trab Op): <br /> Material de Consumo ({groupName.trim() || 'Nome do Grupo'})
-                        </p>
                     </div>
                     <div className="space-y-2">
-                        <Label htmlFor="groupPurpose">Aquisição de Material de Consumo para atender</Label>
+                        <Label htmlFor="groupPurpose">Finalidade (Opcional)</Label>
                         <Input
                             id="groupPurpose"
+                            placeholder="Ex: Manutenção do Pavilhão de Comando"
                             value={groupPurpose}
                             onChange={(e) => setGroupPurpose(e.target.value)}
-                            placeholder="Ex: a montagem da Base Operacional"
-                            disabled={isSaving}
+                            className="bg-background"
                         />
-                        <p className="text-xs text-muted-foreground">
-                            *Cabeçalho personalizado para a Memória de Cálculo não automatizada.
-                        </p>
                     </div>
                 </div>
-                
+
                 <div className="space-y-2">
-                    <Label htmlFor="items">Itens de Aquisição ({items.length} itens)</Label>
-                    <Card className="p-3 bg-background border">
-                        
-                        {/* Lista de Itens Agrupados */}
-                        {groupedItems.length === 0 ? (
-                            <div className="text-center text-muted-foreground py-4">
-                                Nenhum item selecionado. Clique em "Importar/Alterar Itens" para adicionar.
-                            </div>
-                        ) : (
-                            <div className="space-y-3">
-                                {groupedItems.map(group => (
-                                    <Collapsible 
-                                        key={group.subitemNr} 
-                                        // Controla o estado de expansão
-                                        open={expandedSubitems[group.subitemNr] ?? true}
-                                        onOpenChange={(open) => setExpandedSubitems(prev => ({ ...prev, [group.subitemNr]: open }))}
-                                    >
-                                        <CollapsibleTrigger asChild>
-                                            {/* CORREÇÃO: Aplicando a cor #E2EEEE e exibindo o total do grupo */}
-                                            <div className="flex justify-between items-center p-2 bg-[#E2EEEE] border border-gray-300 rounded-md cursor-pointer hover:bg-gray-200 transition-colors">
-                                                <span className="font-semibold text-sm">
-                                                    {group.subitemNr} - {group.subitemNome} ({group.items.length} itens)
-                                                </span>
-                                                <div className="flex items-center gap-2">
-                                                    <span className="font-bold text-sm text-green-700">
-                                                        {formatCurrency(group.totalValue)}
-                                                    </span>
-                                                    {expandedSubitems[group.subitemNr] ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-                                                </div>
-                                            </div>
-                                        </CollapsibleTrigger>
-                                        <CollapsibleContent className="pt-2">
-                                            {/* INÍCIO DA REFACTORIZAÇÃO: Renderiza a tabela para este subitem */}
-                                            <Table>
-                                                <TableHeader>
-                                                    <TableRow>
-                                                        <TableHead className="w-[100px] text-center">Qtd *</TableHead>
-                                                        <TableHead>Item de Aquisição</TableHead>
-                                                        <TableHead className="text-center w-[120px]">Valor Unitário</TableHead>
-                                                        <TableHead className="text-right w-[120px]">Total Item</TableHead>
-                                                        <TableHead className="w-[50px] text-center">Ação</TableHead>
-                                                    </TableRow>
-                                                </TableHeader>
-                                                <TableBody>
-                                                    {group.items.map(item => (
-                                                        <TableRow key={item.id}>
-                                                            <TableCell className="w-[100px]">
-                                                                <Input
-                                                                    type="number"
-                                                                    min={0}
-                                                                    value={item.quantidade === 0 ? "" : item.quantidade}
-                                                                    onChange={(e) => handleQuantityChange(item.id, e.target.value)}
-                                                                    className="w-full text-center h-8 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                                                                    disabled={isSaving}
-                                                                />
-                                                            </TableCell>
-                                                            <TableCell className="text-xs">
-                                                                <p className="font-medium">
-                                                                    {item.descricao_reduzida || item.descricao_item}
-                                                                </p>
-                                                                <p className="text-muted-foreground text-[10px]">
-                                                                    Cód. CATMAT: {item.codigo_catmat || 'N/A'}
-                                                                </p>
-                                                                <p className="text-muted-foreground text-[10px]">
-                                                                    Pregão: {formatPregao(item.numero_pregao)} | UASG: {formatCodug(item.uasg) || 'N/A'}
-                                                                </p>
-                                                            </TableCell>
-                                                            <TableCell className="text-center text-sm text-muted-foreground">
-                                                                {formatCurrency(item.valor_unitario)}
-                                                            </TableCell>
-                                                            <TableCell className="text-right text-sm font-medium">
-                                                                {formatCurrency(item.valor_total)}
-                                                            </TableCell>
-                                                            <TableCell className="text-center">
-                                                                <Button 
-                                                                    type="button" 
-                                                                    variant="ghost" 
-                                                                    size="icon" 
-                                                                    onClick={() => handleRemoveItem(item.id)}
-                                                                    disabled={isSaving}
-                                                                >
-                                                                    <Trash2 className="h-4 w-4 text-destructive" />
-                                                                </Button>
-                                                            </TableCell>
-                                                        </TableRow>
-                                                    ))}
-                                                </TableBody>
-                                            </Table>
-                                            {/* FIM DA REFACTORIZAÇÃO */}
-                                        </CollapsibleContent>
-                                    </Collapsible>
-                                ))}
-                            </div>
-                        )}
-                        
-                        <div className="flex justify-between items-center pt-3 border-t mt-3">
-                            <span className="font-bold">Total do Grupo:</span>
-                            <span className="font-extrabold text-lg text-primary">
-                                {formatCurrency(totalValue)}
-                            </span>
-                        </div>
-                    </Card>
+                    <div className="flex justify-between items-center">
+                        <Label className="text-sm font-semibold">Itens do Grupo ({items.length})</Label>
+                        <Button 
+                            type="button" 
+                            variant="outline" 
+                            size="sm" 
+                            onClick={() => onOpenItemSelector(items)}
+                            className="bg-background tour-btn-importar-itens"
+                        >
+                            <Search className="mr-2 h-4 w-4" />
+                            Importar/Alterar Itens de Subitens da ND
+                        </Button>
+                    </div>
+
+                    <div className="border rounded-md bg-background overflow-hidden">
+                        <Table>
+                            <TableHeader>
+                                <TableRow>
+                                    <TableHead className="w-[80px] text-center">Qtd</TableHead>
+                                    <TableHead>Descrição do Item</TableHead>
+                                    <TableHead className="text-right w-[120px]">Vlr Unitário</TableHead>
+                                    <TableHead className="text-right w-[120px]">Total</TableHead>
+                                    <TableHead className="w-[50px]"></TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {items.length === 0 ? (
+                                    <TableRow>
+                                        <TableCell colSpan={5} className="text-center py-8 text-muted-foreground italic">
+                                            Nenhum item selecionado. Clique em "Importar Itens" para começar.
+                                        </TableCell>
+                                    </TableRow>
+                                ) : (
+                                    items.map(item => (
+                                        <TableRow key={item.id}>
+                                            <TableCell className="p-2">
+                                                <Input
+                                                    type="number"
+                                                    min={1}
+                                                    value={item.quantidade}
+                                                    onChange={(e) => handleUpdateQuantity(item.id, parseInt(e.target.value) || 1)}
+                                                    className="h-8 text-center px-1"
+                                                />
+                                            </TableCell>
+                                            <TableCell className="text-xs py-2">
+                                                <p className="font-medium">{item.descricao_reduzida || item.descricao_item}</p>
+                                                <p className="text-[10px] text-muted-foreground">
+                                                    CATMAT: {item.codigo_catmat} | Pregão: {formatPregao(item.numero_pregao)}
+                                                </p>
+                                            </TableCell>
+                                            <TableCell className="text-right text-xs">
+                                                {formatCurrency(item.valor_unitario)}
+                                            </TableCell>
+                                            <TableCell className="text-right text-sm font-bold">
+                                                {formatCurrency(item.valor_total)}
+                                            </TableCell>
+                                            <TableCell className="text-center p-1">
+                                                <Button 
+                                                    type="button" 
+                                                    variant="ghost" 
+                                                    size="icon" 
+                                                    className="h-8 w-8 text-destructive"
+                                                    onClick={() => handleRemoveItem(item.id)}
+                                                >
+                                                    <Trash2 className="h-4 w-4" />
+                                                </Button>
+                                            </TableCell>
+                                        </TableRow>
+                                    ))
+                                )}
+                            </TableBody>
+                        </Table>
+                    </div>
                 </div>
 
-                <div className="flex justify-between gap-3 pt-2">
-                    <Button 
-                        type="button" 
-                        variant="secondary" 
-                        onClick={() => onOpenItemSelector(items)}
-                        disabled={isSaving}
-                        className="flex-1"
-                    >
-                        <Package className="mr-2 h-4 w-4" />
-                        Importar/Alterar Itens de Subitens da ND ({items.length} itens)
-                    </Button>
+                <div className="flex justify-between items-center p-3 bg-background border rounded-md">
+                    <span className="font-bold text-sm">TOTAL DO GRUPO:</span>
+                    <span className="font-extrabold text-lg text-primary">{formatCurrency(totalValue)}</span>
                 </div>
-                
-                <div className="flex justify-end gap-3 pt-2">
-                    <Button 
-                        type="button" // ALTERADO PARA TYPE="BUTTON"
-                        onClick={handleSaveGroupClick} // ALTERADO PARA ONCLICK
-                        disabled={isSaving || !groupName.trim() || items.length === 0}
-                        // CORREÇÃO: Usando a classe padrão do botão primário
-                        className="w-auto" 
-                    >
-                        {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-                        Salvar Grupo
-                    </Button>
-                    
-                    <Button 
-                        type="button" 
-                        variant="outline" 
-                        onClick={onCancel}
-                        disabled={isSaving}
-                        className="w-auto"
-                    >
+
+                <div className="flex justify-end gap-2 pt-2">
+                    <Button type="button" variant="ghost" onClick={onCancel} disabled={isSaving}>
+                        <X className="mr-2 h-4 w-4" />
                         Cancelar
                     </Button>
+                    <Button 
+                        type="button" 
+                        onClick={handleSubmit} 
+                        disabled={isSaving || items.length === 0 || !groupName.trim()}
+                        className="tour-btn-salvar-grupo"
+                    >
+                        <Check className="mr-2 h-4 w-4" />
+                        Salvar Grupo no Formulário
+                    </Button>
                 </div>
-            </div>
-            {/* REMOVIDO: </form> */}
+            </CardContent>
         </Card>
     );
 };

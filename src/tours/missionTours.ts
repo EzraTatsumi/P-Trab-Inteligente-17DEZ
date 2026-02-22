@@ -335,13 +335,60 @@ export const runMission03 = (onComplete: () => void) => {
         element: '.secao-2-planejamento',
         popover: {
           title: 'Planejamento de Custos',
-          description: 'Preenchemos o período (15 dias) e o efetivo (150 militares). Agora, clique em "Criar Novo Grupo de Aquisição" para selecionar os itens.',
+          description: 'Por favor, preencha o Período (ex: 15) e o Efetivo (ex: 150). Em seguida, clique em "Criar Novo Grupo de Aquisição".',
           side: 'top',
           align: 'center',
           showButtons: []
-        },
-        onHighlighted: () => {
-          if ((window as any).prefillSection2) (window as any).prefillSection2();
+        }
+      },
+      {
+        element: '.tour-nome-grupo',
+        popover: {
+          title: 'Identificação do Grupo',
+          description: 'Preencha o Nome do Grupo com "Material de Construção" e clique no botão "Importar/Alterar Itens de Subitens da ND".',
+          side: 'top',
+          align: 'center',
+          showButtons: []
+        }
+      },
+      {
+        element: '.tour-dialog-selector',
+        popover: {
+          title: 'Catálogo Sincronizado',
+          description: 'Veja! Os subitens que você configurou na Missão 02 estão aqui. Clique em "Material p/ Manutenção de Bens Imóveis/Instalação" (Subitem 24) para expandir.',
+          side: 'top',
+          align: 'center',
+          showButtons: []
+        }
+      },
+      {
+        element: '.tour-item-cimento',
+        popover: {
+          title: 'Seleção do Item',
+          description: 'Agora selecione o "Cimento Portland" que importamos via API PNCP anteriormente.',
+          side: 'top',
+          align: 'center',
+          showButtons: []
+        }
+      },
+      {
+        element: '.tour-btn-confirmar-selecao',
+        popover: {
+          title: 'Confirmar Seleção',
+          description: 'Excelente! Clique em "Confirmar Seleção" para levar o item para o seu planejamento.',
+          side: 'top',
+          align: 'center',
+          showButtons: []
+        }
+      },
+      {
+        element: '.tour-btn-salvar-grupo',
+        popover: {
+          title: 'Finalizar Grupo',
+          description: 'O item foi adicionado ao grupo com sucesso. Agora clique em "Salvar Grupo no Formulário".',
+          side: 'top',
+          align: 'center',
+          showButtons: []
         }
       }
     ],

@@ -12,7 +12,8 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { formatCurrency, formatNumber, formatCodug, formatPregao } from '@/lib/formatUtils';
 import { cn } from '@/lib/utils';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"; // Importar Tooltip
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"; 
+import { isGhostMode, GHOST_DATA } from "@/lib/ghostStore";
 
 // Tipo para o item de aquisição com status de seleção
 interface SelectableItem extends ItemAquisicao {
@@ -41,6 +42,10 @@ interface AcquisitionItemSelectorDialogProps {
 
 // --- Data Fetching ---
 const fetchDiretrizesMaterialConsumo = async (year: number, userId: string): Promise<DiretrizMaterialConsumo[]> => {
+    if (isGhostMode()) {
+        return GHOST_DATA.diretrizes_selector_mock as any[];
+    }
+    
     if (!year || !userId) return [];
     
     const { data, error } = await supabase
@@ -76,9 +81,9 @@ const AcquisitionItemSelectorDialog: React.FC<AcquisitionItemSelectorDialogProps
 
     // 1. Fetch das Diretrizes
     const { data: diretrizes, isLoading, error } = useQuery({
-        queryKey: ['diretrizesMaterialConsumoSelector', selectedYear, userId],
+        queryKey: ['diretrizesMaterialConsumoSelector', selectedYear, userId, isGhostMode()],
         queryFn: () => fetchDiretrizesMaterialConsumo(selectedYear, userId!),
-        enabled: !!userId && selectedYear > 0,
+        enabled: (!!userId || isGhostMode()) && selectedYear > 0,
         initialData: [],
     });
     
@@ -105,10 +110,9 @@ const AcquisitionItemSelectorDialog: React.FC<AcquisitionItemSelectorDialogProps
             const subitemKey = diretriz.nr_subitem;
             
             // Filtra os itens de aquisição dentro da diretriz
-            const filteredItems = diretriz.itens_aquisicao.filter(item => {
+            const filteredItems = (diretriz.itens_aquisicao || []).filter(item => {
                 const searchString = [
                     item.descricao_item,
-                    // CORREÇÃO: Usar descricao_reduzida na busca
                     item.descricao_reduzida, 
                     item.codigo_catmat,
                     item.numero_pregao,
@@ -120,7 +124,8 @@ const AcquisitionItemSelectorDialog: React.FC<AcquisitionItemSelectorDialogProps
                 return searchString.includes(lowerCaseSearch);
             });
             
-            if (filteredItems.length > 0) {
+            // No modo Ghost, mostramos o grupo mesmo se não houver itens filtrados (para parecer com a Missão 2)
+            if (filteredItems.length > 0 || (isGhostMode() && lowerCaseSearch === "")) {
                 if (!groups[subitemKey]) {
                     groups[subitemKey] = {
                         nr_subitem: diretriz.nr_subitem,
@@ -133,7 +138,6 @@ const AcquisitionItemSelectorDialog: React.FC<AcquisitionItemSelectorDialogProps
                 // Adiciona os itens filtrados ao grupo, INJETANDO os dados do subitem
                 groups[subitemKey].items.push(...filteredItems.map(item => ({
                     ...item,
-                    // INJEÇÃO DOS DADOS DO SUBITEM NA ESTRUTURA DO ITEM DE AQUISIÇÃO
                     nr_subitem: diretriz.nr_subitem,
                     nome_subitem: diretriz.nome_subitem,
                     isSelected: !!selectedItemsMap[item.id],
@@ -155,6 +159,11 @@ const AcquisitionItemSelectorDialog: React.FC<AcquisitionItemSelectorDialogProps
             }
             return newMap;
         });
+        
+        // Gatilho para o tour avançar ao selecionar o cimento
+        if (isGhostMode() && item.id === 'ghost-item-cimento') {
+            window.dispatchEvent(new CustomEvent('tour:avancar'));
+        }
     };
     
     const handleConfirmSelection = () => {
@@ -196,7 +205,7 @@ const AcquisitionItemSelectorDialog: React.FC<AcquisitionItemSelectorDialogProps
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+            <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto tour-dialog-selector">
                 <DialogHeader>
                     <DialogTitle>Selecionar Itens de Aquisição (Ano {selectedYear})</DialogTitle>
                 </DialogHeader>
@@ -232,7 +241,6 @@ const AcquisitionItemSelectorDialog: React.FC<AcquisitionItemSelectorDialogProps
                         ) : (
                             <TooltipProvider>
                                 {groupedAndFilteredItems.map(group => {
-                                    // NOVO CÁLCULO: Contagem de itens selecionados no grupo
                                     const selectedCount = group.items.filter(item => item.isSelected).length;
                                     const totalCount = group.items.length;
                                     
@@ -240,7 +248,13 @@ const AcquisitionItemSelectorDialog: React.FC<AcquisitionItemSelectorDialogProps
                                     <Collapsible 
                                         key={group.nr_subitem}
                                         open={expandedSubitems[group.nr_subitem] ?? false}
-                                        onOpenChange={(open) => setExpandedSubitems(prev => ({ ...prev, [group.nr_subitem]: open }))}
+                                        onOpenChange={(open) => {
+                                            setExpandedSubitems(prev => ({ ...prev, [group.nr_subitem]: open }));
+                                            if (isGhostMode() && group.nr_subitem === '24' && open) {
+                                                window.dispatchEvent(new CustomEvent('tour:avancar'));
+                                            }
+                                        }}
+                                        className={cn("tour-subitem-group", `tour-subitem-${group.nr_subitem}`)}
                                     >
                                         <CollapsibleTrigger asChild>
                                             <div className="flex justify-between items-center p-3 bg-muted rounded-md cursor-pointer hover:bg-muted/80 transition-colors">
@@ -248,7 +262,6 @@ const AcquisitionItemSelectorDialog: React.FC<AcquisitionItemSelectorDialogProps
                                                     <span className="font-semibold text-sm">
                                                         {group.nr_subitem} - {group.nome_subitem} 
                                                     </span>
-                                                    {/* NOVO TEXTO DE CONTAGEM */}
                                                     <span className="text-xs font-normal text-primary">
                                                         ({selectedCount} / {totalCount} itens selecionados)
                                                     </span>
@@ -258,46 +271,48 @@ const AcquisitionItemSelectorDialog: React.FC<AcquisitionItemSelectorDialogProps
                                         </CollapsibleTrigger>
                                         <CollapsibleContent className="pt-2">
                                             <div className="space-y-1">
-                                                {group.items.map(item => (
-                                                    <Tooltip key={item.id}>
-                                                        <TooltipTrigger asChild>
-                                                            <div 
-                                                                className={cn(
-                                                                    "flex items-center justify-between p-2 border rounded-md cursor-pointer transition-colors",
-                                                                    item.isSelected ? "bg-primary/10 border-primary/50" : "hover:bg-gray-50"
-                                                                )}
-                                                                onClick={() => handleToggleItem(item)}
-                                                            >
-                                                                <div className="flex items-center gap-3">
-                                                                    {/* Indicador de Seleção (Corrigido para ser um círculo perfeito) */}
-                                                                    <div className={cn(
-                                                                        "h-4 w-4 rounded-full border-2 flex items-center justify-center shrink-0",
-                                                                        item.isSelected ? "bg-primary border-primary" : "border-gray-300"
-                                                                    )}>
-                                                                        {item.isSelected && <Check className="h-3 w-3 text-white" />}
+                                                {group.items.length === 0 ? (
+                                                    <p className="text-xs text-muted-foreground p-2 italic">Nenhum item cadastrado neste subitem.</p>
+                                                ) : (
+                                                    group.items.map(item => (
+                                                        <Tooltip key={item.id}>
+                                                            <TooltipTrigger asChild>
+                                                                <div 
+                                                                    className={cn(
+                                                                        "flex items-center justify-between p-2 border rounded-md cursor-pointer transition-colors",
+                                                                        item.isSelected ? "bg-primary/10 border-primary/50" : "hover:bg-gray-50",
+                                                                        isGhostMode() && item.id === 'ghost-item-cimento' && "tour-item-cimento"
+                                                                    )}
+                                                                    onClick={() => handleToggleItem(item)}
+                                                                >
+                                                                    <div className="flex items-center gap-3">
+                                                                        <div className={cn(
+                                                                            "h-4 w-4 rounded-full border-2 flex items-center justify-center shrink-0",
+                                                                            item.isSelected ? "bg-primary border-primary" : "border-gray-300"
+                                                                        )}>
+                                                                            {item.isSelected && <Check className="h-3 w-3 text-white" />}
+                                                                        </div>
+                                                                        <div className="text-sm min-w-0 flex-1">
+                                                                            <p className="font-medium truncate">
+                                                                                {item.descricao_reduzida || item.descricao_item}
+                                                                            </p>
+                                                                            <p className="text-xs text-muted-foreground">
+                                                                                CATMAT: {item.codigo_catmat} | Pregão: {formatPregao(item.numero_pregao)} ({formatCodug(item.uasg)})
+                                                                            </p>
+                                                                        </div>
                                                                     </div>
-                                                                    <div className="text-sm min-w-0 flex-1">
-                                                                        {/* Exibir descrição reduzida ou completa */}
-                                                                        <p className="font-medium truncate">
-                                                                            {item.descricao_reduzida || item.descricao_item}
-                                                                        </p>
-                                                                        {/* Exibir CATMAT | Pregão (UASG) */}
-                                                                        <p className="text-xs text-muted-foreground">
-                                                                            CATMAT: {item.codigo_catmat} | Pregão: {formatPregao(item.numero_pregao)} ({formatCodug(item.uasg)})
-                                                                        </p>
+                                                                    <div className="text-right shrink-0 ml-4">
+                                                                        <p className="font-semibold text-sm">{formatCurrency(item.valor_unitario)}</p>
                                                                     </div>
                                                                 </div>
-                                                                <div className="text-right shrink-0 ml-4">
-                                                                    <p className="font-semibold text-sm">{formatCurrency(item.valor_unitario)}</p>
-                                                                </div>
-                                                            </div>
-                                                        </TooltipTrigger>
-                                                        <TooltipContent className="max-w-md">
-                                                            <p className="font-bold mb-1">Descrição Completa:</p>
-                                                            <p className="text-sm whitespace-normal">{item.descricao_item}</p>
-                                                        </TooltipContent>
-                                                    </Tooltip>
-                                                ))}
+                                                            </TooltipTrigger>
+                                                            <TooltipContent className="max-w-md">
+                                                                <p className="font-bold mb-1">Descrição Completa:</p>
+                                                                <p className="text-sm whitespace-normal">{item.descricao_item}</p>
+                                                            </TooltipContent>
+                                                        </Tooltip>
+                                                    ))
+                                                )}
                                             </div>
                                         </CollapsibleContent>
                                     </Collapsible>
@@ -316,6 +331,7 @@ const AcquisitionItemSelectorDialog: React.FC<AcquisitionItemSelectorDialogProps
                         <Button 
                             onClick={handleConfirmSelection} 
                             disabled={totalSelected === 0}
+                            className="tour-btn-confirmar-selecao"
                         >
                             <Check className="mr-2 h-4 w-4" />
                             Confirmar Seleção ({totalSelected})
