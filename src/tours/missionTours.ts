@@ -69,7 +69,7 @@ export const runMission01 = (onComplete: () => void) => {
           title: 'Configurações do Sistema',
           description: 'Vincule trabalhos colaborativos, Diretrizes de Custeio Logístico e de Custos Operacionais e Importe/Exporte dados de P Trab.',
           side: 'left',
-          align: 'end', // Alteração manual do usuário consolidada aqui
+          align: 'end',
           popoverClass: 'popover-wide',
           offset: 20
         },
@@ -164,7 +164,8 @@ export const runMission02 = (onComplete: () => void) => {
         popover: {
           title: 'Missão 02: Inteligência PNCP',
           description: 'Aqui definimos os preços de referência. É a base de cálculo que garante que nenhum P Trab use valores defasados.',
-          side: 'bottom'
+          side: 'left', // Movido para a esquerda conforme solicitado
+          align: 'start'
         }
       },
       {
@@ -228,7 +229,7 @@ export const runMission02 = (onComplete: () => void) => {
         popover: {
           title: 'Navegação de Resultados',
           description: 'O sistema encontrou os resultados! Agora, clique em "Expandir" no Pregão, depois em "Ver Itens" na ARP, selecione o "Cimento Portland" e clique em "Importar Selecionados".',
-          side: 'top', 
+          side: 'top', // Garantido no topo conforme solicitado
           align: 'center',
           offset: 30,
           showButtons: []
