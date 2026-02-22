@@ -136,6 +136,7 @@ const CustosOperacionaisPage = () => {
   const queryClient = useQueryClient();
   const [loading, setLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false); 
+  const hasStartedTour = useRef(false);
   
   const currentYear = new Date().getFullYear();
   const [diretrizes, setDiretrizes] = useState<Partial<DiretrizOperacional>>(defaultDiretrizes(currentYear));
@@ -344,7 +345,7 @@ const CustosOperacionaisPage = () => {
           setTimeout(() => {
               const newItem = {
                   ...data,
-                  id: data.id || `ghost-${Math.random()}`,
+                  id: data.id || `ghost-subitem-${data.nr_subitem}`, // ID fixo para o tour encontrar
                   user_id: 'ghost-user',
                   ativo: data.ativo ?? true,
               } as DiretrizMaterialConsumo;
@@ -358,7 +359,11 @@ const CustosOperacionaisPage = () => {
               setDiretrizMaterialConsumoToEdit(null);
               setIsMaterialConsumoFormOpen(false);
               toast.success("Simulação: Subitem salvo localmente!");
-              window.dispatchEvent(new CustomEvent('tour:avancar'));
+              
+              // Pequeno delay para garantir que o React renderizou a lista antes de avançar o tour
+              setTimeout(() => {
+                window.dispatchEvent(new CustomEvent('tour:avancar'));
+              }, 200);
           }, 500);
           return;
       }
@@ -908,13 +913,14 @@ const CustosOperacionaisPage = () => {
   
   // Lógica do Tour - Ajustada para esperar o fim do carregamento
   useEffect(() => {
-    if (loading || isLoadingDefaultYear || isLoadingPageData || isFetchingPageData) return;
+    if (loading || isLoadingDefaultYear || isLoadingPageData || isFetchingPageData || hasStartedTour.current) return;
 
     const startTour = searchParams.get('startTour') === 'true';
     const missionId = localStorage.getItem('active_mission_id');
     const ghost = isGhostMode();
 
     if (startTour && ghost && missionId === '2') {
+      hasStartedTour.current = true;
       // Pequeno delay para garantir que o DOM estabilizou após o loading
       const timer = setTimeout(() => {
         runMission02(() => {

@@ -9,10 +9,10 @@ let activeMissionDriver: any = null;
 if (typeof window !== 'undefined') {
   window.addEventListener('tour:avancar', () => {
     if (activeMissionDriver) {
-      // Pequeno delay para garantir que o DOM estabilizou
+      // Aumentado o delay para garantir que o React renderizou o novo item na lista
       setTimeout(() => {
         activeMissionDriver.moveNext();
-      }, 300); 
+      }, 600); 
     }
   });
 }
@@ -20,6 +20,7 @@ if (typeof window !== 'undefined') {
 const commonConfig = {
   showProgress: true,
   allowClose: true,
+  overlayClickable: false, // Impede que o tour feche ao clicar fora
   nextBtnText: 'Próximo',
   prevBtnText: 'Anterior',
   doneBtnText: 'Concluir Missão',
@@ -291,7 +292,7 @@ export const runMission03 = (onComplete: () => void) => {
         element: '.tabs-logistica',
         popover: {
           title: 'Classes de Suprimento',
-          description: 'Aqui você detalha itens de Classe I a IX. O sistema já conhece os fatores de consumo baseados nas suas diretrizes.',
+          description: 'Aqui você detalha itens de Classe I a IX. O sistema já conhece os fatores de consumo baseados suas diretrizes.',
           side: 'bottom',
           align: 'center'
         }
