@@ -18,6 +18,7 @@ import { CreditPromptDialog } from "@/components/CreditPromptDialog";
 import PageMetadata from "@/components/PageMetadata";
 import { GHOST_DATA, isGhostMode } from "@/lib/ghostStore";
 import { runMission03Part1, runMission04 } from "@/tours/missionTours";
+import { fetchPTrabData } from "@/lib/ptrabUtils";
 
 interface PTrabData {
   numero_ptrab: string;
@@ -92,10 +93,10 @@ const PTrabForm = () => {
   const { data: totals, isLoading: isLoadingTotals } = useQuery({
     queryKey: ['ptrabTotals', ptrabId],
     queryFn: async () => {
-      if (isGhostMode()) return GHOST_DATA.totais_exemplo;
+      if (isGhostMode() || ptrabId?.startsWith('ghost-')) return GHOST_DATA.totais_exemplo;
       return fetchPTrabTotals(ptrabId!);
     },
-    enabled: !!ptrabId || isGhostMode(),
+    enabled: !!ptrabId,
     refetchInterval: 10000,
     initialData: {
       totalLogisticoGeral: 0,
@@ -125,39 +126,29 @@ const PTrabForm = () => {
 
   useEffect(() => {
     const loadPTrab = async () => {
-      if (isGhostMode()) {
-        setPtrabData(GHOST_DATA.p_trab_exemplo);
-        setLoadingPTrab(false);
-        return;
-      }
-
       if (!ptrabId) {
         toast.error("P Trab não selecionado");
         navigate('/ptrab');
         return;
       }
 
-      const { data, error } = await supabase
-        .from('p_trab')
-        .select('*')
-        .eq('id', ptrabId)
-        .single();
-
-      if (error || !data) {
+      try {
+        const data = await fetchPTrabData(ptrabId);
+        setPtrabData({
+          ...data,
+          efetivo_empregado: String(data.efetivo_empregado),
+        });
+      } catch (error) {
+        console.error("Erro ao carregar P Trab:", error);
         toast.error("Não foi possível carregar o P Trab");
         navigate('/ptrab');
-        return;
+      } finally {
+        setLoadingPTrab(false);
       }
-
-      setPtrabData({
-        ...data,
-        efetivo_empregado: String(data.efetivo_empregado),
-      });
-      setLoadingPTrab(false);
     };
 
     loadPTrab();
-  }, [ptrabId, navigate, searchParams]);
+  }, [ptrabId, navigate]);
 
   // Lógica do Tour - Sincronizada com o carregamento
   useEffect(() => {

@@ -173,15 +173,25 @@ const MaterialConsumoForm = () => {
     // Dados mestres
     const { data: ptrabData, isLoading: isLoadingPTrab } = useQuery<PTrabData>({
         queryKey: ['ptrabData', ptrabId],
-        queryFn: () => isGhostMode() ? Promise.resolve(GHOST_DATA.p_trab_exemplo) : fetchPTrabData(ptrabId!),
-        enabled: !!ptrabId || isGhostMode(),
+        queryFn: () => {
+            if (isGhostMode() || ptrabId?.startsWith('ghost-')) {
+                return Promise.resolve(GHOST_DATA.p_trab_exemplo as any);
+            }
+            return fetchPTrabData(ptrabId!);
+        },
+        enabled: !!ptrabId,
     });
 
     // Registros de Material de Consumo
     const { data: registros, isLoading: isLoadingRegistros } = useQuery<MaterialConsumoRegistroDB[]>({
         queryKey: ['materialConsumoRegistros', ptrabId],
-        queryFn: () => isGhostMode() ? Promise.resolve([]) : fetchPTrabRecords('material_consumo_registros', ptrabId!),
-        enabled: !!ptrabId || isGhostMode(),
+        queryFn: () => {
+            if (isGhostMode() || ptrabId?.startsWith('ghost-')) {
+                return Promise.resolve([]);
+            }
+            return fetchPTrabRecords('material_consumo_registros', ptrabId!);
+        },
+        enabled: !!ptrabId,
         select: (data) => data.sort((a, b) => a.organizacao.localeCompare(b.organizacao)),
     });
     
