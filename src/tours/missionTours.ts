@@ -230,17 +230,26 @@ export const runMission02 = (onComplete: () => void) => {
         popover: {
           title: 'Navegação de Resultados',
           description: 'O sistema encontrou os resultados! Agora, clique em "Expandir" no Pregão, depois em "Ver Itens" na ARP, selecione o "Cimento Portland" e clique em "Importar Selecionados".',
-          side: 'top', // Mudado para o topo para não cobrir os botões centrais
+          side: 'top', 
           align: 'center',
           offset: 10,
           showButtons: []
         }
       },
       {
+        element: '.tabela-itens-aquisicao',
+        popover: {
+          title: 'Item Importado com Sucesso',
+          description: 'Veja! O item foi importado com todos os dados técnicos e valores atualizados do PNCP diretamente para sua lista.',
+          side: 'top',
+          align: 'center'
+        }
+      },
+      {
         element: '.btn-salvar-subitem',
         popover: {
           title: 'Finalização e Salvamento',
-          description: 'Excelente! O item foi importado com todos os dados. Agora basta clicar em "Cadastrar Subitem" para salvar no seu catálogo.',
+          description: 'Excelente! Agora basta clicar em "Cadastrar Subitem" para salvar no seu catálogo e concluir esta missão.',
           side: 'top',
           align: 'end'
         }

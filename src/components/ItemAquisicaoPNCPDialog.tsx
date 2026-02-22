@@ -14,6 +14,7 @@ import { ItemAquisicao } from '@/types/diretrizesMaterialConsumo';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { formatCurrency, formatCodug } from '@/lib/formatUtils';
+import { isGhostMode } from '@/lib/ghostStore';
 
 interface ItemAquisicaoPNCPDialogProps {
     open: boolean;
@@ -67,6 +68,11 @@ const ItemAquisicaoPNCPDialog: React.FC<ItemAquisicaoPNCPDialogProps> = ({
         setPreSelectedItems([]);
         onOpenChange(false);
         toast.success(`${preSelectedItems.length} itens importados com sucesso!`);
+        
+        // Avança o tour automaticamente
+        if (isGhostMode()) {
+            window.dispatchEvent(new CustomEvent('tour:avancar'));
+        }
     };
 
     return (
