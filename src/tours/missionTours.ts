@@ -163,7 +163,7 @@ export const runMission02 = (onComplete: () => void) => {
         element: '.card-diretrizes-operacionais',
         popover: {
           title: 'Missão 02: Inteligência PNCP',
-          description: 'Aqui definimos os preços de referência. É a base de cálculo que garante que nenhum P Trab use valores defasados.',
+          description: 'Aqui definimos os valores de referência. É a base de cálculo que garante que nenhum P Trab use valores defasados.',
           side: 'left',
           align: 'start',
           offset: 20
@@ -177,7 +177,7 @@ export const runMission02 = (onComplete: () => void) => {
         element: '.aba-material-consumo',
         popover: {
           title: 'Organização por ND',
-          description: 'A seção de Material de Consumo organiza tudo por Subitem da Natureza de Despesa (ND). Veja que já temos alguns itens cadastrados.',
+          description: 'A seção de Material de Consumo organiza tudo por Subitem da Natureza de Despesa. Veja que já temos alguns itens cadastrados.',
           side: 'left',
           align: 'start',
           offset: 40
