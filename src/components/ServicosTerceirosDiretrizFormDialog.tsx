@@ -200,21 +200,23 @@ const ServicosTerceirosDiretrizFormDialog: React.FC<ServicosTerceirosDiretrizFor
                             <Button type="button" className="w-full" onClick={handleAddItem}>{editingItemId ? "Atualizar Item" : "Adicionar Item"}</Button>
                         </div>
                         {subitemForm.itens_aquisicao.length > 0 && (
-                            <Table>
-                                <TableHeader><TableRow><TableHead>Descrição</TableHead><TableHead>Nome Reduzido</TableHead><TableHead className="text-center">Unid.</TableHead><TableHead className="text-center">Cód.</TableHead><TableHead className="text-center">Pregão</TableHead><TableHead className="text-center">UASG</TableHead><TableHead className="text-right">Valor</TableHead><TableHead className="text-right">Ações</TableHead></TableRow></TableHeader>
-                                <TableBody>{subitemForm.itens_aquisicao.map(item => (
-                                    <TableRow key={item.id}>
-                                        <TableCell className="text-xs">{item.descricao_item}</TableCell>
-                                        <TableCell className="text-xs">{(item as any).nome_reduzido || (item as any).descricao_reduzida || 'N/A'}</TableCell>
-                                        <TableCell className="text-center text-xs">{(item as any).unidade_medida || 'N/A'}</TableCell>
-                                        <TableCell className="text-center text-sm">{item.codigo_catmat || 'N/A'}</TableCell>
-                                        <TableCell className="text-center text-sm">{formatPregao(item.numero_pregao)}</TableCell>
-                                        <TableCell className="text-center text-sm">{formatCodug(item.uasg)}</TableCell>
-                                        <TableCell className="text-right font-bold text-sm">{formatCurrency(item.valor_unitario)}</TableCell>
-                                        <TableCell className="text-right"><div className="flex justify-end gap-1"><Button variant="ghost" size="icon" onClick={() => handleEditItem(item)}><Pencil className="h-4 w-4" /></Button><Button variant="ghost" size="icon" onClick={() => setSubitemForm(p => ({ ...p, itens_aquisicao: p.itens_aquisicao.filter(i => i.id !== item.id) }))} className="text-destructive"><Trash2 className="h-4 w-4" /></Button></div></TableCell>
-                                    </TableRow>
-                                ))}</TableBody>
-                            </Table>
+                            <div className="lista-itens-aquisicao">
+                                <Table>
+                                    <TableHeader><TableRow><TableHead>Descrição</TableHead><TableHead>Nome Reduzido</TableHead><TableHead className="text-center">Unid.</TableHead><TableHead className="text-center">Cód.</TableHead><TableHead className="text-center">Pregão</TableHead><TableHead className="text-center">UASG</TableHead><TableHead className="text-right">Valor</TableHead><TableHead className="text-right">Ações</TableHead></TableRow></TableHeader>
+                                    <TableBody>{subitemForm.itens_aquisicao.map(item => (
+                                        <TableRow key={item.id}>
+                                            <TableCell className="text-xs">{item.descricao_item}</TableCell>
+                                            <TableCell className="text-xs">{(item as any).nome_reduzido || (item as any).descricao_reduzida || 'N/A'}</TableCell>
+                                            <TableCell className="text-center text-xs">{(item as any).unidade_medida || 'N/A'}</TableCell>
+                                            <TableCell className="text-center text-sm">{item.codigo_catmat || 'N/A'}</TableCell>
+                                            <TableCell className="text-center text-sm">{formatPregao(item.numero_pregao)}</TableCell>
+                                            <TableCell className="text-center text-sm">{formatCodug(item.uasg)}</TableCell>
+                                            <TableCell className="text-right font-bold text-sm">{formatCurrency(item.valor_unitario)}</TableCell>
+                                            <TableCell className="text-right"><div className="flex justify-end gap-1"><Button variant="ghost" size="icon" onClick={() => handleEditItem(item)}><Pencil className="h-4 w-4" /></Button><Button variant="ghost" size="icon" onClick={() => setSubitemForm(p => ({ ...p, itens_aquisicao: p.itens_aquisicao.filter(i => i.id !== item.id) }))} className="text-destructive"><Trash2 className="h-4 w-4" /></Button></div></TableCell>
+                                        </TableRow>
+                                    ))}</TableBody>
+                                </Table>
+                            </div>
                         )}
                     </Card>
                 </div>
