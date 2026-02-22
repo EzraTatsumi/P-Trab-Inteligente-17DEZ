@@ -68,8 +68,9 @@ export const runMission01 = (onComplete: () => void) => {
         popover: {
           title: 'Configurações do Sistema',
           description: 'Vincule trabalhos colaborativos, Diretrizes de Custeio Logístico e de Custos Operacionais e Importe/Exporte dados de P Trab.',
-          side: 'right', 
-          align: 'end',
+          side: 'left', // Mudado para a esquerda para evitar sobreposição com o menu
+          align: 'start',
+          popoverClass: 'popover-wide' // Classe CSS que criamos para este passo
         },
         onHighlighted: () => {
           if ((window as any).openSettings) (window as any).openSettings();

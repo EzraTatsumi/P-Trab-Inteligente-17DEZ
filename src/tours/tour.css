@@ -1,63 +1,30 @@
-/* Estilos Globais do Tour (driver.js) */
-
-/* 1. O fundo escuro do tour */
-.driver-overlay {
-  z-index: 10000 !important;
-}
-
-/* 2. Menus e Portais que devem aparecer sobre o tour */
-[data-radix-portal], 
-[data-radix-menu-content],
-.menu-acoes,
-.menu-configuracoes,
-.z-tour-portal {
-  z-index: 10001 !important;
-  opacity: 1 !important;
-  visibility: visible !important;
-  pointer-events: auto !important;
-}
-
-/* 3. O Balão (Popover) do Tour */
+/* 1. Estilo Geral do Balão */
 .driver-popover.driverjs-theme {
   z-index: 10002 !important;
-  max-width: 450px !important; /* Largura máxima do balão */
+  max-width: 450px !important;
   border-radius: 12px !important;
   padding: 20px !important;
   box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1) !important;
 }
 
-/* Título do Balão */
+/* 2. Classe Específica para o passo de Configurações (Mais largo e baixo) */
+.driver-popover.driverjs-theme.popover-wide {
+  max-width: 600px !important; /* Aumenta a largura */
+  padding: 12px 20px !important; /* Diminui o padding vertical para reduzir a altura */
+}
+
 .driver-popover.driverjs-theme .driver-popover-title {
-  font-size: 18px !important; /* Tamanho da fonte do título */
+  font-size: 18px !important;
   font-weight: 700 !important;
-  color: hsl(var(--primary)) !important;
   margin-bottom: 8px !important;
 }
 
-/* Descrição/Texto do Balão */
 .driver-popover.driverjs-theme .driver-popover-description {
-  font-size: 14px !important; /* Tamanho da fonte do texto */
-  line-height: 1.6 !important;
-  color: hsl(var(--foreground)) !important;
+  font-size: 14px !important;
+  line-height: 1.5 !important;
 }
 
-/* Botões do Balão */
-.driver-popover.driverjs-theme .driver-popover-btn {
-  font-size: 12px !important;
-  padding: 6px 12px !important;
-  border-radius: 6px !important;
-  text-shadow: none !important;
-  transition: all 0.2s !important;
-}
-
-/* Botão Próximo (Destaque) */
-.driver-popover.driverjs-theme .driver-popover-next-btn {
-  background-color: hsl(var(--primary)) !important;
-  color: hsl(var(--primary-foreground)) !important;
-}
-
-/* Garante que o menu não herde opacidade do tour */
-[data-radix-portal] * {
-  opacity: 1 !important;
-  visibility: visible !important;
+/* Ajuste para garantir que o menu do Shadcn fique visível durante o tour */
+.z-tour-portal {
+  z-index: 10001 !important;
 }
