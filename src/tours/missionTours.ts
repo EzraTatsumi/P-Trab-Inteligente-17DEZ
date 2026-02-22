@@ -9,12 +9,11 @@ let activeMissionDriver: any = null;
 if (typeof window !== 'undefined') {
   window.addEventListener('tour:avancar', () => {
     if (activeMissionDriver) {
-      // Verifica se não é a última etapa antes de avançar
       setTimeout(() => {
         if (activeMissionDriver.hasNextStep()) {
           activeMissionDriver.moveNext();
         }
-      }, 800); 
+      }, 500); 
     }
   });
 }
@@ -350,7 +349,7 @@ export const runMission03 = (onComplete: () => void) => {
         }
       },
       {
-        element: '.tour-group-form-card',
+        element: '.btn-importar-itens-grupo',
         popover: {
           title: 'Criação do Grupo',
           description: 'Preenchemos o nome do grupo como "Material de Construção". Agora clique em "Importar/Alterar Itens" para selecionar os materiais.',
@@ -366,10 +365,30 @@ export const runMission03 = (onComplete: () => void) => {
         element: '.tour-item-selector-dialog',
         popover: {
           title: 'Seleção de Itens',
-          description: 'Aqui estão os subitens disponíveis. Selecione os itens que deseja adicionar ao seu grupo.',
+          description: 'Aqui estão os subitens disponíveis. Selecione o item desejado e clique em "Confirmar Seleção". Eu avançarei assim que você fechar esta janela!',
           side: 'top',
           align: 'center',
-          showButtons: ['next', 'previous']
+          showButtons: []
+        }
+      },
+      {
+        element: '.tour-item-quantity-input',
+        popover: {
+          title: 'Definindo Quantidades',
+          description: 'Excelente! O item foi importado. Definimos automaticamente 5 unidades para ele. Agora, clique em "Salvar Grupo" para finalizar esta etapa.',
+          side: 'top',
+          align: 'center',
+          showButtons: []
+        },
+        onHighlighted: () => {
+          // Automação da quantidade para o tour
+          const input = document.querySelector('.tour-item-quantity-input') as HTMLInputElement;
+          if (input) {
+            input.value = '5';
+            // Dispara eventos para o React detectar a mudança
+            input.dispatchEvent(new Event('input', { bubbles: true }));
+            input.dispatchEvent(new Event('change', { bubbles: true }));
+          }
         }
       }
     ],
