@@ -951,6 +951,27 @@ const CustosOperacionaisPage = () => {
     }
   }, [pageData, selectedYear]);
 
+  // Sincronização de diretrizes com hooks e suporte ao Ghost Mode
+  useEffect(() => {
+    if (isGhostMode()) {
+      setDiretrizesMaterialConsumo(GHOST_DATA.missao_02.subitens_lista as any);
+    } else if (diretrizesMaterialConsumoHook) {
+      setDiretrizesMaterialConsumo(diretrizesMaterialConsumoHook);
+    }
+  }, [diretrizesMaterialConsumoHook]);
+
+  useEffect(() => {
+    if (diretrizesServicosTerceirosHook) {
+      setDiretrizesServicosTerceiros(diretrizesServicosTerceirosHook);
+    }
+  }, [diretrizesServicosTerceirosHook]);
+
+  useEffect(() => {
+    if (diretrizesMaterialPermanenteHook) {
+      setDiretrizesMaterialPermanente(diretrizesMaterialPermanenteHook);
+    }
+  }, [diretrizesMaterialPermanenteHook]);
+
   useEffect(() => {
     if (!isLoadingDefaultYear && defaultYearData) {
         const checkAuthAndLoadYears = async () => {
