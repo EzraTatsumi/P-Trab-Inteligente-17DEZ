@@ -25,6 +25,7 @@ import CatmatCatalogDialog from './CatmatCatalogDialog';
 import CatserCatalogDialog from './CatserCatalogDialog';
 import ItemAquisicaoBulkUploadDialog from './ItemAquisicaoBulkUploadDialog';
 import ItemAquisicaoPNCPDialog from './ItemAquisicaoPNCPDialog';
+import { cn } from '@/lib/utils';
 
 interface ServicosTerceirosDiretrizFormDialogProps {
     open: boolean;
@@ -145,13 +146,13 @@ const ServicosTerceirosDiretrizFormDialog: React.FC<ServicosTerceirosDiretrizFor
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="max-w-7xl max-h-[90vh] overflow-y-auto">
+            <DialogContent className="max-w-7xl max-h-[90vh] overflow-y-auto modal-novo-subitem">
                 <DialogHeader>
                     <DialogTitle>{subitemForm.id ? `Editar Subitem: ${subitemForm.nr_subitem}` : "Novo Subitem da Natureza da Despesa"}</DialogTitle>
                     <DialogDescription>Cadastre o subitem da ND e os itens de serviço/locação associados.</DialogDescription>
                 </DialogHeader>
                 <div className="space-y-6 py-2">
-                    <Card className="p-4">
+                    <Card className={cn("p-4", "tour-dados-subitem")}>
                         <div className="flex justify-between items-center mb-4">
                             <CardTitle className="text-base">Dados do Subitem</CardTitle>
                             <div className="flex gap-2">
@@ -210,7 +211,7 @@ const ServicosTerceirosDiretrizFormDialog: React.FC<ServicosTerceirosDiretrizFor
                     </Card>
                 </div>
                 <div className="flex justify-end gap-2 pt-4 border-t">
-                    <Button type="button" onClick={handleSave} disabled={loading || subitemForm.itens_aquisicao.length === 0}>{loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}{subitemForm.id ? "Salvar Alterações" : "Cadastrar Subitem"}</Button>
+                    <Button type="button" onClick={handleSave} disabled={loading || subitemForm.itens_aquisicao.length === 0} className="btn-salvar-subitem">{loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}{subitemForm.id ? "Salvar Alterações" : "Cadastrar Subitem"}</Button>
                     <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
                 </div>
             </DialogContent>

@@ -163,7 +163,7 @@ export const runMission02 = (onComplete: () => void) => {
         element: '.card-diretrizes-operacionais',
         popover: {
           title: 'Missão 02: Inteligência PNCP',
-          description: 'Aqui definimos os valores de referência. É a base de cálculo que garante que nenhum P Trab use valores defasados.',
+          description: 'Aqui definimos os preços de referência. É a base de cálculo que garante que nenhum P Trab use valores defasados.',
           side: 'left',
           align: 'start',
           offset: 20
@@ -177,7 +177,7 @@ export const runMission02 = (onComplete: () => void) => {
         element: '.aba-material-consumo',
         popover: {
           title: 'Organização por ND',
-          description: 'A seção de Material de Consumo organiza tudo por Subitem da Natureza de Despesa. Veja que já temos alguns itens cadastrados.',
+          description: 'A seção de Material de Consumo organiza tudo por Subitem da Natureza de Despesa (ND). Veja que já temos alguns itens cadastrados.',
           side: 'left',
           align: 'start',
           offset: 40
@@ -199,10 +199,10 @@ export const runMission02 = (onComplete: () => void) => {
         }
       },
       {
-        element: '.modal-novo-subitem', 
+        element: '.tour-dados-subitem', // Alterado para mirar no Card superior do modal
         popover: { 
           title: 'Campos Obrigatórios', 
-          description: 'Primeiro, preencha o "Número do Subitem" (ex: 24) e o "Nome do Subitem" (ex: Material p/ Manutenção de Bens Imóveis/Instalações). Estes campos são essenciais para a definição do subitem.', 
+          description: 'Primeiro, preencha o "Número do Subitem" (ex: 22) e o "Nome do Subitem" (ex: Material de Limpeza). Estes campos são essenciais para a organização.', 
           side: 'top', 
           align: 'center', 
           offset: 30
@@ -212,7 +212,7 @@ export const runMission02 = (onComplete: () => void) => {
         element: '.btn-importar-pncp', 
         popover: { 
           title: 'O Salto Tecnológico', 
-          description: 'Agora, clique no botão "Importar via API PNCP" para buscar dados dos itens listados em ARP/Pregões.', 
+          description: 'Agora, clique no botão "Importar via API PNCP" para buscar preços oficiais sem precisar digitar.', 
           side: 'left', 
           align: 'start', 
           offset: 30,
