@@ -67,7 +67,7 @@ export const runMission01 = (onComplete: () => void) => {
         popover: {
           title: 'Configurações do Sistema',
           description: 'Vincule trabalhos colaborativos, Diretrizes de Custeio Logístico e de Custos Operacionais e Importe/Exporte dados de P Trab.',
-          side: 'left', 
+          side: 'right', 
           align: 'end',
         },
         onHighlighted: () => {
@@ -92,7 +92,7 @@ export const runMission01 = (onComplete: () => void) => {
           title: 'Quadro de  Dados do P Trab',
           description: 'Nesta grade, você acompanha o número, a operação e o status de cada plano em tempo real.',
           side: 'top',
-          align: 'end'
+          align: 'start'
         }
       },
       {
