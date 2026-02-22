@@ -212,7 +212,7 @@ export const runMission02 = (onComplete: () => void) => {
         element: '.btn-importar-pncp', 
         popover: { 
           title: 'O Salto Tecnológico', 
-          description: 'Agora, clique no botão "Importar via API PNCP" para buscar preços oficiais sem precisar digitar.', 
+          description: 'Agora, clique no botão "Importar via API PNCP" para buscar dados de itens em ARP/Pregões.', 
           side: 'left', 
           align: 'start', 
           offset: 30,
@@ -244,7 +244,7 @@ export const runMission02 = (onComplete: () => void) => {
         element: '.btn-salvar-subitem',
         popover: {
           title: 'Finalização e Salvamento',
-          description: 'Excelente! O item foi importado com todos os dados oficiais. Agora basta clicar em "Cadastrar Subitem" para salvar no seu catálogo.',
+          description: 'Excelente! O item foi importado com todos os dados. Agora basta clicar em "Cadastrar Subitem" para salvar no seu catálogo.',
           side: 'top',
           align: 'end'
         }
