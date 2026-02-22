@@ -67,27 +67,6 @@ export const GHOST_DATA = {
         ]
       }
     ],
-    // Item que será "adicionado" para completar 3
-    subitem_adicionado: {
-      id: "ghost-subitem-24",
-      nr_subitem: "24",
-      nome_subitem: "Material p/ Manutenção de Bens Imóveis",
-      descricao_subitem: "Materiais de construção e reparos",
-      itens_aquisicao: [
-        {
-          id: "ghost-item-cimento",
-          descricao_item: "Cimento Portland CP II-Z-32",
-          descricao_reduzida: "Cimento Portland 50kg",
-          valor_unitario: 42.50,
-          numero_pregao: "005/2025",
-          uasg: "160222",
-          codigo_catmat: "123456",
-          quantidade: 0,
-          valor_total: 0,
-          nd: "30"
-        }
-      ]
-    },
     // Resultado da busca por UASG no PNCP
     arp_search_results: [
       {
@@ -120,7 +99,18 @@ export const GHOST_DATA = {
         dataVigenciaInicial: "2025-01-01",
         dataVigenciaFinal: "2025-12-31",
       }
-    ]
+    ],
+    item_cimento: {
+      id: "ghost-item-cimento",
+      codigo_catmat: "123456",
+      descricao_item: "Cimento Portland CP II-Z-32, Resistência à Compressão 32 MPa, Saco 50kg",
+      descricao_reduzida: "Cimento Portland 50kg",
+      unidade_medida: "Saco",
+      valor_unitario: 42.50,
+      numero_pregao: "005/2025",
+      uasg: "160222",
+      nd: "30",
+    }
   },
 
   totais_exemplo: {
