@@ -335,7 +335,11 @@ export const runMission03 = (onComplete: () => void) => {
     onDestroyed: onComplete
   });
   activeMissionDriver = d;
-  d.drive();
+  
+  // Pequeno atraso para garantir que o DOM está estável antes de iniciar
+  setTimeout(() => {
+    d.drive();
+  }, 300);
 };
 
 export const runMission04 = (onComplete: () => void) => {

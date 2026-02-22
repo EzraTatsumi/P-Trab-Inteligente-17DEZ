@@ -148,32 +148,37 @@ const PTrabForm = () => {
     loadPTrab();
   }, [ptrabId, navigate, searchParams]);
 
-  // Lógica do Tour
+  // Lógica do Tour - Sincronizada com o carregamento
   useEffect(() => {
+    if (loadingPTrab || isLoadingTotals || isLoadingCredits) return;
+
     const startTour = searchParams.get('startTour') === 'true';
     const missionId = localStorage.getItem('active_mission_id');
     const ghost = isGhostMode();
 
     if (startTour && ghost) {
-      if (missionId === '3') {
-        runMission03(() => {
-          const completed = JSON.parse(localStorage.getItem('completed_missions') || '[]');
-          if (!completed.includes(3)) {
-            localStorage.setItem('completed_missions', JSON.stringify([...completed, 3]));
-          }
-          navigate('/ptrab');
-        });
-      } else if (missionId === '4') {
-        runMission04(() => {
-          const completed = JSON.parse(localStorage.getItem('completed_missions') || '[]');
-          if (!completed.includes(4)) {
-            localStorage.setItem('completed_missions', JSON.stringify([...completed, 4]));
-          }
-          navigate('/ptrab');
-        });
-      }
+      const timer = setTimeout(() => {
+        if (missionId === '3') {
+          runMission03(() => {
+            const completed = JSON.parse(localStorage.getItem('completed_missions') || '[]');
+            if (!completed.includes(3)) {
+              localStorage.setItem('completed_missions', JSON.stringify([...completed, 3]));
+            }
+            navigate('/ptrab');
+          });
+        } else if (missionId === '4') {
+          runMission04(() => {
+            const completed = JSON.parse(localStorage.getItem('completed_missions') || '[]');
+            if (!completed.includes(4)) {
+              localStorage.setItem('completed_missions', JSON.stringify([...completed, 4]));
+            }
+            navigate('/ptrab');
+          });
+        }
+      }, 500); // Pequeno delay para garantir o paint da UI
+      return () => clearTimeout(timer);
     }
-  }, [searchParams]);
+  }, [loadingPTrab, isLoadingTotals, isLoadingCredits, searchParams, navigate]);
   
   useEffect(() => {
     if (!loadingSession && !loadingPTrab && !isLoadingCredits && ptrabData && credits && !hasPromptedForCredit) {
