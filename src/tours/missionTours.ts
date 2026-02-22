@@ -10,10 +10,10 @@ let activeMissionDriver: any = null;
 if (typeof window !== 'undefined') {
   window.addEventListener('tour:avancar', () => {
     if (activeMissionDriver) {
-      // O setTimeout garante que a janela do Shadcn termine de abrir antes de iluminar
+      // Aumentado o delay para garantir que o modal do Shadcn termine a animação de abertura
       setTimeout(() => {
         activeMissionDriver.moveNext();
-      }, 400); 
+      }, 600); 
     }
   });
 }

@@ -26,6 +26,7 @@ import CatserCatalogDialog from './CatserCatalogDialog';
 import ItemAquisicaoBulkUploadDialog from './ItemAquisicaoBulkUploadDialog';
 import ItemAquisicaoPNCPDialog from './ItemAquisicaoPNCPDialog';
 import { cn } from '@/lib/utils';
+import { isGhostMode } from '@/lib/ghostStore';
 
 interface ServicosTerceirosDiretrizFormDialogProps {
     open: boolean;
@@ -144,6 +145,13 @@ const ServicosTerceirosDiretrizFormDialog: React.FC<ServicosTerceirosDiretrizFor
         onOpenChange(false);
     };
 
+    const handleOpenPNCPSearch = () => {
+        setIsPNCPSearchOpen(true);
+        if (isGhostMode()) {
+            window.dispatchEvent(new CustomEvent('tour:avancar'));
+        }
+    };
+
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent className="max-w-7xl max-h-[90vh] overflow-y-auto modal-novo-subitem">
@@ -152,7 +160,7 @@ const ServicosTerceirosDiretrizFormDialog: React.FC<ServicosTerceirosDiretrizFor
                     <DialogDescription>Cadastre o subitem da ND e os itens de serviço/locação associados.</DialogDescription>
                 </DialogHeader>
                 <div className="space-y-6 py-2">
-                    <Card className="p-4">
+                    <Card className="p-4 tour-dados-subitem">
                         <div className="flex justify-between items-center mb-4">
                             <CardTitle className="text-base">Dados do Subitem</CardTitle>
                             <div className="flex gap-2">
@@ -169,7 +177,7 @@ const ServicosTerceirosDiretrizFormDialog: React.FC<ServicosTerceirosDiretrizFor
                         <div className="flex justify-between items-center">
                             <CardTitle className="text-base font-semibold">{editingItemId ? "Editar Item" : "Adicionar Novo Item"}</CardTitle>
                             <div className="flex gap-2">
-                                <Button type="button" variant="secondary" size="sm" onClick={() => setIsPNCPSearchOpen(true)} disabled={loading} className="btn-importar-pncp"><Search className="h-4 w-4 mr-2" />Importar API PNCP</Button>
+                                <Button type="button" variant="secondary" size="sm" onClick={handleOpenPNCPSearch} disabled={loading} className="btn-importar-pncp"><Search className="h-4 w-4 mr-2" />Importar API PNCP</Button>
                                 <Button type="button" variant="secondary" size="sm" onClick={() => setIsBulkUploadOpen(true)} disabled={loading}><FileSpreadsheet className="h-4 w-4 mr-2" />Importar Excel</Button>
                             </div>
                         </div>
