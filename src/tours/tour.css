@@ -5,6 +5,7 @@
   color: #000;
   border-radius: 8px;
   box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  z-index: 100002 !important;
 }
 
 .driver-popover.driverjs-theme .driver-popover-title {
@@ -39,15 +40,20 @@
 }
 
 /* 
-   CORREÇÃO CRÍTICA: 
-   Garante que os Portals do Radix/Shadcn (Select, Dropdown, etc) 
-   fiquem ACIMA da sobreposição do driver.js 
+   CORREÇÃO CRÍTICA PARA PORTALS (Select, Dropdown, etc):
+   Garante que os menus suspensos fiquem ACIMA de tudo e sejam clicáveis.
 */
 [data-radix-portal] {
-  z-index: 10001 !important;
+  z-index: 100001 !important;
+  pointer-events: auto !important;
+}
+
+/* Garante que o elemento ativo no tour não bloqueie cliques internos */
+.driverjs-active-element {
+  pointer-events: auto !important;
 }
 
 /* Classe auxiliar para forçar z-index em menus específicos se necessário */
 .z-tour-portal {
-  z-index: 10001 !important;
+  z-index: 100001 !important;
 }
