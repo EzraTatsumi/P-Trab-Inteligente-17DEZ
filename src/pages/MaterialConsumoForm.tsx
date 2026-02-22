@@ -1,12 +1,12 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
-import { ArrowLeft, Loader2, Save, Plus, Trash2, FileText, Package, Pencil, Search } from "lucide-react";
+import { ArrowLeft, Loader2, Save, Plus, Trash2, FileText, Package, Pencil, Search, Info, LayoutGrid } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { OmSelector } from "@/components/OmSelector";
@@ -19,25 +19,35 @@ import { fetchPTrabData } from "@/lib/ptrabUtils";
 import PageMetadata from "@/components/PageMetadata";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { formatCurrency } from "@/lib/formatUtils";
+import { fetchUserCredits } from "@/lib/creditUtils";
+import { useSession } from "@/components/SessionContextProvider";
 
 const MaterialConsumoForm = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const ptrabId = searchParams.get('ptrabId');
+  const { user } = useSession();
   const queryClient = useQueryClient();
   
   const [loading, setLoading] = useState(true);
   const [selectedOm, setSelectedOm] = useState<OMData | null>(null);
   const [fase, setFase] = useState("");
   
-  // Estado para simular itens no modo Ghost
-  const [items, setItems] = useState<any[]>([]);
+  // Estado para Grupos de Consumo (Padrão Real)
+  const [grupos, setGrupos] = useState<any[]>([]);
 
   // Busca dados do P Trab para o cabeçalho
   const { data: ptrabData } = useQuery({
     queryKey: ['pTrab', ptrabId],
     queryFn: () => isGhostMode() ? Promise.resolve(GHOST_DATA.p_trab_exemplo) : fetchPTrabData(ptrabId!),
     enabled: !!ptrabId || isGhostMode(),
+  });
+
+  // Busca créditos para o resumo lateral
+  const { data: credits } = useQuery({
+    queryKey: ['userCredits', user?.id],
+    queryFn: () => isGhostMode() ? Promise.resolve(GHOST_DATA.totais_exemplo) : fetchUserCredits(user!.id),
+    enabled: !!user?.id || isGhostMode(),
   });
 
   // Sincronismo do Tour: Avança quando a página está pronta
@@ -57,8 +67,13 @@ const MaterialConsumoForm = () => {
     }
     
     if (isGhostMode()) {
-      // Inicia com um item de exemplo para o tour ficar "bonito"
-      setItems([GHOST_DATA.missao_02.item_cimento]);
+      // Simula um grupo já existente para o tour
+      setGrupos([{
+        id: "ghost-group-1",
+        group_name: "Material de Construção",
+        group_purpose: "Reparos nas instalações do destacamento",
+        itens: [GHOST_DATA.missao_02.item_cimento]
+      }]);
     }
     
     setLoading(false);
@@ -98,7 +113,7 @@ const MaterialConsumoForm = () => {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Coluna da Esquerda: Dados e Resumo */}
+          {/* Coluna da Esquerda: Dados e Resumo de Custos (Real) */}
           <div className="lg:col-span-1 space-y-4">
             <Card className="shadow-sm border-primary/10">
               <CardHeader className="pb-2 pt-4">
@@ -128,13 +143,14 @@ const MaterialConsumoForm = () => {
             {ptrabId && (
               <PTrabCostSummary 
                 ptrabId={ptrabId} 
-                creditGND3={isGhostMode() ? GHOST_DATA.totais_exemplo.credit_gnd3 : 0}
-                creditGND4={isGhostMode() ? GHOST_DATA.totais_exemplo.credit_gnd4 : 0}
+                creditGND3={credits?.credit_gnd3 || 0}
+                creditGND4={credits?.credit_gnd4 || 0}
+                onOpenCreditDialog={() => {}} // Desabilitado no tour
               />
             )}
           </div>
 
-          {/* Coluna da Direita: O Formulário Real */}
+          {/* Coluna da Direita: O Formulário Real com Grupos */}
           <div className="lg:col-span-2 space-y-6">
             <Card className="secao-1-form-material shadow-md border-primary/20">
               <CardHeader>
@@ -184,57 +200,76 @@ const MaterialConsumoForm = () => {
             <Card className="shadow-sm">
               <CardHeader className="flex flex-row items-center justify-between">
                 <div>
-                  <CardTitle className="text-base">Seção 2: Itens de Material de Consumo</CardTitle>
-                  <CardDescription>Adicione os itens necessários para esta OM e fase.</CardDescription>
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <LayoutGrid className="h-5 w-5 text-primary" />
+                    Seção 2: Grupos de Consumo
+                  </CardTitle>
+                  <CardDescription>Agrupe os itens por finalidade ou subitem da ND.</CardDescription>
                 </div>
-                <Button size="sm" disabled={!selectedOm || !fase} className="gap-2 btn-adicionar-item-material">
+                <Button size="sm" disabled={!selectedOm || !fase} className="gap-2 btn-criar-grupo-material">
                   <Plus className="h-4 w-4" />
-                  Adicionar Item
+                  Criar Grupo
                 </Button>
               </CardHeader>
-              <CardContent>
-                <div className="border rounded-md overflow-hidden">
-                  <Table>
-                    <TableHeader>
-                      <TableRow className="bg-muted/50">
-                        <TableHead>Descrição do Item</TableHead>
-                        <TableHead className="text-center">Qtd</TableHead>
-                        <TableHead className="text-right">Vlr Unit.</TableHead>
-                        <TableHead className="text-right">Total</TableHead>
-                        <TableHead className="w-[100px]"></TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {items.length > 0 ? (
-                        items.map((item, idx) => (
-                          <TableRow key={idx}>
-                            <TableCell>
-                              <div className="font-medium text-sm">{item.descricao_item}</div>
-                              <div className="text-xs text-muted-foreground">CATMAT: {item.codigo_catmat} | Pregão: {item.numero_pregao}</div>
-                            </TableCell>
-                            <TableCell className="text-center">{item.quantidade || 10}</TableCell>
-                            <TableCell className="text-right">{formatCurrency(item.valor_unitario)}</TableCell>
-                            <TableCell className="text-right font-bold">{formatCurrency(item.valor_unitario * (item.quantidade || 10))}</TableCell>
-                            <TableCell className="text-right">
-                              <div className="flex justify-end gap-1">
-                                <Button variant="ghost" size="icon" className="h-8 w-8"><Pencil className="h-4 w-4" /></Button>
-                                <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive"><Trash2 className="h-4 w-4" /></Button>
-                              </div>
+              <CardContent className="space-y-4">
+                {grupos.length > 0 ? (
+                  grupos.map((grupo, gIdx) => (
+                    <div key={grupo.id} className="border rounded-lg overflow-hidden">
+                      <div className="bg-muted/30 p-3 border-b flex justify-between items-center">
+                        <div>
+                          <h4 className="font-bold text-sm">{grupo.group_name}</h4>
+                          <p className="text-xs text-muted-foreground">{grupo.group_purpose}</p>
+                        </div>
+                        <div className="flex gap-1">
+                          <Button variant="ghost" size="icon" className="h-8 w-8"><Pencil className="h-4 w-4" /></Button>
+                          <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive"><Trash2 className="h-4 w-4" /></Button>
+                        </div>
+                      </div>
+                      <Table>
+                        <TableHeader>
+                          <TableRow className="bg-muted/10">
+                            <TableHead className="text-xs">Item</TableHead>
+                            <TableHead className="text-center text-xs">Qtd</TableHead>
+                            <TableHead className="text-right text-xs">Vlr Unit.</TableHead>
+                            <TableHead className="text-right text-xs">Total</TableHead>
+                            <TableHead className="w-[80px]"></TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {grupo.itens.map((item: any, iIdx: number) => (
+                            <TableRow key={iIdx}>
+                              <TableCell className="py-2">
+                                <div className="text-xs font-medium">{item.descricao_item}</div>
+                                <div className="text-[10px] text-muted-foreground">CATMAT: {item.codigo_catmat}</div>
+                              </TableCell>
+                              <TableCell className="text-center text-xs">10</TableCell>
+                              <TableCell className="text-right text-xs">{formatCurrency(item.valor_unitario)}</TableCell>
+                              <TableCell className="text-right text-xs font-bold">{formatCurrency(item.valor_unitario * 10)}</TableCell>
+                              <TableCell className="text-right">
+                                <Button variant="ghost" size="icon" className="h-6 w-6"><Trash2 className="h-3 w-3" /></Button>
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                          <TableRow>
+                            <TableCell colSpan={5} className="p-2">
+                              <Button variant="outline" size="sm" className="w-full h-8 text-xs border-dashed">
+                                <Plus className="h-3 w-3 mr-1" /> Adicionar Item ao Grupo
+                              </Button>
                             </TableCell>
                           </TableRow>
-                        ))
-                      ) : (
-                        <TableRow>
-                          <TableCell colSpan={5} className="h-24 text-center text-muted-foreground italic">
-                            {!selectedOm || !fase 
-                              ? "Preencha a Seção 1 para habilitar a adição de itens." 
-                              : "Nenhum item adicionado ainda."}
-                          </TableCell>
-                        </TableRow>
-                      )}
-                    </TableBody>
-                  </Table>
-                </div>
+                        </TableBody>
+                      </Table>
+                    </div>
+                  ))
+                ) : (
+                  <div className="h-32 flex items-center justify-center border-2 border-dashed rounded-md">
+                    <p className="text-muted-foreground text-sm italic">
+                      {!selectedOm || !fase 
+                        ? "Preencha a Seção 1 para habilitar a criação de grupos." 
+                        : "Nenhum grupo de consumo criado ainda."}
+                    </p>
+                  </div>
+                )}
               </CardContent>
             </Card>
 
