@@ -928,7 +928,8 @@ const CustosOperacionaisPage = () => {
           if (!completed.includes(2)) {
             localStorage.setItem('completed_missions', JSON.stringify([...completed, 2]));
           }
-          // Removida a navegação automática para permitir que o usuário veja o item e clique no botão de conclusão
+          // Redireciona para o gerenciador e abre o Hub
+          navigate('/ptrab?showHub=true');
         });
       }, 500);
       return () => clearTimeout(timer);

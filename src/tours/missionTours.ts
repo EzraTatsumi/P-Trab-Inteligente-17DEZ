@@ -10,9 +10,6 @@ if (typeof window !== 'undefined') {
   window.addEventListener('tour:avancar', () => {
     if (activeMissionDriver) {
       // Verifica se não é a última etapa antes de avançar
-      // O driver.js v1 não tem um método simples getActiveIndex, 
-      // então controlamos via lógica de transição ou deixamos o driver lidar com o fim.
-      // Mas para evitar o 'auto-close', vamos garantir que o delay seja seguro.
       setTimeout(() => {
         if (activeMissionDriver.hasNextStep()) {
           activeMissionDriver.moveNext();
@@ -145,6 +142,7 @@ export const runMission01 = (onComplete: () => void) => {
           description: 'No menu de ações, você pode CLONAR planos complexos de anos anteriores para economizar tempo, ou COMPARTILHAR o acesso com outros militares para trabalho colaborativo.',
           side: 'top',
           align: 'end',
+          showButtons: ['next', 'previous']
         },
         onHighlighted: () => {
           if ((window as any).openActions) (window as any).openActions();
@@ -269,7 +267,7 @@ export const runMission02 = (onComplete: () => void) => {
           description: 'Parabéns! O novo Subitem da ND (24) foi criado e já aparece na sua lista de referências. Agora ele está disponível para ser usado em qualquer P Trab deste ano.',
           side: 'top',
           align: 'center',
-          showButtons: ['next', 'previous'] // Garante que o botão de conclusão apareça
+          showButtons: ['next', 'previous']
         }
       }
     ],
@@ -370,7 +368,8 @@ export const runMission03 = (onComplete: () => void) => {
           title: 'Seleção de Itens',
           description: 'Aqui estão os subitens disponíveis. Selecione os itens que deseja adicionar ao seu grupo.',
           side: 'top',
-          align: 'center'
+          align: 'center',
+          showButtons: ['next', 'previous']
         }
       }
     ],
@@ -392,6 +391,7 @@ export const runMission04 = (onComplete: () => void) => {
         popover: {
           title: 'Contabilidade Gerencial',
           description: 'Este painel monitora o teto orçamentário em tempo real.',
+          showButtons: ['next', 'previous']
         }
       }
     ],

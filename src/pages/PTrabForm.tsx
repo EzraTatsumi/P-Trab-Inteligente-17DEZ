@@ -175,7 +175,7 @@ const PTrabForm = () => {
             if (!completed.includes(3)) {
               localStorage.setItem('completed_missions', JSON.stringify([...completed, 3]));
             }
-            navigate('/ptrab');
+            navigate('/ptrab?showHub=true');
           });
         } else if (missionId === '4') {
           runMission04(() => {
@@ -183,7 +183,7 @@ const PTrabForm = () => {
             if (!completed.includes(4)) {
               localStorage.setItem('completed_missions', JSON.stringify([...completed, 4]));
             }
-            navigate('/ptrab');
+            navigate('/ptrab?showHub=true');
           });
         }
       }, 500);

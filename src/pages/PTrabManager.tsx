@@ -284,8 +284,13 @@ const PTrabManager = () => {
 
   useEffect(() => {
     const startTour = searchParams.get('startTour') === 'true';
+    const showHub = searchParams.get('showHub') === 'true';
     const missionId = localStorage.getItem('active_mission_id');
     const ghost = isGhostMode();
+
+    if (showHub) {
+      setShowInstructionHub(true);
+    }
 
     if (startTour && ghost && missionId === '1') {
       runMission01(() => {
