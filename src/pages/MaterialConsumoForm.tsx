@@ -1,3 +1,5 @@
+"use client";
+
 import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -47,6 +49,7 @@ import AcquisitionItemSelectorDialog from "@/components/AcquisitionItemSelectorD
 import { isGhostMode, GHOST_DATA, getActiveMission } from "@/lib/ghostStore";
 import PageMetadata from "@/components/PageMetadata";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { runMission03Part2 } from "@/tours/missionTours";
 
 // Tipos de dados
 type MaterialConsumoRegistroDB = Tables<'material_consumo_registros'>; 
@@ -231,16 +234,6 @@ const MaterialConsumoForm = () => {
     const oms = isGhostMode() ? (GHOST_DATA.oms_exemplo as any[]) : omsReal;
     const isLoadingOms = isGhostMode() ? false : isLoadingOmsReal;
     
-    // Sincronismo do Tour: Avança quando a página está pronta
-    useEffect(() => {
-        if (!isLoadingPTrab && !isLoadingRegistros && isGhostMode()) {
-            const timer = setTimeout(() => {
-                window.dispatchEvent(new CustomEvent('tour:avancar'));
-            }, 800);
-            return () => clearTimeout(timer);
-        }
-    }, [isLoadingPTrab, isLoadingRegistros]);
-
     // Lógica de Preenchimento Automático para Missão 03
     const prefillMission03 = useCallback(() => {
         if (isGhostMode() && getActiveMission() === '3') {
@@ -256,6 +249,27 @@ const MaterialConsumoForm = () => {
             setSelectedOmDestinoId("om-1");
         }
     }, []);
+
+    // Sincronismo do Tour: Avança quando a página está pronta
+    useEffect(() => {
+        if (!isLoadingPTrab && !isLoadingRegistros && isGhostMode()) {
+            const startTour = searchParams.get('startTour') === 'true';
+            const missionId = getActiveMission();
+
+            if (startTour && missionId === '3') {
+                // Preenche os dados da Seção 1
+                prefillMission03();
+                
+                // Inicia a Parte 2 do Tour
+                const timer = setTimeout(() => {
+                    runMission03Part2(() => {
+                        navigate('/ptrab');
+                    });
+                }, 800);
+                return () => clearTimeout(timer);
+            }
+        }
+    }, [isLoadingPTrab, isLoadingRegistros, searchParams, prefillMission03, navigate]);
 
     // Expondo função para o tour preencher a Seção 2
     useEffect(() => {

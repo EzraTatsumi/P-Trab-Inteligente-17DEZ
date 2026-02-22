@@ -13,15 +13,16 @@ export const setGhostMode = (active: boolean) => {
 
 export const getActiveMission = () => {
   if (typeof window === 'undefined') return null;
-  return localStorage.getItem('active_mission');
+  // Corrigido para bater com a chave usada no InstructionHub
+  return localStorage.getItem('active_mission_id');
 };
 
 export const setActiveMission = (missionId: string | null) => {
   if (typeof window === 'undefined') return;
   if (missionId) {
-    localStorage.setItem('active_mission', missionId);
+    localStorage.setItem('active_mission_id', missionId);
   } else {
-    localStorage.removeItem('active_mission');
+    localStorage.removeItem('active_mission_id');
   }
 };
 
@@ -43,6 +44,15 @@ export const GHOST_DATA = {
     { id: 'om-1', nome_om: '1º BIS', codug_om: '160222', rm_vinculacao: '12ª RM', codug_rm_vinculacao: '160001', cidade: 'Manaus', ativo: true },
     { id: 'om-2', nome_om: '2º BFE', codug_om: '160333', rm_vinculacao: '12ª RM', codug_rm_vinculacao: '160001', cidade: 'Manaus', ativo: true },
   ],
+  totais_exemplo: {
+    totalLogistica: 12500.50,
+    totalOperacional: 8400.00,
+    totalMaterialPermanente: 0,
+    quantidadeRacaoOp: 450,
+    quantidadeHorasVoo: 12.5,
+    credit_gnd3: 50000.00,
+    credit_gnd4: 10000.00
+  },
   // Mock para o Seletor de Itens (Missão 03)
   diretrizes_selector_mock: [
     {
