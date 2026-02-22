@@ -928,7 +928,7 @@ const CustosOperacionaisPage = () => {
           if (!completed.includes(2)) {
             localStorage.setItem('completed_missions', JSON.stringify([...completed, 2]));
           }
-          navigate('/ptrab');
+          // Removida a navegação automática para permitir que o usuário veja o item e clique no botão de conclusão
         });
       }, 500);
       return () => clearTimeout(timer);

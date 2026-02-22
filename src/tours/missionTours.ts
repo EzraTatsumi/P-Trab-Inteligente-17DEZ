@@ -9,10 +9,15 @@ let activeMissionDriver: any = null;
 if (typeof window !== 'undefined') {
   window.addEventListener('tour:avancar', () => {
     if (activeMissionDriver) {
-      // Aumentado o delay para garantir que o React renderizou o novo item na lista
+      // Verifica se não é a última etapa antes de avançar
+      // O driver.js v1 não tem um método simples getActiveIndex, 
+      // então controlamos via lógica de transição ou deixamos o driver lidar com o fim.
+      // Mas para evitar o 'auto-close', vamos garantir que o delay seja seguro.
       setTimeout(() => {
-        activeMissionDriver.moveNext();
-      }, 600); 
+        if (activeMissionDriver.hasNextStep()) {
+          activeMissionDriver.moveNext();
+        }
+      }, 800); 
     }
   });
 }
@@ -20,7 +25,7 @@ if (typeof window !== 'undefined') {
 const commonConfig = {
   showProgress: true,
   allowClose: true,
-  overlayClickable: false, // Impede que o tour feche ao clicar fora
+  overlayClickable: false, 
   nextBtnText: 'Próximo',
   prevBtnText: 'Anterior',
   doneBtnText: 'Concluir Missão',
@@ -263,7 +268,8 @@ export const runMission02 = (onComplete: () => void) => {
           title: 'Missão Cumprida!',
           description: 'Parabéns! O novo Subitem da ND (24) foi criado e já aparece na sua lista de referências. Agora ele está disponível para ser usado em qualquer P Trab deste ano.',
           side: 'top',
-          align: 'center'
+          align: 'center',
+          showButtons: ['next', 'previous'] // Garante que o botão de conclusão apareça
         }
       }
     ],
