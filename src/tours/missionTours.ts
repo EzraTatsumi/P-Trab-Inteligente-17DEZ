@@ -349,7 +349,7 @@ export const runMission03 = (onComplete: () => void) => {
         }
       },
       {
-        element: '.tour-group-form-card', // Alterado para iluminar o card todo
+        element: '.tour-group-form-card', 
         popover: {
           title: 'Criação do Grupo',
           description: 'Preenchemos o nome do grupo como "Material de Construção". Agora clique em "Importar/Alterar Itens" para selecionar os materiais.',
@@ -372,7 +372,7 @@ export const runMission03 = (onComplete: () => void) => {
         }
       },
       {
-        element: '.tour-item-quantity-input',
+        element: '.tour-group-form-card', // Alterado para iluminar o card todo no Passo 9
         popover: {
           title: 'Definindo Quantidades',
           description: 'Excelente! O item foi importado. Definimos automaticamente 5 unidades para ele. Agora, clique em "Salvar Grupo" para finalizar esta etapa.',
