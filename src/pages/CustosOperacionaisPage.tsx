@@ -146,6 +146,48 @@ const CustosOperacionaisPage = () => {
   
   const { data: defaultYearData, isLoading: isLoadingDefaultYear } = useDefaultDiretrizYear();
   const defaultYear = defaultYearData?.defaultYear || null;
+
+  // Hooks de consulta movidos para cima para evitar erro de inicialização no useEffect do tour
+  const { data: pageData, isLoading: isLoadingPageData, isFetching: isFetchingPageData } = useQuery({
+    queryKey: ['diretrizesCustosOperacionais', selectedYear, user?.id],
+    queryFn: async () => {
+      if (!user?.id || !selectedYear) return null;
+
+      const [opRes, passRes, concRes] = await Promise.all([
+        supabase
+          .from("diretrizes_operacionais")
+          .select("*")
+          .eq("user_id", user.id)
+          .eq("ano_referencia", selectedYear)
+          .maybeSingle(),
+        supabase
+          .from('diretrizes_passagens')
+          .select('*')
+          .eq('user_id', user.id)
+          .eq('ano_referencia', selectedYear)
+          .order('om_referencia', { ascending: true }),
+        supabase
+          .from('diretrizes_concessionaria')
+          .select('*')
+          .eq('user_id', user.id)
+          .eq('ano_referencia', selectedYear)
+          .order('categoria', { ascending: true })
+          .order('nome_concessionaria', { ascending: true })
+      ]);
+
+      if (opRes.error) throw opRes.error;
+      if (passRes.error) throw passRes.error;
+      if (concRes.error) throw concRes.error;
+
+      return {
+        operacional: opRes.data || defaultDiretrizes(selectedYear),
+        passagens: passRes.data || [],
+        concessionaria: concRes.data || []
+      };
+    },
+    enabled: !!user?.id && !!selectedYear,
+    staleTime: 1000 * 60 * 5, 
+  });
   
   const [rawInputs, setRawInputs] = useState<Record<string, string>>({});
   
@@ -848,48 +890,7 @@ const CustosOperacionaisPage = () => {
       }, 500);
       return () => clearTimeout(timer);
     }
-  }, [loading, isLoadingDefaultYear, isLoadingPageData, isFetchingPageData, searchParams]);
-
-  const { data: pageData, isLoading: isLoadingPageData, isFetching: isFetchingPageData } = useQuery({
-    queryKey: ['diretrizesCustosOperacionais', selectedYear, user?.id],
-    queryFn: async () => {
-      if (!user?.id || !selectedYear) return null;
-
-      const [opRes, passRes, concRes] = await Promise.all([
-        supabase
-          .from("diretrizes_operacionais")
-          .select("*")
-          .eq("user_id", user.id)
-          .eq("ano_referencia", selectedYear)
-          .maybeSingle(),
-        supabase
-          .from('diretrizes_passagens')
-          .select('*')
-          .eq('user_id', user.id)
-          .eq('ano_referencia', selectedYear)
-          .order('om_referencia', { ascending: true }),
-        supabase
-          .from('diretrizes_concessionaria')
-          .select('*')
-          .eq('user_id', user.id)
-          .eq('ano_referencia', selectedYear)
-          .order('categoria', { ascending: true })
-          .order('nome_concessionaria', { ascending: true })
-      ]);
-
-      if (opRes.error) throw opRes.error;
-      if (passRes.error) throw passRes.error;
-      if (concRes.error) throw concRes.error;
-
-      return {
-        operacional: opRes.data || defaultDiretrizes(selectedYear),
-        passagens: passRes.data || [],
-        concessionaria: concRes.data || []
-      };
-    },
-    enabled: !!user?.id && !!selectedYear,
-    staleTime: 1000 * 60 * 5, 
-  });
+  }, [loading, isLoadingDefaultYear, isLoadingPageData, isFetchingPageData, searchParams, navigate]);
 
   useEffect(() => {
     if (pageData) {
@@ -965,7 +966,7 @@ const CustosOperacionaisPage = () => {
         };
         checkAuthAndLoadYears();
     }
-  }, [isLoadingDefaultYear, defaultYearData?.year, defaultYearData?.defaultYear]);
+  }, [isLoadingDefaultYear, defaultYearData?.year, defaultYearData?.defaultYear, navigate]);
 
   const loadAvailableYears = async (defaultYearId: number | null) => {
     try {
