@@ -342,7 +342,7 @@ export const runMission03 = (onComplete: () => void) => {
           description: 'Preenchemos o período (15 dias) e o efetivo (150 militares). Agora, clique em "Criar Novo Grupo de Aquisição" para selecionar os itens.',
           side: 'top',
           align: 'center',
-          showButtons: []
+          showButtons: ['previous'] // Bloqueia o botão "Próximo" para forçar o clique no botão da UI
         },
         onHighlighted: () => {
           if ((window as any).prefillSection2) (window as any).prefillSection2();
