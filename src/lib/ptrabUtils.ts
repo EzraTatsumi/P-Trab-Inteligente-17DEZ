@@ -1,6 +1,7 @@
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Tables } from "@/integrations/supabase/types";
+import { isGhostMode, GHOST_DATA } from "./ghostStore";
 
 // Tipo para as diretrizes operacionais (valores unitários)
 type DiretrizOperacional = Tables<'diretrizes_operacionais'>;
@@ -23,9 +24,16 @@ type PTrabLinkedTableName =
 export type PTrabData = Tables<'p_trab'>;
 
 /**
+ * Verifica se um ID é um ID de tour (ghost ID).
+ */
+const isGhostId = (id: string) => id.startsWith('ghost-');
+
+/**
  * Verifica o status de um PTrab e o atualiza para 'em_andamento' se estiver 'aberto'.
  */
 export async function updatePTrabStatusIfAberto(ptrabId: string) {
+  if (isGhostId(ptrabId)) return;
+
   try {
     const { data: ptrab, error: fetchError } = await supabase
       .from('p_trab')
@@ -58,6 +66,10 @@ export async function updatePTrabStatusIfAberto(ptrabId: string) {
  * Busca os dados principais de um PTrab.
  */
 export async function fetchPTrabData(ptrabId: string): Promise<PTrabData> {
+    if (isGhostId(ptrabId)) {
+        return GHOST_DATA.p_trab_exemplo as any;
+    }
+
     const { data, error } = await supabase
         .from('p_trab')
         .select('*, updated_at')
@@ -76,6 +88,10 @@ export async function fetchPTrabData(ptrabId: string): Promise<PTrabData> {
  * Simplificado para evitar erros de profundidade de tipo do TypeScript com Supabase.
  */
 export async function fetchPTrabRecords(tableName: PTrabLinkedTableName, ptrabId: string): Promise<any[]> {
+    if (isGhostId(ptrabId)) {
+        return [];
+    }
+
     const { data, error } = await (supabase.from(tableName as any) as any)
         .select('*')
         .eq('p_trab_id', ptrabId);
@@ -93,28 +109,43 @@ export async function fetchPTrabRecords(tableName: PTrabLinkedTableName, ptrabId
 export async function fetchBatchPTrabTotals(ptrabIds: string[]) {
   if (ptrabIds.length === 0) return {};
 
+  // Filtra IDs reais para a chamada RPC
+  const realIds = ptrabIds.filter(id => !isGhostId(id));
+  const ghostIds = ptrabIds.filter(id => isGhostId(id));
+
+  const totalsMap: Record<string, any> = {};
+
+  // Inicializa o mapa com zeros
+  ptrabIds.forEach(id => {
+    totalsMap[id] = {
+      totalLogistica: 0,
+      totalOperacional: 0,
+      totalMaterialPermanente: 0,
+      quantidadeRacaoOp: 0,
+      quantidadeHorasVoo: 0
+    };
+  });
+
+  // Adiciona dados mockados para IDs ghost
+  ghostIds.forEach(id => {
+    totalsMap[id] = {
+      totalLogistica: GHOST_DATA.totais_exemplo.totalLogistica,
+      totalOperacional: GHOST_DATA.totais_exemplo.totalOperacional,
+      totalMaterialPermanente: GHOST_DATA.totais_exemplo.totalMaterialPermanente,
+      quantidadeRacaoOp: GHOST_DATA.totais_exemplo.quantidadeRacaoOp,
+      quantidadeHorasVoo: GHOST_DATA.totais_exemplo.quantidadeHorasVoo
+    };
+  });
+
+  if (realIds.length === 0) return totalsMap;
+
   try {
-    // Chama a função RPC que você criou no Supabase
     const { data, error } = await supabase.rpc('get_ptrab_totals_batch' as any, { 
-      p_ptrab_ids: ptrabIds 
+      p_ptrab_ids: realIds 
     });
 
     if (error) throw error;
 
-    const totalsMap: Record<string, any> = {};
-    
-    // Inicializa o mapa com zeros para garantir que todos os IDs tenham dados
-    ptrabIds.forEach(id => {
-      totalsMap[id] = {
-        totalLogistica: 0,
-        totalOperacional: 0,
-        totalMaterialPermanente: 0,
-        quantidadeRacaoOp: 0,
-        quantidadeHorasVoo: 0
-      };
-    });
-
-    // Preenche com os dados retornados do banco
     if (data && Array.isArray(data)) {
       data.forEach((row: any) => {
         totalsMap[row.ptrab_id] = {
@@ -130,8 +161,7 @@ export async function fetchBatchPTrabTotals(ptrabIds: string[]) {
     return totalsMap;
   } catch (error) {
     console.error("Erro ao buscar totais via RPC:", error);
-    // Fallback silencioso para não quebrar a UI
-    return {};
+    return totalsMap;
   }
 }
 

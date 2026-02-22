@@ -13,7 +13,6 @@ export const setGhostMode = (active: boolean) => {
 
 export const getActiveMission = () => {
   if (typeof window === 'undefined') return null;
-  // Corrigido para bater com a chave usada no InstructionHub
   return localStorage.getItem('active_mission_id');
 };
 
@@ -29,7 +28,7 @@ export const setActiveMission = (missionId: string | null) => {
 // Dados Mockados para o Tour
 export const GHOST_DATA = {
   p_trab_exemplo: {
-    id: 'ghost-ptrab-1',
+    id: 'ghost-ptrab-123',
     numero_ptrab: '001/2024',
     nome_operacao: 'Operação Escudo Norte',
     status: 'minuta',
