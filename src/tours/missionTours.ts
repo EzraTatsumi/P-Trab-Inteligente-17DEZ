@@ -69,7 +69,7 @@ export const runMission01 = (onComplete: () => void) => {
           title: 'Configurações do Sistema',
           description: 'Vincule trabalhos colaborativos, Diretrizes de Custeio Logístico e de Custos Operacionais e Importe/Exporte dados de P Trab.',
           side: 'left',
-          align: 'start',
+          align: 'end',
           popoverClass: 'popover-wide',
           offset: 20 // Adiciona 20px de distância do botão para não bater no menu
         },
