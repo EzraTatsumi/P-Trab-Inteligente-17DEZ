@@ -2,19 +2,25 @@
 .driver-popover.driverjs-popover {
   z-index: 10001 !important;
   max-width: 350px !important;
+  border: 1px solid #e2e8f0 !important; /* Borda suave em vez de contorno azul */
 }
 
 .driver-overlay {
   z-index: 10000 !important;
 }
 
-/* Classe para popovers que precisam ser deslocados para a lateral */
-.popover-side-fix {
-  margin-left: -20px !important;
+/* Remove o contorno azul (outline/box-shadow) solicitado */
+.driver-active-element {
+  box-shadow: none !important;
+  outline: none !important;
 }
 
-/* Estilo para destacar o elemento focado mesmo dentro de modais */
-.driver-active-element {
-  box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.5) !important;
-  outline: 2px solid #3b82f6 !important;
+/* Estilo para o conteúdo do popover */
+.driver-popover-title {
+  font-weight: 700 !important;
+  color: #0f172a !important;
+}
+
+.driver-popover-description {
+  color: #475569 !important;
 }

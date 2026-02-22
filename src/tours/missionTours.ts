@@ -230,9 +230,9 @@ export const runMission02 = (onComplete: () => void) => {
         popover: {
           title: 'Navegação de Resultados',
           description: 'O sistema encontrou os resultados! Agora, clique em "Expandir" no Pregão, depois em "Ver Itens" na ARP, selecione o "Cimento Portland" e clique em "Importar Selecionados".',
-          side: 'left', // Mudado para a esquerda para não cobrir os botões centrais
-          align: 'start',
-          offset: 40,
+          side: 'top', // Mudado para o topo para não cobrir os botões centrais
+          align: 'center',
+          offset: 10,
           showButtons: []
         }
       },
