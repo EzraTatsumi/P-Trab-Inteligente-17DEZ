@@ -316,7 +316,7 @@ const MaterialConsumoForm = () => {
         mutationFn: async ({ oldIds, newRecords }: { oldIds: string[], newRecords: CalculatedMaterialConsumo[] }) => {
             if (isGhostMode()) return;
             // 1. Delete old records
-            const { error: deleteError } = await supabase
+            const { error: deleteError = null } = await supabase
                 .from('material_consumo_registros')
                 .delete()
                 .in('id', oldIds);
@@ -325,7 +325,7 @@ const MaterialConsumoForm = () => {
             // 2. Insert new records
             const recordsToInsert = newRecords.map(mapToDbInsert);
 
-            const { error: insertError } = await supabase
+            const { error: insertError = null } = await supabase
                 .from('material_consumo_registros')
                 .insert(recordsToInsert);
 
@@ -1216,6 +1216,7 @@ const MaterialConsumoForm = () => {
                                         <Label htmlFor="om_favorecida">OM Favorecida *</Label>
                                         {isGhostMode() ? (
                                             <Select 
+                                                value={selectedOmFavorecidaId}
                                                 onValueChange={(val) => {
                                                     const om = GHOST_DATA.oms_exemplo.find(o => o.id === val);
                                                     if (om) handleOmFavorecidaChange(om as any);
@@ -1334,6 +1335,7 @@ const MaterialConsumoForm = () => {
                                                             <Label htmlFor="om_destino">OM Destino do Recurso *</Label>
                                                             {isGhostMode() ? (
                                                                 <Select 
+                                                                    value={selectedOmDestinoId}
                                                                     onValueChange={(val) => {
                                                                         const om = GHOST_DATA.oms_exemplo.find(o => o.id === val);
                                                                         if (om) handleOmDestinoChange(om as any);

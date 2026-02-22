@@ -275,7 +275,8 @@ export const runMission02 = (onComplete: () => void) => {
 export const runMission03 = (onComplete: () => void) => {
   const d = driver({
     ...commonConfig,
-    overlayClickable: false, 
+    overlayClickable: true, // PERMITE CLICAR EM PORTALS (SELECTS)
+    stagePadding: 10, // ADICIONA ESPAÇO PARA O FOCO
     steps: [
       {
         element: '.card-selecao-material',
