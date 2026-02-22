@@ -337,6 +337,10 @@ const MaterialConsumoForm = () => {
             }));
             
             resetForm();
+
+            if (isGhostMode()) {
+                window.dispatchEvent(new CustomEvent('tour:avancar'));
+            }
         },
         onError: (error) => { 
             toast.error("Falha ao salvar registros.", { description: sanitizeError(error) });
@@ -1020,6 +1024,10 @@ const MaterialConsumoForm = () => {
             setPendingGroups(newPendingItems);
             setLastStagedFormData(formData);
             toast.info(`${newPendingItems.length} Grupo(s) de Aquisição adicionado(s) à lista pendente.`);
+
+            if (isGhostMode()) {
+                window.dispatchEvent(new CustomEvent('tour:avancar'));
+            }
             
         } catch (err: any) {
             toast.error(err.message || "Erro desconhecido ao calcular.");
@@ -1415,7 +1423,7 @@ const MaterialConsumoForm = () => {
                                         </Card>
                                         
                                         {/* Gerenciamento de Grupos de Aquisição */}
-                                        <Card className="mt-4 rounded-lg p-4 bg-background">
+                                        <Card className="mt-4 rounded-lg p-4 bg-background tour-acquisition-groups-card">
                                             <h4 className="text-base font-semibold mb-4">
                                                 Grupos de Aquisição ({formData.acquisitionGroups.length})
                                             </h4>
@@ -1468,7 +1476,7 @@ const MaterialConsumoForm = () => {
                                             <Button 
                                                 type="submit" 
                                                 disabled={!isPTrabEditable || isSaving || !isCalculationReady || isGroupFormOpen}
-                                                className="w-full md:w-auto bg-primary hover:bg-primary/90"
+                                                className="w-full md:w-auto bg-primary hover:bg-primary/90 tour-stage-calculation-btn"
                                             >
                                                 {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
                                                 {editingId ? "Recalcular/Revisar Lote" : "Salvar Itens na Lista"}
@@ -1482,7 +1490,7 @@ const MaterialConsumoForm = () => {
 
                             {/* SEÇÃO 3: ITENS ADICIONADOS (PENDENTES / REVISÃO DE ATUALIZAÇÃO) */}
                             {itemsToDisplay.length > 0 && (
-                                <section className="space-y-4 border-b pb-6">
+                                <section className="space-y-4 border-b pb-6 tour-section-3-pending">
                                     <h3 className="text-lg font-semibold flex items-center gap-2">
                                         3. {editingId ? "Revisão de Atualização" : "Itens Adicionados"} ({itemsToDisplay.length} {itemsToDisplay.length === 1 ? 'Grupo' : 'Grupos'})
                                     </h3>
@@ -1602,7 +1610,7 @@ const MaterialConsumoForm = () => {
                                                     type="button" 
                                                     onClick={handleSavePendingGroups}
                                                     disabled={isSaving || pendingGroups.length === 0 || isMaterialConsumoDirty}
-                                                    className="w-full md:w-auto bg-primary hover:bg-primary/90"
+                                                    className="w-full md:w-auto bg-primary hover:bg-primary/90 tour-save-pending-btn"
                                                 >
                                                     {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
                                                     Salvar Registros
@@ -1619,7 +1627,7 @@ const MaterialConsumoForm = () => {
 
                             {/* SEÇÃO 4: REGISTROS SALVOS (OMs Cadastradas) */}
                             {consolidatedRegistros && consolidatedRegistros.length > 0 && (
-                                <section className="space-y-4 border-b pb-6">
+                                <section className="space-y-4 border-b pb-6 tour-section-4-saved">
                                     <h3 className="text-xl font-bold flex items-center gap-2">
                                         <Sparkles className="h-5 w-5 text-accent" />
                                         OMs Cadastradas ({consolidatedRegistros.length})
@@ -1723,7 +1731,7 @@ const MaterialConsumoForm = () => {
 
                             {/* SEÇÃO 5: MEMÓRIAS DE CÁLCULOS DETALHADAS */}
                             {consolidatedRegistros && consolidatedRegistros.length > 0 && (
-                                <div className="space-y-4 mt-8">
+                                <div className="space-y-4 mt-8 tour-section-5-memories">
                                     <h3 className="text-xl font-bold flex items-center gap-2">
                                         📋 Memórias de Cálculos Detalhadas
                                     </h3>

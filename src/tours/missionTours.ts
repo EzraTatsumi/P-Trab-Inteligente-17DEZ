@@ -372,7 +372,7 @@ export const runMission03 = (onComplete: () => void) => {
         }
       },
       {
-        element: '.tour-group-form-card', // Alterado para iluminar o card todo no Passo 9
+        element: '.tour-group-form-card', 
         popover: {
           title: 'Definindo Quantidades',
           description: 'Excelente! O item foi importado. Definimos automaticamente 5 unidades para ele. Agora, clique em "Salvar Grupo" para finalizar esta etapa.',
@@ -389,6 +389,44 @@ export const runMission03 = (onComplete: () => void) => {
             input.dispatchEvent(new Event('input', { bubbles: true }));
             input.dispatchEvent(new Event('change', { bubbles: true }));
           }
+        }
+      },
+      {
+        element: '.tour-acquisition-groups-card',
+        popover: {
+          title: 'Revisão do Lote',
+          description: 'O grupo "Material de Construção" foi criado com sucesso. Agora, clique em "Salvar Itens na Lista" para preparar o envio dos dados.',
+          side: 'top',
+          align: 'center',
+          showButtons: []
+        }
+      },
+      {
+        element: '.tour-section-3-pending',
+        popover: {
+          title: 'Conferência Final',
+          description: 'Confira os dados consolidados do lote. Se tudo estiver correto, clique em "Salvar Registros" para gravar permanentemente no P Trab.',
+          side: 'top',
+          align: 'center',
+          showButtons: []
+        }
+      },
+      {
+        element: '.tour-section-4-saved',
+        popover: {
+          title: 'Registros Salvos',
+          description: 'Parabéns! Os registros agora estão salvos e aparecem na lista de OMs Cadastradas, somando ao valor total do seu Plano de Trabalho.',
+          side: 'top',
+          align: 'center'
+        }
+      },
+      {
+        element: '.tour-section-5-memories',
+        popover: {
+          title: 'Memórias de Cálculo',
+          description: 'O sistema gerou automaticamente as memórias de cálculo detalhadas. Você pode editá-las manualmente se precisar de justificativas técnicas específicas.',
+          side: 'top',
+          align: 'center'
         }
       }
     ],
