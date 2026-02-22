@@ -166,6 +166,9 @@ const MaterialConsumoForm = () => {
     const [isItemSelectorOpen, setIsItemSelectorOpen] = useState(false);
     const [itemsToPreselect, setItemsToPreselect] = useState<ItemAquisicao[]>([]);
     const [selectedItemsFromSelector, setSelectedItemsFromSelector] = useState<ItemAquisicao[] | null>(null);
+
+    // NOVO ESTADO: Registros simulados para o Ghost Mode
+    const [ghostRecords, setGhostRecords] = useState<MaterialConsumoRegistroDB[]>([]);
     
     // Dados mestres
     const { data: ptrabData, isLoading: isLoadingPTrab } = useQuery<PTrabData>({
@@ -184,9 +187,10 @@ const MaterialConsumoForm = () => {
     
     // NOVO MEMO: Consolida os registros por lote de solicitação (OM, UG, Dias, Efetivo, Fase)
     const consolidatedRegistros = useMemo<ConsolidatedMaterialConsumoRecord[]>(() => {
-        if (!registros) return [];
+        const sourceRecords = isGhostMode() ? ghostRecords : (registros || []);
+        if (sourceRecords.length === 0) return [];
 
-        const groups = registros.reduce((acc, registro) => {
+        const groups = sourceRecords.reduce((acc, registro) => {
             // Chave de consolidação: OM Favorecida, UG Favorecida, OM Destino, UG Destino, Dias, Efetivo, Fase
             const key = [
                 registro.organizacao,
@@ -225,7 +229,7 @@ const MaterialConsumoForm = () => {
 
         // Ordenar por OM
         return Object.values(groups).sort((a, b) => a.organizacao.localeCompare(b.organizacao));
-    }, [registros]);
+    }, [registros, ghostRecords]);
     
     const { data: omsReal, isLoading: isLoadingOmsReal } = useMilitaryOrganizations();
     const oms = isGhostMode() ? (GHOST_DATA.oms_exemplo as any[]) : omsReal;
@@ -316,7 +320,34 @@ const MaterialConsumoForm = () => {
             
             return recordsToInsert;
         },
-        onSuccess: () => {
+        onSuccess: (data) => {
+            if (isGhostMode() && Array.isArray(data)) {
+                const newRecords = (data as CalculatedMaterialConsumo[]).map(g => {
+                    const group = g.acquisitionGroups[0];
+                    return {
+                        id: g.tempId,
+                        p_trab_id: g.p_trab_id,
+                        organizacao: g.organizacao,
+                        ug: g.ug,
+                        om_detentora: g.om_detentora,
+                        ug_detentora: g.ug_detentora,
+                        dias_operacao: g.dias_operacao,
+                        efetivo: g.efetivo,
+                        fase_atividade: g.fase_atividade,
+                        group_name: group.groupName,
+                        group_purpose: group.groupPurpose,
+                        itens_aquisicao: group.items as unknown as Json,
+                        valor_total: g.valor_total,
+                        valor_nd_30: g.valor_nd_30,
+                        valor_nd_39: g.valor_nd_39,
+                        detalhamento_customizado: g.detalhamento_customizado,
+                        created_at: new Date().toISOString(),
+                        updated_at: new Date().toISOString(),
+                    } as MaterialConsumoRegistroDB;
+                });
+                setGhostRecords(prev => [...prev, ...newRecords]);
+            }
+
             toast.success(`Sucesso! ${pendingGroups.length} Grupo(s) de Aquisição adicionado(s)`);
             setPendingGroups([]);
             setLastStagedFormData(null);
@@ -339,7 +370,9 @@ const MaterialConsumoForm = () => {
             resetForm();
 
             if (isGhostMode()) {
-                window.dispatchEvent(new CustomEvent('tour:avancar'));
+                setTimeout(() => {
+                    window.dispatchEvent(new CustomEvent('tour:avancar'));
+                }, 300);
             }
         },
         onError: (error) => { 
