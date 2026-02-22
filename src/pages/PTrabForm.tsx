@@ -220,11 +220,6 @@ const PTrabForm = () => {
       return;
     }
     
-    // Se for Material de Consumo e estiver em modo Ghost, avança o tour
-    if (itemId === 'material-consumo' && isGhostMode()) {
-      window.dispatchEvent(new CustomEvent('tour:avancar'));
-    }
-
     if (itemId === 'classe-i') {
       navigate(`/ptrab/classe-i?ptrabId=${ptrabId}`);
     } else if (itemId === 'classe-ii') {
@@ -326,7 +321,7 @@ const PTrabForm = () => {
                   </div>
                   <div className="space-y-0.5">
                     <Label className="text-muted-foreground text-xs">Nome da Operação</Label>
-                    <p className="text-sm font-medium">{ptrabData?.nome_operacao}</p>
+                    <p className="font-medium text-xs">{ptrabData?.nome_operacao}</p>
                   </div>
                   <div className="space-y-0.5 col-span-2">
                     <Label className="text-muted-foreground text-xs flex items-center gap-1">

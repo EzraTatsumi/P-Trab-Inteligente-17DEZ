@@ -1,22 +1,23 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
-import { ArrowLeft, Loader2, Save, Plus, Trash2, FileText, Package, Calendar, Users, MapPin } from "lucide-react";
+import { ArrowLeft, Loader2, Save, Plus, Trash2, FileText, Package, Info } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { OmSelector } from "@/components/OmSelector";
 import { OMData } from "@/lib/omUtils";
 import { GHOST_DATA, isGhostMode } from "@/lib/ghostStore";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { PTrabCostSummary, fetchPTrabTotals } from "@/components/PTrabCostSummary";
+import { PTrabCostSummary } from "@/components/PTrabCostSummary";
 import { useQuery } from "@tanstack/react-query";
 import { fetchPTrabData } from "@/lib/ptrabUtils";
 import PageMetadata from "@/components/PageMetadata";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
 const MaterialConsumoForm = () => {
   const navigate = useNavigate();
@@ -33,12 +34,12 @@ const MaterialConsumoForm = () => {
     enabled: !!ptrabId || isGhostMode(),
   });
 
-  // Avança o tour assim que o formulário carregar
+  // Avança o tour assim que o formulário carregar e os dados estiverem prontos
   useEffect(() => {
     if (!loading && isGhostMode()) {
       const timer = setTimeout(() => {
         window.dispatchEvent(new CustomEvent('tour:avancar'));
-      }, 500);
+      }, 800);
       return () => clearTimeout(timer);
     }
   }, [loading]);
@@ -168,13 +169,40 @@ const MaterialConsumoForm = () => {
               </CardContent>
             </Card>
 
-            <Card className="shadow-sm opacity-50 cursor-not-allowed">
-              <CardHeader>
-                <CardTitle className="text-base">Seção 2: Itens de Material de Consumo</CardTitle>
-                <CardDescription>Esta seção será habilitada após a conclusão da Missão 03.</CardDescription>
+            <Card className="shadow-sm">
+              <CardHeader className="flex flex-row items-center justify-between">
+                <div>
+                  <CardTitle className="text-base">Seção 2: Itens de Material de Consumo</CardTitle>
+                  <CardDescription>Adicione os itens necessários para esta OM e fase.</CardDescription>
+                </div>
+                <Button size="sm" disabled={!selectedOm || !fase} className="gap-2">
+                  <Plus className="h-4 w-4" />
+                  Adicionar Item
+                </Button>
               </CardHeader>
-              <CardContent className="h-32 flex items-center justify-center border-2 border-dashed rounded-md">
-                <p className="text-muted-foreground text-sm italic">Aguardando preenchimento da Seção 1...</p>
+              <CardContent>
+                <div className="border rounded-md overflow-hidden">
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="bg-muted/50">
+                        <TableHead>Descrição do Item</TableHead>
+                        <TableHead className="text-center">Qtd</TableHead>
+                        <TableHead className="text-right">Vlr Unit.</TableHead>
+                        <TableHead className="text-right">Total</TableHead>
+                        <TableHead className="w-[80px]"></TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      <TableRow>
+                        <TableCell colSpan={5} className="h-24 text-center text-muted-foreground italic">
+                          {!selectedOm || !fase 
+                            ? "Preencha a Seção 1 para habilitar a adição de itens." 
+                            : "Nenhum item adicionado ainda."}
+                        </TableCell>
+                      </TableRow>
+                    </TableBody>
+                  </Table>
+                </div>
               </CardContent>
             </Card>
 
