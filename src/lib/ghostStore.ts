@@ -138,9 +138,9 @@ export const GHOST_DATA = {
 
   // Missão 03: OMs para o formulário
   oms_exemplo: [
-    { id: "om-1", nome_om: "1º BIS", codug_om: "160222", rm_vinculacao: "12ª RM", codug_rm_vinculacao: "160060" },
-    { id: "om-2", nome_om: "2º BIS", codug_om: "160223", rm_vinculacao: "12ª RM", codug_rm_vinculacao: "160060" },
-    { id: "om-3", nome_om: "3º BIS", codug_om: "160224", rm_vinculacao: "12ª RM", codug_rm_vinculacao: "160060" },
+    { id: "om-1", nome_om: "1º BIS", codug_om: "160222", rm_vinculacao: "12ª RM", codug_rm_vinculacao: "160060", cidade: "Manaus/AM", ativo: true },
+    { id: "om-2", nome_om: "2º BIS", codug_om: "160223", rm_vinculacao: "12ª RM", codug_rm_vinculacao: "160060", cidade: "Belém/PA", ativo: true },
+    { id: "om-3", nome_om: "3º BIS", codug_om: "160224", rm_vinculacao: "12ª RM", codug_rm_vinculacao: "160060", cidade: "Marabá/PA", ativo: true },
   ],
 
   totais_exemplo: {
