@@ -317,13 +317,13 @@ export const runMission03 = (onComplete: () => void) => {
       },
       {
         element: '.secao-1-form-material',
-        padding: 20, // Aumenta a área iluminada para não esbarrar no overlay ao abrir selects
+        padding: 40, // Aumentado para cobrir a abertura dos selects
         popover: {
           title: 'Seção 1: Identificação da OM',
           description: 'Nesta primeira seção, você deve selecionar a Organização Militar responsável e a fase da atividade.',
           side: 'top',
           align: 'center',
-          offset: 40
+          offset: 60 // Offset maior para não sobrepor o conteúdo
         }
       }
     ],
