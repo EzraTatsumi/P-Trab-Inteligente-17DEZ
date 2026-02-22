@@ -248,10 +248,20 @@ export const runMission02 = (onComplete: () => void) => {
       {
         element: '.btn-salvar-subitem',
         popover: {
-          title: 'Finalização e Salvamento',
-          description: 'Excelente! Agora basta clicar em "Cadastrar Subitem" para salvar no seu catálogo e concluir esta missão.',
+          title: 'Finalização do Cadastro',
+          description: 'Excelente! Agora clique em "Cadastrar Subitem" para salvar este novo grupo no seu catálogo.',
+          side: 'top', 
+          align: 'end',
+          showButtons: []
+        }
+      },
+      {
+        element: '.lista-subitens-nd',
+        popover: {
+          title: 'Missão Cumprida!',
+          description: 'Parabéns! O novo Subitem da ND foi criado e já aparece na sua lista de referências. Agora ele está disponível para ser usado em qualquer P Trab deste ano.',
           side: 'top',
-          align: 'end'
+          align: 'center'
         }
       }
     ],

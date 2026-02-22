@@ -118,6 +118,11 @@ const MaterialConsumoDiretrizFormDialog: React.FC<MaterialConsumoDiretrizFormDia
         }
         await onSave({ ...subitemForm, ano_referencia: selectedYear });
         onOpenChange(false);
+        
+        // Avança o tour automaticamente após salvar
+        if (isGhostMode()) {
+            window.dispatchEvent(new CustomEvent('tour:avancar'));
+        }
     };
 
     const handleOpenPNCPSearch = () => {
