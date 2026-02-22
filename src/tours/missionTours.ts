@@ -198,7 +198,7 @@ export const runMission02 = (onComplete: () => void) => {
         element: '.tour-dados-subitem', 
         popover: { 
           title: 'Campos Obrigatórios', 
-          description: 'Primeiro, preencha o "Número do Subitem" (ex: 24) e o "Nome do Subitem" (ex: Material p/ Manutenção de Bens Imóveis/Instalações).', 
+          description: 'Primeiro, preencha o "Número do Subitem" (ex: 24) e o "Nome do Subitem" (ex: Material p/ Manutenção de Bens Imóveis/Instalação).', 
           side: 'top', 
           align: 'center', 
           offset: 30
@@ -256,10 +256,10 @@ export const runMission02 = (onComplete: () => void) => {
         }
       },
       {
-        element: '.lista-subitens-nd',
+        element: '#diretriz-material-consumo-ghost-subitem-24',
         popover: {
           title: 'Missão Cumprida!',
-          description: 'Parabéns! O novo Subitem da ND foi criado e já aparece na sua lista de referências. Agora ele está disponível para ser usado em qualquer P Trab deste ano.',
+          description: 'Parabéns! O novo Subitem da ND (24) foi criado e já aparece na sua lista de referências. Agora ele está disponível para ser usado em qualquer P Trab deste ano.',
           side: 'top',
           align: 'center'
         }

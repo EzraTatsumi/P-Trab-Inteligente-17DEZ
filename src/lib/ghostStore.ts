@@ -27,10 +27,32 @@ export const GHOST_DATA = {
   missao_02: {
     subitens_lista: [
       {
+        id: "ghost-subitem-24",
+        nr_subitem: "24",
+        nome_subitem: "Material p/ Manutenção de Bens Imóveis/Instalação",
+        descricao_subitem: "Materiais para reparos e conservação predial",
+        ativo: true,
+        itens_aquisicao: [
+          {
+            id: "ghost-item-cimento",
+            descricao_item: "Cimento Portland CP II-Z-32, Resistência à Compressão 32 MPa, Saco 50kg",
+            descricao_reduzida: "Cimento Portland 50kg",
+            valor_unitario: 42.50,
+            numero_pregao: "005/2025",
+            uasg: "160222",
+            codigo_catmat: "123456",
+            quantidade: 0,
+            valor_total: 0,
+            nd: "30"
+          }
+        ]
+      },
+      {
         id: "ghost-subitem-22",
         nr_subitem: "22",
         nome_subitem: "Material de Limpeza",
         descricao_subitem: "Itens para higiene e conservação das instalações",
+        ativo: true,
         itens_aquisicao: [
           {
             id: "ghost-item-detergente",
@@ -51,6 +73,7 @@ export const GHOST_DATA = {
         nr_subitem: "16",
         nome_subitem: "Material de Expediente",
         descricao_subitem: "Suprimentos para atividades administrativas",
+        ativo: true,
         itens_aquisicao: [
           {
             id: "ghost-item-papel",
