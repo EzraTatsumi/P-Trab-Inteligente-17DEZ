@@ -203,8 +203,8 @@ export const runMission02 = (onComplete: () => void) => {
         popover: { 
           title: 'Campos Obrigatórios', 
           description: 'Primeiro, preencha o "Número do Subitem" (ex: 24) e o "Nome do Subitem" (ex: Material p/ Manutenção de Bens Imóveis/Instalações). Estes campos são essenciais para a definição do subitem.', 
-          side: 'left', 
-          align: 'start', 
+          side: 'top', 
+          align: 'center', 
           offset: 30
         }
       },
