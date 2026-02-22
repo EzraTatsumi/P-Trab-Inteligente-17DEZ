@@ -62,7 +62,7 @@ import MaterialPermanenteDiretrizRow from "@/components/MaterialPermanenteDiretr
 import MaterialPermanenteDiretrizFormDialog from "@/components/MaterialPermanenteDiretrizFormDialog";
 import MaterialPermanenteExportImportDialog from "@/components/MaterialPermanenteExportImportDialog";
 import { runMission02 } from "@/tours/missionTours";
-import { GHOST_DATA, isGhostMode } from "@/lib/ghostStore";
+import { GHOST_DATA, isGhostMode, getActiveMission } from "@/lib/ghostStore";
 import { cn } from "@/lib/utils";
 
 type DiretrizOperacional = Tables<'diretrizes_operacionais'>;
@@ -152,6 +152,14 @@ const CustosOperacionaisPage = () => {
     queryKey: ['diretrizesCustosOperacionais', selectedYear, user?.id],
     queryFn: async () => {
       if (!user?.id || !selectedYear) return null;
+
+      if (isGhostMode()) {
+          return {
+              operacional: defaultDiretrizes(selectedYear),
+              passagens: [],
+              concessionaria: []
+          };
+      }
 
       const [opRes, passRes, concRes] = await Promise.all([
         supabase
@@ -331,6 +339,30 @@ const CustosOperacionaisPage = () => {
   }, []);
 
   const handleSaveMaterialConsumo = async (data: Partial<DiretrizMaterialConsumo> & { ano_referencia: number }) => {
+      if (isGhostMode()) {
+          setIsSaving(true);
+          setTimeout(() => {
+              const newItem = {
+                  ...data,
+                  id: data.id || `ghost-${Math.random()}`,
+                  user_id: 'ghost-user',
+                  ativo: data.ativo ?? true,
+              } as DiretrizMaterialConsumo;
+              
+              setDiretrizesMaterialConsumo(prev => {
+                  const filtered = prev.filter(p => p.id !== newItem.id);
+                  return [...filtered, newItem].sort((a, b) => a.nr_subitem.localeCompare(b.nr_subitem));
+              });
+              
+              setIsSaving(false);
+              setDiretrizMaterialConsumoToEdit(null);
+              setIsMaterialConsumoFormOpen(false);
+              toast.success("Simulação: Subitem salvo localmente!");
+              window.dispatchEvent(new CustomEvent('tour:avancar'));
+          }, 500);
+          return;
+      }
+
       try {
           setIsSaving(true);
           const { data: { user: authUser } } = await supabase.auth.getUser();
@@ -434,14 +466,19 @@ const CustosOperacionaisPage = () => {
 
   const handleDeleteMaterialConsumo = async (id: string, nome: string) => {
       if (!confirm(`Tem certeza que deseja excluir o Subitem da ND "${nome}"?`)) return;
-      setDiretrizesMaterialConsumo(current => current.filter(d => d.id !== id));
+      
+      if (isGhostMode()) {
+          setDiretrizesMaterialConsumo(current => current.filter(d => d.id !== id));
+          toast.success("Simulação: Subitem removido localmente!");
+          return;
+      }
+
       try {
           const { error } = await supabase.from('diretrizes_material_consumo').delete().eq('id', id);
           if (error) throw error;
           toast.success("Subitem da ND excluído!");
       } catch (error) {
           toast.error(sanitizeError(error));
-          queryClient.invalidateQueries({ queryKey: ['diretrizesMaterialConsumo', selectedYear, user?.id] });
       } finally {
           queryClient.invalidateQueries({ queryKey: ['diretrizesMaterialConsumo', selectedYear, user?.id] });
       }
@@ -954,7 +991,12 @@ const CustosOperacionaisPage = () => {
   // Sincronização de diretrizes com hooks e suporte ao Ghost Mode
   useEffect(() => {
     if (isGhostMode()) {
-      setDiretrizesMaterialConsumo(GHOST_DATA.missao_02.subitens_lista as any);
+      const missionId = getActiveMission();
+      if (missionId === '2') {
+          setDiretrizesMaterialConsumo(GHOST_DATA.missao_02.subitens_lista as any);
+      } else if (missionId === '3') {
+          setDiretrizesMaterialConsumo(GHOST_DATA.missao_03.subitens_lista as any);
+      }
     } else if (diretrizesMaterialConsumoHook) {
       setDiretrizesMaterialConsumo(diretrizesMaterialConsumoHook);
     }

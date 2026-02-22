@@ -13,6 +13,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { formatCurrency, formatNumber, formatCodug, formatPregao } from '@/lib/formatUtils';
 import { cn } from '@/lib/utils';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"; 
+import { isGhostMode, GHOST_DATA, getActiveMission } from '@/lib/ghostStore';
 
 // Tipo para o item de aquisição com status de seleção
 interface SelectableItem extends ItemAquisicao {
@@ -40,6 +41,15 @@ interface AcquisitionItemSelectorDialogProps {
 const fetchDiretrizesMaterialConsumo = async (year: number, userId: string): Promise<DiretrizMaterialConsumo[]> => {
     if (!year || !userId) return [];
     
+    if (isGhostMode()) {
+        const missionId = getActiveMission();
+        // Na Missão 3, usamos os dados que incluem o item criado na Missão 2
+        if (missionId === '3') {
+            return GHOST_DATA.missao_03.subitens_lista as any;
+        }
+        return GHOST_DATA.missao_02.subitens_lista as any;
+    }
+
     const { data, error } = await supabase
         .from('diretrizes_material_consumo')
         .select('*')
@@ -71,9 +81,9 @@ const AcquisitionItemSelectorDialog: React.FC<AcquisitionItemSelectorDialogProps
     const [expandedSubitems, setExpandedSubitems] = useState<Record<string, boolean>>({});
 
     const { data: diretrizes, isLoading, error } = useQuery({
-        queryKey: ['diretrizesMaterialConsumoSelector', selectedYear, userId],
+        queryKey: ['diretrizesMaterialConsumoSelector', selectedYear, userId, isGhostMode()],
         queryFn: () => fetchDiretrizesMaterialConsumo(selectedYear, userId!),
-        enabled: !!userId && selectedYear > 0,
+        enabled: (!!userId || isGhostMode()) && selectedYear > 0,
         initialData: [],
     });
     
