@@ -9,7 +9,6 @@ import { toast } from "sonner";
 import { CatalogoSubitem } from "@/types/catalogoSubitens";
 import { Input } from "@/components/ui/input";
 
-// Definindo o tipo de item selecionável para o estado
 type SelectedItem = { nr_subitem: string, nome_subitem: string, descricao_subitem: string | null } | null;
 
 interface SubitemCatalogDialogProps {
