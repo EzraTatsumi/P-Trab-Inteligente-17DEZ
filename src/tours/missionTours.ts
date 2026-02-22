@@ -68,7 +68,7 @@ export const runMission01 = (onComplete: () => void) => {
           title: 'Configurações do Sistema',
           description: 'Vincule trabalhos colaborativos, Diretrizes de Custeio Logístico e de Custos Operacionais e Importe/Exporte dados de P Trab.',
           side: 'right', 
-          align: 'start',
+          align: 'end',
         },
         onHighlighted: () => {
           if ((window as any).openSettings) (window as any).openSettings();
