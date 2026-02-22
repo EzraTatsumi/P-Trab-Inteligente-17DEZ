@@ -30,31 +30,39 @@ export const GHOST_DATA = {
         id: "ghost-subitem-22",
         nr_subitem: "22",
         nome_subitem: "Material de Limpeza",
-        descricao_subitem: "Itens para higiene e conservação",
+        descricao_subitem: "Itens para higiene e conservação das instalações",
         itens_aquisicao: [
           {
             id: "ghost-item-detergente",
             descricao_item: "Detergente Líquido Neutro 500ml",
+            descricao_reduzida: "Detergente Neutro 500ml",
             valor_unitario: 2.45,
             numero_pregao: "010/2025",
             uasg: "160222",
-            codigo_catmat: "445566"
+            codigo_catmat: "445566",
+            quantidade: 0,
+            valor_total: 0,
+            nd: "30"
           }
         ]
       },
       {
-        id: "ghost-subitem-07",
-        nr_subitem: "07",
-        nome_subitem: "Gêneros de Alimentação",
-        descricao_subitem: "Itens para subsistência",
+        id: "ghost-subitem-16",
+        nr_subitem: "16",
+        nome_subitem: "Material de Expediente",
+        descricao_subitem: "Suprimentos para atividades administrativas",
         itens_aquisicao: [
           {
-            id: "ghost-item-arroz",
-            descricao_item: "Arroz Agulhinha Tipo 1 - Pacote 5kg",
+            id: "ghost-item-papel",
+            descricao_item: "Papel A4 Branco - Resma 500 folhas",
+            descricao_reduzida: "Papel A4 Resma",
             valor_unitario: 28.90,
             numero_pregao: "005/2025",
             uasg: "160222",
-            codigo_catmat: "150544"
+            codigo_catmat: "150544",
+            quantidade: 0,
+            valor_total: 0,
+            nd: "30"
           }
         ]
       }
