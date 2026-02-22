@@ -44,7 +44,7 @@ import MaterialConsumoMemoria from "@/components/MaterialConsumoMemoria";
 import { ItemAquisicao } from "@/types/diretrizesMaterialConsumo"; 
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"; 
 import AcquisitionItemSelectorDialog from "@/components/AcquisitionItemSelectorDialog"; 
-import { isGhostMode, GHOST_DATA } from "@/lib/ghostStore";
+import { isGhostMode, GHOST_DATA, getActiveMission } from "@/lib/ghostStore";
 import PageMetadata from "@/components/PageMetadata";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
@@ -240,6 +240,34 @@ const MaterialConsumoForm = () => {
             return () => clearTimeout(timer);
         }
     }, [isLoadingPTrab, isLoadingRegistros]);
+
+    // Lógica de Preenchimento Automático para Missão 03
+    useEffect(() => {
+        if (isGhostMode() && getActiveMission() === '3') {
+            setFormData(prev => ({
+                ...prev,
+                om_favorecida: "1º BIS",
+                ug_favorecida: "160222",
+                om_destino: "1º BIS",
+                ug_destino: "160222",
+                fase_atividade: "execucao",
+            }));
+            setSelectedOmFavorecidaId("om-1");
+            setSelectedOmDestinoId("om-1");
+        }
+    }, []);
+
+    // Expondo função para o tour preencher a Seção 2
+    useEffect(() => {
+        (window as any).prefillSection2 = () => {
+            setFormData(prev => ({
+                ...prev,
+                dias_operacao: 15,
+                efetivo: 150,
+            }));
+        };
+        return () => { delete (window as any).prefillSection2; };
+    }, []);
 
     // --- Mutations ---
 
@@ -1278,7 +1306,7 @@ const MaterialConsumoForm = () => {
 
                             {/* SEÇÃO 2: CONFIGURAR PLANEJAMENTO */}
                             {isBaseFormReady && (
-                                <section className="space-y-4 border-b pb-6">
+                                <section className="space-y-4 border-b pb-6 secao-2-planejamento">
                                     <h3 className="text-lg font-semibold flex items-center gap-2">
                                         2. Configurar Planejamento
                                     </h3>
@@ -1404,10 +1432,13 @@ const MaterialConsumoForm = () => {
                                                 <div className="flex justify-end mt-4">
                                                     <Button 
                                                         type="button" 
-                                                        onClick={handleOpenGroupForm}
+                                                        onClick={() => {
+                                                            handleOpenGroupForm();
+                                                            if (isGhostMode()) window.dispatchEvent(new CustomEvent('tour:avancar'));
+                                                        }}
                                                         disabled={!isPTrabEditable || isSaving}
                                                         variant="outline"
-                                                        className="w-full"
+                                                        className="w-full btn-criar-grupo"
                                                     >
                                                         <Plus className="mr-2 h-4 w-4" />
                                                         Criar Novo Grupo de Aquisição

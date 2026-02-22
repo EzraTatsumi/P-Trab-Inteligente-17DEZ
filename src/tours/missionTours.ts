@@ -275,8 +275,8 @@ export const runMission02 = (onComplete: () => void) => {
 export const runMission03 = (onComplete: () => void) => {
   const d = driver({
     ...commonConfig,
-    overlayClickable: false, // Impede que cliques no overlay fechem o tour
-    stagePadding: 15, // Aumenta a área de clique permitida ao redor do elemento
+    overlayClickable: false, 
+    stagePadding: 15, 
     steps: [
       {
         element: '.card-selecao-material',
@@ -321,11 +321,24 @@ export const runMission03 = (onComplete: () => void) => {
       {
         element: '.secao-1-form-material',
         popover: {
-          title: 'Seção 1: Identificação da OM',
-          description: 'Nesta primeira seção, você deve selecionar a Organização Militar responsável e a fase da atividade.',
+          title: 'Dados Identificados',
+          description: 'Para agilizar, a OM e a Fase da Atividade já foram preenchidas automaticamente.',
           side: 'top',
           align: 'center',
           offset: 100
+        }
+      },
+      {
+        element: '.secao-2-planejamento',
+        popover: {
+          title: 'Planejamento de Custos',
+          description: 'Preenchemos o período (15 dias) e o efetivo (150 militares). Agora, clique em "Criar Novo Grupo de Aquisição" para selecionar os itens.',
+          side: 'top',
+          align: 'center',
+          showButtons: []
+        },
+        onHighlighted: () => {
+          if ((window as any).prefillSection2) (window as any).prefillSection2();
         }
       }
     ],
