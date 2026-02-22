@@ -343,6 +343,28 @@ export const runMission03 = (onComplete: () => void) => {
         onHighlighted: () => {
           if ((window as any).prefillSection2) (window as any).prefillSection2();
         }
+      },
+      {
+        element: '.tour-group-form-card',
+        popover: {
+          title: 'Criação do Grupo',
+          description: 'Preenchemos o nome do grupo como "Material de Construção". Agora clique em "Importar/Alterar Itens" para selecionar os materiais.',
+          side: 'top',
+          align: 'center',
+          showButtons: []
+        },
+        onHighlighted: () => {
+          if ((window as any).prefillGroupName) (window as any).prefillGroupName();
+        }
+      },
+      {
+        element: '.tour-item-selector-dialog',
+        popover: {
+          title: 'Seleção de Itens',
+          description: 'Aqui estão os subitens disponíveis. Selecione os itens que deseja adicionar ao seu grupo.',
+          side: 'top',
+          align: 'center'
+        }
       }
     ],
     onDestroyed: onComplete

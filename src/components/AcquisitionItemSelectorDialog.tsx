@@ -12,7 +12,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { formatCurrency, formatNumber, formatCodug, formatPregao } from '@/lib/formatUtils';
 import { cn } from '@/lib/utils';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"; // Importar Tooltip
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"; 
 
 // Tipo para o item de aquisição com status de seleção
 interface SelectableItem extends ItemAquisicao {
@@ -31,11 +31,8 @@ interface AcquisitionItemSelectorDialogProps {
     open: boolean;
     onOpenChange: (open: boolean) => void;
     selectedYear: number;
-    // Itens que já estão no grupo (para pré-seleção)
     initialItems: ItemAquisicao[]; 
-    // Callback para retornar os itens selecionados
     onSelect: (items: ItemAquisicao[]) => void;
-    // Handler para navegar para a tela de diretrizes
     onAddDiretriz: () => void;
 }
 
@@ -53,7 +50,6 @@ const fetchDiretrizesMaterialConsumo = async (year: number, userId: string): Pro
         
     if (error) throw error;
     
-    // Mapear o tipo JSONB para ItemAquisicao[]
     return (data || []).map(d => ({
         ...d,
         itens_aquisicao: (d.itens_aquisicao as unknown as ItemAquisicao[]) || [],
@@ -74,7 +70,6 @@ const AcquisitionItemSelectorDialog: React.FC<AcquisitionItemSelectorDialogProps
     const [selectedItemsMap, setSelectedItemsMap] = useState<Record<string, ItemAquisicao>>({});
     const [expandedSubitems, setExpandedSubitems] = useState<Record<string, boolean>>({});
 
-    // 1. Fetch das Diretrizes
     const { data: diretrizes, isLoading, error } = useQuery({
         queryKey: ['diretrizesMaterialConsumoSelector', selectedYear, userId],
         queryFn: () => fetchDiretrizesMaterialConsumo(selectedYear, userId!),
@@ -82,7 +77,6 @@ const AcquisitionItemSelectorDialog: React.FC<AcquisitionItemSelectorDialogProps
         initialData: [],
     });
     
-    // 2. Inicialização do Mapa de Seleção (apenas na abertura)
     useEffect(() => {
         if (open) {
             const initialMap: Record<string, ItemAquisicao> = {};
@@ -94,7 +88,6 @@ const AcquisitionItemSelectorDialog: React.FC<AcquisitionItemSelectorDialogProps
         }
     }, [open, initialItems]);
 
-    // 3. Processamento e Agrupamento dos Itens (Memoized)
     const groupedAndFilteredItems = useMemo<SubitemGroup[]>(() => {
         if (!diretrizes || diretrizes.length === 0) return [];
 
@@ -104,11 +97,9 @@ const AcquisitionItemSelectorDialog: React.FC<AcquisitionItemSelectorDialogProps
         diretrizes.forEach(diretriz => {
             const subitemKey = diretriz.nr_subitem;
             
-            // Filtra os itens de aquisição dentro da diretriz
             const filteredItems = diretriz.itens_aquisicao.filter(item => {
                 const searchString = [
                     item.descricao_item,
-                    // CORREÇÃO: Usar descricao_reduzida na busca
                     item.descricao_reduzida, 
                     item.codigo_catmat,
                     item.numero_pregao,
@@ -130,10 +121,8 @@ const AcquisitionItemSelectorDialog: React.FC<AcquisitionItemSelectorDialogProps
                     };
                 }
                 
-                // Adiciona os itens filtrados ao grupo, INJETANDO os dados do subitem
                 groups[subitemKey].items.push(...filteredItems.map(item => ({
                     ...item,
-                    // INJEÇÃO DOS DADOS DO SUBITEM NA ESTRUTURA DO ITEM DE AQUISIÇÃO
                     nr_subitem: diretriz.nr_subitem,
                     nome_subitem: diretriz.nome_subitem,
                     isSelected: !!selectedItemsMap[item.id],
@@ -144,7 +133,6 @@ const AcquisitionItemSelectorDialog: React.FC<AcquisitionItemSelectorDialogProps
         return Object.values(groups).sort((a, b) => a.nr_subitem.localeCompare(b.nr_subitem));
     }, [diretrizes, searchTerm, selectedItemsMap]);
     
-    // 4. Handlers de Seleção
     const handleToggleItem = (item: ItemAquisicao) => {
         setSelectedItemsMap(prev => {
             const newMap = { ...prev };
@@ -165,7 +153,6 @@ const AcquisitionItemSelectorDialog: React.FC<AcquisitionItemSelectorDialogProps
     
     const totalSelected = Object.keys(selectedItemsMap).length;
     
-    // Se não houver diretrizes cadastradas
     if (!isLoading && diretrizes.length === 0) {
         return (
             <Dialog open={open} onOpenChange={onOpenChange}>
@@ -196,13 +183,12 @@ const AcquisitionItemSelectorDialog: React.FC<AcquisitionItemSelectorDialogProps
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+            <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto tour-item-selector-dialog">
                 <DialogHeader>
                     <DialogTitle>Selecionar Itens de Aquisição (Ano {selectedYear})</DialogTitle>
                 </DialogHeader>
                 
                 <div className="space-y-4 py-2">
-                    {/* Barra de Busca */}
                     <div className="relative">
                         <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                         <Input
@@ -214,7 +200,6 @@ const AcquisitionItemSelectorDialog: React.FC<AcquisitionItemSelectorDialogProps
                         />
                     </div>
                     
-                    {/* Lista de Subitens Agrupados */}
                     <div className="space-y-3 max-h-[50vh] overflow-y-auto pr-2">
                         {isLoading ? (
                             <div className="text-center py-8">
@@ -232,7 +217,6 @@ const AcquisitionItemSelectorDialog: React.FC<AcquisitionItemSelectorDialogProps
                         ) : (
                             <TooltipProvider>
                                 {groupedAndFilteredItems.map(group => {
-                                    // NOVO CÁLCULO: Contagem de itens selecionados no grupo
                                     const selectedCount = group.items.filter(item => item.isSelected).length;
                                     const totalCount = group.items.length;
                                     
@@ -248,7 +232,6 @@ const AcquisitionItemSelectorDialog: React.FC<AcquisitionItemSelectorDialogProps
                                                     <span className="font-semibold text-sm">
                                                         {group.nr_subitem} - {group.nome_subitem} 
                                                     </span>
-                                                    {/* NOVO TEXTO DE CONTAGEM */}
                                                     <span className="text-xs font-normal text-primary">
                                                         ({selectedCount} / {totalCount} itens selecionados)
                                                     </span>
@@ -269,7 +252,6 @@ const AcquisitionItemSelectorDialog: React.FC<AcquisitionItemSelectorDialogProps
                                                                 onClick={() => handleToggleItem(item)}
                                                             >
                                                                 <div className="flex items-center gap-3">
-                                                                    {/* Indicador de Seleção (Corrigido para ser um círculo perfeito) */}
                                                                     <div className={cn(
                                                                         "h-4 w-4 rounded-full border-2 flex items-center justify-center shrink-0",
                                                                         item.isSelected ? "bg-primary border-primary" : "border-gray-300"
@@ -277,11 +259,9 @@ const AcquisitionItemSelectorDialog: React.FC<AcquisitionItemSelectorDialogProps
                                                                         {item.isSelected && <Check className="h-3 w-3 text-white" />}
                                                                     </div>
                                                                     <div className="text-sm min-w-0 flex-1">
-                                                                        {/* Exibir descrição reduzida ou completa */}
                                                                         <p className="font-medium truncate">
                                                                             {item.descricao_reduzida || item.descricao_item}
                                                                         </p>
-                                                                        {/* Exibir CATMAT | Pregão (UASG) */}
                                                                         <p className="text-xs text-muted-foreground">
                                                                             CATMAT: {item.codigo_catmat} | Pregão: {formatPregao(item.numero_pregao)} ({formatCodug(item.uasg)})
                                                                         </p>
