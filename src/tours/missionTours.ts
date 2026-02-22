@@ -342,20 +342,20 @@ export const runMission03 = (onComplete: () => void) => {
           description: 'Preenchemos o período (15 dias) e o efetivo (150 militares). Agora, clique em "Criar Novo Grupo de Aquisição" para selecionar os itens.',
           side: 'top',
           align: 'center',
-          showButtons: [] // Bloqueia navegação manual
+          showButtons: []
         },
         onHighlighted: () => {
           if ((window as any).prefillSection2) (window as any).prefillSection2();
         }
       },
       {
-        element: '.tour-group-form-card',
+        element: '.btn-importar-itens-grupo',
         popover: {
           title: 'Criação do Grupo',
           description: 'Preenchemos o nome do grupo como "Material de Construção". Agora clique em "Importar/Alterar Itens" para selecionar os materiais.',
           side: 'top',
           align: 'center',
-          showButtons: [] // Bloqueia navegação manual
+          showButtons: []
         },
         onHighlighted: () => {
           if ((window as any).prefillGroupName) (window as any).prefillGroupName();
@@ -368,7 +368,7 @@ export const runMission03 = (onComplete: () => void) => {
           description: 'Aqui estão os subitens disponíveis. Selecione o item desejado e clique em "Confirmar Seleção". Eu avançarei assim que você fechar esta janela!',
           side: 'top',
           align: 'center',
-          showButtons: [] // Bloqueia navegação manual
+          showButtons: []
         }
       },
       {
@@ -378,7 +378,7 @@ export const runMission03 = (onComplete: () => void) => {
           description: 'Excelente! O item foi importado. Definimos automaticamente 5 unidades para ele. Agora, clique em "Salvar Grupo" para finalizar esta etapa.',
           side: 'top',
           align: 'center',
-          showButtons: ['next'] // Permite concluir o tour
+          showButtons: []
         },
         onHighlighted: () => {
           // Automação da quantidade para o tour
