@@ -67,18 +67,6 @@ import { cn } from "@/lib/utils";
 
 type DiretrizOperacional = Tables<'diretrizes_operacionais'>;
 
-const DIARIA_RANKS_CONFIG = [
-  { key: 'of_gen', label: 'Of Gen', fieldPrefix: 'diaria_of_gen' },
-  { key: 'of_sup', label: 'Of Sup', fieldPrefix: 'diaria_of_sup' },
-  { key: 'of_int_sgt', label: 'Of Int/Sub/Asp Of/ST/Sgt', fieldPrefix: 'diaria_of_int_sgt' },
-  { key: 'demais_pracas', label: 'Demais Praças', fieldPrefix: 'diaria_demais_pracas' },
-];
-
-const OPERATIONAL_FIELDS = [
-  { key: 'fator_servicos_terceiros', label: 'Serviços de Terceiros (Fator)', type: 'factor' as const, placeholder: 'Ex: 0.10 (para 10%)' },
-  { key: 'fator_material_consumo', label: 'Material de Consumo (Fator)', type: 'factor' as const, placeholder: 'Ex: 0.02 (para 2%)' },
-];
-
 const defaultDiretrizes = (year: number): Partial<DiretrizOperacional> => ({
   ano_referencia: year,
   fator_passagens_aereas: 0,
@@ -111,106 +99,76 @@ const defaultDiretrizes = (year: number): Partial<DiretrizOperacional> => ({
 const CustosOperacionaisPage = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const [searchParams] = useSearchParams();
   const { user } = useSession();
   const queryClient = useQueryClient();
   const [loading, setLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false); 
   
   const currentYear = new Date().getFullYear();
-  const [diretrizes, setDiretrizes] = useState<Partial<DiretrizOperacional>>(defaultDiretrizes(currentYear));
-  
-  const [availableYears, setAvailableYears] = useState<number[]>([]);
   const [selectedYear, setSelectedYear] = useState<number>(currentYear);
+  const [availableYears, setAvailableYears] = useState<number[]>([currentYear, currentYear + 1]);
   const [isYearManagementDialogOpen, setIsYearManagementDialogOpen] = useState(false);
   
   const { data: defaultYearData, isLoading: isLoadingDefaultYear } = useDefaultDiretrizYear();
   const defaultYear = defaultYearData?.defaultYear || null;
 
-  const { data: pageData, isLoading: isLoadingPageData, isFetching: isFetchingPageData } = useQuery({
+  const { data: pageData, isLoading: isLoadingPageData } = useQuery({
     queryKey: ['diretrizesCustosOperacionais', selectedYear, user?.id],
     queryFn: async () => {
+      if (isGhostMode()) return { operacional: defaultDiretrizes(selectedYear), passagens: [], concessionaria: [] };
       if (!user?.id || !selectedYear) return null;
       const [opRes, passRes, concRes] = await Promise.all([
         supabase.from("diretrizes_operacionais").select("*").eq("user_id", user.id).eq("ano_referencia", selectedYear).maybeSingle(),
         supabase.from('diretrizes_passagens').select('*').eq('user_id', user.id).eq('ano_referencia', selectedYear).order('om_referencia', { ascending: true }),
         supabase.from('diretrizes_concessionaria').select('*').eq('user_id', user.id).eq('ano_referencia', selectedYear).order('categoria', { ascending: true }).order('nome_concessionaria', { ascending: true })
       ]);
-      if (opRes.error) throw opRes.error;
-      if (passRes.error) throw passRes.error;
-      if (concRes.error) throw concRes.error;
       return { operacional: opRes.data || defaultDiretrizes(selectedYear), passagens: passRes.data || [], concessionaria: concRes.data || [] };
     },
-    enabled: !!user?.id && !!selectedYear,
-    staleTime: 1000 * 60 * 5, 
+    enabled: !!user?.id || isGhostMode(),
   });
   
-  const [rawInputs, setRawInputs] = useState<Record<string, string>>({});
-  const [fieldCollapseState, setFieldCollapseState] = useState<Record<string, boolean>>(() => {
-    const initialState: Record<string, boolean> = {};
-    OPERATIONAL_FIELDS.forEach(field => { initialState[field.key as string] = false; });
-    const shouldOpenPassagens = location.state && (location.state as any).openPassagens;
-    const shouldOpenConcessionaria = location.state && (location.state as any).openConcessionaria;
-    const shouldOpenMaterialConsumo = location.state && (location.state as any).openMaterialConsumo;
-    initialState['diarias_detalhe'] = false; 
-    initialState['passagens_detalhe'] = shouldOpenPassagens || false; 
-    initialState['concessionaria_detalhe'] = shouldOpenConcessionaria || false;
-    initialState['material_consumo_detalhe'] = shouldOpenMaterialConsumo || false;
-    initialState['servicos_terceiros_detalhe'] = false;
-    initialState['material_permanente_detalhe'] = false;
-    return initialState;
+  const [fieldCollapseState, setFieldCollapseState] = useState<Record<string, boolean>>({
+    material_consumo_detalhe: false,
   });
   
-  const { handleEnterToNextField } = useFormNavigation();
-  const [diretrizesPassagens, setDiretrizesPassagens] = useState<DiretrizPassagem[]>([]);
-  const [isPassagemFormOpen, setIsPassagemFormOpen] = useState(false);
-  const [diretrizToEdit, setDiretrizToEdit] = useState<DiretrizPassagem | null>(null);
-  const [diretrizesConcessionaria, setDiretrizesConcessionaria] = useState<DiretrizConcessionaria[]>([]);
-  const [isConcessionariaFormOpen, setIsConcessionariaFormOpen] = useState(false);
-  const [diretrizConcessionariaToEdit, setDiretrizConcessionariaToEdit] = useState<DiretrizConcessionaria | null>(null);
-  const [selectedConcessionariaTab, setSelectedConcessionariaTab] = useState<CategoriaConcessionaria>(CATEGORIAS_CONCESSIONARIA[0]);
-  
-  const { diretrizes: diretrizesMaterialConsumoHook, isLoading: isLoadingMaterialConsumo, handleMoveItem, isMoving: isMovingMaterialConsumo } = useMaterialConsumoDiretrizes(selectedYear);
-  const { diretrizes: diretrizesServicosTerceirosHook, isLoading: isLoadingServicosTerceiros } = useServicosTerceirosDiretrizes(selectedYear);
-  const { diretrizes: diretrizesMaterialPermanenteHook, isLoading: isLoadingMaterialPermanente } = useMaterialPermanenteDiretrizes(selectedYear);
-
+  const { diretrizes: diretrizesMaterialConsumoHook, isLoading: isLoadingMaterialConsumo } = useMaterialConsumoDiretrizes(selectedYear);
   const [diretrizesMaterialConsumo, setDiretrizesMaterialConsumo] = useState<DiretrizMaterialConsumo[]>([]);
   const [isMaterialConsumoFormOpen, setIsMaterialConsumoFormOpen] = useState(false);
   const [diretrizMaterialConsumoToEdit, setDiretrizMaterialConsumoToEdit] = useState<DiretrizMaterialConsumo | null>(null);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [subitemToOpenId, setSubitemToOpenId] = useState<string | null>(null);
-  const [isExportImportDialogOpen, setIsExportImportDialogOpen] = useState(false);
 
   const collapsibleRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
   const handleCollapseChange = useCallback((key: string, open: boolean) => {
       setFieldCollapseState(prev => ({ ...prev, [key]: open }));
-      if (open) {
-          setTimeout(() => {
-              const element = collapsibleRefs.current[key];
-              if (element) {
-                  const yOffset = -100; 
-                  const y = element.getBoundingClientRect().top + window.pageYOffset + yOffset;
-                  window.scrollTo({ top: y, behavior: 'smooth' });
-              }
-          }, 150);
-      }
   }, []);
+
+  // Expõe função para o tour expandir a aba
+  useEffect(() => {
+    (window as any).expandMaterialConsumo = () => handleCollapseChange('material_consumo_detalhe', true);
+    return () => { delete (window as any).expandMaterialConsumo; };
+  }, [handleCollapseChange]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setLoading(false), 500);
+    return () => clearTimeout(timer);
+  }, []);
+
+  useEffect(() => {
+    if (isGhostMode()) {
+      setDiretrizesMaterialConsumo(GHOST_DATA.missao_02.subitens_lista as any);
+    } else if (diretrizesMaterialConsumoHook) {
+      setDiretrizesMaterialConsumo(diretrizesMaterialConsumoHook);
+    }
+  }, [diretrizesMaterialConsumoHook]);
 
   const handleSaveMaterialConsumo = async (data: Partial<DiretrizMaterialConsumo> & { ano_referencia: number }) => {
       try {
           setIsSaving(true);
-          const ghost = isGhostMode();
-          
-          if (ghost) {
-              // Simula a adição do 3º item para o tour
+          if (isGhostMode()) {
               setDiretrizesMaterialConsumo(prev => [...prev, GHOST_DATA.missao_02.subitem_adicionado as any]);
               toast.success("Novo Subitem de Material de Consumo cadastrado!");
               setIsMaterialConsumoFormOpen(false);
-              // Avança o tour para o Passo 10
-              setTimeout(() => {
-                window.dispatchEvent(new CustomEvent('tour:avancar'));
-              }, 500);
+              setTimeout(() => { window.dispatchEvent(new CustomEvent('tour:avancar')); }, 500);
               return;
           }
 
@@ -236,7 +194,6 @@ const CustosOperacionaisPage = () => {
           }
           
           queryClient.invalidateQueries({ queryKey: ['diretrizesMaterialConsumo', selectedYear, authUser.id] });
-          setDiretrizMaterialConsumoToEdit(null);
           setIsMaterialConsumoFormOpen(false);
       } catch (error: any) {
           toast.error(sanitizeError(error));
@@ -245,17 +202,7 @@ const CustosOperacionaisPage = () => {
       }
   };
 
-  useEffect(() => {
-    if (isGhostMode()) {
-      setDiretrizesMaterialConsumo(GHOST_DATA.missao_02.subitens_lista as any);
-    } else if (diretrizesMaterialConsumoHook) {
-      setDiretrizesMaterialConsumo(diretrizesMaterialConsumoHook);
-    }
-  }, [diretrizesMaterialConsumoHook]);
-
-  // ... (restante dos handlers e useEffects mantidos conforme original)
-
-  if (loading || isLoadingDefaultYear || isLoadingPageData || isFetchingPageData) {
+  if (loading || isLoadingDefaultYear || isLoadingPageData) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <Loader2 className="h-6 w-6 animate-spin text-primary" />
@@ -266,35 +213,46 @@ const CustosOperacionaisPage = () => {
 
   return (
     <div className="min-h-screen bg-background p-4 md:p-8">
-      <PageMetadata title="Configurações de Custos Operacionais" description="Defina os valores de diárias, contratos de passagens, concessionárias e fatores de custeio operacional para o cálculo do P Trab." canonicalPath="/config/custos-operacionais" />
+      <PageMetadata title="Configurações de Custos Operacionais" description="Defina os valores de diárias e fatores de custeio operacional." canonicalPath="/config/custos-operacionais" />
       <div className="max-w-3xl mx-auto space-y-6">
-        <div className="flex items-center justify-between"><Button variant="ghost" onClick={() => navigate("/ptrab")} className="mb-2"><ArrowLeft className="mr-2 h-4 w-4" />Voltar para Planos de Trabalho</Button><Button variant="outline" onClick={() => setIsYearManagementDialogOpen(true)} disabled={isSaving || isLoadingDefaultYear}><Settings className="mr-2 h-4 w-4" />Gerenciar Anos</Button></div>
+        <div className="flex items-center justify-between">
+          <Button variant="ghost" onClick={() => navigate("/ptrab")} className="mb-2"><ArrowLeft className="mr-2 h-4 w-4" />Voltar para Planos de Trabalho</Button>
+          <Button variant="outline" onClick={() => setIsYearManagementDialogOpen(true)} disabled={isSaving}><Settings className="mr-2 h-4 w-4" />Gerenciar Anos</Button>
+        </div>
         <Card className="card-diretrizes-operacionais">
-          <CardHeader><h1 className="text-2xl font-bold">Configurações dos Custos Operacionais</h1><CardDescription>Defina os valores e fatores de referência para o cálculo de despesas operacionais (GND 3 e GND4).</CardDescription></CardHeader>
-          <CardContent className={cn("space-y-6", "aba-material-consumo-container")}>
-            <form onSubmit={(e) => { e.preventDefault(); }}>
-              <div className="space-y-2 mb-6"><Label>Ano de Referência</Label><Select value={selectedYear.toString()} onValueChange={(value) => setSelectedYear(parseInt(value))}><SelectTrigger><SelectValue placeholder="Selecione o ano" /></SelectTrigger><SelectContent>{availableYears.map((year) => (<SelectItem key={year} value={year.toString()}>{year} {year === defaultYear && "(Padrão)"}</SelectItem>))}</SelectContent></Select></div>
-              <div className="border-t pt-4 mt-6">
-                <div className="space-y-4">
-                  <div ref={el => collapsibleRefs.current['material_consumo_detalhe'] = el} className="border-b pb-4 last:border-b-0 last:pb-0 aba-material-consumo"><Collapsible open={fieldCollapseState['material_consumo_detalhe']} onOpenChange={(open) => handleCollapseChange('material_consumo_detalhe', open)}><CollapsibleTrigger asChild><div className="flex items-center justify-between cursor-pointer py-2 gatilho-material-consumo"><h2 className="text-base font-medium flex items-center gap-2">Aquisição de Material de Consumo</h2>{fieldCollapseState['material_consumo_detalhe'] ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}</div></CollapsibleTrigger><CollapsibleContent><div className="mt-2">
-                    <div className="space-y-4 lista-subitens-nd">
-                      <Card className="p-4">
-                        <div className="flex justify-between items-center mb-4"><CardTitle className="text-base font-semibold">Subitens da ND Cadastrados</CardTitle></div>
-                        <Table>
-                          <TableHeader><TableRow><TableHead className="w-[150px] text-center">Nr Subitem</TableHead><TableHead>Nome do Subitem</TableHead><TableHead className="w-[100px] text-center">Ações</TableHead></TableRow></TableHeader>
-                          <TableBody>
-                            {diretrizesMaterialConsumo.map(d => (
-                              <MaterialConsumoDiretrizRow key={d.id} diretriz={d} onEdit={() => {}} onDelete={() => {}} loading={isSaving} onMoveItem={() => {}} id={`diretriz-material-consumo-${d.id}`} forceOpen={subitemToOpenId === d.id} />
-                            ))}
-                          </TableBody>
-                        </Table>
-                      </Card>
-                      <div className="flex justify-end"><Button type="button" onClick={() => { setDiretrizMaterialConsumoToEdit(null); setIsMaterialConsumoFormOpen(true); if (isGhostMode()) window.dispatchEvent(new CustomEvent('tour:avancar')); }} disabled={isSaving} variant="outline" size="sm" className="w-full btn-novo-subitem"><Plus className="mr-2 h-4 w-4" />Adicionar Novo Subitem da ND</Button></div>
-                    </div>
-                  </div></CollapsibleContent></Collapsible></div>
+          <CardHeader><h1 className="text-2xl font-bold">Configurações dos Custos Operacionais</h1><CardDescription>Defina os valores e fatores de referência para o cálculo de despesas operacionais.</CardDescription></CardHeader>
+          <CardContent className="space-y-6 aba-material-consumo-container">
+            <div className="space-y-2 mb-6"><Label>Ano de Referência</Label><Select value={selectedYear.toString()} onValueChange={(v) => setSelectedYear(parseInt(v))}><SelectTrigger><SelectValue placeholder="Selecione o ano" /></SelectTrigger><SelectContent>{availableYears.map((y) => (<SelectItem key={y} value={y.toString()}>{y} {y === defaultYear && "(Padrão)"}</SelectItem>))}</SelectContent></Select></div>
+            <div className="border-t pt-4 mt-6">
+              <div className="space-y-4">
+                <div ref={el => collapsibleRefs.current['material_consumo_detalhe'] = el} className="border-b pb-4 last:border-b-0 last:pb-0 aba-material-consumo">
+                  <Collapsible open={fieldCollapseState['material_consumo_detalhe']} onOpenChange={(open) => handleCollapseChange('material_consumo_detalhe', open)}>
+                    <CollapsibleTrigger asChild>
+                      <div className="flex items-center justify-between cursor-pointer py-2 gatilho-material-consumo">
+                        <h2 className="text-base font-medium flex items-center gap-2">Aquisição de Material de Consumo</h2>
+                        {fieldCollapseState['material_consumo_detalhe'] ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                      </div>
+                    </CollapsibleTrigger>
+                    <CollapsibleContent>
+                      <div className="mt-2 space-y-4 lista-subitens-nd">
+                        <Card className="p-4">
+                          <div className="flex justify-between items-center mb-4"><CardTitle className="text-base font-semibold">Subitens da ND Cadastrados</CardTitle></div>
+                          <Table>
+                            <TableHeader><TableRow><TableHead className="w-[150px] text-center">Nr Subitem</TableHead><TableHead>Nome do Subitem</TableHead><TableHead className="w-[100px] text-center">Ações</TableHead></TableRow></TableHeader>
+                            <TableBody>
+                              {diretrizesMaterialConsumo.map(d => (
+                                <MaterialConsumoDiretrizRow key={d.id} diretriz={d} onEdit={() => {}} onDelete={() => {}} loading={isSaving} onMoveItem={() => {}} />
+                              ))}
+                            </TableBody>
+                          </Table>
+                        </Card>
+                        <div className="flex justify-end"><Button type="button" onClick={() => { setDiretrizMaterialConsumoToEdit(null); setIsMaterialConsumoFormOpen(true); }} disabled={isSaving} variant="outline" size="sm" className="w-full btn-novo-subitem"><Plus className="mr-2 h-4 w-4" />Adicionar Novo Subitem da ND</Button></div>
+                      </div>
+                    </CollapsibleContent>
+                  </Collapsible>
                 </div>
               </div>
-            </form>
+            </div>
           </CardContent>
         </Card>
       </div>
