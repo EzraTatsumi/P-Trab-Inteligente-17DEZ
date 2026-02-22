@@ -17,8 +17,7 @@ import { fetchUserCredits, updateUserCredits } from "@/lib/creditUtils";
 import { CreditPromptDialog } from "@/components/CreditPromptDialog";
 import PageMetadata from "@/components/PageMetadata";
 import { GHOST_DATA, isGhostMode } from "@/lib/ghostStore";
-import { runMission03Part1, runMission04 } from "@/tours/missionTours";
-import { fetchPTrabData } from "@/lib/ptrabUtils";
+import { runMission03, runMission04 } from "@/tours/missionTours";
 
 interface PTrabData {
   numero_ptrab: string;
@@ -93,10 +92,10 @@ const PTrabForm = () => {
   const { data: totals, isLoading: isLoadingTotals } = useQuery({
     queryKey: ['ptrabTotals', ptrabId],
     queryFn: async () => {
-      if (isGhostMode() || ptrabId?.startsWith('ghost-')) return GHOST_DATA.totais_exemplo;
+      if (isGhostMode()) return GHOST_DATA.totais_exemplo;
       return fetchPTrabTotals(ptrabId!);
     },
-    enabled: !!ptrabId,
+    enabled: !!ptrabId || isGhostMode(),
     refetchInterval: 10000,
     initialData: {
       totalLogisticoGeral: 0,
@@ -126,29 +125,39 @@ const PTrabForm = () => {
 
   useEffect(() => {
     const loadPTrab = async () => {
+      if (isGhostMode()) {
+        setPtrabData(GHOST_DATA.p_trab_exemplo);
+        setLoadingPTrab(false);
+        return;
+      }
+
       if (!ptrabId) {
         toast.error("P Trab não selecionado");
         navigate('/ptrab');
         return;
       }
 
-      try {
-        const data = await fetchPTrabData(ptrabId);
-        setPtrabData({
-          ...data,
-          efetivo_empregado: String(data.efetivo_empregado),
-        });
-      } catch (error) {
-        console.error("Erro ao carregar P Trab:", error);
+      const { data, error } = await supabase
+        .from('p_trab')
+        .select('*')
+        .eq('id', ptrabId)
+        .single();
+
+      if (error || !data) {
         toast.error("Não foi possível carregar o P Trab");
         navigate('/ptrab');
-      } finally {
-        setLoadingPTrab(false);
+        return;
       }
+
+      setPtrabData({
+        ...data,
+        efetivo_empregado: String(data.efetivo_empregado),
+      });
+      setLoadingPTrab(false);
     };
 
     loadPTrab();
-  }, [ptrabId, navigate]);
+  }, [ptrabId, navigate, searchParams]);
 
   // Lógica do Tour - Sincronizada com o carregamento
   useEffect(() => {
@@ -161,7 +170,7 @@ const PTrabForm = () => {
     if (startTour && ghost) {
       const timer = setTimeout(() => {
         if (missionId === '3') {
-          runMission03Part1(() => {
+          runMission03(() => {
             const completed = JSON.parse(localStorage.getItem('completed_missions') || '[]');
             if (!completed.includes(3)) {
               localStorage.setItem('completed_missions', JSON.stringify([...completed, 3]));
@@ -211,45 +220,42 @@ const PTrabForm = () => {
       return;
     }
     
-    // Se estiver no tour, passa a flag startTour para a próxima página
-    const tourQuery = isGhostMode() ? '&startTour=true' : '';
-
     if (itemId === 'classe-i') {
-      navigate(`/ptrab/classe-i?ptrabId=${ptrabId}${tourQuery}`);
+      navigate(`/ptrab/classe-i?ptrabId=${ptrabId}`);
     } else if (itemId === 'classe-ii') {
-      navigate(`/ptrab/classe-ii?ptrabId=${ptrabId}${tourQuery}`);
+      navigate(`/ptrab/classe-ii?ptrabId=${ptrabId}`);
     } else if (itemId === 'classe-iii') {
-      navigate(`/ptrab/classe-iii?ptrabId=${ptrabId}${tourQuery}`);
+      navigate(`/ptrab/classe-iii?ptrabId=${ptrabId}`);
     } else if (itemId === 'classe-v') {
-      navigate(`/ptrab/classe-v?ptrabId=${ptrabId}${tourQuery}`);
+      navigate(`/ptrab/classe-v?ptrabId=${ptrabId}`);
     } else if (itemId === 'classe-vi') {
-      navigate(`/ptrab/classe-vi?ptrabId=${ptrabId}${tourQuery}`);
+      navigate(`/ptrab/classe-vi?ptrabId=${ptrabId}`);
     } else if (itemId === 'classe-vii') {
-      navigate(`/ptrab/classe-vii?ptrabId=${ptrabId}${tourQuery}`);
+      navigate(`/ptrab/classe-vii?ptrabId=${ptrabId}`);
     } else if (itemId === 'classe-viii') {
-      navigate(`/ptrab/classe-viii?ptrabId=${ptrabId}${tourQuery}`);
+      navigate(`/ptrab/classe-viii?ptrabId=${ptrabId}`);
     } else if (itemId === 'classe-ix') {
-      navigate(`/ptrab/classe-ix?ptrabId=${ptrabId}${tourQuery}`);
+      navigate(`/ptrab/classe-ix?ptrabId=${ptrabId}`);
     } else if (itemId === 'diaria') {
-      navigate(`/ptrab/diaria?ptrabId=${ptrabId}${tourQuery}`);
+      navigate(`/ptrab/diaria?ptrabId=${ptrabId}`);
     } else if (itemId === 'verba-operacional') {
-      navigate(`/ptrab/verba-operacional?ptrabId=${ptrabId}${tourQuery}`);
+      navigate(`/ptrab/verba-operacional?ptrabId=${ptrabId}`);
     } else if (itemId === 'suprimento-fundos') {
-      navigate(`/ptrab/suprimento-fundos?ptrabId=${ptrabId}${tourQuery}`);
+      navigate(`/ptrab/suprimento-fundos?ptrabId=${ptrabId}`);
     } else if (itemId === 'passagem-aerea') {
-      navigate(`/ptrab/passagem-aerea?ptrabId=${ptrabId}${tourQuery}`);
+      navigate(`/ptrab/passagem-aerea?ptrabId=${ptrabId}`);
     } else if (itemId === 'horas-voo-avex') {
-      navigate(`/ptrab/horas-voo-avex?ptrabId=${ptrabId}${tourQuery}`);
+      navigate(`/ptrab/horas-voo-avex?ptrabId=${ptrabId}`);
     } else if (itemId === 'concessionaria') {
-      navigate(`/ptrab/concessionaria?ptrabId=${ptrabId}${tourQuery}`);
+      navigate(`/ptrab/concessionaria?ptrabId=${ptrabId}`);
     } else if (itemId === 'material-consumo') {
-      navigate(`/ptrab/material-consumo?ptrabId=${ptrabId}${tourQuery}`);
+      navigate(`/ptrab/material-consumo?ptrabId=${ptrabId}`);
     } else if (itemId === 'material-permanente') {
-      navigate(`/ptrab/material-permanente?ptrabId=${ptrabId}${tourQuery}`);
+      navigate(`/ptrab/material-permanente?ptrabId=${ptrabId}`);
     } else if (itemId === 'complemento-alimentacao') {
-      navigate(`/ptrab/complemento-alimentacao?ptrabId=${ptrabId}${tourQuery}`);
+      navigate(`/ptrab/complemento-alimentacao?ptrabId=${ptrabId}`);
     } else if (itemId === 'servicos-terceiros') {
-      navigate(`/ptrab/servicos-terceiros?ptrabId=${ptrabId}${tourQuery}`);
+      navigate(`/ptrab/servicos-terceiros?ptrabId=${ptrabId}`);
     } else {
       toast.info(`Funcionalidade '${itemName}' (Operacional) ainda não implementada.`);
     }
