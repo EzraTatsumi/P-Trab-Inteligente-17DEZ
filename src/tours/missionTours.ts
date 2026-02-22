@@ -164,8 +164,9 @@ export const runMission02 = (onComplete: () => void) => {
         popover: {
           title: 'Missão 02: Inteligência PNCP',
           description: 'Aqui definimos os preços de referência. É a base de cálculo que garante que nenhum P Trab use valores defasados.',
-          side: 'left', // Movido para a esquerda conforme solicitado
-          align: 'start'
+          side: 'left', // Movido para a esquerda
+          align: 'start',
+          offset: 20
         }
       },
       {
@@ -229,7 +230,7 @@ export const runMission02 = (onComplete: () => void) => {
         popover: {
           title: 'Navegação de Resultados',
           description: 'O sistema encontrou os resultados! Agora, clique em "Expandir" no Pregão, depois em "Ver Itens" na ARP, selecione o "Cimento Portland" e clique em "Importar Selecionados".',
-          side: 'top', // Garantido no topo conforme solicitado
+          side: 'top', // Posicionado no topo do modal
           align: 'center',
           offset: 30,
           showButtons: []

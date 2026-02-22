@@ -827,21 +827,28 @@ const CustosOperacionaisPage = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }, []);
   
+  // Lógica do Tour - Ajustada para esperar o fim do carregamento
   useEffect(() => {
+    if (loading || isLoadingDefaultYear || isLoadingPageData || isFetchingPageData) return;
+
     const startTour = searchParams.get('startTour') === 'true';
     const missionId = localStorage.getItem('active_mission_id');
     const ghost = isGhostMode();
 
     if (startTour && ghost && missionId === '2') {
-      runMission02(() => {
-        const completed = JSON.parse(localStorage.getItem('completed_missions') || '[]');
-        if (!completed.includes(2)) {
-          localStorage.setItem('completed_missions', JSON.stringify([...completed, 2]));
-        }
-        navigate('/ptrab');
-      });
+      // Pequeno delay para garantir que o DOM estabilizou após o loading
+      const timer = setTimeout(() => {
+        runMission02(() => {
+          const completed = JSON.parse(localStorage.getItem('completed_missions') || '[]');
+          if (!completed.includes(2)) {
+            localStorage.setItem('completed_missions', JSON.stringify([...completed, 2]));
+          }
+          navigate('/ptrab');
+        });
+      }, 500);
+      return () => clearTimeout(timer);
     }
-  }, [searchParams]);
+  }, [loading, isLoadingDefaultYear, isLoadingPageData, isFetchingPageData, searchParams]);
 
   const { data: pageData, isLoading: isLoadingPageData, isFetching: isFetchingPageData } = useQuery({
     queryKey: ['diretrizesCustosOperacionais', selectedYear, user?.id],
