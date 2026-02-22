@@ -349,7 +349,7 @@ export const runMission03 = (onComplete: () => void) => {
         }
       },
       {
-        element: '.tour-import-items-btn',
+        element: '.tour-group-form-card', // Alterado para iluminar o card todo
         popover: {
           title: 'Criação do Grupo',
           description: 'Preenchemos o nome do grupo como "Material de Construção". Agora clique em "Importar/Alterar Itens" para selecionar os materiais.',
