@@ -342,14 +342,14 @@ export const runMission03 = (onComplete: () => void) => {
           description: 'Preenchemos o período (15 dias) e o efetivo (150 militares). Agora, clique em "Criar Novo Grupo de Aquisição" para selecionar os itens.',
           side: 'top',
           align: 'center',
-          showButtons: []
+          showButtons: ['previous']
         },
         onHighlighted: () => {
           if ((window as any).prefillSection2) (window as any).prefillSection2();
         }
       },
       {
-        element: '.btn-importar-itens-grupo',
+        element: '.tour-import-items-btn',
         popover: {
           title: 'Criação do Grupo',
           description: 'Preenchemos o nome do grupo como "Material de Construção". Agora clique em "Importar/Alterar Itens" para selecionar os materiais.',

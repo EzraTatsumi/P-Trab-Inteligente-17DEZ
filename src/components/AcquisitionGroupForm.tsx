@@ -88,6 +88,12 @@ const AcquisitionGroupForm: React.FC<AcquisitionGroupFormProps> = ({
             
             if (addedCount > 0 || removedCount > 0) {
                 toast.success(`Seleção atualizada. Adicionados: ${addedCount}, Removidos: ${removedCount}.`);
+                if (isGhostMode()) {
+                    // Avança do passo 8 para o 9 após a seleção ser confirmada
+                    setTimeout(() => {
+                        window.dispatchEvent(new CustomEvent('tour:avancar'));
+                    }, 300);
+                }
             }
         }
     }, [selectedItemsFromSelector]); 
@@ -167,6 +173,13 @@ const AcquisitionGroupForm: React.FC<AcquisitionGroupFormProps> = ({
         } as AcquisitionGroup);
         
         setExpandedSubitems({});
+        
+        if (isGhostMode()) {
+            // Avança para o final da missão após salvar o grupo
+            setTimeout(() => {
+                window.dispatchEvent(new CustomEvent('tour:avancar'));
+            }, 300);
+        }
     };
     
     const displayTitle = groupName.trim() || (initialGroup ? 'Editando Grupo' : 'Novo Grupo');
@@ -247,7 +260,7 @@ const AcquisitionGroupForm: React.FC<AcquisitionGroupFormProps> = ({
                                                     </TableRow>
                                                 </TableHeader>
                                                 <TableBody>
-                                                    {group.items.map(item => (
+                                                    {group.items.map((item, idx) => (
                                                         <TableRow key={item.id}>
                                                             <TableCell className="w-[100px]">
                                                                 <Input
@@ -255,7 +268,10 @@ const AcquisitionGroupForm: React.FC<AcquisitionGroupFormProps> = ({
                                                                     min={0}
                                                                     value={item.quantidade === 0 ? "" : item.quantidade}
                                                                     onChange={(e) => handleQuantityChange(item.id, e.target.value)}
-                                                                    className="w-full text-center h-8 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                                                    className={cn(
+                                                                        "w-full text-center h-8 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none",
+                                                                        idx === 0 && "tour-item-quantity-input"
+                                                                    )}
                                                                     disabled={isSaving}
                                                                 />
                                                             </TableCell>
@@ -310,7 +326,12 @@ const AcquisitionGroupForm: React.FC<AcquisitionGroupFormProps> = ({
                     <Button 
                         type="button" 
                         variant="secondary" 
-                        onClick={() => onOpenItemSelector(items)}
+                        onClick={() => {
+                            onOpenItemSelector(items);
+                            if (isGhostMode()) {
+                                window.dispatchEvent(new CustomEvent('tour:avancar'));
+                            }
+                        }}
                         disabled={isSaving}
                         className="flex-1 tour-import-items-btn"
                     >
@@ -324,7 +345,7 @@ const AcquisitionGroupForm: React.FC<AcquisitionGroupFormProps> = ({
                         type="button" 
                         onClick={handleSaveGroupClick} 
                         disabled={isSaving || !groupName.trim() || items.length === 0}
-                        className="w-auto" 
+                        className="w-auto btn-salvar-grupo-tour" 
                     >
                         {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
                         Salvar Grupo
