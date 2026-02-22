@@ -8,4 +8,13 @@
   z-index: 10000 !important;
 }
 
-/* Removido o contorno azul (driver-active-element) para manter o visual original */
+/* Classe para popovers que precisam ser deslocados para a lateral */
+.popover-side-fix {
+  margin-left: -20px !important;
+}
+
+/* Estilo para destacar o elemento focado mesmo dentro de modais */
+.driver-active-element {
+  box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.5) !important;
+  outline: 2px solid #3b82f6 !important;
+}

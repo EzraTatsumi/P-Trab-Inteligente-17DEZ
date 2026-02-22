@@ -226,41 +226,23 @@ export const runMission02 = (onComplete: () => void) => {
         }
       },
       {
-        element: '.btn-confirmar-importacao-pncp',
+        element: '.modal-importar-pncp',
         popover: {
-          title: 'Passo 7: Importação',
-          description: 'O sistema encontrou os resultados! Expanda o Pregão, veja os itens, selecione o "Cimento Portland" e clique aqui em "Importar Selecionados".',
-          side: 'top',
-          align: 'end',
+          title: 'Navegação de Resultados',
+          description: 'O sistema encontrou os resultados! Agora, clique em "Expandir" no Pregão, depois em "Ver Itens" na ARP, selecione o "Cimento Portland" e clique em "Importar Selecionados".',
+          side: 'left', // Mudado para a esquerda para não cobrir os botões centrais
+          align: 'start',
+          offset: 40,
           showButtons: []
-        }
-      },
-      {
-        element: '.lista-itens-aquisicao',
-        popover: {
-          title: 'Passo 8: Item Inserido',
-          description: 'Veja que o item de aquisição foi inserido com sucesso na lista de itens deste subitem da ND.',
-          side: 'top',
-          align: 'center'
         }
       },
       {
         element: '.btn-salvar-subitem',
         popover: {
-          title: 'Passo 9: Finalizar Cadastro',
-          description: 'Excelente! Agora clique em "Cadastrar Subitem" para salvar esta nova diretriz no seu catálogo.',
+          title: 'Finalização e Salvamento',
+          description: 'Excelente! O item foi importado com todos os dados. Agora basta clicar em "Cadastrar Subitem" para salvar no seu catálogo.',
           side: 'top',
-          align: 'end',
-          showButtons: []
-        }
-      },
-      {
-        element: '.lista-subitens-nd',
-        popover: {
-          title: 'Passo 10: Missão Cumprida!',
-          description: 'O subitem foi cadastrado! Note que agora a lista de Material de Consumo possui 3 subitens configurados.',
-          side: 'top',
-          align: 'center'
+          align: 'end'
         }
       }
     ],
