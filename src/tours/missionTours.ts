@@ -199,10 +199,10 @@ export const runMission02 = (onComplete: () => void) => {
         }
       },
       {
-        element: '.tour-dados-subitem', // Alterado para mirar no Card superior do modal
+        element: '.tour-dados-subitem', 
         popover: { 
           title: 'Campos Obrigatórios', 
-          description: 'Primeiro, preencha o "Número do Subitem" (ex: 24) e o "Nome do Subitem" (ex: Material para Manutenção de Bens Imóveis/Instalações). Estes campos são essenciais para a identificação do subitem.', 
+          description: 'Primeiro, preencha o "Número do Subitem" (ex: 24) e o "Nome do Subitem" (ex: Material p/ Manutenção de Bens Imóveis/Instalações). Estes campos são essenciais para a definição do subitem.', 
           side: 'top', 
           align: 'center', 
           offset: 30
