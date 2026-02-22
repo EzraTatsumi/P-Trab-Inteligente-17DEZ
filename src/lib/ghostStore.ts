@@ -7,7 +7,7 @@ export const GHOST_DATA = {
     numero_ptrab: "Minuta 001/2026",
     nome_operacao: "OPERAÇÃO SENTINELA",
     comando_militar_area: "Comando Militar do Leste",
-    nome_om: "1º Btl Inf Selva",
+    nome_om: "1º BIS",
     nome_om_extenso: "1º Batalhão de Infantaria de Selva",
     codug_om: "160222",
     rm_vinculacao: "12ª RM",
@@ -97,7 +97,7 @@ export const GHOST_DATA = {
         numeroAta: "05/2025",
         objeto: "Aquisição de materiais de construção civil para obras de engenharia.",
         uasg: "160222",
-        omNome: "1º Batalhão de Engenharia de Construção",
+        omNome: "1º BIS",
         dataVigenciaInicial: "2025-01-01",
         dataVigenciaFinal: "2025-12-31",
         valorTotalEstimado: 150000.00,
@@ -118,7 +118,7 @@ export const GHOST_DATA = {
         numeroControlePncpAta: "160222-ARP-001-2025",
         pregaoFormatado: "000.005/25",
         uasg: "160222",
-        omNome: "1º Batalhão de Engenharia de Construção",
+        omNome: "1º BIS",
         dataVigenciaInicial: "2025-01-01",
         dataVigenciaFinal: "2025-12-31",
       }
@@ -138,9 +138,9 @@ export const GHOST_DATA = {
 
   // Missão 03: OMs para o formulário
   oms_exemplo: [
-    { id: "om-1", nome_om: "1º Btl Inf Selva", codug_om: "160222", rm_vinculacao: "12ª RM", codug_rm_vinculacao: "160060" },
-    { id: "om-2", nome_om: "2º Btl Inf Selva", codug_om: "160223", rm_vinculacao: "12ª RM", codug_rm_vinculacao: "160060" },
-    { id: "om-3", nome_om: "3º Btl Inf Selva", codug_om: "160224", rm_vinculacao: "12ª RM", codug_rm_vinculacao: "160060" },
+    { id: "om-1", nome_om: "1º BIS", codug_om: "160222", rm_vinculacao: "12ª RM", codug_rm_vinculacao: "160060" },
+    { id: "om-2", nome_om: "2º BIS", codug_om: "160223", rm_vinculacao: "12ª RM", codug_rm_vinculacao: "160060" },
+    { id: "om-3", nome_om: "3º BIS", codug_om: "160224", rm_vinculacao: "12ª RM", codug_rm_vinculacao: "160060" },
   ],
 
   totais_exemplo: {

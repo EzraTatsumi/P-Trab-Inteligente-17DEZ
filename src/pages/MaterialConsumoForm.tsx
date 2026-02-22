@@ -1,39 +1,32 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
-import { ArrowLeft, Loader2, Save, Plus, Trash2, FileText, Package, Pencil, Search, Info, LayoutGrid } from "lucide-react";
+import { ArrowLeft, Loader2, Save, Plus, Trash2, FileText, LayoutGrid, Pencil } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { OmSelector } from "@/components/OmSelector";
 import { OMData } from "@/lib/omUtils";
 import { GHOST_DATA, isGhostMode } from "@/lib/ghostStore";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { PTrabCostSummary } from "@/components/PTrabCostSummary";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { fetchPTrabData } from "@/lib/ptrabUtils";
 import PageMetadata from "@/components/PageMetadata";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { formatCurrency } from "@/lib/formatUtils";
-import { fetchUserCredits } from "@/lib/creditUtils";
-import { useSession } from "@/components/SessionContextProvider";
 
 const MaterialConsumoForm = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const ptrabId = searchParams.get('ptrabId');
-  const { user } = useSession();
-  const queryClient = useQueryClient();
   
   const [loading, setLoading] = useState(true);
   const [selectedOm, setSelectedOm] = useState<OMData | null>(null);
   const [fase, setFase] = useState("");
-  
-  // Estado para Grupos de Consumo (Padrão Real)
   const [grupos, setGrupos] = useState<any[]>([]);
 
   // Busca dados do P Trab para o cabeçalho
@@ -41,13 +34,6 @@ const MaterialConsumoForm = () => {
     queryKey: ['pTrab', ptrabId],
     queryFn: () => isGhostMode() ? Promise.resolve(GHOST_DATA.p_trab_exemplo) : fetchPTrabData(ptrabId!),
     enabled: !!ptrabId || isGhostMode(),
-  });
-
-  // Busca créditos para o resumo lateral
-  const { data: credits } = useQuery({
-    queryKey: ['userCredits', user?.id],
-    queryFn: () => isGhostMode() ? Promise.resolve(GHOST_DATA.totais_exemplo) : fetchUserCredits(user!.id),
-    enabled: !!user?.id || isGhostMode(),
   });
 
   // Sincronismo do Tour: Avança quando a página está pronta
@@ -67,7 +53,6 @@ const MaterialConsumoForm = () => {
     }
     
     if (isGhostMode()) {
-      // Simula um grupo já existente para o tour
       setGrupos([{
         id: "ghost-group-1",
         group_name: "Material de Construção",
@@ -113,7 +98,7 @@ const MaterialConsumoForm = () => {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Coluna da Esquerda: Dados e Resumo de Custos (Real) */}
+          {/* Coluna da Esquerda: Apenas Dados do P Trab */}
           <div className="lg:col-span-1 space-y-4">
             <Card className="shadow-sm border-primary/10">
               <CardHeader className="pb-2 pt-4">
@@ -139,15 +124,6 @@ const MaterialConsumoForm = () => {
                 </div>
               </CardContent>
             </Card>
-
-            {ptrabId && (
-              <PTrabCostSummary 
-                ptrabId={ptrabId} 
-                creditGND3={credits?.credit_gnd3 || 0}
-                creditGND4={credits?.credit_gnd4 || 0}
-                onOpenCreditDialog={() => {}} // Desabilitado no tour
-              />
-            )}
           </div>
 
           {/* Coluna da Direita: O Formulário Real com Grupos */}
@@ -166,7 +142,7 @@ const MaterialConsumoForm = () => {
                         <SelectTrigger className="w-full">
                           <SelectValue placeholder="Selecione a OM..." />
                         </SelectTrigger>
-                        <SelectContent>
+                        <SelectContent className="z-[9999]">
                           {GHOST_DATA.oms_exemplo.map(om => (
                             <SelectItem key={om.id} value={om.id}>{om.nome_om}</SelectItem>
                           ))}
@@ -186,7 +162,7 @@ const MaterialConsumoForm = () => {
                       <SelectTrigger>
                         <SelectValue placeholder="Selecione a fase..." />
                       </SelectTrigger>
-                      <SelectContent>
+                      <SelectContent className="z-[9999]">
                         <SelectItem value="preparacao">Preparação</SelectItem>
                         <SelectItem value="execucao">Execução</SelectItem>
                         <SelectItem value="desmobilizacao">Desmobilização</SelectItem>
