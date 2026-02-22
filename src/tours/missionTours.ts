@@ -67,7 +67,7 @@ export const runMission01 = (onComplete: () => void) => {
         popover: {
           title: 'Configurações do Sistema',
           description: 'Vincule trabalhos colaborativos, Diretrizes de Custeio Logístico e de Custos Operacionais e Importe/Exporte dados de P Trab.',
-          side: 'left', 
+          side: 'right', 
           align: 'start',
         },
         onHighlighted: () => {
