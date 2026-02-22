@@ -23,6 +23,7 @@ import SubitemCatalogDialog from './SubitemCatalogDialog';
 import CatmatCatalogDialog from './CatmatCatalogDialog';
 import ItemAquisicaoBulkUploadDialog from './ItemAquisicaoBulkUploadDialog';
 import ItemAquisicaoPNCPDialog from './ItemAquisicaoPNCPDialog';
+import { cn } from '@/lib/utils';
 
 interface MaterialConsumoDiretrizFormDialogProps {
     open: boolean;
@@ -137,7 +138,7 @@ const MaterialConsumoDiretrizFormDialog: React.FC<MaterialConsumoDiretrizFormDia
                     <DialogDescription>Cadastre o subitem da ND 30 e os itens de material de consumo associados.</DialogDescription>
                 </DialogHeader>
                 <div className="space-y-6 py-2">
-                    <Card className="p-4">
+                    <Card className={cn("p-4", "tour-dados-subitem")}>
                         <div className="flex justify-between items-center mb-4">
                             <CardTitle className="text-base">Dados do Subitem da ND</CardTitle>
                             <Button type="button" variant="outline" size="sm" onClick={() => setIsCatalogOpen(true)} disabled={loading}><BookOpen className="h-4 w-4 mr-2" />Catálogo ND 30</Button>
@@ -201,7 +202,7 @@ const MaterialConsumoDiretrizFormDialog: React.FC<MaterialConsumoDiretrizFormDia
                 mode="consumo"
                 onSelect={(c) => setSubitemForm(p => ({ ...p, nr_subitem: c.nr_subitem, nome_subitem: c.nome_subitem, descricao_subitem: c.descricao_subitem }))} 
             />
-            <CatmatCatalogDialog open={isCatmatCatalogOpen} onOpenChange={setIsCatmatCatalogOpen} onSelect={(c) => setItemForm(p => ({ ...p, codigo_catmat: c.code, descricao_item: c.description, descricao_reduzida: c.short_description || '' }))} />
+            <CatmatCatalogDialog open={isCatmatCatalogOpen} onOpenChange={setIsCatmatCatalogOpen} onSelect={(c) => setItemForm(p => ({ ...p, codigo_catmat: c.code, description: c.description, short_description: c.short_description || '' }))} />
             <ItemAquisicaoBulkUploadDialog open={isBulkUploadOpen} onOpenChange={setIsBulkUploadOpen} onImport={(items) => setSubitemForm(p => ({ ...p, itens_aquisicao: [...p.itens_aquisicao, ...items] }))} existingItemsInDiretriz={subitemForm.itens_aquisicao} mode="material" />
             <ItemAquisicaoPNCPDialog 
                 open={isPNCPSearchOpen} 
