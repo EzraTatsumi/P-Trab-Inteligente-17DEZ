@@ -1,26 +1,53 @@
-/* Garante que o popover do tour fique acima dos modais do Shadcn (Radix UI) */
-.driver-popover.driverjs-popover {
+/* Estilos customizados para o tour com driver.js */
+
+.driver-popover.driverjs-theme {
+  background-color: #fff;
+  color: #000;
+  border-radius: 8px;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+}
+
+.driver-popover.driverjs-theme .driver-popover-title {
+  font-weight: 700;
+  font-size: 1.1rem;
+  color: #1a1a1a;
+}
+
+.driver-popover.driverjs-theme .driver-popover-description {
+  font-size: 0.95rem;
+  line-height: 1.5;
+  color: #4a4a4a;
+}
+
+.driver-popover.driverjs-theme .driver-popover-btn {
+  text-shadow: none;
+  background-color: #0f172a;
+  color: #fff;
+  border: none;
+  padding: 6px 12px;
+  border-radius: 4px;
+  font-size: 0.85rem;
+  transition: background-color 0.2s;
+}
+
+.driver-popover.driverjs-theme .driver-popover-btn:hover {
+  background-color: #1e293b;
+}
+
+.driver-popover.driverjs-theme .driver-popover-close-btn {
+  color: #94a3b8;
+}
+
+/* 
+   CORREÇÃO CRÍTICA: 
+   Garante que os Portals do Radix/Shadcn (Select, Dropdown, etc) 
+   fiquem ACIMA da sobreposição do driver.js 
+*/
+[data-radix-portal] {
   z-index: 10001 !important;
-  max-width: 350px !important;
-  border: 1px solid #e2e8f0 !important; /* Borda suave em vez de contorno azul */
 }
 
-.driver-overlay {
-  z-index: 10000 !important;
-}
-
-/* Remove o contorno azul (outline/box-shadow) solicitado */
-.driver-active-element {
-  box-shadow: none !important;
-  outline: none !important;
-}
-
-/* Estilo para o conteúdo do popover */
-.driver-popover-title {
-  font-weight: 700 !important;
-  color: #0f172a !important;
-}
-
-.driver-popover-description {
-  color: #475569 !important;
+/* Classe auxiliar para forçar z-index em menus específicos se necessário */
+.z-tour-portal {
+  z-index: 10001 !important;
 }

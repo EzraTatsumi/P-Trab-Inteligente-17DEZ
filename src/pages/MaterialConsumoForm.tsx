@@ -46,6 +46,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import AcquisitionItemSelectorDialog from "@/components/AcquisitionItemSelectorDialog"; 
 import { isGhostMode, GHOST_DATA } from "@/lib/ghostStore";
 import PageMetadata from "@/components/PageMetadata";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 // Tipos de dados
 type MaterialConsumoRegistroDB = Tables<'material_consumo_registros'>; 
@@ -230,6 +231,16 @@ const MaterialConsumoForm = () => {
     const oms = isGhostMode() ? (GHOST_DATA.oms_exemplo as any[]) : omsReal;
     const isLoadingOms = isGhostMode() ? false : isLoadingOmsReal;
     
+    // Sincronismo do Tour: Avança quando a página está pronta
+    useEffect(() => {
+        if (!isLoadingPTrab && !isLoadingRegistros && isGhostMode()) {
+            const timer = setTimeout(() => {
+                window.dispatchEvent(new CustomEvent('tour:avancar'));
+            }, 800);
+            return () => clearTimeout(timer);
+        }
+    }, [isLoadingPTrab, isLoadingRegistros]);
+
     // --- Mutations ---
 
     // Função auxiliar para mapear CalculatedMaterialConsumo para TablesInsert<'material_consumo_registros'>
@@ -1203,14 +1214,32 @@ const MaterialConsumoForm = () => {
                                     {/* OM FAVORECIDA */}
                                     <div className="space-y-2 col-span-1">
                                         <Label htmlFor="om_favorecida">OM Favorecida *</Label>
-                                        <OmSelector
-                                            selectedOmId={selectedOmFavorecidaId}
-                                            onChange={handleOmFavorecidaChange}
-                                            placeholder="Selecione a OM Favorecida"
-                                            disabled={!isPTrabEditable || isSaving || isLoadingOms || pendingGroups.length > 0}
-                                            initialOmName={editingId ? formData.om_favorecida : undefined}
-                                            initialOmUg={editingId ? formData.ug_favorecida : undefined}
-                                        />
+                                        {isGhostMode() ? (
+                                            <Select 
+                                                onValueChange={(val) => {
+                                                    const om = GHOST_DATA.oms_exemplo.find(o => o.id === val);
+                                                    if (om) handleOmFavorecidaChange(om as any);
+                                                }}
+                                            >
+                                                <SelectTrigger className="w-full">
+                                                    <SelectValue placeholder="Selecione a OM Favorecida" />
+                                                </SelectTrigger>
+                                                <SelectContent className="z-[10001]">
+                                                    {GHOST_DATA.oms_exemplo.map(om => (
+                                                        <SelectItem key={om.id} value={om.id}>{om.nome_om}</SelectItem>
+                                                    ))}
+                                                </SelectContent>
+                                            </Select>
+                                        ) : (
+                                            <OmSelector
+                                                selectedOmId={selectedOmFavorecidaId}
+                                                onChange={handleOmFavorecidaChange}
+                                                placeholder="Selecione a OM Favorecida"
+                                                disabled={!isPTrabEditable || isSaving || isLoadingOms || pendingGroups.length > 0}
+                                                initialOmName={editingId ? formData.om_favorecida : undefined}
+                                                initialOmUg={editingId ? formData.ug_favorecida : undefined}
+                                            />
+                                        )}
                                     </div>
                                     <div className="space-y-2 col-span-1">
                                         <Label htmlFor="ug_favorecida">UG Favorecida</Label>
@@ -1224,11 +1253,24 @@ const MaterialConsumoForm = () => {
                                     
                                     <div className="space-y-2 col-span-1">
                                         <Label htmlFor="fase_atividade">Fase da Atividade *</Label>
-                                        <FaseAtividadeSelect
-                                            value={formData.fase_atividade}
-                                            onChange={handleFaseAtividadeChange}
-                                            disabled={!isPTrabEditable || isSaving || pendingGroups.length > 0}
-                                        />
+                                        {isGhostMode() ? (
+                                            <Select value={formData.fase_atividade} onValueChange={handleFaseAtividadeChange}>
+                                                <SelectTrigger>
+                                                    <SelectValue placeholder="Selecione a fase..." />
+                                                </SelectTrigger>
+                                                <SelectContent className="z-[10001]">
+                                                    <SelectItem value="preparacao">Preparação</SelectItem>
+                                                    <SelectItem value="execucao">Execução</SelectItem>
+                                                    <SelectItem value="desmobilizacao">Desmobilização</SelectItem>
+                                                </SelectContent>
+                                            </Select>
+                                        ) : (
+                                            <FaseAtividadeSelect
+                                                value={formData.fase_atividade}
+                                                onChange={handleFaseAtividadeChange}
+                                                disabled={!isPTrabEditable || isSaving || pendingGroups.length > 0}
+                                            />
+                                        )}
                                     </div>
                                 </div>
                             </section>
@@ -1290,14 +1332,32 @@ const MaterialConsumoForm = () => {
                                                         {/* CAMPO 3: OM DESTINO */}
                                                         <div className="space-y-2 col-span-1">
                                                             <Label htmlFor="om_destino">OM Destino do Recurso *</Label>
-                                                            <OmSelector
-                                                                selectedOmId={selectedOmDestinoId}
-                                                                onChange={handleOmDestinoChange}
-                                                                placeholder="Selecione a OM Destino"
-                                                                disabled={!isPTrabEditable || isSaving || isLoadingOms || pendingGroups.length > 0}
-                                                                initialOmName={editingId ? formData.om_destino : formData.om_favorecida}
-                                                                initialOmUg={editingId ? formData.ug_destino : formData.ug_favorecida}
-                                                            />
+                                                            {isGhostMode() ? (
+                                                                <Select 
+                                                                    onValueChange={(val) => {
+                                                                        const om = GHOST_DATA.oms_exemplo.find(o => o.id === val);
+                                                                        if (om) handleOmDestinoChange(om as any);
+                                                                    }}
+                                                                >
+                                                                    <SelectTrigger className="w-full">
+                                                                        <SelectValue placeholder="Selecione a OM Destino" />
+                                                                    </SelectTrigger>
+                                                                    <SelectContent className="z-[10001]">
+                                                                        {GHOST_DATA.oms_exemplo.map(om => (
+                                                                            <SelectItem key={om.id} value={om.id}>{om.nome_om}</SelectItem>
+                                                                        ))}
+                                                                    </SelectContent>
+                                                                </Select>
+                                                            ) : (
+                                                                <OmSelector
+                                                                    selectedOmId={selectedOmDestinoId}
+                                                                    onChange={handleOmDestinoChange}
+                                                                    placeholder="Selecione a OM Destino"
+                                                                    disabled={!isPTrabEditable || isSaving || isLoadingOms || pendingGroups.length > 0}
+                                                                    initialOmName={editingId ? formData.om_destino : formData.om_favorecida}
+                                                                    initialOmUg={editingId ? formData.ug_destino : formData.ug_favorecida}
+                                                                />
+                                                            )}
                                                         </div>
 
                                                         {/* CAMPO 4: UG DESTINO */}

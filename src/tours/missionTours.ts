@@ -9,9 +9,10 @@ let activeMissionDriver: any = null;
 if (typeof window !== 'undefined') {
   window.addEventListener('tour:avancar', () => {
     if (activeMissionDriver) {
+      // Pequeno delay para garantir que o DOM estabilizou
       setTimeout(() => {
         activeMissionDriver.moveNext();
-      }, 600); 
+      }, 300); 
     }
   });
 }
@@ -274,7 +275,7 @@ export const runMission02 = (onComplete: () => void) => {
 export const runMission03 = (onComplete: () => void) => {
   const d = driver({
     ...commonConfig,
-    overlayClickable: false, // Impede que cliques fora fechem o tour
+    overlayClickable: false, 
     steps: [
       {
         element: '.card-selecao-material',
@@ -318,7 +319,6 @@ export const runMission03 = (onComplete: () => void) => {
       },
       {
         element: '.secao-1-form-material',
-        padding: 120, // Padding extra para acomodar a abertura dos menus suspensos
         popover: {
           title: 'Seção 1: Identificação da OM',
           description: 'Nesta primeira seção, você deve selecionar a Organização Militar responsável e a fase da atividade.',
