@@ -202,7 +202,7 @@ export const runMission02 = (onComplete: () => void) => {
         element: '.modal-novo-subitem', 
         popover: { 
           title: 'Campos Obrigatórios', 
-          description: 'Primeiro, preencha o "Número do Subitem" (ex: 22) e o "Nome do Subitem" (ex: Material de Limpeza). Estes campos são essenciais para a organização.', 
+          description: 'Primeiro, preencha o "Número do Subitem" (ex: 24) e o "Nome do Subitem" (ex: Material p/ Manutenção de Bens Imóveis/Instalações). Estes campos são essenciais para a definição do subitem.', 
           side: 'left', 
           align: 'start', 
           offset: 30
@@ -212,7 +212,7 @@ export const runMission02 = (onComplete: () => void) => {
         element: '.btn-importar-pncp', 
         popover: { 
           title: 'O Salto Tecnológico', 
-          description: 'Agora, clique no botão "Importar via API PNCP" para buscar preços oficiais sem precisar digitar.', 
+          description: 'Agora, clique no botão "Importar via API PNCP" para buscar dados dos itens listados em ARP/Pregões.', 
           side: 'left', 
           align: 'start', 
           offset: 30,
