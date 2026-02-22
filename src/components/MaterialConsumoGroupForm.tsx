@@ -40,6 +40,7 @@ const MaterialConsumoGroupForm = ({ group, onSave, onCancel, diretrizes, loading
   const handleOpenSelector = () => {
     setIsSelectorOpen(true);
     if (isGhostMode()) {
+      // Avança do passo 7 para o 8 ao clicar no botão
       window.dispatchEvent(new CustomEvent('tour:avancar'));
     }
   };
@@ -48,7 +49,7 @@ const MaterialConsumoGroupForm = ({ group, onSave, onCancel, diretrizes, loading
     setItens(selectedItens);
     setIsSelectorOpen(false);
     if (isGhostMode()) {
-      // Pequeno delay para o modal fechar antes de focar no próximo passo
+      // Avança do passo 8 para o 9 após a seleção ser confirmada e o modal fechar
       setTimeout(() => {
         window.dispatchEvent(new CustomEvent('tour:avancar'));
       }, 300);
