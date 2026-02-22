@@ -339,8 +339,8 @@ const PTrabForm = () => {
             )}
           </div>
 
-          <div className="lg:col-span-2">
-            <Card className="shadow-lg card-selecao-material">
+          <div className="lg:col-span-2 card-selecao-material">
+            <Card className="shadow-lg">
               <CardHeader>
                 <h2 className="text-xl font-bold">Selecione o Tipo de Material</h2>
                 <CardDescription>
