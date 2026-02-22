@@ -1328,7 +1328,7 @@ const MaterialConsumoForm = () => {
                                         2. Configurar Planejamento
                                     </h3>
                                     
-                                    <Card className="mt-6 bg-muted/50 rounded-lg p-4">
+                                    <Card className="mt-6 bg-muted/50 rounded-lg p-4 tour-planning-container">
                                         
                                         {/* Dados da Solicitação (Dias, Efetivo, OM Destino) */}
                                         <Card className="rounded-lg mb-4">

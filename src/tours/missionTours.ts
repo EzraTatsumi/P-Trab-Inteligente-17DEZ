@@ -392,7 +392,7 @@ export const runMission03 = (onComplete: () => void) => {
         }
       },
       {
-        element: '.tour-acquisition-groups-card',
+        element: '.tour-planning-container', // Alterado para englobar o botão de salvamento
         popover: {
           title: 'Revisão do Lote',
           description: 'O grupo "Material de Construção" foi criado com sucesso. Agora, clique em "Salvar Itens na Lista" para preparar o envio dos dados.',
