@@ -1556,38 +1556,6 @@ const PTrabManager = () => {
       {ptrabToUnlink && <UnlinkPTrabDialog open={showUnlinkPTrabDialog} onOpenChange={setShowUnlinkPTrabDialog} ptrabName={`${ptrabToUnlink.numero_ptrab} - ${ptrabToUnlink.nome_operacao}`} onConfirm={handleConfirmUnlink} loading={isActionLoading} />}
       
       <AIChatDrawer />
-
-      <style>{`
-        /* --- CORREÇÃO CIRÚRGICA PARA O TOUR --- */
-
-        /* 1. O fundo escuro do tour */
-        .driver-overlay {
-          z-index: 10000 !important;
-        }
-
-        /* 2. O menu que abre (Portal do Radix) - Fica acima do fundo escuro */
-        [data-radix-portal], 
-        [data-radix-menu-content],
-        .menu-acoes,
-        .menu-configuracoes {
-          z-index: 10001 !important;
-          opacity: 1 !important;
-          visibility: visible !important;
-          pointer-events: auto !important;
-        }
-
-        /* 3. A caixa de texto do tour - Fica acima de tudo */
-        .driver-popover.driverjs-theme {
-          z-index: 10002 !important;
-          max-width: 450px !important; /* Aumentando a largura para diminuir a altura */
-        }
-
-        /* Garante que o menu não herde opacidade do tour */
-        [data-radix-portal] * {
-          opacity: 1 !important;
-          visibility: visible !important;
-        }
-      `}</style>
     </div>
   );
 };
