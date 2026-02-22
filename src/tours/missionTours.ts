@@ -137,7 +137,7 @@ export const runMission01 = (onComplete: () => void) => {
           title: 'Agilidade e Colaboração',
           description: 'No menu de ações, você pode CLONAR planos complexos de anos anteriores para economizar tempo, ou COMPARTILHAR o acesso com outros militares para trabalho colaborativo.',
           side: 'top',
-          align: 'center',
+          align: 'start',
         },
         onHighlighted: () => {
           if ((window as any).openActions) (window as any).openActions();
