@@ -96,7 +96,6 @@ export const runMission01 = (onComplete: () => void) => {
           description: 'Vincule trabalhos colaborativos, Diretrizes de Custeio Logístico e de Custos Operacionais e Importe/Exporte dados de P Trab.',
           side: 'left',
           align: 'end',
-          offset: 20,
           popoverClass: 'popover-wide'
         },
         onHighlighted: () => {
@@ -192,8 +191,7 @@ export const runMission02 = (onComplete: () => void) => {
           title: 'Missão 02: Inteligência PNCP',
           description: 'Aqui definimos os valores de referência. É a base de cálculo que garante que nenhum P Trab use valores defasados.',
           side: 'left',
-          align: 'start',
-          offset: 20
+          align: 'start'
         },
         onHighlighted: () => {
           window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -205,8 +203,7 @@ export const runMission02 = (onComplete: () => void) => {
           title: 'Organização por ND',
           description: 'A seção de Material de Consumo organiza tudo por Subitem da Natureza de Despesa. Veja que já temos alguns itens cadastrados.',
           side: 'left',
-          align: 'start',
-          offset: 40
+          align: 'start'
         },
         onHighlighted: () => {
           if ((window as any).expandMaterialConsumo) {
@@ -230,8 +227,7 @@ export const runMission02 = (onComplete: () => void) => {
           title: 'Campos Obrigatórios', 
           description: 'Primeiro, preencha o "Número do Subitem" (ex: 24) e o "Nome do Subitem" (ex: Material p/ Manutenção de Bens Imóveis/Instalação).', 
           side: 'top', 
-          align: 'center', 
-          offset: 30
+          align: 'center'
         }
       },
       {
@@ -241,7 +237,6 @@ export const runMission02 = (onComplete: () => void) => {
           description: 'Agora, clique no botão "Importar via API PNCP" para buscar dados de itens em ARP/Pregões.', 
           side: 'left', 
           align: 'start', 
-          offset: 30,
           showButtons: []
         }
       },
@@ -262,7 +257,6 @@ export const runMission02 = (onComplete: () => void) => {
           description: 'O sistema encontrou os resultados! Agora, clique em "Expandir" no Pregão, depois em "Ver Itens" na ARP, selecione o "Cimento Portland" e clique em "Importar Selecionados".',
           side: 'top', 
           align: 'center',
-          offset: 10,
           showButtons: []
         }
       },
@@ -354,8 +348,7 @@ export const runMission03 = (onComplete: () => void) => {
           title: 'Dados Identificados',
           description: 'Para agilizar, a OM e a Fase da Atividade já foram preenchidas automaticamente.',
           side: 'top',
-          align: 'center',
-          offset: 100
+          align: 'center'
         },
         onHighlighted: () => {
           if ((window as any).forcePrefillMission03) (window as any).forcePrefillMission03();
@@ -505,7 +498,6 @@ export const runMission04 = (onComplete: () => void) => {
           description: 'Além da visão global, você pode analisar os custos distribuídos por cada Organização Militar. Clique em "Ver por OM" para alternar a visão.',
           side: 'top',
           align: 'start',
-          offset: -20,
           showButtons: []
         }
       },
