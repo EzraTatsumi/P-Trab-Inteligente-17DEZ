@@ -1389,6 +1389,25 @@ export const PTrabCostSummary = ({ ptrabId, onOpenCreditDialog, creditGND3, cred
     }
   }, [isDetailsOpen]);
 
+  // Lógica de avanço automático do tour ao mudar para visão por OM
+  useEffect(() => {
+    if (viewMode === 'byOm' && isGhostMode()) {
+      // Pequeno delay para o React renderizar a lista de OMs antes de iluminar
+      setTimeout(() => {
+        window.dispatchEvent(new CustomEvent('tour:avancar'));
+      }, 300);
+    }
+  }, [viewMode]);
+
+  // Lógica de avanço automático do tour ao abrir detalhes da OM
+  useEffect(() => {
+    if (selectedOm && isGhostMode()) {
+      setTimeout(() => {
+        window.dispatchEvent(new CustomEvent('tour:avancar'));
+      }, 400);
+    }
+  }, [selectedOm]);
+
   // Expondo funções para o tour
   useEffect(() => {
     (window as any).expandCostDetails = () => {
