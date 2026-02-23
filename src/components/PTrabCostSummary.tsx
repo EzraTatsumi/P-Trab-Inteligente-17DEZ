@@ -173,7 +173,7 @@ const initializeOmTotals = (omName: string, ug: string): OmTotals => ({
   totalMaterialPermanente: 0,
   totalAviacaoExercito: 0,
   classeI: { total: 0, totalComplemento: 0, totalEtapaSolicitadaValor: 0, totalDiasEtapaSolicitada: 0, totalRefeicoesIntermediarias: 0, totalRacoesOperacionaisGeral: 0 },
-  classeII: { total: 0, totalND30: number, totalND39: number, totalItens: number, groupedCategories: {} },
+  classeII: { total: 0, totalND30: 0, totalND39: 0, totalItens: 0, groupedCategories: {} },
   classeIII: { total: 0, totalDieselValor: 0, totalGasolinaValor: 0, totalDieselLitros: 0, totalGasolinaLitros: 0, totalLubrificanteValor: 0, totalLubrificanteLitros: 0 },
   classeV: { total: 0, totalND30: 0, totalND39: 0, totalItens: 0, groupedCategories: {} },
   classeVI: { total: 0, totalND30: 0, totalND39: 0, totalItens: 0, groupedCategories: {} },
@@ -207,10 +207,52 @@ const formatCategoryLabel = (cat: string, details?: any) => {
  * Busca e calcula todos os totais de um P Trab agregando dados de todas as tabelas de registros.
  */
 export const fetchPTrabTotals = async (ptrabId: string): Promise<PTrabAggregatedTotals> => {
-  // Lógica de Mock para o Ghost Mode (Missão 04) - Retorno imediato para evitar conflitos de cache
+  // Lógica de Mock para o Ghost Mode (Missão 04)
   if (isGhostMode()) {
-    return {
-      ...GHOST_DATA.totais_exemplo,
+    const mockTotals: PTrabAggregatedTotals = {
+      totalLogisticoGeral: 45000.50,
+      totalOperacional: 1250.50,
+      totalMaterialPermanente: 8900.00,
+      totalAviacaoExercito: 0,
+      totalRacoesOperacionaisGeral: 0,
+      totalClasseI: 15000,
+      totalComplemento: 5000,
+      totalEtapaSolicitadaValor: 10000,
+      totalDiasEtapaSolicitada: 8,
+      totalRefeicoesIntermediarias: 150,
+      totalClasseII: 5000,
+      totalClasseII_ND30: 5000,
+      totalClasseII_ND39: 0,
+      totalItensClasseII: 10,
+      groupedClasseIICategories: {},
+      totalClasseV: 2000,
+      totalClasseV_ND30: 2000,
+      totalClasseV_ND39: 0,
+      totalItensClasseV: 5,
+      groupedClasseVCategories: {},
+      totalClasseVI: 0, totalClasseVI_ND30: 0, totalClasseVI_ND39: 0, totalItensClasseVI: 0, groupedClasseVICategories: {},
+      totalClasseVII: 0, totalClasseVII_ND30: 0, totalClasseVII_ND39: 0, totalItensClasseVII: 0, groupedClasseVIICategories: {},
+      totalClasseVIII: 0, totalClasseVIII_ND30: 0, totalClasseVIII_ND39: 0, totalItensClasseVIII: 0, groupedClasseVIIICategories: {},
+      totalClasseIX: 0, totalClasseIX_ND30: 0, totalClasseIX_ND39: 0, totalItensClasseIX: 0, groupedClasseIXCategories: {},
+      totalDieselValor: 18000, totalGasolinaValor: 0, totalDieselLitros: 3000, totalGasolinaLitros: 0, totalLubrificanteValor: 5000.50, totalLubrificanteLitros: 100, totalCombustivel: 23000.50,
+      totalDiarias: 0, totalDiariasND15: 0, totalDiariasND30: 0, totalMilitaresDiarias: 0, totalDiasViagem: 0,
+      totalVerbaOperacional: 0, totalVerbaOperacionalND30: 0, totalVerbaOperacionalND39: 0, totalEquipesVerba: 0, totalDiasVerba: 0,
+      totalSuprimentoFundos: 0, totalSuprimentoFundosND30: 0, totalSuprimentoFundosND39: 0, totalEquipesSuprimento: 0, totalDiasSuprimento: 0,
+      totalPassagensND33: 0, totalQuantidadePassagens: 0, totalTrechosPassagens: 0,
+      totalConcessionariaND39: 0, totalConcessionariaRegistros: 0, totalConcessionariaAgua: 0, totalConcessionariaEnergia: 0,
+      totalHorasVoo: 0, totalHorasVooND30: 0, totalHorasVooND39: 0, quantidadeHorasVoo: 0, groupedHorasVoo: {},
+      totalMaterialConsumo: 1250.50,
+      totalMaterialConsumoND30: 1250.50,
+      totalMaterialConsumoND39: 0,
+      groupedMaterialConsumoCategories: {
+        "Material de Construção": { totalValor: 1250.50, totalND30: 1250.50, totalND39: 0 }
+      },
+      totalComplementoAlimentacao: 0, totalComplementoAlimentacaoND30: 0, totalComplementoAlimentacaoND39: 0, groupedComplementoCategories: {},
+      totalServicosTerceiros: 0, totalServicosTerceirosND33: 0, totalServicosTerceirosND39: 0, groupedServicosTerceirosCategories: {},
+      totalMaterialPermanenteND52: 8900.00,
+      groupedMaterialPermanenteCategories: {
+        "Equipamentos": { totalValor: 8900.00, totalND52: 8900.00 }
+      },
       groupedByOmSolicitante: {
         "1 BIS": {
           ...initializeOmTotals("1º BIS", "160222"),
@@ -241,7 +283,8 @@ export const fetchPTrabTotals = async (ptrabId: string): Promise<PTrabAggregated
           }
         }
       }
-    } as any;
+    };
+    return mockTotals;
   }
 
   try {
@@ -1453,39 +1496,48 @@ export const PTrabCostSummary = ({ ptrabId, onOpenCreditDialog, creditGND3, cred
       </CardHeader>
       <CardContent className="space-y-4 p-0 pb-3">
         {renderCostSummary()}
-        <Accordion type="single" collapsible className="w-full px-6 pt-0" value={isDetailsOpen ? "summary-details" : undefined} onValueChange={(v) => viewMode === 'global' && setIsDetailsOpen(v === "summary-details")}>
-          <AccordionItem value="summary-details" className="border-b-0">
-            <AccordionTrigger className="py-0 px-0 hover:no-underline flex items-center justify-between w-full text-xs text-muted-foreground border-t border-border/50" onClick={(e) => { e.preventDefault(); if (viewMode === 'global') handleSummaryClick(); }}>
-              <div className="flex justify-between items-center w-full py-2">
-                <div className="flex flex-col items-start gap-1">
-                  <span className="text-base font-bold text-foreground">Total Geral</span>
-                  <Button variant={viewMode === 'byOm' ? 'default' : 'outline'} size="sm" className="h-6 text-[10px] px-2 tour-btn-view-by-om" onClick={(e) => { e.stopPropagation(); setViewMode(viewMode === 'byOm' ? 'global' : 'byOm'); setIsDetailsOpen(false); setSelectedOm(null); }}>
-                    {viewMode === 'byOm' ? 'Voltar ao Global' : 'Ver por OM'}
-                  </Button>
-                </div>
-                <div className="flex flex-col items-end gap-0">
-                  <span className="text-lg font-bold text-foreground">{formatCurrency(totalGeralFinal)}</span>
-                  {viewMode === 'global' && (
-                    <span className="font-semibold text-primary flex items-center gap-1 text-xs lowercase">
-                      {isDetailsOpen ? "menos detalhes" : "mais detalhes"}
-                      <ChevronDown className={cn("h-4 w-4 shrink-0 transition-transform duration-200", isDetailsOpen ? "rotate-180" : "rotate-0")} />
-                    </span>
-                  )}
-                </div>
-              </div>
-            </AccordionTrigger>
-            <AccordionContent className="pt-2 pb-0">
+        <div className="w-full px-6 pt-0">
+          <div className="flex items-center justify-between w-full text-xs text-muted-foreground border-t border-border/50 py-2">
+            <div className="flex flex-col items-start gap-1">
+              <span className="text-base font-bold text-foreground">Total Geral</span>
+              <Button 
+                variant={viewMode === 'byOm' ? 'default' : 'outline'} 
+                size="sm" 
+                className="h-6 text-[10px] px-2 tour-btn-view-by-om" 
+                onClick={(e) => { 
+                  e.stopPropagation(); 
+                  setViewMode(viewMode === 'byOm' ? 'global' : 'byOm'); 
+                  setIsDetailsOpen(false); 
+                  setSelectedOm(null); 
+                }}
+              >
+                {viewMode === 'byOm' ? 'Voltar ao Global' : 'Ver por OM'}
+              </Button>
+            </div>
+            <div className="flex flex-col items-end gap-0">
+              <span className="text-lg font-bold text-foreground">{formatCurrency(totalGeralFinal)}</span>
               {viewMode === 'global' && (
-                <div className="space-y-2" ref={detailsRef}>
-                  <TabDetails mode="logistica" data={totals} />
-                  <div className="pt-4"><TabDetails mode="operacional" data={totals} /></div>
-                  <div className="pt-4"><TabDetails mode="permanente" data={totals} /></div>
-                  <div className="pt-4"><TabDetails mode="avex" data={totals} /></div>
-                </div>
+                <button 
+                  className="font-semibold text-primary flex items-center gap-1 text-xs lowercase hover:underline"
+                  onClick={handleSummaryClick}
+                >
+                  {isDetailsOpen ? "menos detalhes" : "mais detalhes"}
+                  <ChevronDown className={cn("h-4 w-4 shrink-0 transition-transform duration-200", isDetailsOpen ? "rotate-180" : "rotate-0")} />
+                </button>
               )}
-            </AccordionContent>
-          </AccordionItem>
-        </Accordion>
+            </div>
+          </div>
+          
+          {isDetailsOpen && viewMode === 'global' && (
+            <div className="space-y-2 pt-2 animate-in fade-in slide-in-from-top-1 duration-200" ref={detailsRef}>
+              <TabDetails mode="logistica" data={totals} />
+              <div className="pt-4"><TabDetails mode="operacional" data={totals} /></div>
+              <div className="pt-4"><TabDetails mode="permanente" data={totals} /></div>
+              <div className="pt-4"><TabDetails mode="avex" data={totals} /></div>
+            </div>
+          )}
+        </div>
+        
         <div className="px-6 pt-0 border-t border-border/50 space-y-2">
           <div className="flex justify-between items-center">
             <h4 className="font-bold text-sm text-muted-foreground flex items-center gap-2"><TrendingUp className="h-4 w-4" />Saldo GND 3</h4>
