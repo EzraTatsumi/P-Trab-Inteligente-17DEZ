@@ -206,7 +206,6 @@ export const GHOST_DATA = {
         ]
       }
     ],
-    // Outras tabelas vazias para o mock
     diaria_registros: [],
     passagem_registros: [],
     verba_operacional_registros: [],
