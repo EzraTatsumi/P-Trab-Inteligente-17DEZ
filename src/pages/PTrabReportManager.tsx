@@ -873,11 +873,22 @@ const PTrabReportManager = () => {
   // Avanço automático do tour ao trocar de relatório no Ghost Mode
   useEffect(() => {
     if (ghost) {
-      if (selectedReport === 'operacional' || selectedReport === 'dor') {
+      const startTour = searchParams.get('startTour') === 'true';
+      if (!startTour) return;
+
+      // Identifica o passo atual do tour para evitar avanços errados
+      const driverPopover = document.querySelector('.driver-popover');
+      if (!driverPopover) return;
+
+      const title = driverPopover.querySelector('.driver-popover-title')?.textContent;
+      
+      if (selectedReport === 'operacional' && title?.includes('Alternando Relatórios')) {
+        window.dispatchEvent(new CustomEvent('tour:avancar'));
+      } else if (selectedReport === 'dor' && title?.includes('Visualização do DOR')) {
         window.dispatchEvent(new CustomEvent('tour:avancar'));
       }
     }
-  }, [selectedReport, ghost]);
+  }, [selectedReport, ghost, searchParams]);
 
   const loadData = useCallback(async () => {
     if (!ptrabId && !ghost) {
@@ -1724,7 +1735,7 @@ const PTrabReportManager = () => {
               <SelectTrigger className="w-[320px] tour-report-selector">
                 <SelectValue placeholder="Selecione o Relatório" />
               </SelectTrigger>
-              <SelectContent className="z-tour-portal">
+              <SelectContent className="z-[9999] pointer-events-auto" portalProps={{ copyStyles: true }}>
                 {REPORT_OPTIONS.map(option => (
                   <SelectItem key={option.value} value={option.value}>
                     <div className="flex items-center gap-2">
