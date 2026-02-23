@@ -270,12 +270,12 @@ export const runMission02 = (onComplete: () => void) => {
         popover: {
           title: 'Item Importado com Sucesso',
           description: 'Veja! O item foi importado com todos os dados técnicos e valores atualizados do PNCP diretamente para sua lista.',
-          side: 'top', 
+          side: 'top',
           align: 'center'
         }
       },
       {
-        element: '.btn-custom-salvar-subitem',
+        element: '.btn-salvar-subitem',
         popover: {
           title: 'Finalização do Cadastro',
           description: 'Excelente! Agora clique em "Cadastrar Subitem" para salvar este novo grupo no seu catálogo.',
@@ -700,71 +700,6 @@ export const runMission05 = (onComplete: () => void) => {
           side: 'bottom',
           align: 'end',
           showButtons: ['next', 'previous']
-        }
-      }
-    ],
-    onDestroyed: onComplete
-  });
-  activeMissionDriver = d;
-  d.drive();
-};
-
-export const runMission06 = (onComplete: () => void) => {
-  const d = driver({
-    ...commonConfig,
-    steps: [
-      {
-        element: '.tour-report-manager-root',
-        popover: {
-          title: 'Missão 06: Central de Relatórios',
-          description: 'Bem-vindo à Central de Relatórios. Aqui você visualiza todos os anexos do seu P Trab. Iniciamos com o Relatório Operacional contendo o "Cimento Portland" detalhado na Missão 03, totalizando R$ 1.250,50.',
-          side: 'top',
-          align: 'center'
-        },
-        onHighlighted: () => {
-          window.scrollTo({ top: 0, behavior: 'smooth' });
-        }
-      },
-      {
-        element: '.btn-export-pdf',
-        popover: {
-          title: 'Exportar PDF',
-          description: 'Gere um arquivo PDF formatado seguindo os padrões oficiais para anexar ao processo.',
-          side: 'bottom',
-          align: 'center'
-        }
-      },
-      {
-        element: '.btn-export-excel',
-        popover: {
-          title: 'Exportar Excel',
-          description: 'Exporte os dados para uma planilha Excel, facilitando conferências e cálculos externos.',
-          side: 'bottom',
-          align: 'center'
-        }
-      },
-      {
-        element: '.btn-print',
-        popover: {
-          title: 'Impressão Direta',
-          description: 'Envie o relatório diretamente para a impressora configurada no seu computador.',
-          side: 'bottom',
-          align: 'center'
-        }
-      },
-      {
-        element: '.tour-report-selector',
-        popover: {
-          title: 'Alternando Relatórios',
-          description: 'Use este seletor para navegar entre os diferentes anexos, como o Logístico ou o DOR. Missão cumprida! Você agora domina o ciclo completo do P Trab Inteligente.',
-          side: 'left',
-          align: 'center',
-          showButtons: ['next', 'previous']
-        },
-        onHighlighted: () => {
-          // Simula o clique para abrir a lista no último passo
-          const trigger = document.querySelector('.tour-report-selector') as HTMLElement;
-          if (trigger) trigger.click();
         }
       }
     ],

@@ -1,7 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Tables } from "@/integrations/supabase/types";
-import { GHOST_DATA, isGhostMode, getActiveMission } from "./ghostStore";
 
 // Tipo para as diretrizes operacionais (valores unitários)
 type DiretrizOperacional = Tables<'diretrizes_operacionais'>;
@@ -59,10 +58,6 @@ export async function updatePTrabStatusIfAberto(ptrabId: string) {
  * Busca os dados principais de um PTrab.
  */
 export async function fetchPTrabData(ptrabId: string): Promise<PTrabData> {
-    if (isGhostMode()) {
-        return GHOST_DATA.p_trab_exemplo as PTrabData;
-    }
-
     const { data, error } = await supabase
         .from('p_trab')
         .select('*, updated_at')
@@ -78,17 +73,9 @@ export async function fetchPTrabData(ptrabId: string): Promise<PTrabData> {
 
 /**
  * Busca todos os registros de uma tabela específica para um dado PTrab.
+ * Simplificado para evitar erros de profundidade de tipo do TypeScript com Supabase.
  */
 export async function fetchPTrabRecords(tableName: PTrabLinkedTableName, ptrabId: string): Promise<any[]> {
-    if (isGhostMode()) {
-        const missionId = getActiveMission();
-        if (missionId === '6') {
-            const missionData = GHOST_DATA.missao_06 as any;
-            return missionData[tableName] || [];
-        }
-        return [];
-    }
-
     const { data, error } = await (supabase.from(tableName as any) as any)
         .select('*')
         .eq('p_trab_id', ptrabId);
