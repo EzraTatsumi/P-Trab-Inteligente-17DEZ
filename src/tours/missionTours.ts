@@ -270,12 +270,12 @@ export const runMission02 = (onComplete: () => void) => {
         popover: {
           title: 'Item Importado com Sucesso',
           description: 'Veja! O item foi importado com todos os dados técnicos e valores atualizados do PNCP diretamente para sua lista.',
-          side: 'top', 
+          side: 'top',
           align: 'center'
         }
       },
       {
-        element: '.btn-custom-salvar-subitem',
+        element: '.btn-salvar-subitem',
         popover: {
           title: 'Finalização do Cadastro',
           description: 'Excelente! Agora clique em "Cadastrar Subitem" para salvar este novo grupo no seu catálogo.',
@@ -700,65 +700,6 @@ export const runMission05 = (onComplete: () => void) => {
           side: 'bottom',
           align: 'end',
           showButtons: ['next', 'previous']
-        }
-      }
-    ],
-    onDestroyed: onComplete
-  });
-  activeMissionDriver = d;
-  d.drive();
-};
-
-export const runMission06 = (onComplete: () => void) => {
-  const d = driver({
-    ...commonConfig,
-    steps: [
-      {
-        element: '.tour-report-manager-root',
-        popover: {
-          title: 'Missão 06: Central de Relatórios',
-          description: 'Bem-vindo ao Gerenciador de Relatórios. Aqui você visualiza e exporta todos os anexos do seu P Trab. Iniciamos com o Relatório Operacional contendo os dados da Missão 03.',
-          side: 'top',
-          align: 'center'
-        },
-        onHighlighted: () => {
-          window.scrollTo({ top: 0, behavior: 'smooth' });
-        }
-      },
-      {
-        element: '.btn-export-pdf',
-        popover: {
-          title: 'Exportar PDF',
-          description: 'Gere um arquivo PDF formatado seguindo os padrões oficiais para anexar ao processo.',
-          side: 'bottom',
-          align: 'center'
-        }
-      },
-      {
-        element: '.btn-export-excel',
-        popover: {
-          title: 'Exportar Excel',
-          description: 'Exporte os dados para uma planilha Excel, facilitando conferências e cálculos externos.',
-          side: 'bottom',
-          align: 'center'
-        }
-      },
-      {
-        element: '.btn-print',
-        popover: {
-          title: 'Imprimir',
-          description: 'Envie o relatório diretamente para a impressora configurada no seu computador.',
-          side: 'bottom',
-          align: 'center'
-        }
-      },
-      {
-        element: '.tour-report-selector',
-        popover: {
-          title: 'Trocar Relatório',
-          description: 'Use este seletor para navegar entre os diferentes anexos do P Trab, como o Logístico ou o DOR. Missão cumprida! Você agora é um mestre do P Trab Inteligente.',
-          side: 'left',
-          align: 'center'
         }
       }
     ],

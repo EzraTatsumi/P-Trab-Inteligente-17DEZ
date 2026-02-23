@@ -1,11 +1,9 @@
-"use client";
-
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Loader2, FileText, Package, Utensils, Briefcase, HardHat, Plane, ClipboardList, Frown } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { toast } from "sonner"; 
+import { toast } from "sonner"; // Alterado para sonner para suportar toast.promise
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import ExcelJS from 'exceljs';
@@ -77,9 +75,6 @@ import { fetchDiretrizesOperacionais, fetchDiretrizesPassagens } from "@/lib/ptr
 import { useDefaultDiretrizYear } from "@/hooks/useDefaultDiretrizYear";
 import { Tables, Json } from "@/integrations/supabase/types"; 
 import { ItemAquisicao } from "@/types/diretrizesMaterialConsumo";
-import { GHOST_DATA, isGhostMode } from "@/lib/ghostStore";
-import { runMission06 } from "@/tours/missionTours";
-import { cn } from "@/lib/utils";
 
 // =================================================================
 // TIPOS E FUNÇÕES AUXILIARES (Exportados para uso nos relatórios)
@@ -817,7 +812,6 @@ const PTrabReportManager = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const ptrabId = searchParams.get('ptrabId');
-  const ghost = isGhostMode();
   
   const [ptrabData, setPtrabData] = useState<PTrabData | null>(null);
   const [registrosClasseI, setRegistrosClasseI] = useState<ClasseIRegistro[]>([]);
@@ -830,7 +824,6 @@ const PTrabReportManager = () => {
   const [registrosConcessionaria, setRegistrosConcessionaria] = useState<ConcessionariaRegistro[]>([]);
   const [registrosMaterialConsumo, setRegistrosMaterialConsumo] = useState<MaterialConsumoRegistro[]>([]); 
   const [registrosComplementoAlimentacao, setRegistrosComplementoAlimentacao] = useState<ComplementoAlimentacaoRegistro[]>([]);
-  const [registrosComplementoAlimentacaoRaw, setRegistrosComplementoAlimentacaoRaw] = useState<any[]>([]);
   const [registrosServicosTerceiros, setRegistrosServicosTerceiros] = useState<ServicoTerceiroRegistro[]>([]);
   const [registrosMaterialPermanente, setRegistrosMaterialPermanente] = useState<MaterialPermanenteRegistro[]>([]);
   const [registrosHorasVoo, setRegistrosHorasVoo] = useState<HorasVooRegistro[]>([]); 
@@ -843,46 +836,15 @@ const PTrabReportManager = () => {
   // ADICIONADO: Estado para gerir o cache em memória das abas
   const [fetchedReports, setFetchedReports] = useState<Set<ReportType>>(new Set());
   const [loading, setLoading] = useState(true);
-  
-  // Inicialização inteligente do relatório selecionado para o tour
-  const [selectedReport, setSelectedReport] = useState<ReportType>(() => {
-    if (typeof window !== 'undefined') {
-      const params = new URLSearchParams(window.location.search);
-      const isGhost = localStorage.getItem('is_ghost_mode') === 'true';
-      const isMission6 = localStorage.getItem('active_mission_id') === '6';
-      const isTour = params.get('startTour') === 'true';
-      if (isGhost && isMission6 && isTour) return 'operacional';
-    }
-    return 'logistico';
-  });
+  const [selectedReport, setSelectedReport] = useState<ReportType>('logistico');
 
   const isLubrificante = (r: ClasseIIIRegistro) => r.tipo_equipamento === 'LUBRIFICANTE_CONSOLIDADO';
   const isCombustivel = (r: ClasseIIIRegistro) => r.tipo_equipamento === 'COMBUSTIVEL_CONSOLIDADO';
   
   const currentReportOption = useMemo(() => REPORT_OPTIONS.find(r => r.value === selectedReport)!, [selectedReport]);
 
-  // Lógica de inicialização do Tour (Missão 06)
-  useEffect(() => {
-    if (!loading) {
-      const startTour = searchParams.get('startTour') === 'true';
-      const missionId = localStorage.getItem('active_mission_id');
-      if (startTour && missionId === '6' && ghost) {
-        const timer = setTimeout(() => {
-          runMission06(() => {
-            const completed = JSON.parse(localStorage.getItem('completed_missions') || '[]');
-            if (!completed.includes(6)) {
-              localStorage.setItem('completed_missions', JSON.stringify([...completed, 6]));
-            }
-            navigate('/ptrab?showHub=true');
-          });
-        }, 500);
-        return () => clearTimeout(timer);
-      }
-    }
-  }, [loading, searchParams, navigate, ghost]);
-
   const loadData = useCallback(async () => {
-    if (!ptrabId && !ghost) {
+    if (!ptrabId) {
       toast.error("P Trab não selecionado");
       navigate('/ptrab');
       return;
@@ -899,17 +861,13 @@ const PTrabReportManager = () => {
       // 1. Busca os dados base do P Trab apenas na primeira vez
       let currentPtrab = ptrabData;
       if (!currentPtrab) {
-          if (ghost) {
-            currentPtrab = GHOST_DATA.p_trab_exemplo as any;
-          } else {
-            const { data: ptrab, error: ptrabError } = await supabase
-                .from('p_trab')
-                .select('*, updated_at, rm_vinculacao')
-                .eq('id', ptrabId)
-                .single();
-            if (ptrabError || !ptrab) throw new Error("Não foi possível carregar o P Trab");
-            currentPtrab = ptrab as PTrabData;
-          }
+          const { data: ptrab, error: ptrabError } = await supabase
+              .from('p_trab')
+              .select('*, updated_at, rm_vinculacao')
+              .eq('id', ptrabId)
+              .single();
+          if (ptrabError || !ptrab) throw new Error("Não foi possível carregar o P Trab");
+          currentPtrab = ptrab as PTrabData;
           setPtrabData(currentPtrab);
       }
 
@@ -926,80 +884,50 @@ const PTrabReportManager = () => {
           diretrizesOpData: any = null, diretrizesPassagensData: any = null;
 
       // 3. Monta APENAS as requisições necessárias para a aba atual (Lazy Fetching)
-      if (ghost) {
-          // Dados Mockados para o Tour
-          if (selectedReport === 'logistico' || selectedReport === 'racao_operacional') {
-              classeIData = [{
-                  id: 'ghost-cl1', p_trab_id: 'ghost', organizacao: '1º BIS', ug: '160222', categoria: 'RACAO_QUENTE',
-                  efetivo: 150, dias_operacao: 15, nr_ref_int: 3, valor_qs: 15.50, valor_qr: 21.20,
-                  total_qs: 34875, total_qr: 47700, total_geral: 82575, fase_atividade: 'Execução', om_qs: '1º BIS', ug_qs: '160222'
-              }];
-          }
-          if (selectedReport === 'operacional') {
-              diariaData = [{
-                  id: 'ghost-diaria', p_trab_id: 'ghost', organizacao: '1º BIS', ug: '160222', destino: 'CAPITAL',
-                  dias_operacao: 10, quantidades_por_posto: { 'OF_SUP': 2, 'OF_INT_SGT': 5 }, valor_total: 12500,
-                  valor_nd_30: 12500, valor_nd_15: 0, valor_taxa_embarque: 0, is_aereo: false, fase_atividade: 'Execução'
-              }];
-              materialConsumoData = [{
-                  id: 'ghost-mat', p_trab_id: 'ghost', organizacao: '1º BIS', ug: '160222', group_name: 'MATERIAL DE CONSTRUÇÃO',
-                  valor_total: 1250.50, valor_nd_30: 1250.50, valor_nd_39: 0, dias_operacao: 15, efetivo: 150, fase_atividade: 'Execução'
-              }];
-          }
-          if (selectedReport === 'dor') {
-              dorData = [{
-                  id: 'ghost-dor', p_trab_id: 'ghost', numero_dor: '01', created_at: new Date().toISOString(),
-                  finalidade: 'Prover apoio logístico...', motivacao: 'Msg Op nº 196...', itens_dor: [
-                      { uge_name: '1º BIS', uge_code: '160222', gnd: 3, valor_num: 1250.50, descricao: 'MATERIAL DE CONSUMO' }
-                  ]
-              }];
-          }
-      } else {
-          const promises: Promise<void>[] = [];
+      const promises: Promise<void>[] = [];
 
-          if (selectedReport === 'logistico' || selectedReport === 'racao_operacional') {
-              promises.push(Promise.resolve(supabase.from('classe_i_registros').select('*, memoria_calculo_qs_customizada, memoria_calculo_qr_customizada, memoria_calculo_op_customizada, fase_atividade, categoria, quantidade_r2, quantidade_r3').eq('p_trab_id', ptrabId).then(({data}) => { classeIData = data; })));
-          }
-
-          if (selectedReport === 'logistico') {
-              promises.push(Promise.resolve(supabase.from('classe_ii_registros').select('*, detalhamento_customizado, fase_atividade, valor_nd_30, valor_nd_39, om_detentora, ug_detentora, efetivo').eq('p_trab_id', ptrabId).then(({data}) => { classeIIData = data; })));
-              promises.push(Promise.resolve(supabase.from('classe_v_registros').select('*, detalhamento_customizado, fase_atividade, valor_nd_30, valor_nd_39, om_detentora, ug_detentora, efetivo').eq('p_trab_id', ptrabId).then(({data}) => { classeVData = data; })));
-              promises.push(Promise.resolve(supabase.from('classe_vi_registros').select('*, detalhamento_customizado, fase_atividade, valor_nd_30, valor_nd_39, om_detentora, ug_detentora').eq('p_trab_id', ptrabId).then(({data}) => { classeVIData = data; })));
-              promises.push(Promise.resolve(supabase.from('classe_vii_registros').select('*, detalhamento_customizado, fase_atividade, valor_nd_30, valor_nd_39, om_detentora, ug_detentora').eq('p_trab_id', ptrabId).then(({data}) => { classeVIIData = data; })));
-              promises.push(Promise.resolve(supabase.from('classe_viii_saude_registros').select('*, itens_saude, detalhamento_customizado, fase_atividade, valor_nd_30, valor_nd_39, om_detentora, ug_detentora').eq('p_trab_id', ptrabId).then(({data}) => { classeVIIISaudeData = data; })));
-              promises.push(Promise.resolve(supabase.from('classe_viii_remonta_registros').select('*, itens_remonta, detalhamento_customizado, fase_atividade, valor_nd_30, valor_nd_39, animal_tipo, quantidade_animais, om_detentora, ug_detentora').eq('p_trab_id', ptrabId).then(({data}) => { classeVIIIRemontaData = data; })));
-              promises.push(Promise.resolve(supabase.from('classe_ix_registros').select('*, itens_motomecanizacao, detalhamento_customizado, fase_atividade, valor_nd_30, valor_nd_39, om_detentora, ug_detentora').eq('p_trab_id', ptrabId).then(({data}) => { classeIXData = data; })));
-              promises.push(Promise.resolve(supabase.from('classe_iii_registros').select('*, detalhamento_customizado, itens_equipamentos, fase_atividade, consumo_lubrificante_litro, preco_lubrificante, valor_nd_30, valor_nd_39, om_detentora, ug_detentora').eq('p_trab_id', ptrabId).then(({data}) => { classeIIIData = data; })));
-              promises.push(Promise.resolve(supabase.from("p_trab_ref_lpc").select("*").eq("p_trab_id", ptrabId).maybeSingle().then(({data}) => { refLPCData = data; })));
-          }
-
-          if (selectedReport === 'operacional') {
-              promises.push(Promise.resolve(supabase.from('diaria_registros').select('*').eq('p_trab_id', ptrabId).then(({data}) => { diariaData = data; })));
-              promises.push(Promise.resolve(supabase.from('verba_operacional_registros').select('*, objeto_aquisicao, objeto_contratacao, proposito, finalidade, local, tarefa').eq('p_trab_id', ptrabId).then(({data}) => { verbaOperacionalData = data; })));
-              promises.push(Promise.resolve(supabase.from('passagem_registros').select('*').eq('p_trab_id', ptrabId).then(({data}) => { passagemData = data; })));
-              promises.push(Promise.resolve(supabase.from('concessionaria_registros').select('*, diretriz_id').eq('p_trab_id', ptrabId).then(({data}) => { concessionariaData = data; })));
-              promises.push(Promise.resolve(supabase.from('material_consumo_registros').select('*').eq('p_trab_id', ptrabId).then(({data}) => { materialConsumoData = data; })));
-              promises.push(Promise.resolve(supabase.from('complemento_alimentacao_registros').select('*').eq('p_trab_id', ptrabId).then(({data}) => { complementoAlimentacaoData = data; })));
-              promises.push(Promise.resolve(supabase.from('servicos_terceiros_registros' as any).select('*').eq('p_trab_id', ptrabId).then(({data}) => { servicosTerceirosData = data; })));
-              promises.push(Promise.resolve(fetchDiretrizesOperacionais(year).then(data => { diretrizesOpData = data; })));
-              promises.push(Promise.resolve(fetchDiretrizesPassagens(year).then(data => { diretrizesPassagensData = data; })));
-          }
-
-          if (selectedReport === 'material_permanente') {
-              promises.push(Promise.resolve(supabase.from('material_permanente_registros' as any).select('*').eq('p_trab_id', ptrabId).then(({data}) => { materialPermanenteData = data; })));
-          }
-
-          if (selectedReport === 'hora_voo') {
-              promises.push(Promise.resolve(supabase.from('horas_voo_registros').select('*').eq('p_trab_id', ptrabId).then(({data}) => { horasVooData = data; })));
-          }
-
-          if (selectedReport === 'dor') {
-              promises.push(Promise.resolve(supabase.from('dor_registros' as any).select('*').eq('p_trab_id', ptrabId).order('created_at', { ascending: true }).then(({data}) => { dorData = data; })));
-          }
-
-          // Dispara apenas as requisições necessárias simultaneamente
-          await Promise.all(promises);
+      if (selectedReport === 'logistico' || selectedReport === 'racao_operacional') {
+          promises.push(Promise.resolve(supabase.from('classe_i_registros').select('*, memoria_calculo_qs_customizada, memoria_calculo_qr_customizada, memoria_calculo_op_customizada, fase_atividade, categoria, quantidade_r2, quantidade_r3').eq('p_trab_id', ptrabId).then(({data}) => { classeIData = data; })));
       }
+
+      if (selectedReport === 'logistico') {
+          promises.push(Promise.resolve(supabase.from('classe_ii_registros').select('*, detalhamento_customizado, fase_atividade, valor_nd_30, valor_nd_39, om_detentora, ug_detentora, efetivo').eq('p_trab_id', ptrabId).then(({data}) => { classeIIData = data; })));
+          promises.push(Promise.resolve(supabase.from('classe_v_registros').select('*, detalhamento_customizado, fase_atividade, valor_nd_30, valor_nd_39, om_detentora, ug_detentora, efetivo').eq('p_trab_id', ptrabId).then(({data}) => { classeVData = data; })));
+          promises.push(Promise.resolve(supabase.from('classe_vi_registros').select('*, detalhamento_customizado, fase_atividade, valor_nd_30, valor_nd_39, om_detentora, ug_detentora').eq('p_trab_id', ptrabId).then(({data}) => { classeVIData = data; })));
+          promises.push(Promise.resolve(supabase.from('classe_vii_registros').select('*, detalhamento_customizado, fase_atividade, valor_nd_30, valor_nd_39, om_detentora, ug_detentora').eq('p_trab_id', ptrabId).then(({data}) => { classeVIIData = data; })));
+          promises.push(Promise.resolve(supabase.from('classe_viii_saude_registros').select('*, itens_saude, detalhamento_customizado, fase_atividade, valor_nd_30, valor_nd_39, om_detentora, ug_detentora').eq('p_trab_id', ptrabId).then(({data}) => { classeVIIISaudeData = data; })));
+          promises.push(Promise.resolve(supabase.from('classe_viii_remonta_registros').select('*, itens_remonta, detalhamento_customizado, fase_atividade, valor_nd_30, valor_nd_39, animal_tipo, quantidade_animais, om_detentora, ug_detentora').eq('p_trab_id', ptrabId).then(({data}) => { classeVIIIRemontaData = data; })));
+          promises.push(Promise.resolve(supabase.from('classe_ix_registros').select('*, itens_motomecanizacao, detalhamento_customizado, fase_atividade, valor_nd_30, valor_nd_39, om_detentora, ug_detentora').eq('p_trab_id', ptrabId).then(({data}) => { classeIXData = data; })));
+          promises.push(Promise.resolve(supabase.from('classe_iii_registros').select('*, detalhamento_customizado, itens_equipamentos, fase_atividade, consumo_lubrificante_litro, preco_lubrificante, valor_nd_30, valor_nd_39, om_detentora, ug_detentora').eq('p_trab_id', ptrabId).then(({data}) => { classeIIIData = data; })));
+          promises.push(Promise.resolve(supabase.from("p_trab_ref_lpc").select("*").eq("p_trab_id", ptrabId).maybeSingle().then(({data}) => { refLPCData = data; })));
+      }
+
+      if (selectedReport === 'operacional') {
+          promises.push(Promise.resolve(supabase.from('diaria_registros').select('*').eq('p_trab_id', ptrabId).then(({data}) => { diariaData = data; })));
+          promises.push(Promise.resolve(supabase.from('verba_operacional_registros').select('*, objeto_aquisicao, objeto_contratacao, proposito, finalidade, local, tarefa').eq('p_trab_id', ptrabId).then(({data}) => { verbaOperacionalData = data; })));
+          promises.push(Promise.resolve(supabase.from('passagem_registros').select('*').eq('p_trab_id', ptrabId).then(({data}) => { passagemData = data; })));
+          promises.push(Promise.resolve(supabase.from('concessionaria_registros').select('*, diretriz_id').eq('p_trab_id', ptrabId).then(({data}) => { concessionariaData = data; })));
+          promises.push(Promise.resolve(supabase.from('material_consumo_registros').select('*').eq('p_trab_id', ptrabId).then(({data}) => { materialConsumoData = data; })));
+          promises.push(Promise.resolve(supabase.from('complemento_alimentacao_registros').select('*').eq('p_trab_id', ptrabId).then(({data}) => { complementoAlimentacaoData = data; })));
+          promises.push(Promise.resolve(supabase.from('servicos_terceiros_registros' as any).select('*').eq('p_trab_id', ptrabId).then(({data}) => { servicosTerceirosData = data; })));
+          promises.push(Promise.resolve(fetchDiretrizesOperacionais(year).then(data => { diretrizesOpData = data; })));
+          promises.push(Promise.resolve(fetchDiretrizesPassagens(year).then(data => { diretrizesPassagensData = data; })));
+      }
+
+      if (selectedReport === 'material_permanente') {
+          promises.push(Promise.resolve(supabase.from('material_permanente_registros' as any).select('*').eq('p_trab_id', ptrabId).then(({data}) => { materialPermanenteData = data; })));
+      }
+
+      if (selectedReport === 'hora_voo') {
+          promises.push(Promise.resolve(supabase.from('horas_voo_registros').select('*').eq('p_trab_id', ptrabId).then(({data}) => { horasVooData = data; })));
+      }
+
+      if (selectedReport === 'dor') {
+          promises.push(Promise.resolve(supabase.from('dor_registros' as any).select('*').eq('p_trab_id', ptrabId).order('created_at', { ascending: true }).then(({data}) => { dorData = data; })));
+      }
+
+      // Dispara apenas as requisições necessárias simultaneamente
+      await Promise.all(promises);
 
       // 4. Atualiza os estados com os dados obtidos
       if (diretrizesOpData !== null) setDiretrizesOperacionais(diretrizesOpData as Tables<'diretrizes_operacionais'>);
@@ -1126,7 +1054,7 @@ const PTrabReportManager = () => {
     } finally {
       setLoading(false);
     }
-  }, [ptrabId, selectedReport, fetchedReports, ptrabData, navigate, ghost]);
+  }, [ptrabId, selectedReport, fetchedReports, ptrabData, navigate]);
 
   useEffect(() => {
     loadData();
@@ -1157,7 +1085,6 @@ const PTrabReportManager = () => {
         grupos[registro.organizacao].linhasQR.push({ 
             registro, 
             tipo: 'QR',
-            valor_nd_30: registro.totalQR,
             valor_nd_30: registro.totalQR,
             valor_nd_39: 0,
         });
@@ -1527,7 +1454,7 @@ const PTrabReportManager = () => {
         }
         return a.localeCompare(b);
     });
-  }, [gruposHorasVooPorOM, nameRM]);
+  }, [gruposHorasVooPorOM, nomeRM]);
 
   const omsOperacionaisOrdenadas = useMemo(() => {
     const oms = Object.keys(gruposOperacionaisPorOM);
@@ -1709,7 +1636,7 @@ const PTrabReportManager = () => {
   }
 
   return (
-    <div className={cn("min-h-screen bg-background tour-report-manager-root", ghost && "pt-10")}>
+    <div className="min-h-screen bg-background">
       <div className="print:hidden sticky top-0 z-50 bg-background border-b border-border/50 shadow-sm">
         <div className="container max-w-7xl mx-auto py-4 px-4 flex items-center justify-between">
           <Button variant="ghost" onClick={() => navigate('/ptrab')}>
@@ -1722,41 +1649,11 @@ const PTrabReportManager = () => {
               <FileText className="h-4 w-4 text-primary" />
               <span className="text-sm font-medium">Relatório:</span>
             </div>
-            <Select 
-              value={selectedReport} 
-              onValueChange={(value) => {
-                setSelectedReport(value as ReportType);
-                
-                // GATILHO DIRETO INFALÍVEL: Avisa o Tour assim que o valor mudar
-                if (localStorage.getItem('is_ghost_mode') === 'true') {
-                  setTimeout(() => {
-                    window.dispatchEvent(new CustomEvent('tour:avancar'));
-                  }, 400); // 400ms dá tempo ao React para carregar a nova tabela
-                }
-              }}
-            >
-              <SelectTrigger className="w-[320px] tour-report-selector">
+            <Select value={selectedReport} onValueChange={(value) => setSelectedReport(value as ReportType)}>
+              <SelectTrigger className="w-[320px]">
                 <SelectValue placeholder="Selecione o Relatório" />
               </SelectTrigger>
-              
-              <SelectContent 
-                className="z-[999999] pointer-events-auto" 
-                position="popper" 
-                sideOffset={4}
-                // BLINDAGEM MÁXIMA: Esconde os cliques do Driver.js
-                onPointerDownCapture={(e) => {
-                  e.stopPropagation();
-                  e.nativeEvent.stopImmediatePropagation();
-                }}
-                onClickCapture={(e) => {
-                  e.stopPropagation();
-                  e.nativeEvent.stopImmediatePropagation();
-                }}
-                onPointerUpCapture={(e) => {
-                  e.stopPropagation();
-                  e.nativeEvent.stopImmediatePropagation();
-                }}
-              >
+              <SelectContent>
                 {REPORT_OPTIONS.map(option => (
                   <SelectItem key={option.value} value={option.value}>
                     <div className="flex items-center gap-2">
@@ -1771,7 +1668,7 @@ const PTrabReportManager = () => {
         </div>
       </div>
 
-      <div className="container max-w-7xl mx-auto py-4 px-4 tour-export-buttons">
+      <div className="container max-w-7xl mx-auto py-4 px-4">
         {renderReport()}
       </div>
     </div>
