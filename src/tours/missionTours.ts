@@ -46,7 +46,6 @@ if (typeof window !== 'undefined') {
 const commonConfig = {
   showProgress: true,
   allowClose: true,
-  overlayClickable: false, 
   nextBtnText: 'Próximo',
   prevBtnText: 'Anterior',
   doneBtnText: 'Concluir Missão',
@@ -299,7 +298,6 @@ export const runMission02 = (onComplete: () => void) => {
 export const runMission03 = (onComplete: () => void) => {
   const d = driver({
     ...commonConfig,
-    overlayClickable: false, 
     stagePadding: 15, 
     steps: [
       {
