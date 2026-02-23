@@ -143,6 +143,7 @@ const DOREditor = () => {
       setFormData(prev => ({
         ...prev,
         finalidade: "Prover o apoio logístico, meios e recursos necessários para o emprego de tropas do Exército Brasileiro na Operação SENTINELA, visando garantir a operacionalidade e a manutenção das capacidades do 1º BIS.",
+        motivacao: "Msg Op nº 196 - CCOp/CMN, de 15 ABR 24.",
         consequencia: "A não autorização dos recursos implicará na redução da capacidade de planejamento e emprego de militares, comprometendo a execução das ações previstas na Operação SENTINELA e a segurança da área de operações.",
         observacoes: "1. As memórias de cálculo detalhadas e parametrizadas das despesas custeadas serão mantidas em arquivos próprios.\n2. O bem e/ou serviço requisitado estará de acordo com a “Descrição” da Ação Orçamentária adotada pelo MD e com a “Caracterização” do respectivo PO do Cadastro de Ações do Sistema Integrado de Planejamento e Orçamento (SIOP)."
       }));
@@ -537,9 +538,9 @@ const DOREditor = () => {
               <div className="p-1 px-2"><DocumentTextArea id="tour-dor-finalidade-input" value={formData.finalidade} onChange={(e: any) => setFormData({...formData, finalidade: e.target.value})} style={bodyStyle} /></div>
             </div>
 
-            <div className="border border-black mb-4">
+            <div className="border border-black mb-4 tour-dor-motivacao">
               <div className="border-b border-black p-0.5 font-bold text-center uppercase" style={headerTitleStyle}>MOTIVAÇÃO</div>
-              <div className="p-1 px-2"><DocumentTextArea value={formData.motivacao} onChange={(e: any) => setFormData({...formData, motivacao: e.target.value})} style={bodyStyle} /></div>
+              <div className="p-1 px-2"><DocumentTextArea id="tour-dor-motivacao-input" value={formData.motivacao} onChange={(e: any) => setFormData({...formData, motivacao: e.target.value})} style={bodyStyle} /></div>
             </div>
 
             <div className="border border-black mb-4 tour-dor-consequencia">

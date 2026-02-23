@@ -299,6 +299,9 @@ export function PTrabImporter({ isOpen, onClose, ptrabId, onImportConcluded, ini
     }));
 
     setDraggedItem(null);
+    if (isGhostMode()) {
+      window.dispatchEvent(new CustomEvent('tour:avancar'));
+    }
   };
 
   const moveItemToGroup = (item: PTrabItem, groupId: string) => {
@@ -312,6 +315,9 @@ export function PTrabImporter({ isOpen, onClose, ptrabId, onImportConcluded, ini
       }
       return group;
     }));
+    if (isGhostMode()) {
+      window.dispatchEvent(new CustomEvent('tour:avancar'));
+    }
   };
 
   const returnItemToSource = (groupId: string, item: PTrabItem) => {
@@ -337,6 +343,9 @@ export function PTrabImporter({ isOpen, onClose, ptrabId, onImportConcluded, ini
     };
     setDorGroups([...dorGroups, newGroup]);
     setNewGroupName("");
+    if (isGhostMode()) {
+      window.dispatchEvent(new CustomEvent('tour:avancar'));
+    }
   };
 
   const deleteGroup = (groupId: string) => {
@@ -487,7 +496,7 @@ export function PTrabImporter({ isOpen, onClose, ptrabId, onImportConcluded, ini
                       value={newGroupName}
                       onChange={(e) => setNewGroupName(e.target.value)}
                       placeholder="Ex: COMPLEMENTO DE ALIMENTAÇÃO"
-                      className="border-slate-200 focus-visible:ring-primary h-10 uppercase text-sm"
+                      className="border-slate-200 focus-visible:ring-primary h-10 uppercase text-sm tour-input-nome-grupo"
                       onKeyDown={(e) => e.key === 'Enter' && handleCreateGroup()}
                     />
                     <Button onClick={handleCreateGroup} disabled={!newGroupName.trim()} className="h-10 px-4 btn-novo-grupo-dor">

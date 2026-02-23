@@ -596,6 +596,15 @@ export const runMission05 = (onComplete: () => void) => {
         }
       },
       {
+        element: '.tour-dor-motivacao',
+        popover: {
+          title: 'Motivação da Demanda',
+          description: 'A motivação foi preenchida com a referência da Mensagem de Operações (Msg Op nº 196 - CCOp/CMN, de 15 ABR 24).',
+          side: 'top',
+          align: 'center'
+        }
+      },
+      {
         element: '.tour-dor-consequencia',
         popover: {
           title: 'Justificativa de Risco',
@@ -642,10 +651,10 @@ export const runMission05 = (onComplete: () => void) => {
         }
       },
       {
-        element: '.btn-novo-grupo-dor',
+        element: '.tour-input-nome-grupo, .btn-novo-grupo-dor',
         popover: {
           title: 'Criando Grupos',
-          description: "Digite 'Material de Consumo' no campo de texto e clique em 'Novo Grupo de Custo (DOR)'.",
+          description: "Digite 'Material de Consumo' no campo de texto e clique em 'Criar Grupo'.",
           side: 'bottom',
           align: 'center',
           showButtons: []
@@ -655,19 +664,39 @@ export const runMission05 = (onComplete: () => void) => {
         element: '.tour-item-material-consumo',
         popover: {
           title: 'Agrupando Custos',
-          description: "Agora, clique na seta à direita do item 'Material de Consumo' para movê-lo para o grupo que você acabou de criar. Depois, clique em 'Concluir e Importar'.",
+          description: "Agora, clique na seta à direita do item 'Material de Consumo' para movê-lo para o grupo que você acabou de criar.",
           side: 'right',
           align: 'center',
           showButtons: []
         }
       },
       {
+        element: '.btn-confirmar-importacao-dor',
+        popover: {
+          title: 'Confirmar Importação',
+          description: "Excelente! O item foi alocado. Agora clique em 'Confirmar Importação' para levar os dados para o documento.",
+          side: 'top',
+          align: 'center',
+          showButtons: []
+        }
+      },
+      {
+        element: '.tour-dor-descricao-item',
+        popover: {
+          title: 'Dados Importados',
+          description: 'Veja! Os dados foram importados e formatados na tabela do documento, agrupados por UGE e GND.',
+          side: 'top',
+          align: 'center'
+        }
+      },
+      {
         element: '.btn-salvar-dor',
         popover: {
           title: 'Finalização',
-          description: 'Tudo pronto! Os dados foram importados e formatados na tabela do documento. Agora basta salvar o DOR. Missão cumprida!',
+          description: 'Tudo pronto! Agora basta salvar o DOR para concluir o processo. Missão cumprida!',
           side: 'bottom',
-          align: 'end'
+          align: 'end',
+          showButtons: ['next', 'previous']
         }
       }
     ],
