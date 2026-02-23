@@ -531,7 +531,7 @@ export const runMission04 = (onComplete: () => void) => {
         element: '.tour-cost-summary-card',
         popover: {
           title: 'Missão 04: Contabilidade Gerencial',
-          description: 'Este painel é o coração financeiro do seu P Trab. Ele consolida todos os custos lançados e monitora o teto orçamentário em tempo real. Clique em "MAIS DETALHES"',
+          description: 'Este painel é o coração financeiro do seu P Trab. Ele consolida todos os custos lançados e monitora o teto orçamentário em tempo real. Clique em "MAIS DETALHES" para ver o custo de cada categoria de custo.',
           side: 'left',
           align: 'start'
         },
