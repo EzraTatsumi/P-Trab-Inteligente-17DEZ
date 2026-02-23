@@ -484,7 +484,7 @@ export const runMission04 = (onComplete: () => void) => {
         element: '#tour-material-consumo-row',
         popover: {
           title: 'Detalhamento de Custos',
-          description: 'Veja que o "Material de Consumo" que detalhamos na Missão 3 já está contabilizado aqui, com o valor mockado de R$ 1.250,50.',
+          description: 'Veja que o "Material de Consumo" que detalhamos na Missão 3 já está contabilizado aqui, com o valor real de R$ 10.625,00.',
           side: 'left',
           align: 'center'
         }
@@ -585,7 +585,7 @@ export const runMission05 = (onComplete: () => void) => {
         element: '.tour-dor-finalidade',
         popover: {
           title: 'Finalidade Técnica',
-          description: 'A finalidade foi preenchida automaticamente com base na Operação SENTINELA. Você pode ajustar o texto conforme a necessidade específica deste documento.',
+          description: 'A finalidade foi preenchendo automaticamente com base na Operação SENTINELA. Você pode ajustar o texto conforme a necessidade específica deste documento.',
           side: 'top',
           align: 'center'
         }
@@ -709,7 +709,7 @@ export const runMission06 = (onComplete: () => void) => {
         element: '.tour-report-manager-root',
         popover: {
           title: 'Missão 06: Central de Relatórios',
-          description: 'Bem-vindo à Central de Relatórios. Aqui você visualiza todos os anexos do seu P Trab. Iniciamos com o Relatório Operacional contendo o "Cimento Portland" detalhado na Missão 03, totalizando R$ 1.250,50.',
+          description: 'Bem-vindo à Central de Relatórios. Aqui você visualiza todos os anexos do seu P Trab. Iniciamos com o Relatório Operacional contendo o "Cimento Portland" detalhado na Missão 03, totalizando R$ 10.625,00.',
           side: 'top',
           align: 'center'
         },

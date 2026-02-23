@@ -180,7 +180,7 @@ export const GHOST_DATA = {
 
   totais_exemplo: {
     totalLogisticoGeral: 45000.50,
-    totalOperacional: 1250.50, // Valor mockado para Missão 04
+    totalOperacional: 10625.00, // Atualizado para o valor da Missão 3
     totalMaterialPermanente: 8900.00,
     totalAviacaoExercito: 0,
     totalClasseI: 15000,
@@ -190,10 +190,10 @@ export const GHOST_DATA = {
     totalLubrificanteValor: 5000.50,
     credit_gnd3: 150000.00,
     credit_gnd4: 50000.00,
-    totalMaterialConsumo: 1250.50,
-    totalMaterialConsumoND30: 1250.50,
+    totalMaterialConsumo: 10625.00, // Atualizado
+    totalMaterialConsumoND30: 10625.00, // Atualizado
     groupedMaterialConsumoCategories: {
-      "Material de Construção": { totalValor: 1250.50, totalND30: 1250.50, totalND39: 0 }
+      "Material de Construção": { totalValor: 10625.00, totalND30: 10625.00, totalND39: 0 }
     }
   } as any
 };

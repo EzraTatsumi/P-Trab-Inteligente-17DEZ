@@ -482,7 +482,7 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
                 valor_total: 10625.00,
                 valor_nd_30: 10625.00,
                 valor_nd_39: 0,
-                detalhamento_customizado: "33.90.30 - Aquisição de Material de Construção para atender 150 militares do 1º BIS, durante 15 dias de execucao.\n\nCálculo:\nFórmula: Qtd do item x Valor do item.\n- 250 Cimento Portland 50kg x R$ 42,50/unid. = R$ 10.625,00.\n\nTotal: R$ 10.625,00.\n(Pregão 5/2025 - UASG 160.222)"
+                detalhamento_customizado: `33.90.30 - Aquisição de Material de Construção para atender 150 militares do 1º BIS, durante 15 dias de execucao.\n\nCálculo:\nFórmula: Qtd do item x Valor do item.\n- 250 Cimento Portland 50kg x R$ 42,50/unid. = R$ 10.625,00.\n\nTotal: R$ 10.625,00.\n(Pregão 5/2025 - UASG 160.222)`
             } as any
         });
     }
@@ -1071,10 +1071,10 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
               <tr>
                   <th className="col-nd-op-small">33.90.15</th>
                   <th className="col-nd-op-small">33.90.30</th>
-                  <th className="col-nd-op-small">33.90.33</th>
-                  <th className="col-nd-op-small">33.90.39</th>
-                  <th className="col-nd-op-small">33.90.00</th>
-                  <th className="col-nd-op-small total-gnd3-cell">GND 3</th>
+                  <th className="col-nd-small">33.90.33</th>
+                  <th className="col-nd-small">33.90.39</th>
+                  <th className="col-nd-small">33.90.00</th>
+                  <th className="col-nd-small total-gnd3-cell">GND 3</th>
               </tr>
           </thead>
           <tbody>
