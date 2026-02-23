@@ -1409,6 +1409,10 @@ export const PTrabCostSummary = ({ ptrabId, onOpenCreditDialog, creditGND3, cred
     setIsDetailsOpen(newState);
     if (newState) {
       setTimeout(() => detailsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100);
+      // Notifica o tour se estiver ativo
+      if ((window as any).advanceTourFromExpansion) {
+        (window as any).advanceTourFromExpansion();
+      }
     }
   };
 
@@ -1518,7 +1522,7 @@ export const PTrabCostSummary = ({ ptrabId, onOpenCreditDialog, creditGND3, cred
               <span className="text-lg font-bold text-foreground">{formatCurrency(totalGeralFinal)}</span>
               {viewMode === 'global' && (
                 <button 
-                  className="font-semibold text-primary flex items-center gap-1 text-xs lowercase hover:underline"
+                  className="font-semibold text-primary flex items-center gap-1 text-xs lowercase hover:underline tour-btn-expand-details"
                   onClick={handleSummaryClick}
                 >
                   {isDetailsOpen ? "menos detalhes" : "mais detalhes"}

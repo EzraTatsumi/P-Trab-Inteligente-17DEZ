@@ -528,24 +528,13 @@ export const runMission04 = (onComplete: () => void) => {
     ...commonConfig,
     steps: [
       {
-        element: '.tour-cost-summary-card',
+        element: '.tour-btn-expand-details',
         popover: {
           title: 'Missão 04: Contabilidade Gerencial',
-          description: 'Este painel é o coração financeiro do seu P Trab. Ele consolida todos os custos lançados e monitora o teto orçamentário em tempo real.',
-          side: 'left',
-          align: 'start'
-        },
-        onNextClick: () => {
-          // 1. Manda abrir a cascata de custos (GND -> Operacional -> Material de Consumo)
-          if ((window as any).expandCostDetails) {
-            (window as any).expandCostDetails();
-          }
-          
-          // 2. Espera 600ms para o Shadcn terminar a animação de expansão suave
-          setTimeout(() => {
-            // Quando o Tour avançar, a linha de Material de Consumo já estará visível!
-            if (activeMissionDriver) activeMissionDriver.moveNext(); 
-          }, 600);
+          description: 'Este painel consolida todos os custos. Clique em "mais detalhes" para ver a decomposição por Aba e Natureza de Despesa.',
+          side: 'bottom',
+          align: 'center',
+          showButtons: [] // Força o clique no elemento
         }
       },
       {
@@ -555,6 +544,19 @@ export const runMission04 = (onComplete: () => void) => {
           description: 'Veja que o "Material de Consumo" que detalhamos na Missão 3 já está contabilizado aqui, com o valor mockado de R$ 1.250,50.',
           side: 'left',
           align: 'center'
+        },
+        onHighlighted: () => {
+          // Expande o acordeão interno de Material de Consumo automaticamente
+          setTimeout(() => {
+            const trigger = document.querySelector('.tour-material-consumo-trigger') as HTMLElement;
+            if (trigger && trigger.getAttribute('aria-expanded') !== 'true') {
+              trigger.click();
+              // Refresh para ajustar a iluminação após a expansão interna
+              setTimeout(() => {
+                if (activeMissionDriver) activeMissionDriver.refresh();
+              }, 300);
+            }
+          }, 100);
         }
       },
       {
@@ -611,5 +613,13 @@ export const runMission04 = (onComplete: () => void) => {
     onDestroyed: onComplete
   });
   activeMissionDriver = d;
+
+  // Função global para avançar o tour quando o usuário expandir os detalhes
+  (window as any).advanceTourFromExpansion = () => {
+    if (activeMissionDriver && activeMissionDriver.getActiveIndex() === 0) {
+      activeMissionDriver.moveNext();
+    }
+  };
+
   d.drive();
 };
