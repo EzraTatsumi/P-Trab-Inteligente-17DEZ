@@ -590,7 +590,7 @@ export const runMission05 = (onComplete: () => void) => {
         element: '.tour-dor-finalidade',
         popover: {
           title: 'Finalidade Técnica',
-          description: 'A finalidade foi preenchida automaticamente com base na Operação SENTINELA. Você pode ajustar o texto conforme a necessidade específica deste documento.',
+          description: 'A finalidade foi preenchida automaticamente com base no cabeçalho da Operação SENTINELA. Você pode ajustar o texto conforme a necessidade específica deste documento.',
           side: 'top',
           align: 'center'
         }
