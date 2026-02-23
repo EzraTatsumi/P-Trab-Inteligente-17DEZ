@@ -275,7 +275,7 @@ export const runMission02 = (onComplete: () => void) => {
         }
       },
       {
-        element: '.btn-salvar-subitem',
+        element: '.btn-custom-salvar-subitem',
         popover: {
           title: 'Finalização do Cadastro',
           description: 'Excelente! Agora clique em "Cadastrar Subitem" para salvar este novo grupo no seu catálogo.',
@@ -730,7 +730,7 @@ export const runMission06 = (onComplete: () => void) => {
         popover: {
           title: 'Alternando Relatórios',
           description: 'Você pode navegar entre diferentes tipos de relatórios. Clique aqui e selecione "P Trab Operacional" para ver o detalhamento de diárias e materiais.',
-          side: 'left',
+          side: 'right',
           align: 'start',
           showButtons: []
         }
@@ -749,7 +749,7 @@ export const runMission06 = (onComplete: () => void) => {
         popover: {
           title: 'Visualização do DOR',
           description: 'Por fim, selecione o relatório "DOR" para ver como o documento que editamos na Missão 05 é apresentado para impressão final. Missão cumprida! Você agora é um mestre do P Trab Inteligente.',
-          side: 'left',
+          side: 'right',
           align: 'start',
           showButtons: []
         }

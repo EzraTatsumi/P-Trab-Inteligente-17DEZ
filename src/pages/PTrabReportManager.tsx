@@ -1735,7 +1735,7 @@ const PTrabReportManager = () => {
               <SelectTrigger className="w-[320px] tour-report-selector">
                 <SelectValue placeholder="Selecione o Relatório" />
               </SelectTrigger>
-              <SelectContent className="z-[9999] pointer-events-auto" portalProps={{ copyStyles: true }}>
+              <SelectContent className="z-[10001] pointer-events-auto" position="popper" sideOffset={4}>
                 {REPORT_OPTIONS.map(option => (
                   <SelectItem key={option.value} value={option.value}>
                     <div className="flex items-center gap-2">
