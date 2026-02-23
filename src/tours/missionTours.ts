@@ -599,7 +599,7 @@ export const runMission05 = (onComplete: () => void) => {
         element: '.tour-dor-consequencia',
         popover: {
           title: 'Justificativa de Risco',
-          description: 'Aqui descrevemos o impacto negativo caso a requisição não seja atendida. Este campo é crucial para a análise do Ordenador de Despesas. ',
+          description: 'Aqui descrevemos o impacto negativo caso a requisição não seja atendida. Este campo é crucial para a decisor político. ',
           side: 'top',
           align: 'center'
         }
