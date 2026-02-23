@@ -496,7 +496,7 @@ export const runMission04 = (onComplete: () => void) => {
         }
       },
       {
-        element: '.tour-accordion-material-consumo',
+        element: '.tour-material-consumo-details',
         popover: {
           title: 'Detalhamento de Custos',
           description: 'Veja que o "Material de Consumo" que detalhamos na Missão 3 já está contabilizado aqui, com o valor mockado de R$ 1.250,50.',
@@ -504,7 +504,16 @@ export const runMission04 = (onComplete: () => void) => {
           align: 'center'
         },
         onHighlighted: () => {
+          // 1. Expande o resumo global
           if ((window as any).expandCostDetails) (window as any).expandCostDetails();
+          
+          // 2. Expande especificamente o acordeão de Material de Consumo
+          setTimeout(() => {
+            const trigger = document.querySelector('.tour-material-consumo-trigger') as HTMLElement;
+            if (trigger && trigger.getAttribute('aria-expanded') !== 'true') {
+              trigger.click();
+            }
+          }, 300);
         }
       },
       {

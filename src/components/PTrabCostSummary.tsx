@@ -522,6 +522,27 @@ export const fetchPTrabTotals = async (ptrabId: string): Promise<PTrabAggregated
       });
     });
 
+    // Lógica de Mock para o Ghost Mode (Missão 04) - Aplicada ANTES da agregação global
+    if (isGhostMode()) {
+      const mockOmName = "1º BIS";
+      const mockUg = "160222";
+      const omS = getOmTotals(mockOmName, mockUg, 'solicitante');
+      const omD = getOmTotals(mockOmName, mockUg, 'destino');
+      
+      const mockValue = 1250.50;
+      const mockCat = "Material de Construção";
+      
+      [omS, omD].forEach(omTotals => {
+        omTotals.materialConsumo.total += mockValue;
+        omTotals.materialConsumo.totalND30 += mockValue;
+        if (!omTotals.materialConsumo.groupedCategories[mockCat]) {
+          omTotals.materialConsumo.groupedCategories[mockCat] = { totalValor: 0, totalND30: 0, totalND39: 0 };
+        }
+        omTotals.materialConsumo.groupedCategories[mockCat].totalValor += mockValue;
+        omTotals.materialConsumo.groupedCategories[mockCat].totalND30 += mockValue;
+      });
+    }
+
     let globalTotals: PTrabAggregatedTotals = {
       totalLogisticoGeral: 0, totalOperacional: 0, totalMaterialPermanente: 0, totalAviacaoExercito: 0, totalRacoesOperacionaisGeral: 0,
       totalClasseI: 0, totalComplemento: 0, totalEtapaSolicitadaValor: 0, totalDiasEtapaSolicitada: 0, totalRefeicoesIntermediarias: 0,
@@ -544,27 +565,6 @@ export const fetchPTrabTotals = async (ptrabId: string): Promise<PTrabAggregated
       totalMaterialPermanenteND52: 0, groupedMaterialPermanenteCategories: {},
       groupedByOmSolicitante, groupedByOmDestino,
     };
-
-    // Lógica de Mock para o Ghost Mode (Missão 04)
-    if (isGhostMode()) {
-      const mockOmName = "1º BIS";
-      const mockUg = "160222";
-      const omS = getOmTotals(mockOmName, mockUg, 'solicitante');
-      const omD = getOmTotals(mockOmName, mockUg, 'destino');
-      
-      const mockValue = 1250.50;
-      const mockCat = "Material de Construção";
-      
-      [omS, omD].forEach(omTotals => {
-        omTotals.materialConsumo.total += mockValue;
-        omTotals.materialConsumo.totalND30 += mockValue;
-        if (!omTotals.materialConsumo.groupedCategories[mockCat]) {
-          omTotals.materialConsumo.groupedCategories[mockCat] = { totalValor: 0, totalND30: 0, totalND39: 0 };
-        }
-        omTotals.materialConsumo.groupedCategories[mockCat].totalValor += mockValue;
-        omTotals.materialConsumo.groupedCategories[mockCat].totalND30 += mockValue;
-      });
-    }
 
     Object.values(groupedByOmSolicitante).forEach(omTotals => {
       omTotals.totalLogistica = omTotals.classeI.total + omTotals.classeII.total + omTotals.classeIII.total + omTotals.classeV.total + omTotals.classeVI.total + omTotals.classeVII.total + omTotals.classeVIII.total + omTotals.classeIX.total;
@@ -1105,14 +1105,14 @@ const TabDetails = ({ mode, data }: TabDetailsProps) => {
     return (
       <Accordion type="single" collapsible className="w-full pt-1 tour-accordion-material-consumo">
         <AccordionItem value="item-material-consumo" className="border-b-0">
-          <AccordionTrigger className="p-0 hover:no-underline">
+          <AccordionTrigger className="p-0 hover:no-underline tour-material-consumo-trigger">
             <div className="flex justify-between items-center w-full text-xs border-b pb-1 border-border/50">
               <div className="flex items-center gap-1 text-foreground"><Package className="h-3 w-3 text-blue-500" />Material de Consumo</div>
               <span className={cn(valueClasses, "text-xs flex items-center gap-1 mr-6")}>{formatCurrency(m.totalMaterialConsumo)}</span>
             </div>
           </AccordionTrigger>
           <AccordionContent className="pt-1 pb-0">
-            <div className="space-y-1 pl-4 text-[10px]">
+            <div className="space-y-1 pl-4 text-[10px] tour-material-consumo-details">
               {Object.entries(m.groupedMaterialConsumoCategories || {}).sort(([a], [b]) => a.localeCompare(b)).map(([cat, d]: any) => (
                 <div key={cat} className="space-y-1">
                   <div className="flex justify-between text-muted-foreground font-semibold pt-1">
