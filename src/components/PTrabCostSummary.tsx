@@ -1104,7 +1104,7 @@ const TabDetails = ({ mode, data }: TabDetailsProps) => {
     if (m.totalMaterialConsumo === 0) return null;
     return (
       <Accordion type="single" collapsible className="w-full pt-1 tour-accordion-material-consumo">
-        <AccordionItem value="item-material-consumo" className="border-b-0">
+        <AccordionItem value="item-material-consumo" className="border-b-0" id="tour-accordion-item-material">
           <AccordionTrigger className="p-0 hover:no-underline tour-material-consumo-trigger">
             <div className="flex justify-between items-center w-full text-xs border-b pb-1 border-border/50">
               <div className="flex items-center gap-1 text-foreground"><Package className="h-3 w-3 text-blue-500" />Material de Consumo</div>
@@ -1334,6 +1334,14 @@ export const PTrabCostSummary = ({ ptrabId, onOpenCreditDialog, creditGND3, cred
     (window as any).expandCostDetails = () => {
       setIsDetailsOpen(true);
       setViewMode('global');
+      
+      // Pequeno delay para garantir que o acordeão global abriu antes de tentar abrir o interno
+      setTimeout(() => {
+        const trigger = document.querySelector('.tour-material-consumo-trigger') as HTMLElement;
+        if (trigger && trigger.getAttribute('aria-expanded') !== 'true') {
+          trigger.click();
+        }
+      }, 300);
     };
     (window as any).switchToByOmView = () => {
       setViewMode('byOm');

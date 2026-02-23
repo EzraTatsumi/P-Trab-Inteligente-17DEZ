@@ -504,16 +504,8 @@ export const runMission04 = (onComplete: () => void) => {
           align: 'center'
         },
         onHighlighted: () => {
-          // 1. Expande o resumo global
+          // 1. Expande o resumo global e o acordeão interno
           if ((window as any).expandCostDetails) (window as any).expandCostDetails();
-          
-          // 2. Expande especificamente o acordeão de Material de Consumo
-          setTimeout(() => {
-            const trigger = document.querySelector('.tour-material-consumo-trigger') as HTMLElement;
-            if (trigger && trigger.getAttribute('aria-expanded') !== 'true') {
-              trigger.click();
-            }
-          }, 300);
         }
       },
       {
