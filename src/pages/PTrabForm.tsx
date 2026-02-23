@@ -91,10 +91,7 @@ const PTrabForm = () => {
   
   const { data: totals, isLoading: isLoadingTotals } = useQuery({
     queryKey: ['ptrabTotals', ptrabId],
-    queryFn: async () => {
-      if (isGhostMode()) return GHOST_DATA.totais_exemplo;
-      return fetchPTrabTotals(ptrabId!);
-    },
+    queryFn: () => fetchPTrabTotals(ptrabId!), // Unificado: fetchPTrabTotals agora lida com Ghost Mode
     enabled: !!ptrabId || isGhostMode(),
     refetchInterval: 10000,
     initialData: {

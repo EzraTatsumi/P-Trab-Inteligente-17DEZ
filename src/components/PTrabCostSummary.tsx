@@ -207,6 +207,43 @@ const formatCategoryLabel = (cat: string, details?: any) => {
  * Busca e calcula todos os totais de um P Trab agregando dados de todas as tabelas de registros.
  */
 export const fetchPTrabTotals = async (ptrabId: string): Promise<PTrabAggregatedTotals> => {
+  // Lógica de Mock para o Ghost Mode (Missão 04) - Retorno imediato para evitar conflitos de cache
+  if (isGhostMode()) {
+    return {
+      ...GHOST_DATA.totais_exemplo,
+      groupedByOmSolicitante: {
+        "1 BIS": {
+          ...initializeOmTotals("1º BIS", "160222"),
+          totalGeral: 1250.50,
+          totalOperacional: 1250.50,
+          materialConsumo: {
+            total: 1250.50,
+            totalND30: 1250.50,
+            totalND39: 0,
+            groupedCategories: {
+              "Material de Construção": { totalValor: 1250.50, totalND30: 1250.50, totalND39: 0 }
+            }
+          }
+        }
+      },
+      groupedByOmDestino: {
+        "1 BIS": {
+          ...initializeOmTotals("1º BIS", "160222"),
+          totalGeral: 1250.50,
+          totalOperacional: 1250.50,
+          materialConsumo: {
+            total: 1250.50,
+            totalND30: 1250.50,
+            totalND39: 0,
+            groupedCategories: {
+              "Material de Construção": { totalValor: 1250.50, totalND30: 1250.50, totalND39: 0 }
+            }
+          }
+        }
+      }
+    } as any;
+  }
+
   try {
     const groupedByOmSolicitante: Record<string, OmTotals> = {};
     const groupedByOmDestino: Record<string, OmTotals> = {};
@@ -669,22 +706,6 @@ export const fetchPTrabTotals = async (ptrabId: string): Promise<PTrabAggregated
         globalTotals.groupedMaterialPermanenteCategories[cat].totalND52 += data.totalND52;
       });
     });
-
-    // Reforço do Mock para o Ghost Mode (Missão 04) - Injeção final para garantir exibição
-    if (isGhostMode()) {
-      const mockValue = 1250.50;
-      const mockCat = "Material de Construção";
-      
-      // Garante que o valor apareça no resumo global e na categoria específica
-      globalTotals.totalMaterialConsumo = mockValue;
-      globalTotals.totalMaterialConsumoND30 = mockValue;
-      globalTotals.groupedMaterialConsumoCategories[mockCat] = { totalValor: mockValue, totalND30: mockValue, totalND39: 0 };
-      
-      // Ajusta o total operacional se estiver zerado
-      if (globalTotals.totalOperacional === 0) {
-        globalTotals.totalOperacional = mockValue;
-      }
-    }
 
     Object.values(groupedByOmDestino).forEach(omTotals => {
       omTotals.totalLogistica = omTotals.classeI.total + omTotals.classeII.total + omTotals.classeIII.total + omTotals.classeV.total + omTotals.classeVI.total + omTotals.classeVII.total + omTotals.classeVIII.total + omTotals.classeIX.total;
@@ -1201,6 +1222,7 @@ const TabDetails = ({ mode, data }: TabDetailsProps) => {
           <AccordionTrigger className="p-0 hover:no-underline">
             <div className="flex items-center gap-1 text-foreground text-left flex-1"><HardHat className="h-3 w-3 text-green-600" />Material Permanente</div>
             <span className={cn(valueClasses, "text-xs flex items-center gap-1 mr-6")}>{formatCurrency(p.totalMaterialPermanente)}</span>
+          </div>
           </AccordionTrigger>
           <AccordionContent className="pt-1 pb-0">
             <div className="space-y-1 pl-4 text-[10px]">

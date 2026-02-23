@@ -180,7 +180,7 @@ export const GHOST_DATA = {
 
   totais_exemplo: {
     totalLogisticoGeral: 45000.50,
-    totalOperacional: 12500.00,
+    totalOperacional: 1250.50, // Valor mockado para Missão 04
     totalMaterialPermanente: 8900.00,
     totalAviacaoExercito: 0,
     totalClasseI: 15000,
@@ -190,7 +190,12 @@ export const GHOST_DATA = {
     totalLubrificanteValor: 5000.50,
     credit_gnd3: 150000.00,
     credit_gnd4: 50000.00,
-  }
+    totalMaterialConsumo: 1250.50,
+    totalMaterialConsumoND30: 1250.50,
+    groupedMaterialConsumoCategories: {
+      "Material de Construção": { totalValor: 1250.50, totalND30: 1250.50, totalND39: 0 }
+    }
+  } as any
 };
 
 export const isGhostMode = () => {
