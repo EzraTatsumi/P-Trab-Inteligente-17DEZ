@@ -68,7 +68,11 @@ const AcquisitionGroupForm: React.FC<AcquisitionGroupFormProps> = ({
                 if (existingItem) {
                     newItemsMap[selectedItem.id] = existingItem;
                 } else {
-                    const quantity = 1;
+                    // Se estiver na Missão 3 (Cimento), define 5 unidades como diz o tutorial
+                    const mission = getActiveMission();
+                    const isMission3 = mission?.id === 3;
+                    const quantity = isMission3 ? 5 : 1;
+                    
                     const valorTotal = selectedItem.valor_unitario * quantity;
                     
                     newItemsMap[selectedItem.id] = {
@@ -99,7 +103,7 @@ const AcquisitionGroupForm: React.FC<AcquisitionGroupFormProps> = ({
     }, [selectedItemsFromSelector]); 
 
     const totalValue = useMemo(() => {
-        return items.reduce((sum, item) => sum + Number(item.valor_total || 0), 0);
+        return items.reduce((sum, item) => sum + (Number(item.quantidade || 0) * Number(item.valor_unitario || 0)), 0);
     }, [items]);
     
     const groupedItems = useMemo<GroupedItem[]>(() => {
@@ -116,7 +120,7 @@ const AcquisitionGroupForm: React.FC<AcquisitionGroupFormProps> = ({
                 };
             }
             groups[key].items.push(item);
-            groups[key].totalValue += Number(item.valor_total || 0); 
+            groups[key].totalValue += (Number(item.quantidade || 0) * Number(item.valor_unitario || 0)); 
         });
         
         return Object.values(groups).sort((a, b) => a.subitemNr.localeCompare(b.subitemNr));
@@ -162,11 +166,17 @@ const AcquisitionGroupForm: React.FC<AcquisitionGroupFormProps> = ({
             return;
         }
         
+        // Garante que os itens salvos tenham o valor_total correto
+        const itemsToSave = items.map(item => ({
+            ...item,
+            valor_total: item.quantidade * item.valor_unitario
+        }));
+        
         onSave({
             tempId,
             groupName: groupName.trim(),
             groupPurpose: groupPurpose.trim() || null,
-            items,
+            items: itemsToSave,
             totalValue,
             totalND30: 0, 
             totalND39: 0, 
@@ -290,7 +300,7 @@ const AcquisitionGroupForm: React.FC<AcquisitionGroupFormProps> = ({
                                                                 {formatCurrency(item.valor_unitario)}
                                                             </TableCell>
                                                             <TableCell className="text-right text-sm font-medium">
-                                                                {formatCurrency(item.valor_total)}
+                                                                {formatCurrency(item.quantidade * item.valor_unitario)}
                                                             </TableCell>
                                                             <TableCell className="text-center">
                                                                 <Button 
