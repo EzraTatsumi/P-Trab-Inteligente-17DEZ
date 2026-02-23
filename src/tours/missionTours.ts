@@ -37,7 +37,6 @@ if (typeof window !== 'undefined') {
             setTimeout(() => {
               if (activeMissionDriver.hasNextStep()) {
                 activeMissionDriver.moveNext();
-                // O driver.js restaurará a opacidade automaticamente ao destacar o novo elemento
               }
             }, 100);
           }
@@ -488,15 +487,79 @@ export const runMission04 = (onComplete: () => void) => {
     ...commonConfig,
     steps: [
       {
-        element: '.card-cost-summary',
+        element: '.tour-cost-summary-card',
         popover: {
-          title: 'Contabilidade Gerencial',
-          description: 'Este painel monitora o teto orçamentário em tempo real.',
-          showButtons: ['next', 'previous']
+          title: 'Missão 04: Contabilidade Gerencial',
+          description: 'Este painel é o coração financeiro do seu P Trab. Ele consolida todos os custos lançados e monitora o teto orçamentário em tempo real.',
+          side: 'left',
+          align: 'start'
+        }
+      },
+      {
+        element: '.tour-accordion-material-consumo',
+        popover: {
+          title: 'Detalhamento de Custos',
+          description: 'Veja que o "Material de Consumo" que detalhamos na Missão 3 já está contabilizado aqui, com o valor mockado de R$ 1.250,50.',
+          side: 'left',
+          align: 'center'
+        },
+        onHighlighted: () => {
+          if ((window as any).expandCostDetails) (window as any).expandCostDetails();
+        }
+      },
+      {
+        element: '.tour-btn-view-by-om',
+        popover: {
+          title: 'Visão por Organização',
+          description: 'Além da visão global, você pode analisar os custos distribuídos por cada Organização Militar. Clique em "Ver por OM" para alternar a visão.',
+          side: 'top',
+          align: 'center',
+          showButtons: []
+        }
+      },
+      {
+        element: '.tour-costs-by-om-list',
+        popover: {
+          title: 'Custos por OM',
+          description: 'Agora a lista exibe o impacto financeiro individual de cada OM no Plano de Trabalho.',
+          side: 'left',
+          align: 'start'
+        },
+        onHighlighted: () => {
+          if ((window as any).switchToByOmView) (window as any).switchToByOmView();
+        }
+      },
+      {
+        element: '.tour-om-grouping-controls',
+        popover: {
+          title: 'Agrupamento Inteligente',
+          description: 'Você pode alternar entre "OM Solicitante" (quem executa) ou "OM Destino" (quem detém o recurso), facilitando a prestação de contas.',
+          side: 'top',
+          align: 'center'
+        }
+      },
+      {
+        element: '.tour-mock-om-item',
+        popover: {
+          title: 'Análise Individual',
+          description: 'Clique na OM "1º BIS" para ver o detalhamento completo dos gastos vinculados a ela.',
+          side: 'top',
+          align: 'center',
+          showButtons: []
+        }
+      },
+      {
+        element: '.tour-om-details-dialog',
+        popover: {
+          title: 'Raio-X da OM',
+          description: 'Este diálogo mostra exatamente onde o recurso será aplicado dentro desta OM específica. Missão cumprida! Você agora domina a gestão de custos do P Trab Inteligente.',
+          side: 'top',
+          align: 'center'
         }
       }
     ],
     onDestroyed: onComplete
   });
+  activeMissionDriver = d;
   d.drive();
 };

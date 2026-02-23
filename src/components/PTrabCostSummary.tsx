@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useRef, useMemo } from 'react';
+import React, { useState, useRef, useMemo, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -15,6 +15,7 @@ import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from "@/
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { isGhostMode, GHOST_DATA } from "@/lib/ghostStore";
 
 // --- Interfaces ---
 
@@ -544,6 +545,27 @@ export const fetchPTrabTotals = async (ptrabId: string): Promise<PTrabAggregated
       groupedByOmSolicitante, groupedByOmDestino,
     };
 
+    // Lógica de Mock para o Ghost Mode (Missão 04)
+    if (isGhostMode()) {
+      const mockOmName = "1º BIS";
+      const mockUg = "160222";
+      const omS = getOmTotals(mockOmName, mockUg, 'solicitante');
+      const omD = getOmTotals(mockOmName, mockUg, 'destino');
+      
+      const mockValue = 1250.50;
+      const mockCat = "Material de Construção";
+      
+      [omS, omD].forEach(omTotals => {
+        omTotals.materialConsumo.total += mockValue;
+        omTotals.materialConsumo.totalND30 += mockValue;
+        if (!omTotals.materialConsumo.groupedCategories[mockCat]) {
+          omTotals.materialConsumo.groupedCategories[mockCat] = { totalValor: 0, totalND30: 0, totalND39: 0 };
+        }
+        omTotals.materialConsumo.groupedCategories[mockCat].totalValor += mockValue;
+        omTotals.materialConsumo.groupedCategories[mockCat].totalND30 += mockValue;
+      });
+    }
+
     Object.values(groupedByOmSolicitante).forEach(omTotals => {
       omTotals.totalLogistica = omTotals.classeI.total + omTotals.classeII.total + omTotals.classeIII.total + omTotals.classeV.total + omTotals.classeVI.total + omTotals.classeVII.total + omTotals.classeVIII.total + omTotals.classeIX.total;
       omTotals.totalOperacional = omTotals.diarias.total + omTotals.verbaOperacional.total + omTotals.suprimentoFundos.total + omTotals.passagens.total + omTotals.concessionaria.total + omTotals.materialConsumo.total + omTotals.complementoAlimentacao.total + omTotals.servicosTerceiros.total;
@@ -737,7 +759,7 @@ const OmDetailsDialog = ({ om, totals, onClose }: any) => {
 
   return (
     <Dialog open={!!om} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[1400px] max-h-[90vh] flex flex-col p-0 overflow-hidden">
+      <DialogContent className="sm:max-w-[1400px] max-h-[90vh] flex flex-col p-0 overflow-hidden tour-om-details-dialog">
         <DialogHeader className="p-8 pb-5 border-b border-border/50">
           <DialogTitle className="text-3xl font-bold">{om.omName}</DialogTitle>
           <div className="text-base font-normal text-muted-foreground">
@@ -1081,7 +1103,7 @@ const TabDetails = ({ mode, data }: TabDetailsProps) => {
     const m = data;
     if (m.totalMaterialConsumo === 0) return null;
     return (
-      <Accordion type="single" collapsible className="w-full pt-1">
+      <Accordion type="single" collapsible className="w-full pt-1 tour-accordion-material-consumo">
         <AccordionItem value="item-material-consumo" className="border-b-0">
           <AccordionTrigger className="p-0 hover:no-underline">
             <div className="flex justify-between items-center w-full text-xs border-b pb-1 border-border/50">
@@ -1307,6 +1329,22 @@ export const PTrabCostSummary = ({ ptrabId, onOpenCreditDialog, creditGND3, cred
   const [selectedOm, setSelectedOm] = useState<OmTotals | null>(null);
   const detailsRef = useRef<HTMLDivElement>(null);
 
+  // Expondo funções para o tour
+  useEffect(() => {
+    (window as any).expandCostDetails = () => {
+      setIsDetailsOpen(true);
+      setViewMode('global');
+    };
+    (window as any).switchToByOmView = () => {
+      setViewMode('byOm');
+      setIsDetailsOpen(false);
+    };
+    return () => {
+      delete (window as any).expandCostDetails;
+      delete (window as any).switchToByOmView;
+    };
+  }, []);
+
   const sortedOmTotals = useMemo(() => {
     const omGroups = omGroupingMode === 'solicitante' ? data?.groupedByOmSolicitante : data?.groupedByOmDestino;
     if (!omGroups) return [];
@@ -1370,12 +1408,12 @@ export const PTrabCostSummary = ({ ptrabId, onOpenCreditDialog, creditGND3, cred
       if (sortedOmTotals.length === 0) return <div className="w-full space-y-1 text-sm px-6 pt-3 text-muted-foreground">Nenhuma OM com custos registrados.</div>;
       const totalGND3 = totals.totalLogisticoGeral + totals.totalOperacional + totals.totalAviacaoExercito;
       return (
-        <div className="w-full space-y-1 text-sm px-6 pt-3">
+        <div className="w-full space-y-1 text-sm px-6 pt-3 tour-costs-by-om-list">
           {sortedOmTotals.map(om => {
             const omGND3Total = om.totalLogistica + om.totalOperacional + om.totalAviacaoExercito;
             const impactPercentage = totalGND3 > 0 ? ((omGND3Total / totalGND3) * 100).toFixed(1) : '0.0';
             return (
-              <div key={om.omKey} className="flex justify-between items-center text-foreground cursor-pointer p-1 rounded-md transition-colors hover:bg-muted/50" onClick={() => setSelectedOm(om)}>
+              <div key={om.omKey} className={cn("flex justify-between items-center text-foreground cursor-pointer p-1 rounded-md transition-colors hover:bg-muted/50", om.omName === "1º BIS" && "tour-mock-om-item")} onClick={() => setSelectedOm(om)}>
                 <span className="font-semibold text-sm text-foreground">{om.omName}</span>
                 <div className="flex items-center gap-2">
                   <span className="text-xs font-medium text-muted-foreground/80">({impactPercentage}%)</span>
@@ -1384,7 +1422,7 @@ export const PTrabCostSummary = ({ ptrabId, onOpenCreditDialog, creditGND3, cred
               </div>
             );
           })}
-          <div className="flex gap-2 mt-4 pt-3 border-t border-border/50">
+          <div className="flex gap-2 mt-4 pt-3 border-t border-border/50 tour-om-grouping-controls">
             <Button variant={omGroupingMode === 'solicitante' ? 'default' : 'outline'} size="sm" className="flex-1 h-8 text-[10px] gap-1.5" onClick={() => setOmGroupingMode('solicitante')}>
               <Building2 className="h-3 w-3" /> Por OM Solicitante
             </Button>
@@ -1398,7 +1436,7 @@ export const PTrabCostSummary = ({ ptrabId, onOpenCreditDialog, creditGND3, cred
   };
 
   return (
-    <Card className="shadow-lg">
+    <Card className="shadow-lg tour-cost-summary-card">
       <CardHeader className="pb-2 pt-3">
         <div className="flex justify-between items-center"><CardTitle className="text-xl font-bold">Resumo de Custos</CardTitle></div>
         <CardDescription className="text-xs">Visão consolidada dos custos logísticos e orçamentários.</CardDescription>
@@ -1411,7 +1449,7 @@ export const PTrabCostSummary = ({ ptrabId, onOpenCreditDialog, creditGND3, cred
               <div className="flex justify-between items-center w-full py-2">
                 <div className="flex flex-col items-start gap-1">
                   <span className="text-base font-bold text-foreground">Total Geral</span>
-                  <Button variant={viewMode === 'byOm' ? 'default' : 'outline'} size="sm" className="h-6 text-[10px] px-2" onClick={(e) => { e.stopPropagation(); setViewMode(viewMode === 'byOm' ? 'global' : 'byOm'); setIsDetailsOpen(false); setSelectedOm(null); }}>
+                  <Button variant={viewMode === 'byOm' ? 'default' : 'outline'} size="sm" className="h-6 text-[10px] px-2 tour-btn-view-by-om" onClick={(e) => { e.stopPropagation(); setViewMode(viewMode === 'byOm' ? 'global' : 'byOm'); setIsDetailsOpen(false); setSelectedOm(null); }}>
                     {viewMode === 'byOm' ? 'Voltar ao Global' : 'Ver por OM'}
                   </Button>
                 </div>
