@@ -482,7 +482,7 @@ export const runMission04 = (onComplete: () => void) => {
         element: '.tour-cost-summary-card',
         popover: {
           title: 'Missão 04: Contabilidade Gerencial',
-          description: 'Este painel é o coração financeiro do seu P Trab. Ele consolida todos os custos lançados e monitora o teto orçamentário em tempo real. Clique em MAIS DETALHES para ver o custo de cada categoria.',
+          description: 'Este painel é o coração financeiro do seu P Trab. Ele consolida todos os custos lançados e monitora o teto orçamentário em tempo real. Clique em "MAIS DETALHES" para ver o custo de cada categoria.',
           side: 'left',
           align: 'start',
           showButtons: [] 
@@ -492,7 +492,7 @@ export const runMission04 = (onComplete: () => void) => {
         element: '#tour-material-consumo-row',
         popover: {
           title: 'Detalhamento de Custos',
-          description: 'Veja que o Material de Consumo que detalhamos na Missão 3 já está contabilizado aqui, com o valor mockado de R$ 1.250,50.',
+          description: 'Veja que o "Material de Consumo" que detalhamos na Missão 3 já está contabilizado aqui, com o valor mockado de R$ 1.250,50.',
           side: 'left',
           align: 'center'
         }
@@ -501,7 +501,7 @@ export const runMission04 = (onComplete: () => void) => {
         element: '.tour-btn-view-by-om',
         popover: {
           title: 'Visão por Organização',
-          description: 'Além da visão global, você pode analisar os custos distribuídos por cada Organização Militar. Clique em Ver por OM para alternar a visão.',
+          description: 'Além da visão global, você pode analisar os custos distribuídos por cada Organização Militar. Clique em "Ver por OM" para alternar a visão.',
           side: 'top',
           align: 'start',
           offset: -20,
@@ -524,7 +524,7 @@ export const runMission04 = (onComplete: () => void) => {
         element: '.tour-om-grouping-controls',
         popover: {
           title: 'Agrupamento Inteligente',
-          description: 'Você pode alternar entre OM Solicitante (quem executa) ou OM Destino (quem detém o recurso), facilitando a prestação de contas.',
+          description: 'Você pode alternar entre "OM Solicitante" (quem executa) ou "OM Destino" (quem detém o recurso), facilitando a prestação de contas.',
           side: 'top',
           align: 'center'
         }
@@ -533,7 +533,7 @@ export const runMission04 = (onComplete: () => void) => {
         element: '.tour-mock-om-item',
         popover: {
           title: 'Análise Individual',
-          description: 'Clique na OM 1º BIS para ver o detalhamento completo dos gastos vinculados a ela.',
+          description: 'Clique na OM "1º BIS" para ver o detalhamento completo dos gastos vinculados a ela.',
           side: 'top',
           align: 'center',
           showButtons: []
@@ -569,10 +569,19 @@ export const runMission05 = (onComplete: () => void) => {
         }
       },
       {
+        element: '#tour-dor-number',
+        popover: {
+          title: 'Número do Documento',
+          description: 'Comece preenchendo o número sequencial do DOR (ex: 01). Este número identificará a requisição no seu controle interno.',
+          side: 'bottom',
+          align: 'center'
+        }
+      },
+      {
         element: '.tour-dor-contato',
         popover: {
           title: 'Dados de Contato',
-          description: 'Comece preenchendo o número do DOR (ex: 01), seu e-mail institucional e um telefone de contato para coordenação.',
+          description: 'Preencha seu e-mail institucional e um telefone de contato. Estes dados são essenciais para que o setor de aquisições possa tirar dúvidas técnicas.',
           side: 'bottom',
           align: 'center'
         }
@@ -580,8 +589,26 @@ export const runMission05 = (onComplete: () => void) => {
       {
         element: '.tour-dor-finalidade',
         popover: {
-          title: 'Campos Técnicos Automáticos',
-          description: 'Veja que os campos de Finalidade, Consequência e Observações Gerais já foram preenchidos automaticamente com os textos técnicos padrão para a Operação SENTINELA.',
+          title: 'Finalidade Técnica',
+          description: 'A finalidade foi preenchida automaticamente com base na Operação SENTINELA. Você pode ajustar o texto conforme a necessidade específica deste documento.',
+          side: 'top',
+          align: 'center'
+        }
+      },
+      {
+        element: '.tour-dor-consequencia',
+        popover: {
+          title: 'Justificativa de Risco',
+          description: 'Aqui descrevemos o impacto negativo caso a requisição não seja atendida. Este campo é crucial para a análise do Ordenador de Despesas.',
+          side: 'top',
+          align: 'center'
+        }
+      },
+      {
+        element: '.tour-dor-observacoes',
+        popover: {
+          title: 'Observações e Normas',
+          description: 'As observações gerais já incluem as cláusulas padrão de conformidade com o SIOP e memórias de cálculo. Revise-as e adicione pontos específicos se houver.',
           side: 'top',
           align: 'center'
         }
@@ -590,7 +617,7 @@ export const runMission05 = (onComplete: () => void) => {
         element: '.btn-salvar-dor',
         popover: {
           title: 'Finalização',
-          description: 'Tudo pronto! Agora basta salvar o documento. Missão cumprida! Você concluiu o ciclo básico de treinamento do P Trab Inteligente.',
+          description: 'Tudo pronto! Agora basta salvar o documento. Você pode criar múltiplos DORs para o mesmo P Trab se precisar separar as requisições por GND ou finalidade.',
           side: 'bottom',
           align: 'end'
         }
