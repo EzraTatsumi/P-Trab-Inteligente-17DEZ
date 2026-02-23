@@ -15,7 +15,7 @@ export const GHOST_DATA = {
     periodo_inicio: "2026-03-01",
     periodo_fim: "2026-03-15",
     efetivo_empregado: "150 militares",
-    acoes: "Patrulhamento de fronteira e reconhecimento de área.",
+    acoes: "Patrulhamento de fronteira e reconnaissance de área.",
     status: "aberto",
     origem: "original",
     updated_at: new Date().toISOString(),
@@ -172,6 +172,51 @@ export const GHOST_DATA = {
     ]
   },
 
+  // Missão 06: Dados detalhados para o Relatório
+  missao_06: {
+    material_consumo_registros: [
+      {
+        id: "ghost-reg-material-construcao",
+        p_trab_id: "ghost-ptrab-123",
+        organizacao: "1º BIS",
+        ug: "160222",
+        om_detentora: "1º BIS",
+        ug_detentora: "160222",
+        dias_operacao: 15,
+        efetivo: 150,
+        fase_atividade: "Execução",
+        group_name: "Material de Construção",
+        valor_total: 212.50,
+        valor_nd_30: 212.50,
+        valor_nd_39: 0,
+        detalhamento_customizado: "33.90.30 - Aquisição de Material de Construção para atender 150 militares do 1º BIS, durante 15 dias de execucao.\n\nCálculo:\nFórmula: Qtd do item x Valor do item.\n- 5 Cimento Portland 50kg x R$ 42,50/unid. = R$ 212,50.\n\nTotal: R$ 212,50.\n(Pregão 5/2025 - UASG 160.222)",
+        itens_aquisicao: [
+          {
+            id: "ghost-item-cimento",
+            descricao_item: "Cimento Portland CP II-Z-32, Resistência à Compressão 32 MPa, Saco 50kg",
+            descricao_reduzida: "Cimento Portland 50kg",
+            valor_unitario: 42.50,
+            numero_pregao: "005/2025",
+            uasg: "160222",
+            codigo_catmat: "123456",
+            quantidade: 5,
+            valor_total: 212.50,
+            nd: "30"
+          }
+        ]
+      }
+    ],
+    // Outras tabelas vazias para o mock
+    diaria_registros: [],
+    passagem_registros: [],
+    verba_operacional_registros: [],
+    concessionaria_registros: [],
+    horas_voo_registros: [],
+    material_permanente_registros: [],
+    servicos_terceiros_registros: [],
+    complemento_alimentacao_registros: [],
+  },
+
   oms_exemplo: [
     { id: "om-1", nome_om: "1º BIS", codug_om: "160222", rm_vinculacao: "12ª RM", codug_rm_vinculacao: "160060", cidade: "Manaus/AM", ativo: true },
     { id: "om-2", nome_om: "2º BIS", codug_om: "160223", rm_vinculacao: "12ª RM", codug_rm_vinculacao: "160060", cidade: "Belém/PA", ativo: true },
@@ -180,7 +225,7 @@ export const GHOST_DATA = {
 
   totais_exemplo: {
     totalLogisticoGeral: 45000.50,
-    totalOperacional: 1250.50, // Valor mockado para Missão 04
+    totalOperacional: 212.50, 
     totalMaterialPermanente: 8900.00,
     totalAviacaoExercito: 0,
     totalClasseI: 15000,
@@ -190,10 +235,10 @@ export const GHOST_DATA = {
     totalLubrificanteValor: 5000.50,
     credit_gnd3: 150000.00,
     credit_gnd4: 50000.00,
-    totalMaterialConsumo: 1250.50,
-    totalMaterialConsumoND30: 1250.50,
+    totalMaterialConsumo: 212.50,
+    totalMaterialConsumoND30: 212.50,
     groupedMaterialConsumoCategories: {
-      "Material de Construção": { totalValor: 1250.50, totalND30: 1250.50, totalND39: 0 }
+      "Material de Construção": { totalValor: 212.50, totalND30: 212.50, totalND39: 0 }
     }
   } as any
 };
