@@ -531,19 +531,30 @@ export const runMission04 = (onComplete: () => void) => {
         element: '.tour-cost-summary-card',
         popover: {
           title: 'Missão 04: Contabilidade Gerencial',
-          description: 'Este painel é o coração financeiro do seu P Trab. Ele consolida todos os custos lançados e monitora o teto orçamentário em tempo real. Clique em "MAIS DETALHES" para ver o custo de cada categoria.',
+          description: 'Este painel é o coração financeiro do seu P Trab. Ele consolida todos os custos lançados e monitora o teto orçamentário em tempo real. Clique em "MAIS DETALHES" para ver o custo de cada categoria de custo.',
           side: 'left',
-          align: 'start',
-          showButtons: [] // Removemos o botão Próximo para forçar o clique no sistema
+          align: 'start'
+        },
+        onNextClick: () => {
+          // 1. Manda abrir a cascata de custos (GND -> Operacional -> Material de Consumo)
+          if ((window as any).expandCostDetails) {
+            (window as any).expandCostDetails();
+          }
+          
+          // 2. Espera 600ms para o Shadcn terminar a animação de expansão suave
+          setTimeout(() => {
+            // Quando o Tour avançar, a linha de Material de Consumo já estará visível!
+            if (activeMissionDriver) activeMissionDriver.moveNext(); 
+          }, 600);
         }
       },
       {
         element: '#tour-material-consumo-row',
         popover: {
           title: 'Detalhamento de Custos',
-          description: 'Veja que o "Material de Consumo" que detalhamos na Missão 3 já está contabilizado aqui, com o valor mockado de R$ 1.250,50.',
-          side: 'left',
-          align: 'center'
+          description: 'Veja que o "Material de Consumo" que detalhamos na Missão 3 já está contabilizado aqui, com o valor de R$ 1.250,50.',
+          side: 'right',
+          align: 'start'
         }
       },
       {
