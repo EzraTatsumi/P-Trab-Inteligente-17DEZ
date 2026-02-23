@@ -8,14 +8,14 @@ type DiretrizOperacional = Tables<'diretrizes_operacionais'>;
 type DiretrizPassagens = Tables<'diretrizes_passagens'>;
 
 // Define a união de tabelas que possuem a coluna p_trab_id
-type PTrabLinkedTableName =
+export type PTrabLinkedTableName =
     'classe_i_registros' | 'classe_ii_registros' | 'classe_iii_registros' | 
     'classe_v_registros' | 'classe_vi_registros' | 'classe_vii_registros' |
     'classe_viii_saude_registros' | 'classe_viii_remonta_registros' |
     'classe_ix_registros' | 'p_trab_ref_lpc' | 'passagem_registros' |
     'diaria_registros' | 'verba_operacional_registros' | 'concessionaria_registros' | 
     'horas_voo_registros' | 'material_consumo_registros' | 'complemento_alimentacao_registros' |
-    'material_permanente_registros' | 'servicos_terceiros_registros';
+    'material_permanente_registros' | 'servicos_terceiros_registros' | 'dor_registros';
 
 /**
  * Tipo de dados para o PTrab principal.

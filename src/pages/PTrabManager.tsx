@@ -56,7 +56,7 @@ import LinkPTrabDialog from "@/components/LinkPTrabDialog";
 import ManageSharingDialog from "@/components/ManageSharingDialog";
 import UnlinkPTrabDialog from "@/components/UnlinkPTrabDialog";
 import PageMetadata from "@/components/PageMetadata";
-import { fetchBatchPTrabTotals } from "@/lib/ptrabUtils";
+import { fetchBatchPTrabTotals, PTrabLinkedTableName } from "@/lib/ptrabUtils";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { PTrabTableSkeleton } from "@/components/PTrabTableSkeleton";
 import { useOnboardingStatus } from "@/hooks/useOnboardingStatus";
