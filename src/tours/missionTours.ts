@@ -545,16 +545,33 @@ export const runMission04 = (onComplete: () => void) => {
           align: 'center'
         },
         onHighlighted: () => {
-          // 1. Expande o resumo global e o acordeão interno
+          // 1. Dispara a expansão em cascata (GND -> Operacional -> Material de Consumo)
           if ((window as any).expandCostDetails) (window as any).expandCostDetails();
           
-          // 2. Aguarda a animação de abertura para garantir que o elemento alvo esteja visível e estável
-          setTimeout(() => {
-            const target = document.querySelector('#tour-material-consumo-row');
-            if (target) {
-              target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          // 2. Monitora a expansão e atualiza a iluminação do driver continuamente
+          let attempts = 0;
+          const checkAndRefresh = setInterval(() => {
+            attempts++;
+            if (activeMissionDriver) {
+              activeMissionDriver.refresh();
             }
-          }, 500);
+            
+            // Para após 1.5 segundos ou se o elemento atingir uma altura mínima esperada
+            const el = document.querySelector('#tour-material-consumo-row');
+            if (attempts > 15 || (el && el.getBoundingClientRect().height > 60)) {
+              clearInterval(checkAndRefresh);
+              
+              // Scroll final para centralizar o elemento agora que ele tem tamanho real
+              if (el) {
+                el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+              }
+              
+              // Refresh final após o scroll
+              setTimeout(() => {
+                if (activeMissionDriver) activeMissionDriver.refresh();
+              }, 300);
+            }
+          }, 100);
         }
       },
       {
