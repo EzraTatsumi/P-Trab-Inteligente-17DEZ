@@ -308,8 +308,8 @@ const DOREditor = () => {
 
     groups.forEach(group => {
       const ugeAggregated: Record<string, { name: string, code: string, total: number }> = {};
-      group.items.forEach(typeItem => {
-        typeItem.originalRecords.forEach(record => {
+      group.items.forEach(item => {
+        item.originalRecords.forEach(record => {
           const key = `${record.organizacao}-${record.ug}`;
           if (!ugeAggregated[key]) {
             ugeAggregated[key] = { name: record.organizacao, code: record.ug, total: 0 };
