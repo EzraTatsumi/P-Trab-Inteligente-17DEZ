@@ -1,59 +1,43 @@
-/* Estilos customizados para o tour com driver.js */
+/* Estilos globais para o driver.js */
 
-.driver-popover.driverjs-theme {
-  background-color: #fff;
-  color: #000;
-  border-radius: 8px;
-  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
-  z-index: 100002 !important;
+.driver-popover {
+  border-radius: 12px !important;
+  border: 1px solid hsl(var(--border)) !important;
+  box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1) !important;
 }
 
-.driver-popover.driverjs-theme .driver-popover-title {
-  font-weight: 700;
-  font-size: 1.1rem;
-  color: #1a1a1a;
+.driver-popover-title {
+  font-family: inherit !important;
+  font-weight: 700 !important;
+  color: hsl(var(--primary)) !important;
+  font-size: 18px !important;
 }
 
-.driver-popover.driverjs-theme .driver-popover-description {
-  font-size: 0.95rem;
-  line-height: 1.5;
-  color: #4a4a4a;
+.driver-popover-description {
+  font-family: inherit !important;
+  color: hsl(var(--muted-foreground)) !important;
+  line-height: 1.5 !important;
 }
 
-.driver-popover.driverjs-theme .driver-popover-btn {
-  text-shadow: none;
-  background-color: #0f172a;
-  color: #fff;
-  border: none;
-  padding: 6px 12px;
-  border-radius: 4px;
-  font-size: 0.85rem;
-  transition: background-color 0.2s;
+/* 2. Classe Específica para o passo de Configurações */
+/* Usando seletores mais genéricos para garantir a aplicação */
+.driver-popover.popover-wide {
+  min-width: 550px !important; /* Força uma largura mínima maior */
+  max-width: 700px !important;
+  padding: 15px 25px !important;
 }
 
-.driver-popover.driverjs-theme .driver-popover-btn:hover {
-  background-color: #1e293b;
+.driver-popover-next-btn, .driver-popover-prev-btn {
+  border-radius: 6px !important;
+  text-shadow: none !important;
 }
 
-.driver-popover.driverjs-theme .driver-popover-close-btn {
-  color: #94a3b8;
+.driver-popover-next-btn {
+  background-color: hsl(var(--primary)) !important;
+  color: hsl(var(--primary-foreground)) !important;
 }
 
-/* 
-   CORREÇÃO CRÍTICA PARA PORTALS (Select, Dropdown, etc):
-   Garante que os menus suspensos fiquem ACIMA de tudo e sejam clicáveis.
-*/
-[data-radix-portal] {
-  z-index: 100001 !important;
-  pointer-events: auto !important;
-}
-
-/* Garante que o elemento ativo no tour não bloqueie cliques internos */
-.driverjs-active-element {
-  pointer-events: auto !important;
-}
-
-/* Classe auxiliar para forçar z-index em menus específicos se necessário */
-.z-tour-portal {
-  z-index: 100001 !important;
+.driver-popover-prev-btn {
+  background-color: hsl(var(--secondary)) !important;
+  color: hsl(var(--secondary-foreground)) !important;
 }

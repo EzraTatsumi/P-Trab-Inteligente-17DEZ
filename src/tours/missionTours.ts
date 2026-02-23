@@ -96,7 +96,8 @@ export const runMission01 = (onComplete: () => void) => {
           description: 'Vincule trabalhos colaborativos, Diretrizes de Custeio Logístico e de Custos Operacionais e Importe/Exporte dados de P Trab.',
           side: 'left',
           align: 'end',
-          offset: 20
+          offset: 20,
+          popoverClass: 'popover-wide'
         },
         onHighlighted: () => {
           if ((window as any).openSettings) (window as any).openSettings();
@@ -270,7 +271,7 @@ export const runMission02 = (onComplete: () => void) => {
         popover: {
           title: 'Item Importado com Sucesso',
           description: 'Veja! O item foi importado com todos os dados técnicos e valores atualizados do PNCP diretamente para sua lista.',
-          side: 'top',
+          side: 'top', 
           align: 'center'
         }
       },
