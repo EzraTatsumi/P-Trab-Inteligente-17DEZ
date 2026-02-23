@@ -10,30 +10,24 @@ let activeMissionDriver: any = null;
 if (typeof window !== 'undefined') {
   window.addEventListener('tour:avancar', () => {
     if (activeMissionDriver) {
-      // 1. Oculta o balão imediatamente para evitar o movimento indesejado
       const popover = document.querySelector('.driver-popover') as HTMLElement;
       if (popover) {
         popover.style.opacity = '0';
         popover.style.transition = 'none';
       }
 
-      // 2. Identifica o próximo passo
       const currentIndex = activeMissionDriver.getActiveIndex();
       const steps = activeMissionDriver.getConfig().steps;
       const nextStep = steps[currentIndex + 1];
 
       if (nextStep && nextStep.element) {
-        // 3. Monitora o DOM até que o próximo elemento apareça e esteja estável
         let attempts = 0;
         const checkInterval = setInterval(() => {
           const el = document.querySelector(nextStep.element as string);
           attempts++;
 
-          // Se o elemento apareceu ou desistimos após 3s
           if (el || attempts > 30) {
             clearInterval(checkInterval);
-            
-            // Pequeno fôlego para o layout estabilizar
             setTimeout(() => {
               if (activeMissionDriver.hasNextStep()) {
                 activeMissionDriver.moveNext();
@@ -42,7 +36,6 @@ if (typeof window !== 'undefined') {
           }
         }, 100);
       } else {
-        // Se não houver elemento específico, avança normalmente
         setTimeout(() => {
           if (activeMissionDriver.hasNextStep()) activeMissionDriver.moveNext();
         }, 300);
@@ -531,7 +524,7 @@ export const runMission04 = (onComplete: () => void) => {
         element: '.tour-cost-summary-card',
         popover: {
           title: 'Missão 04: Contabilidade Gerencial',
-          description: 'Este painel é o coração financeiro do seu P Trab. Ele consolida todos os custos lançados e monitora o teto orçamentário em tempo real. Clique em "MAIS DETALHES" para ver o custo de cada categoria.',
+          description: 'Este painel é o coração financeiro do seu P Trab. Ele consolida todos os custos lançados e monitora o teto orçamentário em tempo real. Clique em MAIS DETALHES para ver o custo de cada categoria.',
           side: 'left',
           align: 'start',
           showButtons: [] 
@@ -541,7 +534,7 @@ export const runMission04 = (onComplete: () => void) => {
         element: '#tour-material-consumo-row',
         popover: {
           title: 'Detalhamento de Custos',
-          description: 'Veja que o "Material de Consumo" que detalhamos na Missão 3 já está contabilizado aqui, com o valor mockado de R$ 1.250,50.',
+          description: 'Veja que o Material de Consumo que detalhamos na Missão 3 já está contabilizado aqui, com o valor mockado de R$ 1.250,50.',
           side: 'left',
           align: 'center'
         }
@@ -550,7 +543,7 @@ export const runMission04 = (onComplete: () => void) => {
         element: '.tour-btn-view-by-om',
         popover: {
           title: 'Visão por Organização',
-          description: 'Além da visão global, você pode analisar os custos distribuídos por cada Organização Militar. Clique em "Ver por OM" para alternar a visão.',
+          description: 'Além da visão global, você pode analisar os custos distribuídos por cada Organização Militar. Clique em Ver por OM para alternar a visão.',
           side: 'top',
           align: 'start',
           offset: -20,
@@ -573,7 +566,7 @@ export const runMission04 = (onComplete: () => void) => {
         element: '.tour-om-grouping-controls',
         popover: {
           title: 'Agrupamento Inteligente',
-          description: 'Você pode alternar entre "OM Solicitante" (quem executa) ou "OM Destino" (quem detém o recurso), facilitando a prestação de contas.',
+          description: 'Você pode alternar entre OM Solicitante (quem executa) ou OM Destino (quem detém o recurso), facilitando a prestação de contas.',
           side: 'top',
           align: 'center'
         }
@@ -582,7 +575,7 @@ export const runMission04 = (onComplete: () => void) => {
         element: '.tour-mock-om-item',
         popover: {
           title: 'Análise Individual',
-          description: 'Clique na OM "1º BIS" para ver o detalhamento completo dos gastos vinculados a ela.',
+          description: 'Clique na OM 1º BIS para ver o detalhamento completo dos gastos vinculados a ela.',
           side: 'top',
           align: 'center',
           showButtons: []
