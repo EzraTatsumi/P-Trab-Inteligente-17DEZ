@@ -6,15 +6,48 @@ import "./tour.css";
 
 let activeMissionDriver: any = null;
 
+// Lógica inteligente para evitar o "pulo" do balão para o canto (0,0)
 if (typeof window !== 'undefined') {
   window.addEventListener('tour:avancar', () => {
     if (activeMissionDriver) {
-      // Aumentado para 800ms para garantir que o React terminou o ciclo de render e o scroll estabilizou
-      setTimeout(() => {
-        if (activeMissionDriver.hasNextStep()) {
-          activeMissionDriver.moveNext();
-        }
-      }, 800); 
+      // 1. Oculta o balão imediatamente para evitar o movimento indesejado
+      const popover = document.querySelector('.driver-popover') as HTMLElement;
+      if (popover) {
+        popover.style.opacity = '0';
+        popover.style.transition = 'none';
+      }
+
+      // 2. Identifica o próximo passo
+      const currentIndex = activeMissionDriver.getActiveIndex();
+      const steps = activeMissionDriver.getConfig().steps;
+      const nextStep = steps[currentIndex + 1];
+
+      if (nextStep && nextStep.element) {
+        // 3. Monitora o DOM até que o próximo elemento apareça e esteja estável
+        let attempts = 0;
+        const checkInterval = setInterval(() => {
+          const el = document.querySelector(nextStep.element as string);
+          attempts++;
+
+          // Se o elemento apareceu ou desistimos após 3s
+          if (el || attempts > 30) {
+            clearInterval(checkInterval);
+            
+            // Pequeno fôlego para o layout estabilizar
+            setTimeout(() => {
+              if (activeMissionDriver.hasNextStep()) {
+                activeMissionDriver.moveNext();
+                // O driver.js restaurará a opacidade automaticamente ao destacar o novo elemento
+              }
+            }, 100);
+          }
+        }, 100);
+      } else {
+        // Se não houver elemento específico, avança normalmente
+        setTimeout(() => {
+          if (activeMissionDriver.hasNextStep()) activeMissionDriver.moveNext();
+        }, 300);
+      }
     }
   });
 }
@@ -382,11 +415,9 @@ export const runMission03 = (onComplete: () => void) => {
           showButtons: []
         },
         onHighlighted: () => {
-          // Automação da quantidade para o tour
           const input = document.querySelector('.tour-item-quantity-input') as HTMLInputElement;
           if (input) {
             input.value = '5';
-            // Dispara eventos para o React detectar a mudança
             input.dispatchEvent(new Event('input', { bubbles: true }));
             input.dispatchEvent(new Event('change', { bubbles: true }));
           }
