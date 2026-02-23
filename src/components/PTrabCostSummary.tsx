@@ -430,24 +430,6 @@ export const fetchPTrabTotals = async (ptrabId: string): Promise<PTrabAggregated
       });
     });
 
-    (horasVoo || []).forEach(record => {
-      const omS = getOmTotals(record.organizacao, record.ug, 'solicitante');
-      const omD = getOmTotals(record.om_detentora || record.organizacao, record.ug_detentora || record.ug, 'destino');
-      [omS, omD].forEach(omTotals => {
-        const val = Number(record.valor_total || 0);
-        const hv = Number(record.quantidade_hv || 0);
-        const tipo = record.tipo_anv || 'Não Especificado';
-        omTotals.horasVoo.total += val;
-        omTotals.horasVoo.totalND30 += Number(record.valor_nd_30 || 0);
-        omTotals.horasVoo.totalND39 += Number(record.valor_nd_39 || 0);
-        omTotals.horasVoo.quantidadeHV += hv;
-        omTotals.totalAviacaoExercito += val;
-        if (!omTotals.horasVoo.groupedHV[tipo]) omTotals.horasVoo.groupedHV[tipo] = { totalValor: 0, totalHV: 0 };
-        omTotals.horasVoo.groupedHV[tipo].totalValor += val;
-        omTotals.horasVoo.groupedHV[tipo].totalHV += hv;
-      });
-    });
-
     (materialConsumo || []).forEach(record => {
       const omS = getOmTotals(record.organizacao, record.ug, 'solicitante');
       const omD = getOmTotals(record.om_detentora || record.organizacao, record.ug_detentora || record.ug, 'destino');
@@ -1156,8 +1138,10 @@ const TabDetails = ({ mode, data }: TabDetailsProps) => {
       <Accordion type="single" collapsible className="w-full pt-1">
         <AccordionItem value="item-complemento-alimentacao" className="border-b-0">
           <AccordionTrigger className="p-0 hover:no-underline">
-            <div className="flex items-center gap-1 text-foreground text-left flex-1"><Utensils className="h-3 w-3 text-blue-500" />Complemento de Alimentação</div>
-            <span className={cn(valueClasses, "text-xs flex items-center gap-1 mr-6")}>{formatCurrency(c.totalComplementoAlimentacao)}</span>
+            <div className="flex justify-between items-center w-full text-xs border-b pb-1 border-border/50">
+              <div className="flex items-center gap-1 text-foreground text-left flex-1"><Utensils className="h-3 w-3 text-blue-500" />Complemento de Alimentação</div>
+              <span className={cn(valueClasses, "text-xs flex items-center gap-1 mr-6")}>{formatCurrency(c.totalComplementoAlimentacao)}</span>
+            </div>
           </AccordionTrigger>
           <AccordionContent className="pt-1 pb-0">
             <div className="space-y-1 pl-4 text-[10px]">
@@ -1188,8 +1172,10 @@ const TabDetails = ({ mode, data }: TabDetailsProps) => {
       <Accordion type="single" collapsible className="w-full pt-1">
         <AccordionItem value="item-servicos-terceiros" className="border-b-0">
           <AccordionTrigger className="p-0 hover:no-underline">
-            <div className="flex items-center gap-1 text-foreground text-left flex-1"><ClipboardList className="h-3 w-3 text-blue-500" />Serviços de Terceiros/Locações</div>
-            <span className={cn(valueClasses, "text-xs flex items-center gap-1 mr-6")}>{formatCurrency(s.totalServicosTerceiros)}</span>
+            <div className="flex justify-between items-center w-full text-xs border-b pb-1 border-border/50">
+              <div className="flex items-center gap-1 text-foreground text-left flex-1"><ClipboardList className="h-3 w-3 text-blue-500" />Serviços de Terceiros/Locações</div>
+              <span className={cn(valueClasses, "text-xs flex items-center gap-1 mr-6")}>{formatCurrency(s.totalServicosTerceiros)}</span>
+            </div>
           </AccordionTrigger>
           <AccordionContent className="pt-1 pb-0">
             <div className="space-y-1 pl-4 text-[10px]">
@@ -1220,9 +1206,10 @@ const TabDetails = ({ mode, data }: TabDetailsProps) => {
       <Accordion type="single" collapsible className="w-full pt-1">
         <AccordionItem value="item-material-permanente" className="border-b-0">
           <AccordionTrigger className="p-0 hover:no-underline">
-            <div className="flex items-center gap-1 text-foreground text-left flex-1"><HardHat className="h-3 w-3 text-green-600" />Material Permanente</div>
-            <span className={cn(valueClasses, "text-xs flex items-center gap-1 mr-6")}>{formatCurrency(p.totalMaterialPermanente)}</span>
-          </div>
+            <div className="flex justify-between items-center w-full text-xs border-b pb-1 border-border/50">
+              <div className="flex items-center gap-1 text-foreground text-left flex-1"><HardHat className="h-3 w-3 text-green-600" />Material Permanente</div>
+              <span className={cn(valueClasses, "text-xs flex items-center gap-1 mr-6")}>{formatCurrency(p.totalMaterialPermanente)}</span>
+            </div>
           </AccordionTrigger>
           <AccordionContent className="pt-1 pb-0">
             <div className="space-y-1 pl-4 text-[10px]">
