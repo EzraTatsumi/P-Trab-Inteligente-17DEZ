@@ -1370,23 +1370,30 @@ export const PTrabCostSummary = ({ ptrabId, onOpenCreditDialog, creditGND3, cred
   const [selectedOm, setSelectedOm] = useState<OmTotals | null>(null);
   const detailsRef = useRef<HTMLDivElement>(null);
 
-  // Expondo funções para o tour
+  // Lógica de avanço automático do tour ao abrir detalhes
   useEffect(() => {
-    (window as any).expandCostDetails = () => {
-      // 1. Abre o resumo global
-      setIsDetailsOpen(true);
-      setViewMode('global');
-      
-      // 2. Aguarda o resumo global abrir para procurar o gatilho interno
+    if (isDetailsOpen && isGhostMode()) {
+      // 1. Auto-expande a subseção de Material de Consumo para o tour
       setTimeout(() => {
         const trigger = document.querySelector('.tour-material-consumo-trigger') as HTMLElement;
         if (trigger) {
           const isExpanded = trigger.getAttribute('aria-expanded') === 'true';
-          if (!isExpanded) {
-            trigger.click();
-          }
+          if (!isExpanded) trigger.click();
         }
+        
+        // 2. Dispara o evento de avanço do tour após a animação
+        setTimeout(() => {
+          window.dispatchEvent(new CustomEvent('tour:avancar'));
+        }, 400);
       }, 150);
+    }
+  }, [isDetailsOpen]);
+
+  // Expondo funções para o tour
+  useEffect(() => {
+    (window as any).expandCostDetails = () => {
+      setIsDetailsOpen(true);
+      setViewMode('global');
     };
     (window as any).switchToByOmView = () => {
       setViewMode('byOm');
