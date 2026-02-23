@@ -276,3 +276,16 @@ export function capitalizeFirstLetter(str: string | null | undefined): string {
     if (trimmedStr.length === 0) return '';
     return trimmedStr.charAt(0).toUpperCase() + trimmedStr.slice(1);
 }
+
+/**
+ * Formata uma lista de fases para um texto amigável.
+ * @param fases Uma string ou array de strings representando as fases.
+ * @returns Uma string formatada.
+ */
+export const formatFasesParaTexto = (fases: string | string[] | null | undefined): string => {
+    if (!fases) return 'Não especificada';
+    if (Array.isArray(fases)) {
+        return fases.length > 0 ? fases.join(', ') : 'Não especificada';
+    }
+    return fases;
+};
