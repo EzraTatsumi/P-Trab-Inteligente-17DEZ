@@ -9,11 +9,12 @@ let activeMissionDriver: any = null;
 if (typeof window !== 'undefined') {
   window.addEventListener('tour:avancar', () => {
     if (activeMissionDriver) {
+      // Aumentado para 800ms para garantir que o React terminou o ciclo de render e o scroll estabilizou
       setTimeout(() => {
         if (activeMissionDriver.hasNextStep()) {
           activeMissionDriver.moveNext();
         }
-      }, 500); 
+      }, 800); 
     }
   });
 }
@@ -392,13 +393,16 @@ export const runMission03 = (onComplete: () => void) => {
         }
       },
       {
-        element: '.tour-planning-container', // Alterado para englobar o botão de salvamento
+        element: '.tour-planning-container', 
         popover: {
           title: 'Revisão do Lote',
           description: 'O grupo "Material de Construção" foi criado com sucesso. Agora, clique em "Salvar Itens na Lista" para preparar o envio dos dados.',
           side: 'top',
           align: 'center',
           showButtons: []
+        },
+        onHighlighted: (element) => {
+          element.scrollIntoView({ behavior: 'smooth', block: 'center' });
         }
       },
       {
@@ -409,6 +413,9 @@ export const runMission03 = (onComplete: () => void) => {
           side: 'top',
           align: 'center',
           showButtons: []
+        },
+        onHighlighted: (element) => {
+          element.scrollIntoView({ behavior: 'smooth', block: 'center' });
         }
       },
       {
@@ -418,6 +425,9 @@ export const runMission03 = (onComplete: () => void) => {
           description: 'Parabéns! Os registros agora estão salvos e aparecem na lista de OMs Cadastradas, somando ao valor total do seu Plano de Trabalho.',
           side: 'top',
           align: 'center'
+        },
+        onHighlighted: (element) => {
+          element.scrollIntoView({ behavior: 'smooth', block: 'center' });
         }
       },
       {
@@ -427,6 +437,9 @@ export const runMission03 = (onComplete: () => void) => {
           description: 'O sistema gerou automaticamente as memórias de cálculo detalhadas. Você pode editá-las manualmente se precisar de justificativas técnicas específicas.',
           side: 'top',
           align: 'center'
+        },
+        onHighlighted: (element) => {
+          element.scrollIntoView({ behavior: 'smooth', block: 'center' });
         }
       }
     ],
