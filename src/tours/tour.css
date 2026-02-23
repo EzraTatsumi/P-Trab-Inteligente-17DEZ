@@ -27,6 +27,12 @@
   padding: 15px 25px !important;
 }
 
+/* Garante que elementos marcados como portais do tour fiquem acima do overlay do driver.js */
+/* O driver.js usa z-index na casa dos 100000 */
+.z-tour-portal {
+  z-index: 1000001 !important;
+}
+
 .driver-popover-next-btn, .driver-popover-prev-btn {
   border-radius: 6px !important;
   text-shadow: none !important;
