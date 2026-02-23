@@ -937,14 +937,20 @@ const PTrabReportManager = () => {
               }];
           }
           if (selectedReport === 'operacional') {
-              diariaData = [{
-                  id: 'ghost-diaria', p_trab_id: 'ghost', organizacao: '1º BIS', ug: '160222', destino: 'CAPITAL',
-                  dias_operacao: 10, quantidades_por_posto: { 'OF_SUP': 2, 'OF_INT_SGT': 5 }, valor_total: 12500,
-                  valor_nd_30: 12500, valor_nd_15: 0, valor_taxa_embarque: 0, is_aereo: false, fase_atividade: 'Execução'
-              }];
+              // Sincronizado com Missão 03 e 04
               materialConsumoData = [{
-                  id: 'ghost-mat', p_trab_id: 'ghost', organizacao: '1º BIS', ug: '160222', group_name: 'MATERIAL DE CONSTRUÇÃO',
-                  valor_total: 1250.50, valor_nd_30: 1250.50, valor_nd_39: 0, dias_operacao: 15, efetivo: 150, fase_atividade: 'Execução'
+                  id: 'ghost-mat', 
+                  p_trab_id: 'ghost', 
+                  organizacao: '1º BIS', 
+                  ug: '160222', 
+                  group_name: 'MATERIAL DE CONSTRUÇÃO',
+                  valor_total: 1250.50, 
+                  valor_nd_30: 1250.50, 
+                  valor_nd_39: 0, 
+                  dias_operacao: 15, 
+                  efetivo: 150, 
+                  fase_atividade: 'Execução',
+                  detalhamento_customizado: "Aquisição de Cimento Portland para manutenção de instalações durante a Operação SENTINELA, conforme detalhado na Missão 03. Valor total de R$ 1.250,50 baseado em cotações do PNCP."
               }];
           }
           if (selectedReport === 'dor') {
@@ -1771,6 +1777,22 @@ const PTrabReportManager = () => {
                 ))}
               </SelectContent>
             </Select>
+          </div>
+
+          {/* Botões de Exportação para o Tour */}
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" className="btn-export-pdf">
+              <Download className="h-4 w-4 mr-2" />
+              PDF
+            </Button>
+            <Button variant="outline" size="sm" className="btn-export-excel">
+              <FileSpreadsheet className="h-4 w-4 mr-2" />
+              Excel
+            </Button>
+            <Button variant="outline" size="sm" className="btn-print">
+              <Printer className="h-4 w-4 mr-2" />
+              Imprimir
+            </Button>
           </div>
         </div>
       </div>

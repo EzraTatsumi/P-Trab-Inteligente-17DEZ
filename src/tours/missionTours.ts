@@ -717,7 +717,7 @@ export const runMission06 = (onComplete: () => void) => {
         element: '.tour-report-manager-root',
         popover: {
           title: 'Missão 06: Central de Relatórios',
-          description: 'Bem-vindo à Central de Relatórios. Aqui você visualiza todos os anexos do seu P Trab. Iniciamos com o Relatório Operacional contendo os dados mockados das missões anteriores.',
+          description: 'Bem-vindo à Central de Relatórios. Aqui você visualiza todos os anexos do seu P Trab. Iniciamos com o Relatório Operacional contendo o "Cimento Portland" detalhado na Missão 03, totalizando R$ 1.250,50.',
           side: 'top',
           align: 'center'
         },
