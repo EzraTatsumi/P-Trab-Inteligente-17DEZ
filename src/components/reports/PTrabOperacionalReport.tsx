@@ -479,10 +479,10 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
             data: {
                 id: 'mock-mission-3',
                 group_name: 'Material de Construção',
-                valor_total: 42.50,
-                valor_nd_30: 42.50,
+                valor_total: 10625.00,
+                valor_nd_30: 10625.00,
                 valor_nd_39: 0,
-                detalhamento_customizado: "33.90.30 - Aquisição de Material de Construção para atender 150 militares do 1º BIS, durante 15 dias de execucao.\n\nCálculo:\nFórmula: Qtd do item x Valor do item.\n- 1 Cimento Portland 50kg x R$ 42,50/unid. = R$ 42,50.\n\nTotal: R$ 42,50.\n(Pregão 5/2025 - UASG 160.222)"
+                detalhamento_customizado: "33.90.30 - Aquisição de Material de Construção para atender 150 militares do 1º BIS, durante 15 dias de execucao.\n\nCálculo:\nFórmula: Qtd do item x Valor do item.\n- 250 Cimento Portland 50kg x R$ 42,50/unid. = R$ 10.625,00.\n\nTotal: R$ 10.625,00.\n(Pregão 5/2025 - UASG 160.222)"
             } as any
         });
     }
@@ -553,7 +553,7 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
 
     // Adiciona o valor da simulação da Missão 3 se necessário
     if (registrosMaterialConsumo.length === 0 && ptrabData.nome_operacao.toUpperCase().includes('SENTINELA')) {
-        totals.nd30 += 42.50;
+        totals.nd30 += 10625.00;
     }
 
     registrosComplementoAlimentacao.forEach(r => {
@@ -747,8 +747,8 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
         
         // Simulação Missão 3 no Excel
         if (group.materialConsumo.length === 0 && ptrabData.nome_operacao.toUpperCase().includes('SENTINELA')) {
-            subtotalOM.nd30 += 42.50;
-            subtotalOM.totalGND3 += 42.50;
+            subtotalOM.nd30 += 10625.00;
+            subtotalOM.totalGND3 += 10625.00;
         }
 
         group.complementoAlimentacao.forEach(item => {
@@ -1095,8 +1095,8 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
               
               // Simulação Missão 3 no Render
               if (group.materialConsumo.length === 0 && ptrabData.nome_operacao.toUpperCase().includes('SENTINELA')) {
-                  subtotalOM.nd30 += 42.50;
-                  subtotalOM.totalGND3 += 42.50;
+                  subtotalOM.nd30 += 10625.00;
+                  subtotalOM.totalGND3 += 10625.00;
               }
 
               group.complementoAlimentacao.forEach(item => {
