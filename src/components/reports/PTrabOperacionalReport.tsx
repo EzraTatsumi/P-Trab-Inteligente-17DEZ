@@ -142,7 +142,7 @@ type ExpenseRow = {
     type: keyof typeof EXPENSE_ORDER_MAP;
     data: DiariaRegistro | ConsolidatedPassagemReport | ConsolidatedConcessionariaReport | VerbaOperacionalRegistro | MaterialConsumoRegistro | ServicoTerceiroRegistro | { registro: ComplementoAlimentacaoRegistro, subType?: 'QS' | 'QR' };
     isContinuation?: boolean;
-    continuationIndex?: number; 
+    continuationIndex?: number; // NOVO: Para garantir chaves únicas em múltiplas páginas de continuação
     partialItems?: ItemAquisicao[];
     partialTotal?: number;
     partialND30?: number;
@@ -360,6 +360,7 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
 
   /**
    * Helper para gerar o rótulo da coluna Despesas.
+   * Aplica regras específicas para Serviços de Terceiros e restaura o padrão para os demais.
    */
   const getDespesaLabel = (row: ExpenseRow, omName: string): string => {
     const { type, data, isContinuation } = row;
@@ -385,13 +386,11 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
         return formatCategoryName(cat, details).toUpperCase();
     }
     
+    // RESTAURAÇÃO DOS DEMAIS ITENS PARA O PADRÃO ORIGINAL
     if (type === 'MATERIAL DE CONSUMO') {
         const mat = data as MaterialConsumoRegistro;
         let label = type;
-        // Ajuste para Missão 3: Material de Construção
-        if (mat.group_name?.toUpperCase().includes('CONSTRUÇÃO')) {
-            label += `\n(Material de Construção)`;
-        } else if (mat.group_name) {
+        if (mat.group_name) {
             label += `\n(${mat.group_name})`;
         }
         if (isContinuation) {
@@ -444,48 +443,22 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
     // Material de Consumo
     group.materialConsumo.forEach(registro => {
         const items = (registro.itens_aquisicao as unknown as ItemAquisicao[]) || [];
-        
-        if (items.length === 0) {
-            // Se não houver itens detalhados, adiciona uma linha genérica com o total do registro
+        const chunks = splitMaterialConsumoItems(items, 15);
+
+        chunks.forEach((chunk, index) => {
+            const { totalValue, totalND30, totalND39 } = calculateGroupTotals(chunk);
             allRows.push({ 
                 type: 'MATERIAL DE CONSUMO', 
                 data: registro,
-                partialTotal: registro.valor_total,
-                partialND30: registro.valor_nd_30,
-                partialND39: registro.valor_nd_39
+                isContinuation: index > 0,
+                continuationIndex: index, // ADICIONADO: Para garantir chaves únicas
+                partialItems: chunk,
+                partialTotal: totalValue,
+                partialND30: totalND30,
+                partialND39: totalND39
             });
-        } else {
-            const chunks = splitMaterialConsumoItems(items, 15);
-            chunks.forEach((chunk, index) => {
-                const { totalValue, totalND30, totalND39 } = calculateGroupTotals(chunk);
-                allRows.push({ 
-                    type: 'MATERIAL DE CONSUMO', 
-                    data: registro,
-                    isContinuation: index > 0,
-                    continuationIndex: index,
-                    partialItems: chunk,
-                    partialTotal: totalValue,
-                    partialND30: totalND30,
-                    partialND39: totalND39
-                });
-            });
-        }
-    });
-
-    // SIMULAÇÃO MISSÃO 3 (Cimento Portland) - Se não houver registros e for a operação Sentinela
-    if (group.materialConsumo.length === 0 && ptrabData.nome_operacao.toUpperCase().includes('SENTINELA')) {
-        allRows.push({
-            type: 'MATERIAL DE CONSUMO',
-            data: {
-                id: 'mock-mission-3',
-                group_name: 'Material de Construção',
-                valor_total: 10625.00,
-                valor_nd_30: 10625.00,
-                valor_nd_39: 0,
-                detalhamento_customizado: `33.90.30 - Aquisição de Material de Construção para atender 150 militares do 1º BIS, durante 15 dias de execucao.\n\nCálculo:\nFórmula: Qtd do item x Valor do item.\n- 250 Cimento Portland 50kg x R$ 42,50/unid. = R$ 10.625,00.\n\nTotal: R$ 10.625,00.\n(Pregão 5/2025 - UASG 160.222)`
-            } as any
         });
-    }
+    });
 
     // Complemento de Alimentação
     group.complementoAlimentacao.forEach(item => {
@@ -511,7 +484,7 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
         if (orderA !== orderB) return orderA - orderB;
         return a.type.localeCompare(b.type);
     });
-  }, [consolidatedPassagensWithDetails, consolidatedConcessionariasWithDetails, ptrabData.nome_operacao]);
+  }, [consolidatedPassagensWithDetails, consolidatedConcessionariasWithDetails]);
 
 
   const totaisND = useMemo(() => {
@@ -551,21 +524,17 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
         totals.nd39 += r.valor_nd_39;
     });
 
-    // Adiciona o valor da simulação da Missão 3 se necessário
-    if (registrosMaterialConsumo.length === 0 && ptrabData.nome_operacao.toUpperCase().includes('SENTINELA')) {
-        totals.nd30 += 10625.00;
-    }
-
     registrosComplementoAlimentacao.forEach(r => {
         totals.nd30 += Number(r.valor_nd_30 || 0);
         totals.nd39 += Number(r.valor_nd_39 || 0);
     });
 
     registrosServicosTerceiros.forEach(r => {
+        // Regras de ND: Fretamento, Locação de Veículos e Transporte Coletivo são ND 33
         if (['fretamento-aereo', 'locacao-veiculos', 'transporte-coletivo'].includes(r.categoria)) {
             totals.nd33 += Number(r.valor_total || 0);
         } else {
-            totals.nd33 += Number(r.valor_nd_30 || 0); 
+            totals.nd33 += Number(r.valor_nd_30 || 0); // No form, valor_nd_30 armazena ND 33
             totals.nd39 += Number(r.valor_nd_39 || 0);
         }
     });
@@ -573,7 +542,7 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
     const totalGND3 = totals.nd15 + totals.nd30 + totals.nd33 + totals.nd39 + totals.nd00;
     
     return { ...totals, totalGND3 };
-  }, [registrosDiaria, registrosVerbaOperacional, registrosSuprimentoFundos, registrosPassagem, registrosConcessionaria, registrosMaterialConsumo, registrosComplementoAlimentacao, registrosServicosTerceiros, ptrabData.nome_operacao]);
+  }, [registrosDiaria, registrosVerbaOperacional, registrosSuprimentoFundos, registrosPassagem, registrosConcessionaria, registrosMaterialConsumo, registrosComplementoAlimentacao, registrosServicosTerceiros]);
   
   const generateFileName = (reportType: 'PDF' | 'Excel') => {
     const dataAtz = formatDateDDMMMAA(ptrabData.updated_at);
@@ -744,13 +713,6 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
         group.passagens.forEach(r => { subtotalOM.nd33 += r.valor_nd_33; subtotalOM.totalGND3 += r.valor_nd_33; });
         group.concessionarias.forEach(r => { subtotalOM.nd39 += r.valor_nd_39; subtotalOM.totalGND3 += r.valor_nd_39; });
         group.materialConsumo.forEach(r => { subtotalOM.nd30 += r.valor_nd_30; subtotalOM.nd39 += r.valor_nd_39; subtotalOM.totalGND3 += r.valor_nd_30 + r.valor_nd_39; });
-        
-        // Simulação Missão 3 no Excel
-        if (group.materialConsumo.length === 0 && ptrabData.nome_operacao.toUpperCase().includes('SENTINELA')) {
-            subtotalOM.nd30 += 10625.00;
-            subtotalOM.totalGND3 += 10625.00;
-        }
-
         group.complementoAlimentacao.forEach(item => {
             const r = item.registro;
             if (r.categoria_complemento === 'genero' && item.subType) {
@@ -819,8 +781,6 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
                             fase_atividade: matConsumo.fase_atividade
                         };
                         memoria = generateMaterialConsumoMemoriaForItems(matConsumo, rowItem.partialItems, context);
-                    } else if (matConsumo.id === 'mock-mission-3') {
-                        memoria = matConsumo.detalhamento_customizado || "";
                     } else {
                         memoria = generateMaterialConsumoMemoriaCalculo(matConsumo);
                     }
@@ -995,7 +955,7 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
   }, [omsOrdenadas, gruposPorOM, consolidatedPassagensWithDetails, consolidatedConcessionariasWithDetails, registrosDiaria, registrosVerbaOperacional, registrosSuprimentoFundos, registrosMaterialConsumo, registrosComplementoAlimentacao, registrosServicosTerceiros, ptrabData, diasOperacao, totaisND, fileSuffix, generateDiariaMemoriaCalculo, generateVerbaOperacionalMemoriaCalculo, generateSuprimentoFundosMemoriaCalculo, generateMaterialConsumoMemoriaCalculo, generateComplementoMemoriaCalculo, generateServicoMemoriaCalculo, diretrizesOperacionais, toast, getSortedRowsForOM]);
 
 
-  if (registrosDiaria.length === 0 && registrosVerbaOperacional.length === 0 && registrosSuprimentoFundos.length === 0 && registrosPassagem.length === 0 && registrosConcessionaria.length === 0 && registrosMaterialConsumo.length === 0 && registrosComplementoAlimentacao.length === 0 && registrosServicosTerceiros.length === 0 && !ptrabData.nome_operacao.toUpperCase().includes('SENTINELA')) {
+  if (registrosDiaria.length === 0 && registrosVerbaOperacional.length === 0 && registrosSuprimentoFundos.length === 0 && registrosPassagem.length === 0 && registrosConcessionaria.length === 0 && registrosMaterialConsumo.length === 0 && registrosComplementoAlimentacao.length === 0 && registrosServicosTerceiros.length === 0) {
     return (
       <Card className="mt-4">
         <CardHeader>
@@ -1071,10 +1031,10 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
               <tr>
                   <th className="col-nd-op-small">33.90.15</th>
                   <th className="col-nd-op-small">33.90.30</th>
-                  <th className="col-nd-small">33.90.33</th>
-                  <th className="col-nd-small">33.90.39</th>
-                  <th className="col-nd-small">33.90.00</th>
-                  <th className="col-nd-small total-gnd3-cell">GND 3</th>
+                  <th className="col-nd-op-small">33.90.33</th>
+                  <th className="col-nd-op-small">33.90.39</th>
+                  <th className="col-nd-op-small">33.90.00</th>
+                  <th className="col-nd-op-small total-gnd3-cell">GND 3</th>
               </tr>
           </thead>
           <tbody>
@@ -1092,13 +1052,6 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
               group.passagens.forEach(r => { subtotalOM.nd33 += r.valor_nd_33; subtotalOM.totalGND3 += r.valor_nd_33; });
               group.concessionarias.forEach(r => { subtotalOM.nd39 += r.valor_nd_39; subtotalOM.totalGND3 += r.valor_nd_39; });
               group.materialConsumo.forEach(r => { subtotalOM.nd30 += r.valor_nd_30; subtotalOM.nd39 += r.valor_nd_39; subtotalOM.totalGND3 += r.valor_nd_30 + r.valor_nd_39; });
-              
-              // Simulação Missão 3 no Render
-              if (group.materialConsumo.length === 0 && ptrabData.nome_operacao.toUpperCase().includes('SENTINELA')) {
-                  subtotalOM.nd30 += 10625.00;
-                  subtotalOM.totalGND3 += 10625.00;
-              }
-
               group.complementoAlimentacao.forEach(item => {
                   const r = item.registro;
                   if (r.categoria_complemento === 'genero' && item.subType) {
@@ -1168,8 +1121,6 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
                                           fase_atividade: matConsumo.fase_atividade
                                       };
                                       memoria = generateMaterialConsumoMemoriaForItems(matConsumo, rowItem.partialItems, context);
-                                  } else if (matConsumo.id === 'mock-mission-3') {
-                                      memoria = matConsumo.detalhamento_customizado || "";
                                   } else {
                                       memoria = generateMaterialConsumoMemoriaCalculo(matConsumo);
                                   }
