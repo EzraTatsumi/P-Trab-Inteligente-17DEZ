@@ -6,7 +6,6 @@ import "./tour.css";
 
 let activeMissionDriver: any = null;
 
-// Lógica inteligente para evitar o "pulo" do balão para o canto (0,0)
 if (typeof window !== 'undefined') {
   window.addEventListener('tour:avancar', () => {
     if (activeMissionDriver) {
@@ -276,47 +275,6 @@ export const runMission02 = (onComplete: () => void) => {
         }
       },
       {
-        element: '.btn-importar-pncp', 
-        popover: { 
-          title: 'O Salto Tecnológico', 
-          description: 'Agora, clique no botão "Importar via API PNCP" para buscar dados de itens em ARP/Pregões.', 
-          side: 'left', 
-          align: 'start', 
-          offset: 30,
-          showButtons: []
-        }
-      },
-      {
-        element: '.form-busca-uasg-tour',
-        popover: {
-          title: 'Busca por UASG',
-          description: 'Digite a UASG 160222 e clique em "Buscar ARPs por UASG". Vamos listar as atas vigentes desta Organização Militar.',
-          side: 'bottom',
-          align: 'center',
-          showButtons: []
-        }
-      },
-      {
-        element: '.modal-importar-pncp',
-        popover: {
-          title: 'Navegação de Resultados',
-          description: 'O sistema encontrou os resultados! Agora, clique em "Expandir" no Pregão, depois em "Ver Itens" na ARP, selecione o "Cimento Portland" e clique em "Importar Selecionados".',
-          side: 'top', 
-          align: 'center',
-          offset: 10,
-          showButtons: []
-        }
-      },
-      {
-        element: '.tabela-itens-aquisicao',
-        popover: {
-          title: 'Item Importado com Sucesso',
-          description: 'Veja! O item foi importado com todos os dados técnicos e valores atualizados do PNCP diretamente para sua lista.',
-          side: 'top',
-          align: 'center'
-        }
-      },
-      {
         element: '.btn-salvar-subitem',
         popover: {
           title: 'Finalização do Cadastro',
@@ -524,7 +482,7 @@ export const runMission04 = (onComplete: () => void) => {
         element: '.tour-cost-summary-card',
         popover: {
           title: 'Missão 04: Contabilidade Gerencial',
-          description: 'Este painel é o coração financeiro do seu P Trab. Ele consolida todos os custos lançados e monitora o teto orçamentário em tempo real. Clique em MAIS DETALHES para ver o custo de cada categoria.',
+          description: 'Este painel é o coração financeiro do seu P Trab. Ele consolida todos os custos lançados e monitora o teto orçamentário em tempo real. Clique em "MAIS DETALHES" para ver o custo de cada categoria.',
           side: 'left',
           align: 'start',
           showButtons: [] 
@@ -534,7 +492,7 @@ export const runMission04 = (onComplete: () => void) => {
         element: '#tour-material-consumo-row',
         popover: {
           title: 'Detalhamento de Custos',
-          description: 'Veja que o Material de Consumo que detalhamos na Missão 3 já está contabilizado aqui, com o valor mockado de R$ 1.250,50.',
+          description: 'Veja que o "Material de Consumo" que detalhamos na Missão 3 já está contabilizado aqui, com o valor mockado de R$ 1.250,50.',
           side: 'left',
           align: 'center'
         }
@@ -543,7 +501,7 @@ export const runMission04 = (onComplete: () => void) => {
         element: '.tour-btn-view-by-om',
         popover: {
           title: 'Visão por Organização',
-          description: 'Além da visão global, você pode analisar os custos distribuídos por cada Organização Militar. Clique em Ver por OM para alternar a visão.',
+          description: 'Além da visão global, você pode analisar os custos distribuídos por cada Organização Militar. Clique em "Ver por OM" para alternar a visão.',
           side: 'top',
           align: 'start',
           offset: -20,
@@ -566,7 +524,7 @@ export const runMission04 = (onComplete: () => void) => {
         element: '.tour-om-grouping-controls',
         popover: {
           title: 'Agrupamento Inteligente',
-          description: 'Você pode alternar entre OM Solicitante (quem executa) ou OM Destino (quem detém o recurso), facilitando a prestação de contas.',
+          description: 'Você pode alternar entre "OM Solicitante" (quem executa) ou "OM Destino" (quem detém o recurso), facilitando a prestação de contas.',
           side: 'top',
           align: 'center'
         }
@@ -575,7 +533,7 @@ export const runMission04 = (onComplete: () => void) => {
         element: '.tour-mock-om-item',
         popover: {
           title: 'Análise Individual',
-          description: 'Clique na OM 1º BIS para ver o detalhamento completo dos gastos vinculados a ela.',
+          description: 'Clique na OM "1º BIS" para ver o detalhamento completo dos gastos vinculados a ela.',
           side: 'top',
           align: 'center',
           showButtons: []
