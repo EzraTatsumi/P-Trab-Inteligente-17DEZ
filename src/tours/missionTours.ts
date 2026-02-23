@@ -603,3 +603,68 @@ export const runMission04 = (onComplete: () => void) => {
   activeMissionDriver = d;
   d.drive();
 };
+
+export const runMission05 = (onComplete: () => void) => {
+  const d = driver({
+    ...commonConfig,
+    steps: [
+      {
+        element: '.tour-dor-document',
+        popover: {
+          title: 'Missão 05: Editor de DOR',
+          description: 'O Documento de Oficialização da Requisição (DOR) é a peça formal que inicia o processo de contratação. Este editor permite redigir o documento com agilidade, integrando os dados do P Trab.',
+          side: 'top',
+          align: 'center'
+        }
+      },
+      {
+        element: '#tour-dor-number',
+        popover: {
+          title: 'Identificação do Documento',
+          description: 'Comece preenchendo o número do DOR (ex: 01), seu e-mail institucional e um telefone de contato para coordenação.',
+          side: 'bottom',
+          align: 'center'
+        }
+      },
+      {
+        element: '.tour-dor-finalidade',
+        popover: {
+          title: 'Finalidade Técnica',
+          description: 'A finalidade foi preenchida automaticamente com base na Operação SENTINELA. Você pode ajustar o texto conforme a necessidade específica deste documento.',
+          side: 'top',
+          align: 'center'
+        }
+      },
+      {
+        element: '.tour-dor-consequencia',
+        popover: {
+          title: 'Justificativa de Risco',
+          description: 'Aqui descrevemos o impacto negativo caso a requisição não seja atendida. Este campo é crucial para a análise do Ordenador de Despesas.',
+          side: 'top',
+          align: 'center'
+        }
+      },
+      {
+        element: '.tour-dor-observacoes',
+        popover: {
+          title: 'Observações e Normas',
+          description: 'As observações gerais já incluem as cláusulas padrão de conformidade com o SIOP e memórias de cálculo. Revise-as e adicione pontos específicos se houver.',
+          side: 'top',
+          align: 'center'
+        }
+      },
+      {
+        element: '.btn-salvar-dor',
+        popover: {
+          title: 'Finalização',
+          description: 'Tudo pronto! Agora basta salvar o documento. Você pode criar múltiplos DORs para o mesmo P Trab se precisar separar as requisições por GND ou finalidade.',
+          side: 'bottom',
+          align: 'end'
+        }
+      }
+    ],
+    onDestroyed: onComplete
+  });
+  activeMissionDriver = d;
+  d.drive();
+};

@@ -10,6 +10,7 @@ import { useSession } from "@/components/SessionContextProvider";
 import { cn } from "@/lib/utils";
 import { formatNumber, formatCodug } from "@/lib/formatUtils";
 import { PTrabImporter, DorGroup } from "@/components/PTrabImporter";
+import { isGhostMode } from "@/lib/ghostStore";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -30,8 +31,9 @@ import {
 } from "@/components/ui/alert-dialog";
 
 // Componente auxiliar para Inputs que parecem texto do documento
-const DocumentInput = ({ value, onChange, placeholder, className, readOnly = false, style }: any) => (
+const DocumentInput = ({ value, onChange, placeholder, className, readOnly = false, style, id }: any) => (
   <input
+    id={id}
     type="text"
     value={value || ""}
     onChange={onChange}
@@ -52,7 +54,8 @@ const DocumentTextArea = ({
   placeholder, 
   className, 
   rows = 1, 
-  style 
+  style,
+  id
 }: any) => {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -66,6 +69,7 @@ const DocumentTextArea = ({
 
   return (
     <textarea
+      id={id}
       ref={textareaRef}
       value={value || ""}
       onChange={onChange}
@@ -111,6 +115,18 @@ const DOREditor = () => {
     consequencia: "",
     observacoes: ""
   });
+
+  // Lógica de preenchimento para Missão 05 (Ghost Mode)
+  useEffect(() => {
+    if (isGhostMode() && !loading) {
+      setFormData(prev => ({
+        ...prev,
+        finalidade: "Prover apoio logístico, meios e recursos necessários para o emprego de tropas do Exército Brasileiro Operação SENTINELA, no âmbito do 1º BIS.",
+        consequencia: "Redução da capacidade de planejamento e emprego de militares no contexto das ações na Operação SENTINELA.",
+        observacoes: "1. As memórias de cálculo detalhadas e parametrizadas das despesas custeadas serão mantidas em arquivos próprios.\n2. O bem e/ou serviço requisitado estará de acordo com a “Descrição” da Ação Orçamentária adotada pelo MD e com a “Caracterização” do respectivo PO do Cadastro de Ações do Sistema Integrado de Planejamento e Orçamento (SIOP)."
+      }));
+    }
+  }, [loading]);
 
   // Função para aplicar dados de um DOR ao formulário
   const applyDorData = useCallback((dorData: any) => {
@@ -440,7 +456,7 @@ const DOREditor = () => {
         </div>
         
         <div className="flex gap-2">
-          <Button size="sm" onClick={handleSave} disabled={saving} className="px-6">
+          <Button size="sm" onClick={handleSave} disabled={saving} className="px-6 btn-salvar-dor">
             {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
             Salvar Alterações
           </Button>
@@ -457,7 +473,7 @@ const DOREditor = () => {
         </div>
       </div>
 
-      <div className="max-w-[210mm] mx-auto bg-white shadow-2xl print:shadow-none min-h-[297mm] relative text-black print:w-full">
+      <div className="max-w-[210mm] mx-auto bg-white shadow-2xl print:shadow-none min-h-[297mm] relative text-black print:w-full tour-dor-document">
         
         <div className="first-page-header-cover hidden"></div>
 
@@ -493,6 +509,7 @@ const DOREditor = () => {
               <div className="flex items-center justify-center gap-0.5 mt-1">
                 <span>nº</span>
                 <DocumentInput 
+                  id="tour-dor-number"
                   value={formData.numero_dor}
                   onChange={(e: any) => setFormData({...formData, numero_dor: e.target.value})}
                   placeholder="01"
@@ -537,6 +554,7 @@ const DOREditor = () => {
                 <div className="py-0 px-2 border-r border-black flex items-center gap-1">
                   <span className="font-bold whitespace-nowrap">E-mail:</span>
                   <DocumentInput 
+                    id="tour-dor-email"
                     value={formData.email}
                     onChange={(e: any) => setFormData({...formData, email: e.target.value})}
                     placeholder="exemplo@eb.mil.br"
@@ -547,6 +565,7 @@ const DOREditor = () => {
                 <div className="py-0 px-2 flex items-center gap-1">
                   <span className="font-bold whitespace-nowrap">Telefone:</span>
                   <DocumentInput 
+                    id="tour-dor-phone"
                     value={formData.telefone}
                     onChange={(e: any) => setFormData({...formData, telefone: e.target.value})}
                     placeholder="(00) 0000-0000"
@@ -632,7 +651,7 @@ const DOREditor = () => {
                     variant="outline" 
                     size="sm" 
                     onClick={() => setIsImporterOpen(true)}
-                    className="print:hidden border-primary text-primary hover:bg-primary/5 font-sans"
+                    className="print:hidden border-primary text-primary hover:bg-primary/5 font-sans btn-importar-dados-dor"
                   >
                     <Download className="h-4 w-4 mr-2" /> Importar e Agrupar Dados do P Trab
                   </Button>
@@ -680,7 +699,7 @@ const DOREditor = () => {
               )}
             </div>
 
-            <div className="border border-black mb-4">
+            <div className="border border-black mb-4 tour-dor-finalidade">
               <div 
                 className="border-b border-black p-0.5 font-bold text-center uppercase relative group"
                 style={headerTitleStyle}
@@ -721,7 +740,7 @@ const DOREditor = () => {
               </div>
             </div>
 
-            <div className="border border-black mb-4">
+            <div className="border border-black mb-4 tour-dor-consequencia">
               <div 
                 className="border-b border-black p-0.5 font-bold text-center uppercase"
                 style={headerTitleStyle}
@@ -738,7 +757,7 @@ const DOREditor = () => {
               </div>
             </div>
 
-            <div className="border border-black mb-4">
+            <div className="border border-black mb-4 tour-dor-observacoes">
                <div 
                 className="border-b border-black p-0.5 font-bold text-center uppercase"
                 style={headerTitleStyle}
