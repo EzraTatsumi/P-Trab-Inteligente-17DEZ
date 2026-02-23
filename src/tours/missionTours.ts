@@ -566,6 +566,9 @@ export const runMission05 = (onComplete: () => void) => {
           description: 'O Documento de Oficialização da Requisição (DOR) é a peça formal que inicia o processo de contratação. Este editor permite redigir o documento com agilidade, integrando os dados do P Trab.',
           side: 'top',
           align: 'center'
+        },
+        onHighlighted: () => {
+          window.scrollTo({ top: 0, behavior: 'smooth' });
         }
       },
       {
@@ -651,7 +654,7 @@ export const runMission05 = (onComplete: () => void) => {
         }
       },
       {
-        element: '.tour-input-nome-grupo, .btn-novo-grupo-dor',
+        element: '.tour-group-creation-container',
         popover: {
           title: 'Criando Grupos',
           description: "Digite 'Material de Consumo' no campo de texto e clique em 'Criar Grupo'.",
@@ -681,7 +684,7 @@ export const runMission05 = (onComplete: () => void) => {
         }
       },
       {
-        element: '.tour-dor-descricao-item',
+        element: '.tour-dor-items-section',
         popover: {
           title: 'Dados Importados',
           description: 'Veja! Os dados foram importados e formatados na tabela do documento, agrupados por UGE e GND.',

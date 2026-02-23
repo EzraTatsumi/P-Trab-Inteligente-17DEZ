@@ -491,7 +491,7 @@ export function PTrabImporter({ isOpen, onClose, ptrabId, onImportConcluded, ini
               <div className="flex gap-2 items-end">
                 <div className="flex-1 max-w-md">
                   <label className="text-[10px] font-black text-slate-400 uppercase mb-1.5 block ml-1">Novo Grupo de Custo (DOR)</label>
-                  <div className="flex gap-2">
+                  <div className="flex gap-2 tour-group-creation-container">
                     <Input 
                       value={newGroupName}
                       onChange={(e) => setNewGroupName(e.target.value)}

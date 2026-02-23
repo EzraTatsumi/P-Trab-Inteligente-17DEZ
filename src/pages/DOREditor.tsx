@@ -495,10 +495,10 @@ const DOREditor = () => {
               <div className="py-0 px-2 flex items-center gap-2"><span className="font-bold shrink-0">Plano Orçamentário (PO):</span><DocumentInput value={formData.plano_orcamentario} onChange={(e: any) => setFormData({...formData, plano_orcamentario: e.target.value})} className="w-full" style={bodyStyle} /></div>
             </div>
 
-            <div className="border border-black mb-4">
-              <div className="border-b border-black p-0.5 font-bold text-center uppercase" style={headerTitleStyle}>OBJETO DE REQUISIÇÃO</div>
+            <div className="border border-black mb-4 tour-dor-items-section">
+              <div className="border-b border-black p-0.5 font-bold text-center uppercase tour-dor-descricao-item" style={headerTitleStyle}>OBJETO DE REQUISIÇÃO</div>
               <div className="grid grid-cols-[120px_1fr] border-b border-black"><div className="py-0 px-2 border-r border-black font-bold flex items-center">Evento:</div><div className="py-0 px-2"><DocumentInput value={formData.evento} onChange={(e: any) => setFormData({...formData, evento: e.target.value})} placeholder="Nome da Operação / Atividade" className="w-full" style={bodyStyle} /></div></div>
-              <div className="border-b border-black p-0.5 font-bold text-center uppercase tour-dor-descricao-item" style={headerTitleStyle}>DESCRIÇÃO DO ITEM (BEM E/OU SERVIÇO)</div>
+              <div className="border-b border-black p-0.5 font-bold text-center uppercase" style={headerTitleStyle}>DESCRIÇÃO DO ITEM (BEM E/OU SERVIÇO)</div>
               {!showItemsTable ? (
                 <div className="p-6 text-center flex flex-col items-center gap-3">
                   <p className="text-slate-600 font-medium font-sans">Para os dados da descrição dos itens pressionar o botão abaixo:</p>
