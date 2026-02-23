@@ -497,7 +497,20 @@ const DOREditor = () => {
               {!showItemsTable ? (
                 <div className="p-6 text-center flex flex-col items-center gap-3">
                   <p className="text-slate-600 font-medium font-sans">Para os dados da descrição dos itens pressionar o botão abaixo:</p>
-                  <Button variant="outline" size="sm" onClick={() => setIsImporterOpen(true)} className="print:hidden border-primary text-primary hover:bg-primary/5 font-sans btn-importar-dados-dor"><Download className="h-4 w-4 mr-2" /> Importar e Agrupar Dados do P Trab</Button>
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={() => {
+                      setIsImporterOpen(true);
+                      if (isGhostMode()) {
+                        window.dispatchEvent(new CustomEvent('tour:avancar'));
+                      }
+                    }} 
+                    className="print:hidden border-primary text-primary hover:bg-primary/5 font-sans btn-importar-dados-dor"
+                  >
+                    <Download className="h-4 w-4 mr-2" /> 
+                    Importar e Agrupar Dados do P Trab
+                  </Button>
                 </div>
               ) : (
                 <>
@@ -543,7 +556,15 @@ const DOREditor = () => {
         </div>
       </div>
 
-      {ptrabId && <PTrabImporter isOpen={isImporterOpen} onClose={() => setIsImporterOpen(false)} ptrabId={ptrabId} onImportConcluded={handleImportConcluded} initialGroups={dorGroups} />}
+      {(ptrabId || isGhostMode()) && (
+        <PTrabImporter 
+          isOpen={isImporterOpen} 
+          onClose={() => setIsImporterOpen(false)} 
+          ptrabId={ptrabId || "ghost-id"} 
+          onImportConcluded={handleImportConcluded} 
+          initialGroups={dorGroups} 
+        />
+      )}
 
       <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
         <AlertDialogContent>
