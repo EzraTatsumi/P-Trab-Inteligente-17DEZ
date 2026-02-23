@@ -68,11 +68,8 @@ const AcquisitionGroupForm: React.FC<AcquisitionGroupFormProps> = ({
                 if (existingItem) {
                     newItemsMap[selectedItem.id] = existingItem;
                 } else {
-                    // Se estiver na Missão 3 (Cimento), define 5 unidades como diz o tutorial
-                    const mission = getActiveMission();
-                    const isMission3 = mission?.id === 3;
-                    const quantity = isMission3 ? 5 : 1;
-                    
+                    // Dinâmica alterada: inicia com 1 e deixa o usuário definir a quantidade
+                    const quantity = 1;
                     const valorTotal = selectedItem.valor_unitario * quantity;
                     
                     newItemsMap[selectedItem.id] = {

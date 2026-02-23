@@ -400,18 +400,10 @@ export const runMission03 = (onComplete: () => void) => {
         element: '.tour-group-form-card', 
         popover: {
           title: 'Definindo Quantidades',
-          description: 'Excelente! O item foi importado. Definimos automaticamente 5 unidades para ele. Agora, clique em "Salvar Grupo" para finalizar esta etapa.',
+          description: 'Excelente! O item foi importado. Agora defina a quantidade desejada (ex: 5 sacos) e clique em "Salvar Grupo" para finalizar esta etapa.',
           side: 'top',
           align: 'center',
           showButtons: []
-        },
-        onHighlighted: () => {
-          const input = document.querySelector('.tour-item-quantity-input') as HTMLInputElement;
-          if (input) {
-            input.value = '5';
-            input.dispatchEvent(new Event('input', { bubbles: true }));
-            input.dispatchEvent(new Event('change', { bubbles: true }));
-          }
         }
       },
       {
@@ -638,7 +630,7 @@ export const runMission05 = (onComplete: () => void) => {
         element: '.btn-importar-dados-dor',
         popover: {
           title: 'Importação de Dados',
-          description: 'Clique no botão para abrir o assistente de importação e agrupar os custos do seu P Trab.',
+          description: 'Clique no botão para abrir the assistente de importação e agrupar os custos do seu P Trab.',
           side: 'top',
           align: 'center',
           showButtons: []
