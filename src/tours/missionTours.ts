@@ -534,6 +534,18 @@ export const runMission04 = (onComplete: () => void) => {
           description: 'Este painel é o coração financeiro do seu P Trab. Ele consolida todos os custos lançados e monitora o teto orçamentário em tempo real.',
           side: 'left',
           align: 'start'
+        },
+        onNextClick: () => {
+          // 1. Manda abrir a cascata de custos (GND -> Operacional -> Material de Consumo)
+          if ((window as any).expandCostDetails) {
+            (window as any).expandCostDetails();
+          }
+          
+          // 2. Espera 600ms para o Shadcn terminar a animação de expansão suave
+          setTimeout(() => {
+            // Quando o Tour avançar, a linha de Material de Consumo já estará visível!
+            if (activeMissionDriver) activeMissionDriver.moveNext(); 
+          }, 600);
         }
       },
       {
@@ -543,35 +555,6 @@ export const runMission04 = (onComplete: () => void) => {
           description: 'Veja que o "Material de Consumo" que detalhamos na Missão 3 já está contabilizado aqui, com o valor mockado de R$ 1.250,50.',
           side: 'left',
           align: 'center'
-        },
-        onHighlighted: () => {
-          // 1. Dispara a expansão em cascata (GND -> Operacional -> Material de Consumo)
-          if ((window as any).expandCostDetails) (window as any).expandCostDetails();
-          
-          // 2. Monitora a expansão e atualiza a iluminação do driver continuamente
-          let attempts = 0;
-          const checkAndRefresh = setInterval(() => {
-            attempts++;
-            if (activeMissionDriver) {
-              activeMissionDriver.refresh();
-            }
-            
-            // Para após 1.5 segundos ou se o elemento atingir uma altura mínima esperada
-            const el = document.querySelector('#tour-material-consumo-row');
-            if (attempts > 15 || (el && el.getBoundingClientRect().height > 60)) {
-              clearInterval(checkAndRefresh);
-              
-              // Scroll final para centralizar o elemento agora que ele tem tamanho real
-              if (el) {
-                el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-              }
-              
-              // Refresh final após o scroll
-              setTimeout(() => {
-                if (activeMissionDriver) activeMissionDriver.refresh();
-              }, 300);
-            }
-          }, 100);
         }
       },
       {
