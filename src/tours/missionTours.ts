@@ -708,3 +708,52 @@ export const runMission05 = (onComplete: () => void) => {
   activeMissionDriver = d;
   d.drive();
 };
+
+export const runMission06 = (onComplete: () => void) => {
+  const d = driver({
+    ...commonConfig,
+    steps: [
+      {
+        element: '.tour-report-manager-root',
+        popover: {
+          title: 'Missão 06: Central de Relatórios',
+          description: 'Bem-vindo ao Gerenciador de Relatórios. Aqui você visualiza e exporta todos os anexos do seu P Trab. No momento, estamos vendo o Relatório Logístico mockado com dados da Missão 03.',
+          side: 'top',
+          align: 'center'
+        }
+      },
+      {
+        element: '.tour-report-selector',
+        popover: {
+          title: 'Alternando Relatórios',
+          description: 'Você pode navegar entre diferentes tipos de relatórios. Clique aqui e selecione "P Trab Operacional" para ver o detalhamento de diárias e materiais.',
+          side: 'bottom',
+          align: 'center',
+          showButtons: []
+        }
+      },
+      {
+        element: '.tour-export-buttons',
+        popover: {
+          title: 'Exportação e Impressão',
+          description: 'Todos os relatórios podem ser exportados para PDF (preservando a formatação oficial), Excel (para análise de dados) ou enviados diretamente para a impressora.',
+          side: 'top',
+          align: 'center'
+        }
+      },
+      {
+        element: '.tour-report-selector',
+        popover: {
+          title: 'Visualização do DOR',
+          description: 'Por fim, selecione o relatório "DOR" para ver como o documento que editamos na Missão 05 é apresentado para impressão final. Missão cumprida! Você agora é um mestre do P Trab Inteligente.',
+          side: 'bottom',
+          align: 'center',
+          showButtons: ['next', 'previous']
+        }
+      }
+    ],
+    onDestroyed: onComplete
+  });
+  activeMissionDriver = d;
+  d.drive();
+};
