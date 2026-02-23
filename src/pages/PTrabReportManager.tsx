@@ -843,7 +843,18 @@ const PTrabReportManager = () => {
   // ADICIONADO: Estado para gerir o cache em memória das abas
   const [fetchedReports, setFetchedReports] = useState<Set<ReportType>>(new Set());
   const [loading, setLoading] = useState(true);
-  const [selectedReport, setSelectedReport] = useState<ReportType>('logistico');
+  
+  // Inicialização inteligente do relatório selecionado para o tour
+  const [selectedReport, setSelectedReport] = useState<ReportType>(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const isGhost = localStorage.getItem('is_ghost_mode') === 'true';
+      const isMission6 = localStorage.getItem('active_mission_id') === '6';
+      const isTour = params.get('startTour') === 'true';
+      if (isGhost && isMission6 && isTour) return 'operacional';
+    }
+    return 'logistico';
+  });
 
   const isLubrificante = (r: ClasseIIIRegistro) => r.tipo_equipamento === 'LUBRIFICANTE_CONSOLIDADO';
   const isCombustivel = (r: ClasseIIIRegistro) => r.tipo_equipamento === 'COMBUSTIVEL_CONSOLIDADO';
@@ -1516,7 +1527,7 @@ const PTrabReportManager = () => {
         }
         return a.localeCompare(b);
     });
-  }, [gruposHorasVooPorOM, nomeRM]);
+  }, [gruposHorasVooPorOM, nameRM]);
 
   const omsOperacionaisOrdenadas = useMemo(() => {
     const oms = Object.keys(gruposOperacionaisPorOM);

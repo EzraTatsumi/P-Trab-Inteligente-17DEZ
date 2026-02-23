@@ -717,7 +717,7 @@ export const runMission06 = (onComplete: () => void) => {
         element: '.tour-report-manager-root',
         popover: {
           title: 'Missão 06: Central de Relatórios',
-          description: 'Bem-vindo ao Gerenciador de Relatórios. Aqui você visualiza e exporta todos os anexos do seu P Trab. No momento, estamos vendo o Relatório Logístico mockado com dados da Missão 03.',
+          description: 'Bem-vindo ao Gerenciador de Relatórios. Aqui você visualiza e exporta todos os anexos do seu P Trab. Iniciamos com o Relatório Operacional contendo os dados da Missão 03.',
           side: 'top',
           align: 'center'
         },
@@ -726,32 +726,39 @@ export const runMission06 = (onComplete: () => void) => {
         }
       },
       {
-        element: '.tour-report-selector',
+        element: '.btn-export-pdf',
         popover: {
-          title: 'Alternando Relatórios',
-          description: 'Você pode navegar entre diferentes tipos de relatórios. Clique aqui e selecione "P Trab Operacional" para ver o detalhamento de diárias e materiais.',
-          side: 'right',
-          align: 'start',
-          showButtons: []
+          title: 'Exportar PDF',
+          description: 'Gere um arquivo PDF formatado seguindo os padrões oficiais para anexar ao processo.',
+          side: 'bottom',
+          align: 'center'
         }
       },
       {
-        element: '.tour-export-buttons',
+        element: '.btn-export-excel',
         popover: {
-          title: 'Exportação e Impressão',
-          description: 'Todos os relatórios podem ser exportados para PDF (preservando a formatação oficial), Excel (para análise de dados) ou enviados diretamente para a impressora.',
-          side: 'top',
+          title: 'Exportar Excel',
+          description: 'Exporte os dados para uma planilha Excel, facilitando conferências e cálculos externos.',
+          side: 'bottom',
+          align: 'center'
+        }
+      },
+      {
+        element: '.btn-print',
+        popover: {
+          title: 'Imprimir',
+          description: 'Envie o relatório diretamente para a impressora configurada no seu computador.',
+          side: 'bottom',
           align: 'center'
         }
       },
       {
         element: '.tour-report-selector',
         popover: {
-          title: 'Visualização do DOR',
-          description: 'Por fim, selecione o relatório "DOR" para ver como o documento que editamos na Missão 05 é apresentado para impressão final. Missão cumprida! Você agora é um mestre do P Trab Inteligente.',
-          side: 'right',
-          align: 'start',
-          showButtons: []
+          title: 'Trocar Relatório',
+          description: 'Use este seletor para navegar entre os diferentes anexos do P Trab, como o Logístico ou o DOR. Missão cumprida! Você agora é um mestre do P Trab Inteligente.',
+          side: 'left',
+          align: 'center'
         }
       }
     ],
