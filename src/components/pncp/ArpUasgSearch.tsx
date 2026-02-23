@@ -7,15 +7,21 @@ interface ArpUasgSearchProps {
     selectedItemIds: string[];
     onClearSelection: () => void;
     scrollContainerRef: React.RefObject<HTMLDivElement>;
-    mode?: 'material' | 'servico'; // NOVO
+    mode?: 'material' | 'servico';
 }
 
-const ArpUasgSearch: React.FC<ArpUasgSearchProps> = ({ onItemPreSelect, selectedItemIds, onClearSelection, scrollContainerRef, mode = 'material' }) => {
+const ArpUasgSearch: React.FC<ArpUasgSearchProps> = ({
+    onItemPreSelect,
+    selectedItemIds,
+    onClearSelection,
+    scrollContainerRef,
+    mode = 'material'
+}) => {
     return (
-        <ArpUasgSearchForm 
-            onItemPreSelect={onItemPreSelect} 
-            selectedItemIds={selectedItemIds} 
-            onClearSelection={onClearSelection} 
+        <ArpUasgSearchForm
+            onItemPreSelect={onItemPreSelect}
+            selectedItemIds={selectedItemIds}
+            onClearSelection={onClearSelection}
             scrollContainerRef={scrollContainerRef}
             mode={mode}
         />
