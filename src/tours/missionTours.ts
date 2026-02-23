@@ -727,8 +727,8 @@ export const runMission06 = (onComplete: () => void) => {
         popover: {
           title: 'Alternando Relatórios',
           description: 'Você pode navegar entre diferentes tipos de relatórios. Clique aqui e selecione "P Trab Operacional" para ver o detalhamento de diárias e materiais.',
-          side: 'bottom',
-          align: 'center',
+          side: 'left',
+          align: 'start',
           showButtons: []
         }
       },
