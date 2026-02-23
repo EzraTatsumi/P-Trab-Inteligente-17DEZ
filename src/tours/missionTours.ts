@@ -607,8 +607,8 @@ export const runMission05 = (onComplete: () => void) => {
       {
         element: '.tour-dor-observacoes',
         popover: {
-          title: 'Observações e Normas',
-          description: 'As observações gerais já incluem as cláusulas padrão de conformidade com o SIOP e memórias de cálculo. Revise-as e adicione pontos específicos se houver.',
+          title: 'Observações Gerais',
+          description: 'Observações podem ser registradas aqui. Revise-as e adicione pontos específicos se houver.',
           side: 'top',
           align: 'center'
         }
