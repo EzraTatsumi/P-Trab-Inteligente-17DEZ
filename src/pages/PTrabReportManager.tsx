@@ -53,7 +53,6 @@ import {
   generateSuprimentoFundosMemoriaCalculo as generateSuprimentoFundosMemoriaCalculoUtility,
 } from "@/lib/suprimentoFundosUtils"; 
 import { 
-
   generatePassagemMemoriaCalculo,
   PassagemRegistro as PassagemRegistroType, 
 } from "@/lib/passagemUtils"; 
@@ -871,26 +870,6 @@ const PTrabReportManager = () => {
     }
   }, [loading, searchParams, navigate, ghost]);
 
-  // Avanço automático do tour ao trocar de relatório no Ghost Mode
-  useEffect(() => {
-    if (ghost) {
-      const startTour = searchParams.get('startTour') === 'true';
-      if (!startTour) return;
-
-      // Identifica o passo atual do tour para evitar avanços errados
-      const driverPopover = document.querySelector('.driver-popover');
-      if (!driverPopover) return;
-
-      const title = driverPopover.querySelector('.driver-popover-title')?.textContent;
-      
-      if (selectedReport === 'operacional' && title?.includes('Alternando Relatórios')) {
-        window.dispatchEvent(new CustomEvent('tour:avancar'));
-      } else if (selectedReport === 'dor' && title?.includes('Visualização do DOR')) {
-        window.dispatchEvent(new CustomEvent('tour:avancar'));
-      }
-    }
-  }, [selectedReport, ghost, searchParams]);
-
   const loadData = useCallback(async () => {
     if (!ptrabId && !ghost) {
       toast.error("P Trab não selecionado");
@@ -1468,12 +1447,6 @@ const PTrabReportManager = () => {
         grupos[om].passagens.push(r);
     });
 
-    registrosPassagem.forEach(r => {
-        const om = getCreditRecipientOM(r, true);
-        initializeGroup(om);
-        grupos[om].passagens.push(r);
-    });
-
     registrosConcessionaria.forEach(r => {
         const om = getCreditRecipientOM(r, true);
         initializeGroup(om);
@@ -1738,11 +1711,41 @@ const PTrabReportManager = () => {
               <FileText className="h-4 w-4 text-primary" />
               <span className="text-sm font-medium">Relatório:</span>
             </div>
-            <Select value={selectedReport} onValueChange={(value) => setSelectedReport(value as ReportType)}>
+            <Select 
+              value={selectedReport} 
+              onValueChange={(value) => {
+                setSelectedReport(value as ReportType);
+                
+                // GATILHO DIRETO INFALÍVEL: Avisa o Tour assim que o valor mudar
+                if (localStorage.getItem('is_ghost_mode') === 'true') {
+                  setTimeout(() => {
+                    window.dispatchEvent(new CustomEvent('tour:avancar'));
+                  }, 400); // 400ms dá tempo ao React para carregar a nova tabela
+                }
+              }}
+            >
               <SelectTrigger className="w-[320px] tour-report-selector">
                 <SelectValue placeholder="Selecione o Relatório" />
               </SelectTrigger>
-              <SelectContent className="z-[999999] pointer-events-auto" position="popper" sideOffset={4}>
+              
+              <SelectContent 
+                className="z-[999999] pointer-events-auto" 
+                position="popper" 
+                sideOffset={4}
+                // BLINDAGEM MÁXIMA: Esconde os cliques do Driver.js
+                onPointerDownCapture={(e) => {
+                  e.stopPropagation();
+                  e.nativeEvent.stopImmediatePropagation();
+                }}
+                onClickCapture={(e) => {
+                  e.stopPropagation();
+                  e.nativeEvent.stopImmediatePropagation();
+                }}
+                onPointerUpCapture={(e) => {
+                  e.stopPropagation();
+                  e.nativeEvent.stopImmediatePropagation();
+                }}
+              >
                 {REPORT_OPTIONS.map(option => (
                   <SelectItem key={option.value} value={option.value}>
                     <div className="flex items-center gap-2">
