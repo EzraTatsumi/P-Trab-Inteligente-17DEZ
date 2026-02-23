@@ -449,7 +449,7 @@ const DOREditor = () => {
         <div className="p-[20mm]">
           <div className="border border-black grid grid-cols-[180px_1fr_200px] items-stretch mb-4">
             <div className="border-r border-black p-1 flex items-center justify-center text-center overflow-hidden">
-              <img src="https://upload.wikimedia.org/wikipedia/commons/b/bf/Coat_of_arms_of_Brazil.svg" alt="Brasão de Armas do Brasil" className="max-h-24 w-auto object-contain" />
+              <img src="/logo_md.png" alt="Ministério da Defesa" className="max-h-24 w-auto object-contain" />
             </div>
             <div className="border-r border-black p-1 flex flex-col items-center justify-center text-center font-bold uppercase leading-tight" style={{ fontFamily: 'Calibri, sans-serif', fontSize: '11pt' }}>
               <p>Ministério da Defesa</p><p>Exército Brasileiro</p><p>{ptrab?.comando_militar_area}</p><p>{ptrab?.nome_om_extenso || ptrab?.nome_om}</p>
