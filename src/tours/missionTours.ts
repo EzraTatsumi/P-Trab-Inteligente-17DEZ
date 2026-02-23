@@ -283,6 +283,47 @@ export const runMission02 = (onComplete: () => void) => {
         }
       },
       {
+        element: '.btn-importar-pncp', 
+        popover: { 
+          title: 'O Salto Tecnológico', 
+          description: 'Agora, clique no botão "Importar via API PNCP" para buscar dados de itens em ARP/Pregões.', 
+          side: 'left', 
+          align: 'start', 
+          offset: 30,
+          showButtons: []
+        }
+      },
+      {
+        element: '.form-busca-uasg-tour',
+        popover: {
+          title: 'Busca por UASG',
+          description: 'Digite a UASG 160222 e clique em "Buscar ARPs por UASG". Vamos listar as atas vigentes desta Organização Militar.',
+          side: 'bottom',
+          align: 'center',
+          showButtons: []
+        }
+      },
+      {
+        element: '.modal-importar-pncp',
+        popover: {
+          title: 'Navegação de Resultados',
+          description: 'O sistema encontrou os resultados! Agora, clique em "Expandir" no Pregão, depois em "Ver Itens" na ARP, selecione o "Cimento Portland" e clique em "Importar Selecionados".',
+          side: 'top', 
+          align: 'center',
+          offset: 10,
+          showButtons: []
+        }
+      },
+      {
+        element: '.tabela-itens-aquisicao',
+        popover: {
+          title: 'Item Importado com Sucesso',
+          description: 'Veja! O item foi importado com todos os dados técnicos e valores atualizados do PNCP diretamente para sua lista.',
+          side: 'top',
+          align: 'center'
+        }
+      },
+      {
         element: '.btn-salvar-subitem',
         popover: {
           title: 'Finalização do Cadastro',
@@ -506,6 +547,14 @@ export const runMission04 = (onComplete: () => void) => {
         onHighlighted: () => {
           // 1. Expande o resumo global e o acordeão interno
           if ((window as any).expandCostDetails) (window as any).expandCostDetails();
+          
+          // 2. Aguarda a animação de abertura para garantir que o elemento alvo esteja visível e estável
+          setTimeout(() => {
+            const target = document.querySelector('.tour-material-consumo-details');
+            if (target) {
+              target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+          }, 500);
         }
       },
       {

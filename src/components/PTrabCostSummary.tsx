@@ -522,27 +522,6 @@ export const fetchPTrabTotals = async (ptrabId: string): Promise<PTrabAggregated
       });
     });
 
-    // Lógica de Mock para o Ghost Mode (Missão 04) - Aplicada ANTES da agregação global
-    if (isGhostMode()) {
-      const mockOmName = "1º BIS";
-      const mockUg = "160222";
-      const omS = getOmTotals(mockOmName, mockUg, 'solicitante');
-      const omD = getOmTotals(mockOmName, mockUg, 'destino');
-      
-      const mockValue = 1250.50;
-      const mockCat = "Material de Construção";
-      
-      [omS, omD].forEach(omTotals => {
-        omTotals.materialConsumo.total += mockValue;
-        omTotals.materialConsumo.totalND30 += mockValue;
-        if (!omTotals.materialConsumo.groupedCategories[mockCat]) {
-          omTotals.materialConsumo.groupedCategories[mockCat] = { totalValor: 0, totalND30: 0, totalND39: 0 };
-        }
-        omTotals.materialConsumo.groupedCategories[mockCat].totalValor += mockValue;
-        omTotals.materialConsumo.groupedCategories[mockCat].totalND30 += mockValue;
-      });
-    }
-
     let globalTotals: PTrabAggregatedTotals = {
       totalLogisticoGeral: 0, totalOperacional: 0, totalMaterialPermanente: 0, totalAviacaoExercito: 0, totalRacoesOperacionaisGeral: 0,
       totalClasseI: 0, totalComplemento: 0, totalEtapaSolicitadaValor: 0, totalDiasEtapaSolicitada: 0, totalRefeicoesIntermediarias: 0,
@@ -690,6 +669,20 @@ export const fetchPTrabTotals = async (ptrabId: string): Promise<PTrabAggregated
         globalTotals.groupedMaterialPermanenteCategories[cat].totalND52 += data.totalND52;
       });
     });
+
+    // Reforço do Mock para o Ghost Mode (Missão 04) - Garante que o valor apareça no resumo global
+    if (isGhostMode()) {
+      const mockValue = 1250.50;
+      const mockCat = "Material de Construção";
+      
+      // Injeta nos totais globais se estiverem zerados
+      if (globalTotals.totalMaterialConsumo === 0) {
+        globalTotals.totalMaterialConsumo = mockValue;
+        globalTotals.totalMaterialConsumoND30 = mockValue;
+        globalTotals.totalOperacional += mockValue;
+        globalTotals.groupedMaterialConsumoCategories[mockCat] = { totalValor: mockValue, totalND30: mockValue, totalND39: 0 };
+      }
+    }
 
     Object.values(groupedByOmDestino).forEach(omTotals => {
       omTotals.totalLogistica = omTotals.classeI.total + omTotals.classeII.total + omTotals.classeIII.total + omTotals.classeV.total + omTotals.classeVI.total + omTotals.classeVII.total + omTotals.classeVIII.total + omTotals.classeIX.total;
