@@ -11,6 +11,7 @@ import { cn } from "@/lib/utils";
 import { formatNumber, formatCodug } from "@/lib/formatUtils";
 import { PTrabImporter, DorGroup } from "@/components/PTrabImporter";
 import { GHOST_DATA, isGhostMode } from "@/lib/ghostStore";
+import { runMission05 } from "@/tours/missionTours";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -115,6 +116,38 @@ const DOREditor = () => {
     observacoes: ""
   });
 
+  // Lógica de inicialização do Tour (Missão 05)
+  useEffect(() => {
+    if (!loading) {
+      const startTour = searchParams.get('startTour') === 'true';
+      const missionId = localStorage.getItem('active_mission_id');
+      if (startTour && missionId === '5' && isGhostMode()) {
+        const timer = setTimeout(() => {
+          runMission05(() => {
+            const completed = JSON.parse(localStorage.getItem('completed_missions') || '[]');
+            if (!completed.includes(5)) {
+              localStorage.setItem('completed_missions', JSON.stringify([...completed, 5]));
+            }
+            navigate('/ptrab?showHub=true');
+          });
+        }, 500);
+        return () => clearTimeout(timer);
+      }
+    }
+  }, [loading, searchParams, navigate]);
+
+  // Lógica de preenchimento para Missão 05 (Ghost Mode)
+  useEffect(() => {
+    if (isGhostMode() && !loading) {
+      setFormData(prev => ({
+        ...prev,
+        finalidade: "Prover apoio logístico, meios e recursos necessários para o emprego de tropas do Exército Brasileiro Operação SENTINELA, no âmbito do 1º BIS.",
+        consequencia: "Redução da capacidade de planejamento e emprego de militares no contexto das ações na Operação SENTINELA.",
+        observacoes: "1. As memórias de cálculo detalhadas e parametrizadas das despesas custeadas serão mantidas em arquivos próprios.\n2. O bem e/ou serviço requisitado estará de acordo com a “Descrição” da Ação Orçamentária adotada pelo MD e com a “Caracterização” do respectivo PO do Cadastro de Ações do Sistema Integrado de Planejamento e Orçamento (SIOP)."
+      }));
+    }
+  }, [loading]);
+
   const applyDorData = useCallback((dorData: any) => {
     setSelectedDorId(dorData.id);
     setFormData({
@@ -172,19 +205,10 @@ const DOREditor = () => {
           const opName = ghostPtrab.nome_operacao || "";
           const formattedOp = opName.toLowerCase().startsWith("operação") ? opName : `Operação ${opName}`;
           
-          setFormData({
-            numero_dor: "",
-            email: "",
-            telefone: "",
-            acao_orcamentaria: "A cargo do MD.",
-            plano_orcamentario: "A cargo do MD.",
-            anexos: "----",
+          setFormData(prev => ({
+            ...prev,
             evento: formattedOp,
-            finalidade: "Prover apoio logístico, meios e recursos necessários para o emprego de tropas do Exército Brasileiro Operação SENTINELA, no âmbito do 1º BIS.",
-            motivacao: "",
-            consequencia: "Redução da capacidade de planejamento e emprego de militares no contexto das ações na Operação SENTINELA.",
-            observacoes: "1. As memórias de cálculo detalhadas e parametrizadas das despesas custeadas serão mantidas em arquivos próprios.\n2. O bem e/ou serviço requisitado estará de acordo com a “Descrição” da Ação Orçamentária adotada pelo MD e com a “Caracterização” do respectivo PO do Cadastro de Ações do Sistema Integrado de Planejamento e Orçamento (SIOP)."
-          });
+          }));
           setLoading(false);
           return;
         }
@@ -444,7 +468,7 @@ const DOREditor = () => {
               <div className="border-b border-black py-0 px-2">{ptrab?.nome_om_extenso || ptrab?.nome_om}</div>
               <div className="grid grid-cols-2 border-b border-black"><div className="py-0 px-2 border-r border-black font-bold">Responsável pela Demanda:</div><div className="py-0 px-2"></div></div>
               <div className="border-b border-black py-0 px-2">{ptrab?.nome_cmt_om || "Não informado"}</div>
-              <div className="grid grid-cols-2">
+              <div className="grid grid-cols-2 tour-dor-contato">
                 <div className="py-0 px-2 border-r border-black flex items-center gap-1">
                   <span className="font-bold whitespace-nowrap">E-mail:</span>
                   <DocumentInput id="tour-dor-email" value={formData.email} onChange={(e: any) => setFormData({...formData, email: e.target.value})} placeholder="exemplo@eb.mil.br" className="w-full" style={bodyStyle} />
