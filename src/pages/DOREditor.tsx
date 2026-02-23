@@ -141,8 +141,8 @@ const DOREditor = () => {
     if (isGhostMode() && !loading) {
       setFormData(prev => ({
         ...prev,
-        finalidade: "Prover apoio logístico, meios e recursos necessários para o emprego de tropas do Exército Brasileiro Operação SENTINELA, no âmbito do 1º BIS.",
-        consequencia: "Redução da capacidade de planejamento e emprego de militares no contexto das ações na Operação SENTINELA.",
+        finalidade: "Prover o apoio logístico, meios e recursos necessários para o emprego de tropas do Exército Brasileiro na Operação SENTINELA, visando garantir a operacionalidade e a manutenção das capacidades do 1º BIS.",
+        consequencia: "A não autorização dos recursos implicará na redução da capacidade de planejamento e emprego de militares, comprometendo a execução das ações previstas na Operação SENTINELA e a segurança da área de operações.",
         observacoes: "1. As memórias de cálculo detalhadas e parametrizadas das despesas custeadas serão mantidas em arquivos próprios.\n2. O bem e/ou serviço requisitado estará de acordo com a “Descrição” da Ação Orçamentária adotada pelo MD e com a “Caracterização” do respectivo PO do Cadastro de Ações do Sistema Integrado de Planejamento e Orçamento (SIOP)."
       }));
     }
@@ -396,7 +396,7 @@ const DOREditor = () => {
   const headerTitleStyle = { backgroundColor: '#BFBFBF' };
 
   return (
-    <div className="min-h-screen bg-slate-200 pt-20 pb-8 px-4 print:p-0 print:bg-white">
+    <div className="min-h-screen bg-slate-200 pt-28 pb-8 px-4 print:p-0 print:bg-white">
       <div className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-6 py-3 bg-white/90 backdrop-blur border-b border-slate-200 shadow-sm print:hidden">
         <div className="flex items-center gap-4">
           <Button variant="ghost" size="sm" onClick={() => navigate('/ptrab')}><ArrowLeft className="mr-2 h-4 w-4" />Voltar</Button>
