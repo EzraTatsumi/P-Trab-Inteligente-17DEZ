@@ -751,7 +751,7 @@ export const runMission06 = (onComplete: () => void) => {
           description: 'Por fim, selecione o relatório "DOR" para ver como o documento que editamos na Missão 05 é apresentado para impressão final. Missão cumprida! Você agora é um mestre do P Trab Inteligente.',
           side: 'left',
           align: 'start',
-          showButtons: ['next', 'previous']
+          showButtons: []
         }
       }
     ],

@@ -870,6 +870,15 @@ const PTrabReportManager = () => {
     }
   }, [loading, searchParams, navigate, ghost]);
 
+  // Avanço automático do tour ao trocar de relatório no Ghost Mode
+  useEffect(() => {
+    if (ghost) {
+      if (selectedReport === 'operacional' || selectedReport === 'dor') {
+        window.dispatchEvent(new CustomEvent('tour:avancar'));
+      }
+    }
+  }, [selectedReport, ghost]);
+
   const loadData = useCallback(async () => {
     if (!ptrabId && !ghost) {
       toast.error("P Trab não selecionado");
@@ -1715,7 +1724,7 @@ const PTrabReportManager = () => {
               <SelectTrigger className="w-[320px] tour-report-selector">
                 <SelectValue placeholder="Selecione o Relatório" />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="z-tour-portal">
                 {REPORT_OPTIONS.map(option => (
                   <SelectItem key={option.value} value={option.value}>
                     <div className="flex items-center gap-2">
