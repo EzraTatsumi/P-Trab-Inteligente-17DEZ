@@ -552,7 +552,7 @@ export const runMission04 = (onComplete: () => void) => {
         element: '#tour-material-consumo-row',
         popover: {
           title: 'Detalhamento de Custos',
-          description: 'Veja que o "Material de Consumo" que detalhamos na Missão 3 já está contabilizado aqui, com o valor mockado de R$ 1.250,50.',
+          description: 'Veja que o "Material de Consumo" que detalhamos na Missão 3 já está contabilizado aqui, com o valor de R$ 1.250,50.',
           side: 'left',
           align: 'center'
         }
