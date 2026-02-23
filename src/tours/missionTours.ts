@@ -270,7 +270,7 @@ export const runMission02 = (onComplete: () => void) => {
         popover: {
           title: 'Item Importado com Sucesso',
           description: 'Veja! O item foi importado com todos os dados técnicos e valores atualizados do PNCP diretamente para sua lista.',
-          side: 'top',
+          side: 'top', 
           align: 'center'
         }
       },
@@ -720,6 +720,9 @@ export const runMission06 = (onComplete: () => void) => {
           description: 'Bem-vindo ao Gerenciador de Relatórios. Aqui você visualiza e exporta todos os anexos do seu P Trab. No momento, estamos vendo o Relatório Logístico mockado com dados da Missão 03.',
           side: 'top',
           align: 'center'
+        },
+        onHighlighted: () => {
+          window.scrollTo({ top: 0, behavior: 'smooth' });
         }
       },
       {
@@ -746,8 +749,8 @@ export const runMission06 = (onComplete: () => void) => {
         popover: {
           title: 'Visualização do DOR',
           description: 'Por fim, selecione o relatório "DOR" para ver como o documento que editamos na Missão 05 é apresentado para impressão final. Missão cumprida! Você agora é um mestre do P Trab Inteligente.',
-          side: 'bottom',
-          align: 'center',
+          side: 'left',
+          align: 'start',
           showButtons: ['next', 'previous']
         }
       }
