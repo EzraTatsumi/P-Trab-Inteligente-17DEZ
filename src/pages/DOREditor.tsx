@@ -89,6 +89,7 @@ const DOREditor = () => {
   const [searchParams] = useSearchParams();
   const ptrabId = searchParams.get("ptrabId");
   const { user } = useSession();
+  const ghost = isGhostMode();
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -121,7 +122,7 @@ const DOREditor = () => {
     if (!loading) {
       const startTour = searchParams.get('startTour') === 'true';
       const missionId = localStorage.getItem('active_mission_id');
-      if (startTour && missionId === '5' && isGhostMode()) {
+      if (startTour && missionId === '5' && ghost) {
         const timer = setTimeout(() => {
           runMission05(() => {
             const completed = JSON.parse(localStorage.getItem('completed_missions') || '[]');
@@ -134,11 +135,11 @@ const DOREditor = () => {
         return () => clearTimeout(timer);
       }
     }
-  }, [loading, searchParams, navigate]);
+  }, [loading, searchParams, navigate, ghost]);
 
   // Lógica de preenchimento para Missão 05 (Ghost Mode)
   useEffect(() => {
-    if (isGhostMode() && !loading) {
+    if (ghost && !loading) {
       setFormData(prev => ({
         ...prev,
         finalidade: "Prover o apoio logístico, meios e recursos necessários para o emprego de tropas do Exército Brasileiro na Operação SENTINELA, visando garantir a operacionalidade e a manutenção das capacidades do 1º BIS.",
@@ -146,7 +147,7 @@ const DOREditor = () => {
         observacoes: "1. As memórias de cálculo detalhadas e parametrizadas das despesas custeadas serão mantidas em arquivos próprios.\n2. O bem e/ou serviço requisitado estará de acordo com a “Descrição” da Ação Orçamentária adotada pelo MD e com a “Caracterização” do respectivo PO do Cadastro de Ações do Sistema Integrado de Planejamento e Orçamento (SIOP)."
       }));
     }
-  }, [loading]);
+  }, [loading, ghost]);
 
   const applyDorData = useCallback((dorData: any) => {
     setSelectedDorId(dorData.id);
@@ -180,7 +181,7 @@ const DOREditor = () => {
   }, []);
 
   const refreshDorList = useCallback(async () => {
-    if (!ptrabId || isGhostMode()) return [];
+    if (!ptrabId || ghost) return [];
     const { data, error } = await supabase
       .from("dor_registros" as any)
       .select("*")
@@ -192,13 +193,13 @@ const DOREditor = () => {
       return data;
     }
     return [];
-  }, [ptrabId]);
+  }, [ptrabId, ghost]);
 
   useEffect(() => {
     const loadInitialData = async () => {
       setLoading(true);
       try {
-        if (isGhostMode()) {
+        if (ghost) {
           const ghostPtrab = GHOST_DATA.p_trab_exemplo;
           setPtrab(ghostPtrab);
           
@@ -249,7 +250,7 @@ const DOREditor = () => {
     };
 
     loadInitialData();
-  }, [ptrabId, applyDorData, refreshDorList]);
+  }, [ptrabId, applyDorData, refreshDorList, ghost]);
 
   const handleCreateNewDor = () => {
     setSelectedDorId(null);
@@ -334,7 +335,7 @@ const DOREditor = () => {
   };
 
   const handleSave = async () => {
-    if (isGhostMode()) {
+    if (ghost) {
       toast.success("Simulação: DOR salvo com sucesso!");
       return;
     }
@@ -396,8 +397,11 @@ const DOREditor = () => {
   const headerTitleStyle = { backgroundColor: '#BFBFBF' };
 
   return (
-    <div className="min-h-screen bg-slate-200 pt-28 pb-8 px-4 print:p-0 print:bg-white">
-      <div className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-6 py-3 bg-white/90 backdrop-blur border-b border-slate-200 shadow-sm print:hidden">
+    <div className={cn("min-h-screen bg-slate-200 pb-8 px-4 print:p-0 print:bg-white", ghost ? "pt-40" : "pt-28")}>
+      <div className={cn(
+        "fixed left-0 right-0 z-50 flex items-center justify-between px-6 py-3 bg-white/90 backdrop-blur border-b border-slate-200 shadow-sm print:hidden transition-all",
+        ghost ? "top-10" : "top-0"
+      )}>
         <div className="flex items-center gap-4">
           <Button variant="ghost" size="sm" onClick={() => navigate('/ptrab')}><ArrowLeft className="mr-2 h-4 w-4" />Voltar</Button>
           <div className="h-6 w-px bg-slate-200" />
@@ -445,7 +449,7 @@ const DOREditor = () => {
         <div className="p-[20mm]">
           <div className="border border-black grid grid-cols-[180px_1fr_200px] items-stretch mb-4">
             <div className="border-r border-black p-1 flex items-center justify-center text-center overflow-hidden">
-              <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/b/bf/Coat_of_arms_of_Brazil.svg/100px-Coat_of_arms_of_Brazil.svg.png" alt="Brasão" className="max-h-24 w-auto object-contain" />
+              <img src="https://upload.wikimedia.org/wikipedia/commons/b/bf/Coat_of_arms_of_Brazil.svg" alt="Brasão de Armas do Brasil" className="max-h-24 w-auto object-contain" />
             </div>
             <div className="border-r border-black p-1 flex flex-col items-center justify-center text-center font-bold uppercase leading-tight" style={{ fontFamily: 'Calibri, sans-serif', fontSize: '11pt' }}>
               <p>Ministério da Defesa</p><p>Exército Brasileiro</p><p>{ptrab?.comando_militar_area}</p><p>{ptrab?.nome_om_extenso || ptrab?.nome_om}</p>
@@ -502,7 +506,7 @@ const DOREditor = () => {
                     size="sm" 
                     onClick={() => {
                       setIsImporterOpen(true);
-                      if (isGhostMode()) {
+                      if (ghost) {
                         window.dispatchEvent(new CustomEvent('tour:avancar'));
                       }
                     }} 
@@ -556,7 +560,7 @@ const DOREditor = () => {
         </div>
       </div>
 
-      {(ptrabId || isGhostMode()) && (
+      {(ptrabId || ghost) && (
         <PTrabImporter 
           isOpen={isImporterOpen} 
           onClose={() => setIsImporterOpen(false)} 

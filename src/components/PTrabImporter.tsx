@@ -213,6 +213,9 @@ export const PTrabImporter: React.FC<PTrabImporterProps> = ({
       return;
     }
     onImportConcluded(groups, selectedGnd);
+    if (isGhostMode()) {
+      window.dispatchEvent(new CustomEvent('tour:avancar'));
+    }
     onClose();
   };
 

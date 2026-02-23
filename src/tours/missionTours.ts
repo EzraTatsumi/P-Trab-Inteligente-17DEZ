@@ -642,19 +642,30 @@ export const runMission05 = (onComplete: () => void) => {
         }
       },
       {
-        element: '.tour-dor-importer-content',
+        element: '.btn-novo-grupo-dor',
         popover: {
-          title: 'Sua Vez!',
-          description: "Clique em 'Novo Grupo de Custo (DOR)', arraste o item de 'Material de Consumo' para o novo grupo e clique em 'Concluir e Importar'.",
-          side: 'top',
-          align: 'center'
+          title: 'Criando Grupos',
+          description: "Digite 'Material de Consumo' no campo de texto e clique em 'Novo Grupo de Custo (DOR)'.",
+          side: 'bottom',
+          align: 'center',
+          showButtons: []
+        }
+      },
+      {
+        element: '.tour-item-material-consumo',
+        popover: {
+          title: 'Agrupando Custos',
+          description: "Agora, clique na seta à direita do item 'Material de Consumo' para movê-lo para o grupo que você acabou de criar. Depois, clique em 'Concluir e Importar'.",
+          side: 'right',
+          align: 'center',
+          showButtons: []
         }
       },
       {
         element: '.btn-salvar-dor',
         popover: {
           title: 'Finalização',
-          description: 'Tudo pronto! Agora basta salvar o documento. Você pode criar múltiplos DORs para o mesmo P Trab se precisar separar as requisições por GND ou finalidade.',
+          description: 'Tudo pronto! Os dados foram importados e formatados na tabela do documento. Agora basta salvar o DOR. Missão cumprida!',
           side: 'bottom',
           align: 'end'
         }
