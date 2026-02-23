@@ -670,17 +670,19 @@ export const fetchPTrabTotals = async (ptrabId: string): Promise<PTrabAggregated
       });
     });
 
-    // Reforço do Mock para o Ghost Mode (Missão 04) - Garante que o valor apareça no resumo global
+    // Reforço do Mock para o Ghost Mode (Missão 04) - Injeção final para garantir exibição
     if (isGhostMode()) {
       const mockValue = 1250.50;
       const mockCat = "Material de Construção";
       
-      // Injeta nos totais globais se estiverem zerados
-      if (globalTotals.totalMaterialConsumo === 0) {
-        globalTotals.totalMaterialConsumo = mockValue;
-        globalTotals.totalMaterialConsumoND30 = mockValue;
-        globalTotals.totalOperacional += mockValue;
-        globalTotals.groupedMaterialConsumoCategories[mockCat] = { totalValor: mockValue, totalND30: mockValue, totalND39: 0 };
+      // Garante que o valor apareça no resumo global e na categoria específica
+      globalTotals.totalMaterialConsumo = mockValue;
+      globalTotals.totalMaterialConsumoND30 = mockValue;
+      globalTotals.groupedMaterialConsumoCategories[mockCat] = { totalValor: mockValue, totalND30: mockValue, totalND39: 0 };
+      
+      // Ajusta o total operacional se estiver zerado
+      if (globalTotals.totalOperacional === 0) {
+        globalTotals.totalOperacional = mockValue;
       }
     }
 
@@ -1097,7 +1099,7 @@ const TabDetails = ({ mode, data }: TabDetailsProps) => {
     if (m.totalMaterialConsumo === 0) return null;
     return (
       <Accordion type="single" collapsible className="w-full pt-1 tour-accordion-material-consumo">
-        <AccordionItem value="item-material-consumo" className="border-b-0" id="tour-accordion-item-material">
+        <AccordionItem value="item-material-consumo" className="border-b-0" id="tour-material-consumo-row">
           <AccordionTrigger className="p-0 hover:no-underline tour-material-consumo-trigger">
             <div className="flex justify-between items-center w-full text-xs border-b pb-1 border-border/50">
               <div className="flex items-center gap-1 text-foreground"><Package className="h-3 w-3 text-blue-500" />Material de Consumo</div>
@@ -1133,10 +1135,8 @@ const TabDetails = ({ mode, data }: TabDetailsProps) => {
       <Accordion type="single" collapsible className="w-full pt-1">
         <AccordionItem value="item-complemento-alimentacao" className="border-b-0">
           <AccordionTrigger className="p-0 hover:no-underline">
-            <div className="flex justify-between items-center w-full text-xs border-b pb-1 border-border/50">
-              <div className="flex items-center gap-1 text-foreground text-left flex-1"><Utensils className="h-3 w-3 text-blue-500" />Complemento de Alimentação</div>
-              <span className={cn(valueClasses, "text-xs flex items-center gap-1 mr-6")}>{formatCurrency(c.totalComplementoAlimentacao)}</span>
-            </div>
+            <div className="flex items-center gap-1 text-foreground text-left flex-1"><Utensils className="h-3 w-3 text-blue-500" />Complemento de Alimentação</div>
+            <span className={cn(valueClasses, "text-xs flex items-center gap-1 mr-6")}>{formatCurrency(c.totalComplementoAlimentacao)}</span>
           </AccordionTrigger>
           <AccordionContent className="pt-1 pb-0">
             <div className="space-y-1 pl-4 text-[10px]">
@@ -1167,10 +1167,8 @@ const TabDetails = ({ mode, data }: TabDetailsProps) => {
       <Accordion type="single" collapsible className="w-full pt-1">
         <AccordionItem value="item-servicos-terceiros" className="border-b-0">
           <AccordionTrigger className="p-0 hover:no-underline">
-            <div className="flex justify-between items-center w-full text-xs border-b pb-1 border-border/50">
-              <div className="flex items-center gap-1 text-foreground text-left flex-1"><ClipboardList className="h-3 w-3 text-blue-500" />Serviços de Terceiros/Locações</div>
-              <span className={cn(valueClasses, "text-xs flex items-center gap-1 mr-6")}>{formatCurrency(s.totalServicosTerceiros)}</span>
-            </div>
+            <div className="flex items-center gap-1 text-foreground text-left flex-1"><ClipboardList className="h-3 w-3 text-blue-500" />Serviços de Terceiros/Locações</div>
+            <span className={cn(valueClasses, "text-xs flex items-center gap-1 mr-6")}>{formatCurrency(s.totalServicosTerceiros)}</span>
           </AccordionTrigger>
           <AccordionContent className="pt-1 pb-0">
             <div className="space-y-1 pl-4 text-[10px]">
@@ -1201,10 +1199,8 @@ const TabDetails = ({ mode, data }: TabDetailsProps) => {
       <Accordion type="single" collapsible className="w-full pt-1">
         <AccordionItem value="item-material-permanente" className="border-b-0">
           <AccordionTrigger className="p-0 hover:no-underline">
-            <div className="flex justify-between items-center w-full text-xs border-b pb-1 border-border/50">
-              <div className="flex items-center gap-1 text-foreground text-left flex-1"><HardHat className="h-3 w-3 text-green-600" />Material Permanente</div>
-              <span className={cn(valueClasses, "text-xs flex items-center gap-1 mr-6")}>{formatCurrency(p.totalMaterialPermanente)}</span>
-            </div>
+            <div className="flex items-center gap-1 text-foreground text-left flex-1"><HardHat className="h-3 w-3 text-green-600" />Material Permanente</div>
+            <span className={cn(valueClasses, "text-xs flex items-center gap-1 mr-6")}>{formatCurrency(p.totalMaterialPermanente)}</span>
           </AccordionTrigger>
           <AccordionContent className="pt-1 pb-0">
             <div className="space-y-1 pl-4 text-[10px]">
@@ -1328,7 +1324,7 @@ export const PTrabCostSummary = ({ ptrabId, onOpenCreditDialog, creditGND3, cred
       setIsDetailsOpen(true);
       setViewMode('global');
       
-      // Pequeno delay para garantir que o acordeão global abriu antes de tentar abrir o interno
+      // Força a abertura do acordeão de Material de Consumo
       setTimeout(() => {
         const trigger = document.querySelector('.tour-material-consumo-trigger') as HTMLElement;
         if (trigger && trigger.getAttribute('aria-expanded') !== 'true') {

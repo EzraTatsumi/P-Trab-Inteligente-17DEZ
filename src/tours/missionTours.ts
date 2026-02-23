@@ -537,7 +537,7 @@ export const runMission04 = (onComplete: () => void) => {
         }
       },
       {
-        element: '.tour-material-consumo-details',
+        element: '#tour-material-consumo-row',
         popover: {
           title: 'Detalhamento de Custos',
           description: 'Veja que o "Material de Consumo" que detalhamos na Missão 3 já está contabilizado aqui, com o valor mockado de R$ 1.250,50.',
@@ -550,7 +550,7 @@ export const runMission04 = (onComplete: () => void) => {
           
           // 2. Aguarda a animação de abertura para garantir que o elemento alvo esteja visível e estável
           setTimeout(() => {
-            const target = document.querySelector('.tour-material-consumo-details');
+            const target = document.querySelector('#tour-material-consumo-row');
             if (target) {
               target.scrollIntoView({ behavior: 'smooth', block: 'center' });
             }
