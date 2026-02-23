@@ -552,7 +552,8 @@ export const runMission04 = (onComplete: () => void) => {
           title: 'Visão por Organização',
           description: 'Além da visão global, você pode analisar os custos distribuídos por cada Organização Militar. Clique em "Ver por OM" para alternar a visão.',
           side: 'top',
-          align: 'center',
+          align: 'start',
+          offset: -20,
           showButtons: []
         }
       },
