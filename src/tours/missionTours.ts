@@ -590,7 +590,7 @@ export const runMission05 = (onComplete: () => void) => {
         element: '.tour-dor-finalidade',
         popover: {
           title: 'Finalidade Técnica',
-          description: 'A finalidade foi preenchida automaticamente com base no cabeçalho da Operação SENTINELA. Você pode ajustar o texto conforme a necessidade específica deste documento.',
+          description: 'A finalidade foi preenchida automaticamente com base na Operação SENTINELA. Você pode ajustar o texto conforme a necessidade específica deste documento.',
           side: 'top',
           align: 'center'
         }
@@ -599,7 +599,7 @@ export const runMission05 = (onComplete: () => void) => {
         element: '.tour-dor-consequencia',
         popover: {
           title: 'Justificativa de Risco',
-          description: 'Aqui descrevemos o impacto negativo caso a requisição não seja atendida. Este campo é crucial para a decisor político. ',
+          description: 'Aqui descrevemos o impacto negativo caso a requisição não seja atendida. Este campo é crucial para a análise do Ordenador de Despesas.',
           side: 'top',
           align: 'center'
         }
@@ -607,8 +607,45 @@ export const runMission05 = (onComplete: () => void) => {
       {
         element: '.tour-dor-observacoes',
         popover: {
-          title: 'Observações Gerais',
-          description: 'Observações podem ser registradas aqui. Revise-as e adicione pontos específicos se houver.',
+          title: 'Observações e Normas',
+          description: 'As observações gerais já incluem as cláusulas padrão de conformidade com o SIOP e memórias de cálculo. Revise-as e adicione pontos específicos se houver.',
+          side: 'top',
+          align: 'center'
+        }
+      },
+      {
+        element: '.tour-dor-descricao-item',
+        popover: {
+          title: 'Descrição do Item',
+          description: 'Esta seção detalha o que está sendo requisitado, incluindo UGE, GND e valores consolidados.',
+          side: 'top',
+          align: 'center'
+        }
+      },
+      {
+        element: '.btn-importar-dados-dor',
+        popover: {
+          title: 'Importação de Dados',
+          description: 'Clique no botão para abrir o assistente de importação e agrupar os custos do seu P Trab.',
+          side: 'top',
+          align: 'center',
+          showButtons: []
+        }
+      },
+      {
+        element: '.tour-dor-importer-content',
+        popover: {
+          title: 'Assistente de Agrupamento',
+          description: 'Esta ferramenta permite consolidar diversos itens do P Trab em grupos lógicos para o DOR, facilitando a leitura e o empenho.',
+          side: 'top',
+          align: 'center'
+        }
+      },
+      {
+        element: '.tour-dor-importer-content',
+        popover: {
+          title: 'Sua Vez!',
+          description: "Clique em 'Novo Grupo de Custo (DOR)', arraste o item de 'Material de Consumo' para o novo grupo e clique em 'Concluir e Importar'.",
           side: 'top',
           align: 'center'
         }
