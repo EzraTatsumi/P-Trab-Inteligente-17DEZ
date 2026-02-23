@@ -90,16 +90,17 @@ export const runMission01 = (onComplete: () => void) => {
         }
       },
       {
-        element: '.btn-configuracoes',
+        element: '.menu-configuracoes', // Alvo alterado para iluminar o menu expandido
         popover: {
           title: 'Configurações do Sistema',
           description: 'Vincule trabalhos colaborativos, Diretrizes de Custeio Logístico e de Custos Operacionais e Importe/Exporte dados de P Trab.',
           side: 'left',
-          align: 'end',
+          align: 'start',
           offset: 20,
           popoverClass: 'popover-wide'
         },
         onHighlighted: () => {
+          // Garante que o menu esteja aberto ao chegar neste passo
           if ((window as any).openSettings) (window as any).openSettings();
         },
         onDeselected: () => {
@@ -161,7 +162,7 @@ export const runMission01 = (onComplete: () => void) => {
         }
       },
       {
-        element: '.btn-acoes-ptrab',
+        element: '.menu-acoes', // Alvo alterado para iluminar o menu de ações expandido
         popover: {
           title: 'Agilidade e Colaboração',
           description: 'No menu de ações, você pode CLONAR planos complexos de anos anteriores para economizar tempo, ou COMPARTILHAR o acesso com outros militares para trabalho colaborativo.',
@@ -170,6 +171,7 @@ export const runMission01 = (onComplete: () => void) => {
           showButtons: ['next', 'previous']
         },
         onHighlighted: () => {
+          // Garante que o menu de ações esteja aberto
           if ((window as any).openActions) (window as any).openActions();
         },
         onDeselected: () => {
