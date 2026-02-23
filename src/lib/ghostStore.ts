@@ -91,7 +91,7 @@ export const GHOST_DATA = {
         numeroAta: "05/2025",
         codigoItem: "123456",
         descricaoItem: "Cimento Portland CP II-Z-32, Resistência à Compressão 32 MPa, Saco 50kg",
-        valorUnitario: 42.50,
+        valorUnitario: 250.10, // Atualizado para consistência (5 * 250.10 = 1250.50)
         quantidadeHomologada: 5000,
         numeroControlePncpAta: "160222-ARP-001-2025",
         pregaoFormatado: "000.005/25",
@@ -117,12 +117,12 @@ export const GHOST_DATA = {
             id: "ghost-item-cimento",
             descricao_item: "Cimento Portland CP II-Z-32, Resistência à Compressão 32 MPa, Saco 50kg",
             descricao_reduzida: "Cimento Portland 50kg",
-            valor_unitario: 42.50,
+            valor_unitario: 250.10, // Atualizado
             numero_pregao: "005/2025",
             uasg: "160222",
             codigo_catmat: "123456",
-            quantidade: 0,
-            valor_total: 0,
+            quantidade: 5,
+            valor_total: 1250.50,
             nd: "30"
           }
         ]
@@ -180,7 +180,7 @@ export const GHOST_DATA = {
 
   totais_exemplo: {
     totalLogisticoGeral: 45000.50,
-    totalOperacional: 1250.50, // Valor mockado para Missão 04
+    totalOperacional: 1250.50, 
     totalMaterialPermanente: 8900.00,
     totalAviacaoExercito: 0,
     totalClasseI: 15000,
