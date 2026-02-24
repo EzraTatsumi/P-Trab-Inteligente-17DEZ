@@ -3,7 +3,7 @@ import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import ExcelJS from 'exceljs';
 import { toast } from "sonner";
-import { formatCurrency, formatNumber, formatDateDDMMMAA, formatCodug, formatDate } from "@/lib/formatUtils";
+import { formatCurrency, formatNumber, formatDateDDMMMAA, formatCodug, formatDate, calculateDays } from "@/lib/formatUtils";
 import { FileSpreadsheet, Printer, Download, Briefcase, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -13,7 +13,6 @@ import {
   PTrabData,
   DiariaRegistro,
   VerbaOperacionalRegistro, 
-  calculateDays,
   PassagemRegistro,
   GrupoOMOperacional, 
   MaterialConsumoRegistro,
@@ -23,7 +22,7 @@ import {
 import { generateConsolidatedPassagemMemoriaCalculo, ConsolidatedPassagemRecord } from "@/lib/passagemUtils"; 
 import { 
     ConcessionariaRegistroComDiretriz, 
-    ConsolidatedConcessionariaReport,
+    ConsolidatedConcessionariaRecord,
     generateConsolidatedConcessionariaMemoriaCalculo, 
 } from "@/lib/concessionariaUtils"; 
 import { 
@@ -332,7 +331,7 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
                               case 'COMPLEMENTO DE ALIMENTAÇÃO':
                                   const comp = data as { registro: ComplementoAlimentacaoRegistro, subType?: 'QS' | 'QR' }; const r = comp.registro; if (r.categoria_complemento === 'genero' && comp.subType) { totalLinha = comp.subType === 'QS' ? (r.efetivo * r.dias_operacao * r.valor_etapa_qs) : (r.efetivo * r.dias_operacao * r.valor_etapa_qr); v30 = totalLinha; omDetentora = comp.subType === 'QS' ? (r.om_qs || r.organizacao) : r.organizacao; ugDetentora = comp.subType === 'QS' ? (r.ug_qs || r.ug) : r.ug; } else { totalLinha = Number(r.valor_total || 0); v30 = Number(r.valor_nd_30 || 0); v39 = Number(r.valor_nd_39 || 0); omDetentora = r.om_detentora || r.organizacao; ugDetentora = r.ug_detentora || r.ug; } memoria = generateComplementoMemoriaCalculo(r, comp.subType); break;
                               case 'SERVIÇOS DE TERCEIROS':
-                                  const s = data as ServicoTerceiroRegistro; totalLinha = Number(s.valor_total || 0); if (['fretamento-aereo', 'locacao-veiculos', 'transporte-coletivo'].includes(s.categoria)) v33 = totalLinha; else { v33 = Number(s.valor_nd_30 || 0); v39 = Number(s.valor_nd_39 || 0); } memoria = generateServicoMemoriaCalculo(s); omDetentora = s.om_detentora || s.organizacao; ugDetentora = s.ug_detentora || s.ug; break;
+                                  const s = data as ServicoTerceiroRegistro; totalLinha = Number(s.valor_total || 0); if (['fretamento-aereo', 'locacao-veiculos', 'transporte-coletivo'].includes(r.categoria)) v33 = totalLinha; else { v33 = Number(s.valor_nd_30 || 0); v39 = Number(s.valor_nd_39 || 0); } memoria = generateServicoMemoriaCalculo(s); omDetentora = s.om_detentora || s.organizacao; ugDetentora = s.ug_detentora || s.ug; break;
                               case 'VERBA OPERACIONAL':
                                   const v = data as VerbaOperacionalRegistro; totalLinha = v.valor_nd_30 + v.valor_nd_39; v30 = v.valor_nd_30; v39 = v.valor_nd_39; memoria = generateVerbaOperacionalMemoriaCalculo(v); omDetentora = v.om_detentora || v.organizacao; ugDetentora = v.ug_detentora || v.ug; break;
                               case 'SUPRIMENTO DE FUNDOS':
