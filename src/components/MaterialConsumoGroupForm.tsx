@@ -7,9 +7,10 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Trash2, Plus, Package, Search, Loader2, Save, X } from "lucide-react";
-import { MaterialConsumoGroup, MaterialConsumoItem } from "@/types/materialConsumo";
-import { DiretrizMaterialConsumo } from "@/types/diretrizesMaterialConsumo";
-import MaterialConsumoItemSelectorDialog from "./MaterialConsumoItemSelectorDialog";
+// Corrigido: Agora importando do arquivo central de tipos que já configuramos
+import { MaterialConsumoGroup, MaterialConsumoItem, DiretrizMaterialConsumo } from "@/types/diretrizesMaterialConsumo";
+// Corrigido: Apontando para o componente de seleção que realmente existe no seu projeto
+import AcquisitionItemSelectorDialog from "./AcquisitionItemSelectorDialog";
 import { formatCurrency } from "@/lib/formatUtils";
 import { isGhostMode } from "@/lib/ghostStore";
 import { cn } from "@/lib/utils";
@@ -40,16 +41,20 @@ const MaterialConsumoGroupForm = ({ group, onSave, onCancel, diretrizes, loading
   const handleOpenSelector = () => {
     setIsSelectorOpen(true);
     if (isGhostMode()) {
-      // Avança do passo 7 para o 8 ao clicar no botão
       window.dispatchEvent(new CustomEvent('tour:avancar'));
     }
   };
 
-  const handleConfirmSelection = (selectedItens: MaterialConsumoItem[]) => {
-    setItens(selectedItens);
+  const handleConfirmSelection = (selectedItens: any[]) => {
+    // Mapeando os itens para garantir compatibilidade com o tipo esperado
+    const mappedItens = selectedItens.map(item => ({
+      ...item,
+      quantidade: item.quantidade || 1,
+      valor_total: (item.quantidade || 1) * item.valor_unitario
+    }));
+    setItens(mappedItens);
     setIsSelectorOpen(false);
     if (isGhostMode()) {
-      // Avança do passo 8 para o 9 após a seleção ser confirmada e o modal fechar
       setTimeout(() => {
         window.dispatchEvent(new CustomEvent('tour:avancar'));
       }, 300);
@@ -125,14 +130,14 @@ const MaterialConsumoGroupForm = ({ group, onSave, onCancel, diretrizes, loading
               </TableHeader>
               <TableBody>
                 {itens.map((item, index) => (
-                  <TableRow key={`${item.codigo_catmat}-${index}`}>
+                  <TableRow key={`${item.id}-${index}`}>
                     <TableCell className="font-medium">
-                      {item.descricao_item}
+                      {item.descricao_reduzida || item.descricao_item}
                       <div className="text-[10px] text-muted-foreground">
                         CATMAT: {item.codigo_catmat} | Subitem: {item.nr_subitem}
                       </div>
                     </TableCell>
-                    <TableCell className="text-center text-xs">{item.unidade_medida}</TableCell>
+                    <TableCell className="text-center text-xs">{item.unidade_medida || 'UN'}</TableCell>
                     <TableCell className="text-right text-xs">{formatCurrency(item.valor_unitario)}</TableCell>
                     <TableCell>
                       <Input
@@ -191,12 +196,13 @@ const MaterialConsumoGroupForm = ({ group, onSave, onCancel, diretrizes, loading
         </div>
       </CardContent>
 
-      <MaterialConsumoItemSelectorDialog
+      <AcquisitionItemSelectorDialog
         open={isSelectorOpen}
         onOpenChange={setIsSelectorOpen}
-        diretrizes={diretrizes}
-        initialSelection={itens}
-        onConfirm={handleConfirmSelection}
+        selectedYear={diretrizes[0]?.ano_referencia || new Date().getFullYear()}
+        initialItems={itens}
+        onSelect={handleConfirmSelection}
+        onAddDiretriz={() => {}}
       />
     </Card>
   );
