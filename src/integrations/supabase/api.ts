@@ -1,4 +1,3 @@
-import { toast } from "sonner";
 import { supabase } from "./client"; 
 import { Profile } from "@/types/profiles"; 
 import { 
@@ -6,15 +5,25 @@ import {
     ArpItemResult, 
     ArpRawResult, 
     DetailedArpItem, 
-    DetailedArpRawResult, 
-    CatmatDetailsRawResult,
     PriceStatsSearchParams, 
     PriceStatsResult, 
 } from "@/types/pncp"; 
-import { formatPregao } from "@/lib/formatUtils";
-import { TablesInsert, TablesUpdate } from "./types"; 
-import { ItemAquisicao } from "@/types/diretrizesMaterialConsumo"; 
 import { GHOST_DATA, isGhostMode } from "@/lib/ghostStore";
+
+/**
+ * Busca dados básicos para o preview de compartilhamento de um PTrab
+ */
+export async function fetchSharePreview(ptrabId: string, token: string) {
+    const { data, error } = await supabase
+        .from('p_trab')
+        .select('numero_ptrab, nome_operacao, nome_om, user_id')
+        .eq('id', ptrabId)
+        .eq('share_token', token)
+        .single();
+
+    if (error) throw error;
+    return data;
+}
 
 /**
  * Busca ARPs no PNCP por UASG.
@@ -23,74 +32,50 @@ import { GHOST_DATA, isGhostMode } from "@/lib/ghostStore";
 export async function fetchArpsByUasg(params: ArpUasgSearchParams): Promise<ArpItemResult[]> {
     const cleanUasg = String(params.uasg || '').trim();
     
-    // Prioridade Total para o Modo Treinamento (Missão 02)
     if (isGhostMode() && cleanUasg === '160222') {
-        console.log("[GhostMode] Retornando resultados simulados para UASG 160222");
         return GHOST_DATA.missao_02.arp_search_results;
     }
 
-    try {
-        const { data, error } = await supabase.functions.invoke('fetch-arps-by-uasg', { 
-            body: { ...params, uasg: cleanUasg } 
-        });
+    const { data, error } = await supabase.functions.invoke('fetch-arps-by-uasg', { 
+        body: { ...params, uasg: cleanUasg } 
+    });
 
-        if (error) {
-            throw error;
+    if (error) throw error;
+
+    const responseData = data as ArpRawResult[]; 
+    if (!Array.isArray(responseData)) return [];
+
+    return responseData.map((item: ArpRawResult) => {
+        const numeroCompraStr = String(item.numeroCompra || '').trim();
+        const anoCompraStr = String(item.anoCompra || '').trim();
+        const uasgStr = String(item.codigoUnidadeGerenciadora || '').replace(/\D/g, '');
+        let pregaoFormatado = 'N/A';
+        if (numeroCompraStr && anoCompraStr) {
+            const numeroCompraFormatado = numeroCompraStr.padStart(6, '0').replace(/(\d{3})(\d{3})/, '$1.$2');
+            pregaoFormatado = `${numeroCompraFormatado}/${anoCompraStr.slice(-2)}`;
         }
-
-        const responseData = data as ArpRawResult[]; 
-        if (!Array.isArray(responseData)) {
-            return [];
-        }
-
-        return responseData.map((item: ArpRawResult) => {
-            const numeroCompraStr = String(item.numeroCompra || '').trim();
-            const anoCompraStr = String(item.anoCompra || '').trim();
-            const uasgStr = String(item.codigoUnidadeGerenciadora || '').replace(/\D/g, '');
-            let pregaoFormatado = 'N/A';
-            if (numeroCompraStr && anoCompraStr) {
-                const numeroCompraFormatado = numeroCompraStr.padStart(6, '0').replace(/(\d{3})(\d{3})/, '$1.$2');
-                pregaoFormatado = `${numeroCompraFormatado}/${anoCompraStr.slice(-2)}`;
-            }
-            return {
-                id: item.idCompra || Math.random().toString(36).substring(2, 9), 
-                numeroAta: item.numeroAtaRegistroPreco || 'N/A',
-                objeto: item.objeto || 'Objeto não especificado',
-                uasg: uasgStr,
-                omNome: item.nomeUnidadeGerenciadora || `UASG ${uasgStr}`, 
-                dataVigenciaInicial: item.dataVigenciaInicial || 'N/A',
-                dataVigenciaFinal: item.dataVigenciaFinal || 'N/A',
-                valorTotalEstimado: parseFloat(String(item.valorTotal || 0)),
-                quantidadeItens: parseInt(String(item.quantidadeItens || 0)),
-                pregaoFormatado: pregaoFormatado,
-                numeroControlePncpAta: item.numeroControlePncpAta || '', 
-            };
-        });
-    } catch (error: any) {
-        console.error("Erro na busca PNCP:", error);
-        // Garante uma mensagem de erro legível se não for Ghost Mode
-        const msg = error.message || "Erro de conexão com a API do PNCP.";
-        throw new Error(msg);
-    }
+        return {
+            id: item.idCompra || Math.random().toString(36).substring(2, 9), 
+            numeroAta: item.numeroAtaRegistroPreco || 'N/A',
+            objeto: item.objeto || 'Objeto não especificado',
+            uasg: uasgStr,
+            omNome: item.nomeUnidadeGerenciadora || `UASG ${uasgStr}`, 
+            dataVigenciaInicial: item.dataVigenciaInicial || 'N/A',
+            dataVigenciaFinal: item.dataVigenciaFinal || 'N/A',
+            valorTotalEstimado: parseFloat(String(item.valorTotal || 0)),
+            quantidadeItens: parseInt(String(item.quantidadeItens || 0)),
+            pregaoFormatado: pregaoFormatado,
+            numeroControlePncpAta: item.numeroControlePncpAta || '', 
+        };
+    });
 }
 
-// ... (restante do arquivo mantido exatamente como estava)
 export async function fetchFuelPrice(fuelType: 'diesel' | 'gasolina'): Promise<{ price: number, source: string }> {
-  try {
-    const { data, error } = await supabase.functions.invoke('fetch-fuel-prices');
-    if (error) throw new Error(error.message || "Falha na execução da Edge Function.");
-    const responseData = data as EdgeFunctionResponse;
-    if (fuelType === 'diesel') {
-      if (typeof responseData.diesel?.price !== 'number' || responseData.diesel.price <= 0) throw new Error("Preço do Diesel inválido recebido.");
-      return responseData.diesel;
-    } else {
-      if (typeof responseData.gasolina?.price !== 'number' || responseData.gasolina.price <= 0) throw new Error("Preço da Gasolina inválido recebido.");
-      return responseData.gasolina;
-    }
-  } catch (error) {
-    console.error(`Erro ao buscar preço de ${fuelType} via Edge Function:`, error);
-    throw error;
-  }
+  const { data, error } = await supabase.functions.invoke('fetch-fuel-prices');
+  if (error) throw error;
+  
+  const responseData = data as any;
+  return fuelType === 'diesel' ? responseData.diesel : responseData.gasolina;
 }
 
 export async function fetchUserProfile(): Promise<Profile> {
