@@ -7,13 +7,25 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Trash2, Package, Search, Loader2, Save, X } from "lucide-react";
-// Importando do arquivo central de tipos atualizado
-import { MaterialConsumoGroup, MaterialConsumoItem, DiretrizMaterialConsumo } from "@/types/diretrizesMaterialConsumo";
-// Apontando para o componente de seleção que está em funcionamento no projeto
+// Importando apenas o que realmente existe
+import { ItemAquisicao, DiretrizMaterialConsumo } from "@/types/diretrizesMaterialConsumo";
 import AcquisitionItemSelectorDialog from "./AcquisitionItemSelectorDialog";
 import { formatCurrency } from "@/lib/formatUtils";
 import { isGhostMode } from "@/lib/ghostStore";
 import { cn } from "@/lib/utils";
+
+// Definição local das interfaces para evitar erros de importação
+export interface MaterialConsumoItem extends ItemAquisicao {
+  quantidade: number;
+  valor_total: number;
+}
+
+export interface MaterialConsumoGroup {
+  id: string;
+  nome_grupo: string;
+  itens: MaterialConsumoItem[];
+  valor_total: number;
+}
 
 interface MaterialConsumoGroupFormProps {
   group?: MaterialConsumoGroup;
@@ -28,7 +40,6 @@ const MaterialConsumoGroupForm = ({ group, onSave, onCancel, diretrizes, loading
   const [itens, setItens] = useState<MaterialConsumoItem[]>(group?.itens || []);
   const [isSelectorOpen, setIsSelectorOpen] = useState(false);
 
-  // Expondo funções para o Tour (Missão 03)
   useEffect(() => {
     (window as any).prefillGroupName = () => {
       setNomeGrupo("Material de Construção");
@@ -46,7 +57,6 @@ const MaterialConsumoGroupForm = ({ group, onSave, onCancel, diretrizes, loading
   };
 
   const handleConfirmSelection = (selectedItens: any[]) => {
-    // Garante que os itens tenham os campos necessários para o cálculo do grupo
     const mappedItens = selectedItens.map(item => ({
       ...item,
       quantidade: item.quantidade || 1,

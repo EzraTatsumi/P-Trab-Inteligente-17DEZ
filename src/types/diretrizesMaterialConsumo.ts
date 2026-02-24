@@ -48,18 +48,3 @@ export interface StagingRow {
     isDuplicateInternal: boolean;
     isDuplicateExternal: boolean;
 }
-
-/**
- * Novos tipos exportados para suportar o MaterialConsumoGroupForm
- */
-export interface MaterialConsumoItem extends ItemAquisicao {
-    quantidade: number;
-    valor_total: number;
-}
-
-export interface MaterialConsumoGroup {
-    id: string;
-    nome_grupo: string;
-    itens: MaterialConsumoItem[];
-    valor_total: number;
-}
