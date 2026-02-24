@@ -42,7 +42,7 @@ interface PriceSearchFormProps {
     isInspecting: boolean; 
     onClearPriceSelection: () => void;
     selectedItemForInspection: ItemAquisicao | null;
-    mode?: 'material' | 'servico' | 'permanente';
+    mode?: 'material' | 'servico';
 }
 
 const today = new Date();
@@ -127,8 +127,6 @@ const PriceSearchForm: React.FC<PriceSearchFormProps> = ({ onPriceSelect, isInsp
         toast.info(`Preço (${label}) selecionado.`);
     };
 
-    const isMaterialMode = mode === 'material' || mode === 'permanente';
-
     return (
         <>
             <Form {...form}>
@@ -136,7 +134,7 @@ const PriceSearchForm: React.FC<PriceSearchFormProps> = ({ onPriceSelect, isInsp
                     <div className="grid grid-cols-4 gap-4">
                         <FormField control={form.control} name="codigoItem" render={({ field }) => (
                             <FormItem className="col-span-4 md:col-span-2">
-                                <FormLabel>{isMaterialMode ? 'Cód. CATMAT *' : 'Cód. CATSER *'}</FormLabel>
+                                <FormLabel>{mode === 'material' ? 'Cód. CATMAT *' : 'Cód. CATSER *'}</FormLabel>
                                 <div className="flex gap-2 items-center">
                                     <FormControl>
                                         <Input {...field} onChange={handleCodeChange} placeholder="Ex: 604269" maxLength={9} disabled={isSearching} />
@@ -149,7 +147,7 @@ const PriceSearchForm: React.FC<PriceSearchFormProps> = ({ onPriceSelect, isInsp
                                         disabled={isSearching} 
                                         className="h-8 px-2 text-[10px]"
                                     >
-                                        <BookOpen className="h-3 w-3 mr-1" /> {isMaterialMode ? 'CATMAT' : 'CATSER'}
+                                        <BookOpen className="h-3 w-3 mr-1" /> {mode === 'material' ? 'CATMAT' : 'CATSER'}
                                     </Button>
                                 </div>
                                 <FormMessage />
@@ -244,7 +242,7 @@ const PriceSearchForm: React.FC<PriceSearchFormProps> = ({ onPriceSelect, isInsp
                     </Card>
                 </div>
             )}
-            {isMaterialMode ? <CatmatCatalogDialog open={isCatalogOpen} onOpenChange={setIsCatalogOpen} onSelect={handleCatalogSelect} /> : <CatserCatalogDialog open={isCatalogOpen} onOpenChange={setIsCatalogOpen} onSelect={handleCatalogSelect} />}
+            {mode === 'material' ? <CatmatCatalogDialog open={isCatalogOpen} onOpenChange={setIsCatalogOpen} onSelect={handleCatalogSelect} /> : <CatserCatalogDialog open={isCatalogOpen} onOpenChange={setIsCatalogOpen} onSelect={handleCatalogSelect} />}
         </>
     );
 };
