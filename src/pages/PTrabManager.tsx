@@ -850,42 +850,6 @@ const PTrabManager = () => {
     }
   };
 
-  const handleOpenApproveDialog = (ptrab: PTrab) => {
-    const omSigla = ptrab.nome_om;
-    const suggestedNumber = generateApprovalPTrabNumber(existingPTrabNumbers, omSigla);
-    setPtrabToApprove(ptrab);
-    setSuggestedApproveNumber(suggestedNumber);
-    setShowApproveDialog(true);
-  };
-
-  const handleApproveAndNumber = async () => {
-    if (!ptrabToApprove) return;
-    const newNumber = suggestedApproveNumber.trim();
-    if (!newNumber) {
-      toast.error("O número do P Trab não pode ser vazio.");
-      return;
-    }
-    const isDuplicate = isPTrabNumberDuplicate(newNumber, existingPTrabNumbers);
-    if (isDuplicate) {
-      toast.error("O número sugerido já existe. Tente novamente ou use outro número.");
-      return;
-    }
-    setIsActionLoading(true);
-    try {
-      const { error } = await supabase.from("p_trab").update({ numero_ptrab: newNumber, status: 'aprovado' }).eq("id", ptrabToApprove.id);
-      if (error) throw error;
-      toast.success(`P Trab ${newNumber} aprovado e numerado com sucesso!`);
-      setShowApproveDialog(false);
-      setPtrabToApprove(null);
-      setSuggestedApproveNumber("");
-      loadPTrabs();
-    } catch (error: any) {
-      toast.error(sanitizeError(error));
-    } finally {
-      setIsActionLoading(false);
-    }
-  };
-
   const handleOpenCloneOptions = (ptrab: PTrab) => {
     setPtrabToClone(ptrab);
     setCloneType('new');
