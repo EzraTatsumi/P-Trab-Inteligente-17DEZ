@@ -850,6 +850,42 @@ const PTrabManager = () => {
     }
   };
 
+  const handleOpenApproveDialog = (ptrab: PTrab) => {
+    const omSigla = ptrab.nome_om;
+    const suggestedNumber = generateApprovalPTrabNumber(existingPTrabNumbers, omSigla);
+    setPtrabToApprove(ptrab);
+    setSuggestedApproveNumber(suggestedNumber);
+    setShowApproveDialog(true);
+  };
+
+  const handleApproveAndNumber = async () => {
+    if (!ptrabToApprove) return;
+    const newNumber = suggestedApproveNumber.trim();
+    if (!newNumber) {
+      toast.error("O número do P Trab não pode ser vazio.");
+      return;
+    }
+    const isDuplicate = isPTrabNumberDuplicate(newNumber, existingPTrabNumbers);
+    if (isDuplicate) {
+      toast.error("O número sugerido já existe. Tente novamente ou use outro número.");
+      return;
+    }
+    setIsActionLoading(true);
+    try {
+      const { error } = await supabase.from("p_trab").update({ numero_ptrab: newNumber, status: 'aprovado' }).eq("id", ptrabToApprove.id);
+      if (error) throw error;
+      toast.success(`P Trab ${newNumber} aprovado e numerado com sucesso!`);
+      setShowApproveDialog(false);
+      setPtrabToApprove(null);
+      setSuggestedApproveNumber("");
+      loadPTrabs();
+    } catch (error: any) {
+      toast.error(sanitizeError(error));
+    } finally {
+      setIsActionLoading(false);
+    }
+  };
+
   const handleOpenCloneOptions = (ptrab: PTrab) => {
     setPtrabToClone(ptrab);
     setCloneType('new');
@@ -1088,7 +1124,7 @@ const PTrabManager = () => {
   const handleApproveRequest = async (requestId: string) => {
     setIsActionLoading(true);
     try {
-        const { data, error } = await supabase.rpc('approve_ptrab_share', { p_request_id: requestId });
+        const { data, error = null } = await supabase.rpc('approve_ptrab_share', { p_request_id: requestId });
         if (error) throw error;
         if (data === false) throw new Error("Falha na aprovação. Verifique se você é o dono.");
         toast.success("Compartilhamento aprovado com sucesso!");
@@ -1103,7 +1139,7 @@ const PTrabManager = () => {
   const handleRejectRequest = async (requestId: string) => {
     setIsActionLoading(true);
     try {
-        const { data, error } = await supabase.rpc('reject_ptrab_share', { p_request_id: requestId });
+        const { data, error = null } = await supabase.rpc('reject_ptrab_share', { p_request_id: requestId });
         if (error) throw error;
         if (data === false) throw new Error("Falha na rejeição. Verifique se você é o dono.");
         toast.info("Solicitação rejeitada.");
@@ -1119,7 +1155,7 @@ const PTrabManager = () => {
     if (!confirm(`Tem certeza que deseja remover o acesso de ${userName} a este P Trab?`)) return;
     setIsActionLoading(true);
     try {
-        const { data: success, error } = await supabase.rpc('remove_user_from_shared_with', { p_ptrab_id: ptrabId, p_user_to_remove_id: userIdToRemove });
+        const { data: success, error = null } = await supabase.rpc('remove_user_from_shared_with', { p_ptrab_id: ptrabId, p_user_to_remove_id: userIdToRemove });
         if (error) throw error;
         if (success === false) throw new Error("Falha na remoção de acesso. Verifique se você é o dono.");
         toast.success(`Acesso de ${userName} removido com sucesso.`);
@@ -1140,7 +1176,7 @@ const PTrabManager = () => {
     if (!ptrabToUnlink || !user?.id) return;
     setIsActionLoading(true);
     try {
-        const { data: success, error } = await supabase.rpc('remove_user_from_shared_with', { p_ptrab_id: ptrabToUnlink.id, p_user_to_remove_id: user.id });
+        const { data: success, error = null } = await supabase.rpc('remove_user_from_shared_with', { p_ptrab_id: ptrabToUnlink.id, p_user_to_remove_id: user.id });
         if (error) throw error;
         if (success === false) throw new Error("Falha na desvinculação. O P Trab não foi encontrado ou você não tinha acesso.");
         toast.success(`P Trab ${ptrabToUnlink.numero_ptrab} desvinculado com sucesso.`);
@@ -1364,7 +1400,7 @@ const PTrabManager = () => {
           </div>
         </div>
 
-        {showInstructionHub ? (
+        {showInstructionHub && (
           <Card className="border-primary/20 bg-primary/5">
             <CardHeader className="flex flex-row items-center justify-between pb-2">
               <div className="flex items-center gap-2">
@@ -1377,18 +1413,6 @@ const PTrabManager = () => {
               <InstructionHub />
             </CardContent>
           </Card>
-        ) : (
-          <div className="flex justify-center mb-4">
-            <Button 
-              variant="outline" 
-              size="sm" 
-              onClick={() => setShowInstructionHub(true)}
-              className="gap-2 text-primary border-primary/30 hover:bg-primary/10"
-            >
-              <GraduationCap className="h-4 w-4" />
-              Abrir Centro de Instrução
-            </Button>
-          </div>
         )}
 
         <Card className="tabela-ptrabs">
