@@ -768,6 +768,13 @@ export const runMission06 = (onComplete: () => void) => {
           description: 'Nesta lista, pode acessar a todos os outros relatórios (Logístico, DOR, etc.). Missão cumprida!',
           side: 'left',
           align: 'start'
+        },
+        onHighlighted: (element) => {
+          // Expande a lista automaticamente ao destacar
+          setTimeout(() => {
+            const trigger = document.querySelector('.tour-report-selector') as HTMLElement;
+            if (trigger) trigger.click();
+          }, 300);
         }
       }
     ],
