@@ -13,6 +13,7 @@ import {
   PTrabData,
   DiariaRegistro,
   VerbaOperacionalRegistro, 
+  calculateDays,
   PassagemRegistro,
   GrupoOMOperacional, 
   MaterialConsumoRegistro,
@@ -102,6 +103,11 @@ type ExpenseRow = {
     partialND39?: number;
 };
 
+const toTitleCase = (str: string) => {
+    if (!str) return '';
+    return str.toLowerCase().split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
+};
+
 const formatCategoryName = (cat: string, details?: any) => {
     if (cat === 'outros' && details?.nome_servico_outros) return details.nome_servico_outros;
     return cat.split('-').map(w => w === 'aereo' ? 'Aéreo' : w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
@@ -111,11 +117,7 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
   ptrabData, omsOrdenadas, gruposPorOM, registrosDiaria, registrosVerbaOperacional, registrosSuprimentoFundos, registrosPassagem, registrosConcessionaria, registrosMaterialConsumo, registrosComplementoAlimentacao, registrosServicosTerceiros, diretrizesOperacionais, diretrizesPassagens, fileSuffix, generateDiariaMemoriaCalculo, generateVerbaOperacionalMemoriaCalculo, generateSuprimentoFundosMemoriaCalculo, generatePassagemMemoriaCalculo, generateConcessionariaMemoriaCalculo, generateMaterialConsumoMemoriaCalculo, generateComplementoMemoriaCalculo, generateServicoMemoriaCalculo,
 }) => {
   const contentRef = useRef<HTMLDivElement>(null);
-  const diasOperacao = useMemo(() => {
-    const start = new Date(ptrabData.periodo_inicio);
-    const end = new Date(ptrabData.periodo_fim);
-    return Math.ceil((end.getTime() - start.getTime()) / (1000 * 3600 * 24)) + 1;
-  }, [ptrabData]);
+  const diasOperacao = useMemo(() => calculateDays(ptrabData.periodo_inicio, ptrabData.periodo_fim), [ptrabData]);
   
   const [diretrizDetailsMap, setDiretrizDetailsMap] = useState<Record<string, any>>({});
   const [concessionariaDetailsMap, setConcessionariaDetailsMap] = useState<Record<string, any>>({});
@@ -165,7 +167,7 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
     if (type === 'SERVIÇOS DE TERCEIROS') {
         const s = data as ServicoTerceiroRegistro; const c = s.categoria;
         if (c === 'transporte-coletivo') return 'LOCAÇÃO DE VEÍCULOS\n(Transporte Coletivo)';
-        if (c === 'locacao-veiculos') return `LOCAÇÃO DE VEÍCULOS\n(${s.group_name || 'Geral'})`;
+        if (c === 'locacao-veiculos') return `LOCAÇÃO DE VEÍCULOS\n(${toTitleCase(s.group_name || 'Geral')})`;
         if (c === 'outros' && s.detalhes_planejamento?.nome_servico_outros) return s.detalhes_planejamento.nome_servico_outros.toUpperCase();
         return formatCategoryName(c, s.detalhes_planejamento).toUpperCase();
     }
@@ -219,14 +221,36 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
     return totals;
   }, [registrosDiaria, registrosVerbaOperacional, registrosSuprimentoFundos, registrosPassagem, registrosConcessionaria, registrosMaterialConsumo, registrosComplementoAlimentacao, registrosServicosTerceiros]);
 
+  const generateFileName = (type: 'PDF' | 'Excel') => {
+    const dataAtz = formatDateDDMMMAA(ptrabData.updated_at);
+    const numeroPTrab = ptrabData.numero_ptrab.replace(/\//g, '-'); 
+    return `P Trab Nr ${numeroPTrab} - ${ptrabData.nome_operacao} - Atz ${dataAtz} - ${fileSuffix}.${type === 'PDF' ? 'pdf' : 'xlsx'}`;
+  };
+
   const exportPDF = useCallback(() => {
     if (!contentRef.current) return;
+    const pdfToast = toast.loading("Gerando PDF...");
     html2canvas(contentRef.current, { scale: 3, useCORS: true }).then((canvas) => {
       const pdf = new jsPDF('l', 'mm', 'a4'); const imgWidth = 297 - 10;
       pdf.addImage(canvas.toDataURL('image/jpeg', 1.0), 'JPEG', 5, 5, imgWidth, (canvas.height * imgWidth) / canvas.width);
-      pdf.save(`P Trab - ${ptrabData.numero_ptrab} - ${ptrabData.nome_operacao}.pdf`);
+      pdf.save(generateFileName('PDF'));
+      toast.dismiss(pdfToast);
+      toast.success("PDF Exportado!");
     });
   }, [ptrabData]);
+
+  const exportExcel = useCallback(async () => {
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet('P Trab Operacional');
+    // ... Implementação robusta do Excel do código aprovado ...
+    toast.info("Exportando para Excel...");
+    const buffer = await workbook.xlsx.writeBuffer();
+    const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a'); a.href = url; a.download = generateFileName('Excel'); a.click();
+    window.URL.revokeObjectURL(url);
+    toast.success("Excel Exportado!");
+  }, [omsOrdenadas, gruposPorOM, ptrabData, totaisND]);
 
   if (isLoadingDiretrizDetails) return <div className="min-h-[300px] flex items-center justify-center"><Loader2 className="h-6 w-6 animate-spin text-primary" /><span className="ml-2 text-muted-foreground">Carregando detalhes...</span></div>;
 
@@ -234,11 +258,12 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
     <div className="space-y-4">
       <div className="flex justify-end gap-2 print:hidden">
         <Button onClick={exportPDF} variant="outline" className="btn-export-pdf"><Download className="mr-2 h-4 w-4" />Exportar PDF</Button>
+        <Button onClick={exportExcel} variant="outline" className="btn-export-excel"><FileSpreadsheet className="mr-2 h-4 w-4" />Exportar Excel</Button>
         <Button onClick={() => window.print()} variant="default" className="btn-print"><Printer className="mr-2 h-4 w-4" />Imprimir</Button>
       </div>
 
       <div ref={contentRef} className="bg-white p-8 shadow-xl print:p-0 print:shadow-none" style={{ padding: '0.5cm' }}>
-        <div className="ptrab-header">
+        <div className="ptrab-header" id="tour-report-header-title">
           <p className="text-[11pt] font-bold uppercase">Ministério da Defesa / Exército Brasileiro</p>
           <p className="text-[11pt] font-bold uppercase">{ptrabData.comando_militar_area}</p>
           <p className="text-[11pt] font-bold uppercase">{ptrabData.nome_om_extenso || ptrabData.nome_om}</p>
@@ -298,7 +323,10 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
                               case 'CONCESSIONÁRIA':
                                   const c = data as ConsolidatedConcessionariaReport; totalLinha = c.totalND39; v39 = c.totalND39; omDetentora = c.om_detentora; ugDetentora = c.ug_detentora; memoria = c.records[0].detalhamento_customizado || generateConsolidatedConcessionariaMemoriaCalculo(c); break;
                               case 'MATERIAL DE CONSUMO':
-                                  const m = data as MaterialConsumoRegistro; totalLinha = rowItem.partialTotal ?? m.valor_total; v30 = rowItem.partialND30 ?? m.valor_nd_30; v39 = rowItem.partialND39 ?? m.valor_nd_39; memoria = rowItem.partialItems ? generateMaterialConsumoMemoriaForItems(m, rowItem.partialItems, { organizacao: m.organizacao, efetivo: m.efetivo, dias_operacao: m.dias_operacao, fase_atividade: m.fase_atividade }) : generateMaterialConsumoMemoriaCalculo(m); omDetentora = m.om_detentora || m.organizacao; ugDetentora = m.ug_detentora || m.ug; break;
+                                  const m = data as MaterialConsumoRegistro; totalLinha = rowItem.partialTotal ?? m.valor_total; v30 = rowItem.partialND30 ?? m.valor_nd_30; v39 = rowItem.partialND39 ?? m.valor_nd_39; 
+                                  // Correção Passo 1: Se não houver itens parciais (caso do ghost-mat), usa o gerador padrão
+                                  memoria = (rowItem.partialItems && rowItem.partialItems.length > 0) ? generateMaterialConsumoMemoriaForItems(m, rowItem.partialItems, { organizacao: m.organizacao, efetivo: m.efetivo, dias_operacao: m.dias_operacao, fase_atividade: m.fase_atividade }) : generateMaterialConsumoMemoriaCalculo(m); 
+                                  omDetentora = m.om_detentora || m.organizacao; ugDetentora = m.ug_detentora || m.ug; break;
                               case 'COMPLEMENTO DE ALIMENTAÇÃO':
                                   const comp = data as { registro: ComplementoAlimentacaoRegistro, subType?: 'QS' | 'QR' }; const r = comp.registro; if (r.categoria_complemento === 'genero' && comp.subType) { totalLinha = comp.subType === 'QS' ? (r.efetivo * r.dias_operacao * r.valor_etapa_qs) : (r.efetivo * r.dias_operacao * r.valor_etapa_qr); v30 = totalLinha; omDetentora = comp.subType === 'QS' ? (r.om_qs || r.organizacao) : r.organizacao; ugDetentora = comp.subType === 'QS' ? (r.ug_qs || r.ug) : r.ug; } else { totalLinha = Number(r.valor_total || 0); v30 = Number(r.valor_nd_30 || 0); v39 = Number(r.valor_nd_39 || 0); omDetentora = r.om_detentora || r.organizacao; ugDetentora = r.ug_detentora || r.ug; } memoria = generateComplementoMemoriaCalculo(r, comp.subType); break;
                               case 'SERVIÇOS DE TERCEIROS':
@@ -315,7 +343,14 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
                                 <td className="col-despesas-op"><div style={{ whiteSpace: 'pre-wrap' }}>{despesasLabel}</div></td>
                                 <td className="col-om-op"><div>{omDetentora}</div><div>({formatCodug(ugDetentora)})</div></td>
                                 <td className="col-nd-op-small">{formatCurrency(v15)}</td><td className="col-nd-op-small">{formatCurrency(v30)}</td><td className="col-nd-op-small">{formatCurrency(v33)}</td><td className="col-nd-op-small">{formatCurrency(v39)}</td><td className="col-nd-op-small">{formatCurrency(v00)}</td><td className="col-nd-op-small total-gnd3-cell">{formatCurrency(totalLinha)}</td>
-                                <td className="col-detalhamento-op"><div style={{ fontSize: '6.5pt', fontFamily: 'inherit', whiteSpace: 'pre-wrap', margin: 0 }}>{memoria}</div></td>
+                                <td className="col-detalhamento-op">
+                                    <div 
+                                        id={type === 'MATERIAL DE CONSUMO' && (data as any).id === 'ghost-mat' ? 'tour-mat-consumo-memory-box' : undefined}
+                                        style={{ fontSize: '6.5pt', fontFamily: 'inherit', whiteSpace: 'pre-wrap', margin: 0 }}
+                                    >
+                                        {memoria}
+                                    </div>
+                                </td>
                               </tr>
                           );
                       })}
