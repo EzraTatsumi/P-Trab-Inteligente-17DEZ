@@ -47,7 +47,6 @@ const PTrabForm = () => {
   const [showCreditDialog, setShowCreditDialog] = useState(false);
   const [hasPromptedForCredit, setHasPromptedForCredit] = useState(false);
 
-  // Expondo a troca de aba para o Tour
   useEffect(() => {
     (window as any).setTabOperacional = () => setSelectedTab("operacional");
     (window as any).setTabLogistica = () => setSelectedTab("logistica");
@@ -91,7 +90,7 @@ const PTrabForm = () => {
   
   const { data: totals, isLoading: isLoadingTotals } = useQuery({
     queryKey: ['ptrabTotals', ptrabId],
-    queryFn: () => fetchPTrabTotals(ptrabId!), // Unificado: fetchPTrabTotals agora lida com Ghost Mode
+    queryFn: () => fetchPTrabTotals(ptrabId!), 
     enabled: !!ptrabId || isGhostMode(),
     refetchInterval: 10000,
     initialData: {
@@ -156,9 +155,8 @@ const PTrabForm = () => {
     loadPTrab();
   }, [ptrabId, navigate, searchParams]);
 
-  // Lógica do Tour - Sincronizada com o carregamento
   useEffect(() => {
-    if (loadingPTrab || isLoadingTotals || isLoadingCredits) return;
+    if (loadingPTrab || isLoadingTotals || isLoadingCredits || !user?.id) return;
 
     const startTour = searchParams.get('startTour') === 'true';
     const missionId = localStorage.getItem('active_mission_id');
@@ -167,18 +165,18 @@ const PTrabForm = () => {
     if (startTour && ghost) {
       const timer = setTimeout(() => {
         if (missionId === '3') {
-          runMission03(() => {
-            const completed = JSON.parse(localStorage.getItem('completed_missions') || '[]');
+          runMission03(user.id, () => {
+            const completed = JSON.parse(localStorage.getItem(`completed_missions_${user.id}`) || '[]');
             if (!completed.includes(3)) {
-              localStorage.setItem('completed_missions', JSON.stringify([...completed, 3]));
+              localStorage.setItem(`completed_missions_${user.id}`, JSON.stringify([...completed, 3]));
             }
             navigate('/ptrab?showHub=true');
           });
         } else if (missionId === '4') {
-          runMission04(() => {
-            const completed = JSON.parse(localStorage.getItem('completed_missions') || '[]');
+          runMission04(user.id, () => {
+            const completed = JSON.parse(localStorage.getItem(`completed_missions_${user.id}`) || '[]');
             if (!completed.includes(4)) {
-              localStorage.setItem('completed_missions', JSON.stringify([...completed, 4]));
+              localStorage.setItem(`completed_missions_${user.id}`, JSON.stringify([...completed, 4]));
             }
             navigate('/ptrab?showHub=true');
           });
@@ -186,7 +184,7 @@ const PTrabForm = () => {
       }, 500);
       return () => clearTimeout(timer);
     }
-  }, [loadingPTrab, isLoadingTotals, isLoadingCredits, searchParams, navigate]);
+  }, [loadingPTrab, isLoadingTotals, isLoadingCredits, searchParams, navigate, user?.id]);
   
   useEffect(() => {
     if (!loadingSession && !loadingPTrab && !isLoadingCredits && ptrabData && credits && !hasPromptedForCredit) {

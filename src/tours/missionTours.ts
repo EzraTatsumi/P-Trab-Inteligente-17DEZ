@@ -52,7 +52,7 @@ const commonConfig = {
   doneBtnText: 'Concluir Missão',
 };
 
-export const runMission01 = (onComplete: () => void) => {
+export const runMission01 = (userId: string, onComplete: () => void) => {
   const d = driver({
     ...commonConfig,
     steps: [
@@ -177,14 +177,14 @@ export const runMission01 = (onComplete: () => void) => {
       }
     ],
     onDestroyed: () => {
-      markMissionCompleted(1);
+      markMissionCompleted(1, userId);
       if (onComplete) onComplete();
     }
   });
   d.drive();
 };
 
-export const runMission02 = (onComplete: () => void) => {
+export const runMission02 = (userId: string, onComplete: () => void) => {
   const d = driver({
     ...commonConfig,
     steps: [
@@ -294,7 +294,7 @@ export const runMission02 = (onComplete: () => void) => {
       }
     ],
     onDestroyed: () => {
-      markMissionCompleted(2);
+      markMissionCompleted(2, userId);
       if (onComplete) onComplete();
     }
   });
@@ -302,7 +302,7 @@ export const runMission02 = (onComplete: () => void) => {
   d.drive();
 };
 
-export const runMission03 = (onComplete: () => void) => {
+export const runMission03 = (userId: string, onComplete: () => void) => {
   const d = driver({
     ...commonConfig,
     stagePadding: 15, 
@@ -465,7 +465,7 @@ export const runMission03 = (onComplete: () => void) => {
       }
     ],
     onDestroyed: () => {
-      markMissionCompleted(3);
+      markMissionCompleted(3, userId);
       if (onComplete) onComplete();
     }
   });
@@ -476,7 +476,7 @@ export const runMission03 = (onComplete: () => void) => {
   }, 300);
 };
 
-export const runMission04 = (onComplete: () => void) => {
+export const runMission04 = (userId: string, onComplete: () => void) => {
   const d = driver({
     ...commonConfig,
     steps: [
@@ -551,7 +551,7 @@ export const runMission04 = (onComplete: () => void) => {
       }
     ],
     onDestroyed: () => {
-      markMissionCompleted(4);
+      markMissionCompleted(4, userId);
       if (onComplete) onComplete();
     }
   });
@@ -559,7 +559,7 @@ export const runMission04 = (onComplete: () => void) => {
   d.drive();
 };
 
-export const runMission05 = (onComplete: () => void) => {
+export const runMission05 = (userId: string, onComplete: () => void) => {
   const d = driver({
     ...commonConfig,
     steps: [
@@ -615,7 +615,7 @@ export const runMission05 = (onComplete: () => void) => {
         element: '.tour-dor-consequencia',
         popover: {
           title: 'Justificativa de Risco',
-          description: 'Aqui descrevemos o impacto negativo caso a requisição não seja atendida. Este campo é crucial para a análise do Ordenador de Despesas.',
+          description: 'Aqui descremeos o impacto negativo caso a requisição não seja atendida. Este campo é crucial para a análise do Ordenador de Despesas.',
           side: 'top',
           align: 'center'
         }
@@ -708,7 +708,7 @@ export const runMission05 = (onComplete: () => void) => {
       }
     ],
     onDestroyed: () => {
-      markMissionCompleted(5);
+      markMissionCompleted(5, userId);
       if (onComplete) onComplete();
     }
   });
@@ -716,7 +716,7 @@ export const runMission05 = (onComplete: () => void) => {
   d.drive();
 };
 
-export const runMission06 = (onComplete: () => void) => {
+export const runMission06 = (userId: string, onComplete: () => void) => {
   const d = driver({
     ...commonConfig,
     steps: [
@@ -778,7 +778,7 @@ export const runMission06 = (onComplete: () => void) => {
       }
     ],
     onDestroyed: () => {
-      markMissionCompleted(6);
+      markMissionCompleted(6, userId);
       if (onComplete) onComplete();
     }
   });

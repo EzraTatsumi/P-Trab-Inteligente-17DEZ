@@ -1,11 +1,25 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
+import { useEffect } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useSession } from "@/components/SessionContextProvider";
 
 export const useOnboardingStatus = () => {
   const { user } = useSession();
+  const queryClient = useQueryClient();
+
+  // Escuta o evento de missão concluída para atualizar o checklist na hora
+  useEffect(() => {
+    const handleMissionUpdate = (event: any) => {
+      if (event.detail?.userId === user?.id) {
+        queryClient.invalidateQueries({ queryKey: ["onboarding-status", user?.id] });
+      }
+    };
+
+    window.addEventListener('mission:completed', handleMissionUpdate);
+    return () => window.removeEventListener('mission:completed', handleMissionUpdate);
+  }, [queryClient, user?.id]);
 
   return useQuery({
     queryKey: ["onboarding-status", user?.id],
@@ -13,8 +27,8 @@ export const useOnboardingStatus = () => {
       if (!user?.id) return null;
 
       // 1. Verifica Missões (Centro de Instrução)
-      // Consideramos concluído se o usuário completou pelo menos as 3 missões principais
       const completedMissions = JSON.parse(localStorage.getItem(`completed_missions_${user.id}`) || '[]');
+      // Consideramos apto quem fez as 3 principais ou explorou o sistema
       const hasMissions = completedMissions.length >= 3;
 
       // 2. Verifica OMs
@@ -23,7 +37,7 @@ export const useOnboardingStatus = () => {
         .select("*", { count: "exact", head: true })
         .eq("user_id", user.id);
 
-      // 3. Verifica Diretrizes Logísticas (Ano Padrão)
+      // 3. Verifica Diretrizes Logísticas e Operacionais
       const { data: profile } = await supabase
         .from("profiles")
         .select("default_logistica_year, default_operacional_year")
@@ -44,5 +58,6 @@ export const useOnboardingStatus = () => {
       };
     },
     enabled: !!user?.id,
+    staleTime: 1000 * 30, // 30 segundos
   });
 };

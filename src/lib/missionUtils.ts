@@ -1,23 +1,19 @@
 "use client";
 
-import { supabase } from "@/integrations/supabase/client";
-
 /**
  * Retorna a chave do localStorage para missões, vinculada ao usuário
  */
-const getMissionKey = (userId?: string) => {
-  if (!userId) return 'completed_missions_guest';
+const getMissionKey = (userId: string) => {
   return `completed_missions_${userId}`;
 };
 
 /**
- * Marca uma missão como concluída para o usuário atual
+ * Marca uma missão como concluída para o usuário atual (Síncrono para evitar race conditions)
  */
-export const markMissionCompleted = async (missionId: number) => {
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return;
+export const markMissionCompleted = (missionId: number, userId: string) => {
+  if (!userId) return;
 
-  const key = getMissionKey(user.id);
+  const key = getMissionKey(userId);
   const completed = JSON.parse(localStorage.getItem(key) || '[]');
   
   if (!completed.includes(missionId)) {
@@ -26,13 +22,13 @@ export const markMissionCompleted = async (missionId: number) => {
     
     // Dispara evento para atualizar UI em tempo real
     window.dispatchEvent(new CustomEvent('mission:completed', { 
-      detail: { missionId, userId: user.id } 
+      detail: { missionId, userId } 
     }));
 
     // Se completou as 6 missões, dispara evento de vitória total
     if (updated.length >= 6) {
       window.dispatchEvent(new CustomEvent('tour:todas-concluidas', { 
-        detail: { userId: user.id } 
+        detail: { userId } 
       }));
     }
   }

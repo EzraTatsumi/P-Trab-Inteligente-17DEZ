@@ -63,7 +63,6 @@ import MaterialPermanenteDiretrizFormDialog from "@/components/MaterialPermanent
 import MaterialPermanenteExportImportDialog from "@/components/MaterialPermanenteExportImportDialog";
 import { runMission02 } from "@/tours/missionTours";
 import { GHOST_DATA, isGhostMode, getActiveMission } from "@/lib/ghostStore";
-import { cn } from "@/lib/utils";
 
 type DiretrizOperacional = Tables<'diretrizes_operacionais'>;
 
@@ -274,8 +273,6 @@ const CustosOperacionaisPage = () => {
   const [isExportImportPermanenteDialogOpen, setIsExportImportPermanenteDialogOpen] = useState(false);
 
   const collapsibleRefs = useRef<Record<string, HTMLDivElement | null>>({});
-
-  // --- Handlers ---
 
   const handleCollapseChange = useCallback((key: string, open: boolean) => {
       setFieldCollapseState(prev => ({ ...prev, [key]: open }));
@@ -624,8 +621,6 @@ const CustosOperacionaisPage = () => {
       }
   };
 
-  // --- Search Logic ---
-
   const indexedItems = useMemo<IndexedItemAquisicao[]>(() => {
     if (!diretrizesMaterialConsumo) return [];
     return diretrizesMaterialConsumo.flatMap(diretriz => {
@@ -691,8 +686,6 @@ const CustosOperacionaisPage = () => {
       setTimeout(() => { const element = document.getElementById(`diretriz-material-permanente-${diretrizId}`); if (element) element.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 100);
       setSearchTermPermanente("");
   };
-
-  // --- Render Helpers ---
 
   const renderSearchResults = () => {
       if (searchTerm.length < 3) return (<Card className="p-4 text-center text-muted-foreground">Digite pelo menos 3 caracteres para iniciar a busca.</Card>);
@@ -892,8 +885,6 @@ const CustosOperacionaisPage = () => {
       );
   };
 
-  // --- Lifecycle ---
-
   useEffect(() => {
     (window as any).expandMaterialConsumo = () => {
       handleCollapseChange('material_consumo_detalhe', true);
@@ -904,7 +895,6 @@ const CustosOperacionaisPage = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }, []);
   
-  // Lógica do Tour
   useEffect(() => {
     if (isLoadingDefaultYear || isLoadingPageData || isFetchingPageData || hasStartedTour.current) return;
 
@@ -912,22 +902,21 @@ const CustosOperacionaisPage = () => {
     const missionId = localStorage.getItem('active_mission_id');
     const ghost = isGhostMode();
 
-    if (startTour && ghost && missionId === '2') {
+    if (startTour && ghost && missionId === '2' && user?.id) {
       hasStartedTour.current = true;
       const timer = setTimeout(() => {
-        runMission02(() => {
-          const completed = JSON.parse(localStorage.getItem('completed_missions') || '[]');
+        runMission02(user.id, () => {
+          const completed = JSON.parse(localStorage.getItem(`completed_missions_${user.id}`) || '[]');
           if (!completed.includes(2)) {
-            localStorage.setItem('completed_missions', JSON.stringify([...completed, 2]));
+            localStorage.setItem(`completed_missions_${user.id}`, JSON.stringify([...completed, 2]));
           }
           navigate('/ptrab?showHub=true');
         });
       }, 500);
       return () => clearTimeout(timer);
     }
-  }, [isLoadingDefaultYear, isLoadingPageData, isFetchingPageData, searchParams, navigate]);
+  }, [isLoadingDefaultYear, isLoadingPageData, isFetchingPageData, searchParams, navigate, user?.id]);
 
-  // Sincronização dos dados da página (Operacional, Passagens, Concessionária)
   useEffect(() => {
     if (pageData) {
       const loadedData = pageData.operacional;
@@ -984,7 +973,6 @@ const CustosOperacionaisPage = () => {
     }
   }, [pageData, selectedYear]);
 
-  // Sincronização segura para Material de Consumo
   useEffect(() => {
     const ghost = isGhostMode();
     if (ghost) {
@@ -1000,7 +988,6 @@ const CustosOperacionaisPage = () => {
     }
   }, [diretrizesMaterialConsumoHook, selectedYear]);
 
-  // Sincronização segura para Serviços de Terceiros
   useEffect(() => {
     if (!isGhostMode() && diretrizesServicosTerceirosHook) {
       if (JSON.stringify(diretrizesServicosTerceiros) !== JSON.stringify(diretrizesServicosTerceirosHook)) {
@@ -1009,7 +996,6 @@ const CustosOperacionaisPage = () => {
     }
   }, [diretrizesServicosTerceirosHook, selectedYear]);
 
-  // Sincronização segura para Material Permanente
   useEffect(() => {
     if (!isGhostMode() && diretrizesMaterialPermanenteHook) {
       if (JSON.stringify(diretrizesMaterialPermanente) !== JSON.stringify(diretrizesMaterialPermanenteHook)) {

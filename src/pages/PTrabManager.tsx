@@ -133,7 +133,6 @@ const PTrabManager = () => {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [userName, setUserName] = useState<string>("");
   
-  // Estados para controle dos Dropdowns (Tour)
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [openActionsId, setOpenActionsId] = useState<string | null>(null);
   
@@ -214,7 +213,6 @@ const PTrabManager = () => {
   useEffect(() => {
     if (!user?.id) return;
 
-    // Verifica se deve mostrar a vitória ao montar o componente (específico para o usuário logado)
     if (shouldShowVictory(user.id)) {
       setShowVictory(true);
       markVictoryAsShown(user.id);
@@ -222,7 +220,6 @@ const PTrabManager = () => {
     }
 
     const handleVictory = (e: any) => {
-      // Só dispara se o evento for para este usuário
       if (e.detail?.userId === user.id) {
         setShowVictory(true);
         markVictoryAsShown(user.id);
@@ -327,7 +324,6 @@ const PTrabManager = () => {
     staleTime: 1000 * 60 * 5,
   });
 
-  // Expondo funções para o tour
   useEffect(() => {
     (window as any).openSettings = () => setSettingsOpen(true);
     (window as any).closeSettings = () => setSettingsOpen(false);
@@ -356,13 +352,11 @@ const PTrabManager = () => {
       setShowInstructionHub(true);
     }
 
-    if (startTour && ghost && missionId === '1') {
-      runMission01(() => {
-        if (user?.id) {
-          const completed = JSON.parse(localStorage.getItem(`completed_missions_${user.id}`) || '[]');
-          if (!completed.includes(1)) {
-            localStorage.setItem(`completed_missions_${user.id}`, JSON.stringify([...completed, 1]));
-          }
+    if (startTour && ghost && missionId === '1' && user?.id) {
+      runMission01(user.id, () => {
+        const completed = JSON.parse(localStorage.getItem(`completed_missions_${user.id}`) || '[]');
+        if (!completed.includes(1)) {
+          localStorage.setItem(`completed_missions_${user.id}`, JSON.stringify([...completed, 1]));
         }
         setShowInstructionHub(true);
       });
@@ -637,29 +631,19 @@ const PTrabManager = () => {
   const handleLogout = async () => {
     try {
       toast.info("Encerrando sessão...");
-      
-      // Sai do modo fantasma se estiver ativo
       if (isGhostMode()) {
         localStorage.removeItem(`is_ghost_mode_${user?.id}`);
         localStorage.removeItem(`active_mission_id_${user?.id}`);
       }
-      
-      // Logout oficial
       await supabase.auth.signOut();
-      
-      // Limpeza manual agressiva para garantir que a troca de conta funcione
-      // Mesmo se o signOut falhar por sessão ausente
       Object.keys(localStorage).forEach(key => {
         if (key.startsWith('sb-') || key.includes('auth-token')) {
           localStorage.removeItem(key);
         }
       });
-      
-      // Redirecionamento forçado para limpar estados do React
       window.location.href = "/";
     } catch (error: any) {
       console.error("Erro ao sair:", error);
-      // Fallback de limpeza manual
       Object.keys(localStorage).forEach(key => {
         if (key.startsWith('sb-') || key.includes('auth-token')) {
           localStorage.removeItem(key);
@@ -1667,7 +1651,6 @@ const PTrabManager = () => {
             onClick={() => {
                 setShowVictory(false);
                 setShowInstructionHub(false);
-                // Sai do modo simulação ao clicar para iniciar
                 if (isGhostMode()) {
                     exitGhostMode(user?.id);
                 }
