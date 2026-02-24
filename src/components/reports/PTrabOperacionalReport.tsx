@@ -23,7 +23,7 @@ import {
 import { generateConsolidatedPassagemMemoriaCalculo, ConsolidatedPassagemRecord } from "@/lib/passagemUtils"; 
 import { 
     ConcessionariaRegistroComDiretriz, 
-    ConsolidatedConcessionariaRecord,
+    ConsolidatedConcessionariaReport,
     generateConsolidatedConcessionariaMemoriaCalculo, 
 } from "@/lib/concessionariaUtils"; 
 import { 
@@ -136,7 +136,7 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
     registrosConcessionaria.forEach(r => {
         const key = [r.organizacao, r.ug, r.om_detentora, r.ug_detentora, r.dias_operacao, r.efetivo, r.fase_atividade, r.diretriz_id].join('|');
         if (!concessionariasMap[key]) concessionariasMap[key] = { groupKey: key, organizacao: r.organizacao, ug: r.ug, om_detentora: r.om_detentora || r.organizacao, ug_detentora: r.ug_detentora || r.ug, dias_operacao: r.dias_operacao, efetivo: r.efetivo || 0, fase_atividade: r.fase_atividade || '', records: [], totalGeral: 0, totalND39: 0 } as ConsolidatedConcessionariaReport;
-        concessionariasMap[key].records.push(r); concessionariasMap[key].totalGeral += Number(r.valor_total || 0); concessionariasMap[key].totalND39 += Number(r.valor_nd_39 || 0);
+        concessionariasMap[key].records.push(r); concessionariasMap[key].totalGeral += Number(r.valor_total || 0); concessionariasMap[key].totalND39 += Number(r.totalND39 || 0);
     });
     
     return { consolidatedPassagens: Object.values(passagensMap).sort((a, b) => a.organizacao.localeCompare(b.organizacao)), consolidatedConcessionarias: Object.values(concessionariasMap).sort((a, b) => a.organizacao.localeCompare(b.organizacao)) };
