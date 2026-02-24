@@ -326,7 +326,7 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
                       </tr>
                       <tr className="subtotal-om-final-row">
                           <td colSpan={7} className="text-right font-bold" style={{ backgroundColor: '#E8E8E8', border: '1px solid #000', borderRight: 'none' }}>VALOR TOTAL {getArticleForOM(omName)} {omName}</td>
-                          <td className="col-nd-op-small text-center font-bold total-gnd3-cell" style={{ backgroundColor: '#E8E8E8', border: '1px solid #000' }}>{formatCurrency(subOM.total)}</td>
+                          <td className="text-center font-bold" style={{ backgroundColor: '#E8E8E8', border: '1px solid #000', width: '7%' }}>{formatCurrency(subOM.total)}</td>
                           <td style={{ backgroundColor: '#E8E8E8', border: '1px solid #000' }}></td>
                       </tr>
                   </React.Fragment>
@@ -339,7 +339,7 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
             </tr>
             <tr className="total-geral-final-row">
               <td colSpan={7} className="text-right font-bold" style={{ backgroundColor: '#D9D9D9', border: '1px solid #000', borderRight: 'none' }}>VALOR TOTAL</td>
-              <td className="col-nd-op-small text-center font-bold total-gnd3-cell" style={{ backgroundColor: '#D9D9D9', border: '1px solid #000' }}>{formatCurrency(totaisND.totalGND3)}</td>
+              <td className="text-center font-bold" style={{ backgroundColor: '#D9D9D9', border: '1px solid #000', width: '7%' }}>{formatCurrency(totaisND.totalGND3)}</td>
               <td style={{ backgroundColor: '#D9D9D9', border: '1px solid #000' }}></td> 
             </tr>
           </tbody>
