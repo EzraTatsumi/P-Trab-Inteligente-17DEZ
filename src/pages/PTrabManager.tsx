@@ -636,7 +636,6 @@ const PTrabManager = () => {
 
   const handleLogout = async () => {
     try {
-      // Feedback visual imediato
       toast.info("Encerrando sessão...");
       
       // Sai do modo fantasma se estiver ativo
@@ -645,16 +644,27 @@ const PTrabManager = () => {
         localStorage.removeItem(`active_mission_id_${user?.id}`);
       }
       
-      // Logout no Supabase
-      const { error } = await supabase.auth.signOut();
-      if (error) throw error;
+      // Logout oficial
+      await supabase.auth.signOut();
       
-      // Limpeza manual de segurança e recarregamento total
-      // Isso garante que nenhum dado de cache ou contexto de React impeça a troca de conta
+      // Limpeza manual agressiva para garantir que a troca de conta funcione
+      // Mesmo se o signOut falhar por sessão ausente
+      Object.keys(localStorage).forEach(key => {
+        if (key.startsWith('sb-') || key.includes('auth-token')) {
+          localStorage.removeItem(key);
+        }
+      });
+      
+      // Redirecionamento forçado para limpar estados do React
       window.location.href = "/";
     } catch (error: any) {
       console.error("Erro ao sair:", error);
-      // Mesmo com erro no signOut, tentamos forçar a ida para a home
+      // Fallback de limpeza manual
+      Object.keys(localStorage).forEach(key => {
+        if (key.startsWith('sb-') || key.includes('auth-token')) {
+          localStorage.removeItem(key);
+        }
+      });
       window.location.href = "/";
     }
   };
@@ -1350,15 +1360,15 @@ const PTrabManager = () => {
               </DropdownMenuContent>
             </DropdownMenu>
 
-            <Button onClick={handleLogout} variant="outline"><LogOut className="mr-2 h-4 w-4" />Sair</Button>
+            <Button onClick={handleLogout} variant="outline" className="btn-sair"><LogOut className="mr-2 h-4 w-4" />Sair</Button>
           </div>
         </div>
 
-        {showInstructionHub && (
+        {showInstructionHub ? (
           <Card className="border-primary/20 bg-primary/5">
             <CardHeader className="flex flex-row items-center justify-between pb-2">
               <div className="flex items-center gap-2">
-                <LogOut className="h-6 w-6 text-primary" />
+                <GraduationCap className="h-6 w-6 text-primary" />
                 <CardTitle>Centro de Instrução</CardTitle>
               </div>
               <Button variant="ghost" size="sm" onClick={() => setShowInstructionHub(false)}>Ocultar</Button>
@@ -1367,6 +1377,18 @@ const PTrabManager = () => {
               <InstructionHub />
             </CardContent>
           </Card>
+        ) : (
+          <div className="flex justify-center mb-4">
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={() => setShowInstructionHub(true)}
+              className="gap-2 text-primary border-primary/30 hover:bg-primary/10"
+            >
+              <GraduationCap className="h-4 w-4" />
+              Abrir Centro de Instrução
+            </Button>
+          </div>
         )}
 
         <Card className="tabela-ptrabs">
