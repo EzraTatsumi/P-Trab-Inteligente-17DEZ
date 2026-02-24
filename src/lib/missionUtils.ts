@@ -55,6 +55,17 @@ export const markVictoryAsShown = (userId: string | undefined) => {
 };
 
 /**
+ * Sai do modo fantasma para o usuário.
+ */
+export const exitGhostMode = (userId: string | undefined) => {
+  if (!userId) return;
+  const keys = getKeys(userId);
+  localStorage.setItem(keys.GHOST, 'false');
+  // Recarrega para limpar estados simulados
+  window.location.reload();
+};
+
+/**
  * Marca uma missão como concluída para o usuário atual.
  */
 export const markMissionCompleted = (userId: string | undefined, missionId: number) => {

@@ -65,7 +65,7 @@ import { RequirementsAlert } from "@/components/RequirementsAlert";
 import { InstructionHub } from "@/components/InstructionHub";
 import { runMission01 } from "@/tours/missionTours";
 import { GHOST_DATA, isGhostMode, getActiveMission } from "@/lib/ghostStore";
-import { shouldShowVictory, markVictoryAsShown } from "@/lib/missionUtils";
+import { shouldShowVictory, markVictoryAsShown, exitGhostMode } from "@/lib/missionUtils";
 import confetti from "canvas-confetti";
 
 export type PTrabDB = Tables<'p_trab'> & {
@@ -230,8 +230,18 @@ const PTrabManager = () => {
       }
     };
 
+    const handleOpenHub = () => {
+        setShowInstructionHub(true);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    };
+
     window.addEventListener('tour:todas-concluidas', handleVictory);
-    return () => window.removeEventListener('tour:todas-concluidas', handleVictory);
+    window.addEventListener('instruction-hub:open', handleOpenHub);
+    
+    return () => {
+        window.removeEventListener('tour:todas-concluidas', handleVictory);
+        window.removeEventListener('instruction-hub:open', handleOpenHub);
+    };
   }, [user?.id]);
 
   useEffect(() => {
@@ -1324,7 +1334,7 @@ const PTrabManager = () => {
           </div>
         </div>
 
-        {showInstructionHub ? (
+        {showInstructionHub && (
           <Card className="border-primary/20 bg-primary/5">
             <CardHeader className="flex flex-row items-center justify-between pb-2">
               <div className="flex items-center gap-2">
@@ -1337,18 +1347,6 @@ const PTrabManager = () => {
               <InstructionHub />
             </CardContent>
           </Card>
-        ) : (
-          <div className="flex justify-center mb-4">
-            <Button 
-              variant="outline" 
-              size="sm" 
-              onClick={() => setShowInstructionHub(true)}
-              className="gap-2 text-primary border-primary/30 hover:bg-primary/10"
-            >
-              <GraduationCap className="h-4 w-4" />
-              Abrir Centro de Instrução
-            </Button>
-          </div>
         )}
 
         <Card className="tabela-ptrabs">
@@ -1617,7 +1615,7 @@ const PTrabManager = () => {
       {ptrabToUnlink && <UnlinkPTrabDialog open={showUnlinkPTrabDialog} onOpenChange={setShowUnlinkPTrabDialog} ptrabName={`${ptrabToUnlink.numero_ptrab} - ${ptrabToUnlink.nome_operacao}`} onConfirm={handleConfirmUnlink} loading={isActionLoading} />}
       
       <Dialog open={showVictory} onOpenChange={setShowVictory}>
-        <DialogContent className="text-center sm:max-w-[400px] z-[999999]">
+        <DialogContent className="text-center sm:max-w-[450px] z-[999999]">
           <div className="flex justify-center mb-4">
             <div className="h-20 w-20 bg-yellow-100 rounded-full flex items-center justify-center">
               <Trophy className="h-10 w-10 text-yellow-600" />
@@ -1626,17 +1624,26 @@ const PTrabManager = () => {
           <DialogTitle className="text-2xl font-bold text-center">
             Aprendizagem Concluída!
           </DialogTitle>
-          <p className="text-muted-foreground mt-2">
-            Excelente trabalho! Concluiu todas as missões de treinamento. O P Trab Inteligente está agora totalmente liberado para as configurações iniciais.
-          </p>
+          <div className="space-y-4 mt-2">
+            <p className="text-muted-foreground">
+              Excelente trabalho! Concluiu todas as missões de treinamento. O P Trab Inteligente está agora totalmente liberado para as configurações iniciais.
+            </p>
+            <p className="text-sm text-primary font-medium bg-primary/5 p-3 rounded-md border border-primary/10">
+              Caso queira acessar o Centro de Instrução novamente no futuro, basta clicar no botão de <strong>Ajuda e Documentação</strong> (ícone de interrogação no topo da tela).
+            </p>
+          </div>
           <Button 
             className="mt-6 w-full text-lg h-12 bg-green-600 hover:bg-green-700" 
             onClick={() => {
                 setShowVictory(false);
                 setShowInstructionHub(false);
+                // Sai do modo simulação ao clicar para iniciar
+                if (isGhostMode()) {
+                    exitGhostMode(user?.id);
+                }
             }}
           >
-            Iniciar Configurações Iniciais
+            Iniciar Configurações Reais
           </Button>
         </DialogContent>
       </Dialog>

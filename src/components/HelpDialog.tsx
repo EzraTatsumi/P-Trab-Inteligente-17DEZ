@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { HelpCircle, Code, FileText, Loader2, BookOpen, ShieldCheck, Bug } from "lucide-react";
+import { HelpCircle, Code, FileText, Loader2, BookOpen, ShieldCheck, Bug, GraduationCap } from "lucide-react";
 import { MarkdownAccordion } from './MarkdownAccordion';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { FeedbackDialog } from './FeedbackDialog';
@@ -27,6 +27,12 @@ export const HelpDialog: React.FC = () => {
       return () => clearTimeout(timer);
     }
   }, [open]);
+
+  const handleOpenInstructionHub = () => {
+    setOpen(false);
+    // Dispara evento para o PTrabManager abrir o Centro de Instrução
+    window.dispatchEvent(new CustomEvent('instruction-hub:open'));
+  };
 
   return (
     <>
@@ -97,7 +103,16 @@ export const HelpDialog: React.FC = () => {
             </div>
           </Tabs>
           
-          <DialogFooter className="p-4 border-t flex-none">
+          <DialogFooter className="p-4 border-t flex-none flex flex-row justify-between items-center gap-2">
+            <Button 
+                variant="outline" 
+                onClick={handleOpenInstructionHub}
+                className="flex items-center gap-2 text-primary border-primary/30 hover:bg-primary/10"
+            >
+                <GraduationCap className="h-4 w-4" />
+                Centro de Instrução (Missões)
+            </Button>
+
             <Button 
                 variant="destructive" 
                 onClick={() => {
@@ -107,7 +122,7 @@ export const HelpDialog: React.FC = () => {
                 className="flex items-center gap-2"
             >
                 <Bug className="h-4 w-4" />
-                Reportar Falha / Sugerir Melhoria
+                Reportar Falha
             </Button>
           </DialogFooter>
         </DialogContent>
