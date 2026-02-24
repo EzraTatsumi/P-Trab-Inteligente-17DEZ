@@ -765,16 +765,15 @@ export const runMission06 = (onComplete: () => void) => {
         element: '.tour-report-selector',
         popover: {
           title: 'Explore os Anexos',
-          description: 'Nesta lista, pode acessar a todos os outros relatórios (Logístico, DOR, etc.). Missão cumprida!',
+          description: 'Nesta lista, pode aceder a todos os outros relatórios (Logístico, DOR, etc.). Missão cumprida! O seu P Trab está 100% dominado.',
           side: 'left',
           align: 'start'
         },
-        onHighlighted: (element) => {
-          // Expande a lista automaticamente ao destacar
-          setTimeout(() => {
-            const trigger = document.querySelector('.tour-report-selector') as HTMLElement;
-            if (trigger) trigger.click();
-          }, 300);
+        onHighlighted: () => {
+          if ((window as any).openReportMenu) (window as any).openReportMenu();
+        },
+        onDeselected: () => {
+          if ((window as any).closeReportMenu) (window as any).closeReportMenu();
         }
       }
     ],
