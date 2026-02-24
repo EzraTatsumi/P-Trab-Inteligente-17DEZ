@@ -143,7 +143,7 @@ const MaterialConsumoDiretrizFormDialog: React.FC<MaterialConsumoDiretrizFormDia
                     <Card className="p-4 tour-dados-subitem">
                         <div className="flex justify-between items-center mb-4">
                             <CardTitle className="text-base">Dados do Subitem</CardTitle>
-                            <Button type="button" variant="outline" size="sm" onClick={() => setIsCatalogOpen(true)} disabled={loading}><BookOpen className="h-4 w-4 mr-2" />Consultar Catálogo ND 30</Button>
+                            <Button type="button" variant="outline" size="sm" onClick={() => setIsCatalogOpen(true)} disabled={loading}><BookOpen className="h-4 w-4 mr-2" />Catálogo ND 30</Button>
                         </div>
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                             <div className="space-y-2"><Label>Número do Subitem *</Label><Input value={subitemForm.nr_subitem} onChange={(e) => setSubitemForm({ ...subitemForm, nr_subitem: e.target.value })} placeholder="Ex: 24" disabled={loading} /></div>
