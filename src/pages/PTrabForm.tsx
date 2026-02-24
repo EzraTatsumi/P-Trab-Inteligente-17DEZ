@@ -168,12 +168,18 @@ const PTrabForm = () => {
       const timer = setTimeout(() => {
         if (missionId === '3') {
           runMission03(() => {
-            // Progresso centralizado no driver
+            const completed = JSON.parse(localStorage.getItem('completed_missions') || '[]');
+            if (!completed.includes(3)) {
+              localStorage.setItem('completed_missions', JSON.stringify([...completed, 3]));
+            }
             navigate('/ptrab?showHub=true');
           });
         } else if (missionId === '4') {
           runMission04(() => {
-            // Progresso centralizado no driver
+            const completed = JSON.parse(localStorage.getItem('completed_missions') || '[]');
+            if (!completed.includes(4)) {
+              localStorage.setItem('completed_missions', JSON.stringify([...completed, 4]));
+            }
             navigate('/ptrab?showHub=true');
           });
         }

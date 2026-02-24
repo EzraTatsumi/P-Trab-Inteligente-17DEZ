@@ -203,12 +203,6 @@ export const isGhostMode = () => {
   return localStorage.getItem('is_ghost_mode') === 'true';
 };
 
-export const disableGhostMode = () => {
-  if (typeof window === 'undefined') return;
-  localStorage.removeItem('is_ghost_mode');
-  localStorage.removeItem('active_mission_id');
-};
-
 export const getActiveMission = () => {
   if (typeof window === 'undefined') return null;
   return localStorage.getItem('active_mission_id');

@@ -8,36 +8,44 @@ export const useOnboardingStatus = () => {
   return useQuery({
     queryKey: ['onboardingStatus', user?.id],
     queryFn: async () => {
-      if (!user) return { isReady: false, completedMissions: [] };
+      if (!user?.id) return null;
 
-      // Busca o perfil do usuário no Supabase
-      const { data: profile, error } = await supabase
+      // 1. Busca os anos padrão no perfil
+      const { data: profile, error: profileError } = await supabase
         .from('profiles')
-        .select('*')
+        .select('default_logistica_year, default_operacional_year')
         .eq('id', user.id)
         .single();
 
-      if (error) throw error;
+      if (profileError) throw profileError;
 
-      // Extrai as missões dos metadados do banco
-      const meta = (profile?.raw_user_meta_data as any) || {};
-      const dbMissions = meta.missoes_concluidas || [];
-      
-      // Sincroniza Nuvem -> LocalStorage (para garantir que o progresso persista entre máquinas)
-      if (typeof window !== 'undefined') {
-        localStorage.setItem('completed_missions', JSON.stringify(dbMissions));
-      }
+      // 2. Busca dados em paralelo para verificar existência
+      const [oms, logData, opData] = await Promise.all([
+        // Verifica se existe pelo menos uma OM
+        supabase.from('organizacoes_militares').select('id', { count: 'exact', head: true }),
+        
+        // Verifica diretrizes de custeio (Logística) para o ano padrão
+        profile?.default_logistica_year 
+          ? supabase.from('diretrizes_custeio').select('id').eq('ano_referencia', profile.default_logistica_year).maybeSingle()
+          : Promise.resolve({ data: null }),
+          
+        // Verifica diretrizes operacionais para o ano padrão
+        profile?.default_operacional_year
+          ? supabase.from('diretrizes_operacionais').select('id').eq('ano_referencia', profile.default_operacional_year).maybeSingle()
+          : Promise.resolve({ data: null })
+      ]);
 
-      // Verifica se as diretrizes básicas estão configuradas (Ex: ano padrão definido)
-      const hasConfig = !!profile.default_operacional_year || !!profile.default_logistica_year;
-      
       return {
-        isReady: hasConfig,
-        completedMissions: dbMissions,
-        totalProgress: Math.round((dbMissions.length / 6) * 100)
+        hasOMs: (oms.count ?? 0) > 0,
+        hasLogistica: !!logData.data,
+        hasOperacional: !!opData.data,
+        logYear: profile?.default_logistica_year,
+        opYear: profile?.default_operacional_year,
+        // Só está pronto se houver OMs E ambas as diretrizes nos anos padrão
+        isReady: (oms.count ?? 0) > 0 && !!logData.data && !!opData.data
       };
     },
     enabled: !!user?.id,
-    staleTime: 1000 * 60 * 5, // 5 minutos
+    staleTime: 1000 * 60 * 2, // 2 minutos de cache
   });
 };

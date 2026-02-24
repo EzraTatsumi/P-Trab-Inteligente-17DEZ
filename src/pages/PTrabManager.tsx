@@ -64,7 +64,7 @@ import { WelcomeModal } from "@/components/WelcomeModal";
 import { RequirementsAlert } from "@/components/RequirementsAlert";
 import { InstructionHub } from "@/components/InstructionHub";
 import { runMission01 } from "@/tours/missionTours";
-import { GHOST_DATA, isGhostMode, disableGhostMode, getActiveMission } from "@/lib/ghostStore";
+import { GHOST_DATA, isGhostMode, getActiveMission } from "@/lib/ghostStore";
 import confetti from "canvas-confetti";
 
 export type PTrabDB = Tables<'p_trab'> & {
@@ -334,7 +334,10 @@ const PTrabManager = () => {
 
     if (startTour && ghost && missionId === '1') {
       runMission01(() => {
-        // Agora quem cuida do progresso é exclusivamente o markMissionCompleted no driver
+        const completed = JSON.parse(localStorage.getItem('completed_missions') || '[]');
+        if (!completed.includes(1)) {
+          localStorage.setItem('completed_missions', JSON.stringify([...completed, 1]));
+        }
         setShowInstructionHub(true);
       });
     }
@@ -1480,7 +1483,7 @@ const PTrabManager = () => {
                         </div>
                       </TableCell>
                     </TableRow>
-                  )})}
+                  );})}
                 </TableBody>
               </Table>
             )}
@@ -1615,8 +1618,6 @@ const PTrabManager = () => {
             onClick={() => {
                 setShowVictory(false);
                 setShowInstructionHub(false);
-                disableGhostMode();
-                window.location.reload();
             }}
           >
             Iniciar Configurações Iniciais
