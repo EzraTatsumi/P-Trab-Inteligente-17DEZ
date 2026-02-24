@@ -33,7 +33,7 @@ interface ArpCatmatSearchFormProps {
     selectedItemIds: string[];
     onClearSelection: () => void;
     scrollContainerRef: React.RefObject<HTMLDivElement>;
-    mode?: 'material' | 'servico';
+    mode?: 'material' | 'servico' | 'permanente';
 }
 
 // Calcula as datas padrão
@@ -158,6 +158,7 @@ const ArpCatmatSearchForm: React.FC<ArpCatmatSearchFormProps> = ({
         onItemPreSelect(item, pregaoFormatado, uasg);
     };
 
+    const isMaterialMode = mode === 'material' || mode === 'permanente';
 
     return (
         <>
@@ -170,7 +171,7 @@ const ArpCatmatSearchForm: React.FC<ArpCatmatSearchFormProps> = ({
                             name="codigoItem"
                             render={({ field }) => (
                                 <FormItem className="col-span-4 md:col-span-2">
-                                    <FormLabel>{mode === 'material' ? 'Cód. CATMAT *' : 'Cód. CATSER *'}</FormLabel>
+                                    <FormLabel>{isMaterialMode ? 'Cód. CATMAT *' : 'Cód. CATSER *'}</FormLabel>
                                     <div className="flex gap-2">
                                         <FormControl>
                                             <Input
@@ -191,13 +192,13 @@ const ArpCatmatSearchForm: React.FC<ArpCatmatSearchFormProps> = ({
                                                 disabled={isSearching}
                                                 className="h-8 px-2 text-[10px]"
                                             >
-                                                <BookOpen className="h-3 w-3 mr-1" /> {mode === 'material' ? 'CATMAT' : 'CATSER'}
+                                                <BookOpen className="h-3 w-3 mr-1" /> {isMaterialMode ? 'CATMAT' : 'CATSER'}
                                             </Button>
                                         </div>
                                     </div>
                                     <FormMessage />
                                     <p className="text-xs text-muted-foreground mt-1">
-                                        Insira o código do item de {mode === 'material' ? 'material' : 'serviço'}.
+                                        Insira o código do item de {isMaterialMode ? 'material' : 'serviço'}.
                                     </p>
                                 </FormItem>
                             )}
@@ -263,13 +264,13 @@ const ArpCatmatSearchForm: React.FC<ArpCatmatSearchFormProps> = ({
                         results={mappedResults} 
                         onItemPreSelect={handleItemPreSelectWrapper} 
                         searchedUasg={''} 
-                        searchedOmName={mode === 'material' ? `Item CATMAT ${form.getValues('codigoItem')}` : `Item CATSER ${form.getValues('codigoItem')}`}
+                        searchedOmName={isMaterialMode ? `Item CATMAT ${form.getValues('codigoItem')}` : `Item CATSER ${form.getValues('codigoItem')}`}
                         selectedItemIds={selectedItemIds}
                     />
                 </div>
             )}
 
-            {mode === 'material' ? (
+            {isMaterialMode ? (
                 <CatmatCatalogDialog
                     open={isCatalogOpen}
                     onOpenChange={setIsCatalogOpen}

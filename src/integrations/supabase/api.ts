@@ -100,9 +100,9 @@ interface CatalogEntryStatus {
     isCataloged: boolean;
 }
 
-export async function fetchCatalogEntry(codigo: string, mode: 'material' | 'servico'): Promise<CatalogEntryStatus> {
+export async function fetchCatalogEntry(codigo: string, mode: 'material' | 'servico' | 'permanente'): Promise<CatalogEntryStatus> {
     if (!codigo) return { description: null, shortDescription: null, isCataloged: false };
-    const table = mode === 'material' ? 'catalogo_catmat' : 'catalogo_catser';
+    const table = (mode === 'material' || mode === 'permanente') ? 'catalogo_catmat' : 'catalogo_catser';
     const cleanCode = codigo.replace(/\D/g, '');
     if (!cleanCode) return { description: null, shortDescription: null, isCataloged: false };
     
@@ -141,9 +141,9 @@ export async function fetchCatalogEntry(codigo: string, mode: 'material' | 'serv
     }
 }
 
-export async function saveNewCatalogEntry(code: string, description: string, shortDescription: string, mode: 'material' | 'servico'): Promise<void> {
+export async function saveNewCatalogEntry(code: string, description: string, shortDescription: string, mode: 'material' | 'servico' | 'permanente'): Promise<void> {
     const cleanCode = code.replace(/\D/g, '');
-    if (mode === 'material') {
+    if (mode === 'material' || mode === 'permanente') {
         const { error } = await supabase.rpc('upsert_catmat_entry', {
             p_code: cleanCode,
             p_description: description,
@@ -161,11 +161,11 @@ export async function saveNewCatalogEntry(code: string, description: string, sho
     }
 }
 
-export async function fetchCatalogFullDescription(codigo: string, mode: 'material' | 'servico'): Promise<{ fullDescription: string | null, nomePdm: string | null }> {
+export async function fetchCatalogFullDescription(codigo: string, mode: 'material' | 'servico' | 'permanente'): Promise<{ fullDescription: string | null, nomePdm: string | null }> {
     if (!codigo) return { fullDescription: null, nomePdm: null };
     try {
         const { data, error } = await supabase.functions.invoke('fetch-catmat-details', {
-            body: { codigoItem: codigo, type: mode === 'material' ? 'material' : 'servico' },
+            body: { codigoItem: codigo, type: (mode === 'material' || mode === 'permanente') ? 'material' : 'servico' },
         });
         if (error) throw new Error(error.message || "Falha na execução da Edge Function de busca de detalhes.");
         const responseData = data as CatmatDetailsRawResult;
