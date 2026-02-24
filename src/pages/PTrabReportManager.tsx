@@ -229,6 +229,7 @@ export interface LinhaTabela {
 }
 
 export interface LinhaClasseII {
+  border_b?: string;
   registro: ClasseIIRegistro;
   valor_nd_30: number; 
   valor_nd_39: number; 
@@ -422,9 +423,9 @@ export const generateClasseIMemoriaCalculoUnificada = (registro: ClasseIRegistro
             calculos: {
                 totalQS: registro.totalQS,
                 totalQR: registro.totalQR,
-                nrCiclos: calculateClasseICalculations(registro.efetivo, registro.dias_operacao, registro.nrRefInt || 0, registro.valorQS || 0, registro.valorQR || 0).nrCiclos,
+                nrCiclos: calculateClasseICalculations(registro.efetivo, registro.dias_operacao, registro.nrRefInt || 0, Number(r.valor_qs), Number(r.valor_qr)).nrCiclos,
                 diasEtapaPaga: 0,
-                diasEtapaSolicitada: calculateClasseICalculations(registro.efetivo, registro.dias_operacao, registro.nrRefInt || 0, registro.valorQS || 0, registro.valorQR || 0).diasEtapaSolicitada,
+                diasEtapaSolicitada: calculateClasseICalculations(registro.efetivo, registro.dias_operacao, registro.nrRefInt || 0, Number(r.valor_qs), Number(r.valor_qr)).diasEtapaSolicitada,
                 totalEtapas: 0,
                 complementoQS: registro.complementoQS,
                 etapaQS: registro.etapaQS,
@@ -457,9 +458,9 @@ export const generateClasseIMemoriaCalculoUnificada = (registro: ClasseIRegistro
             calculos: {
                 totalQS: registro.totalQS,
                 totalQR: registro.totalQR,
-                nrCiclos: calculateClasseICalculations(registro.efetivo, registro.dias_operacao, registro.nrRefInt || 0, registro.valorQS || 0, registro.valorQR || 0).nrCiclos,
+                nrCiclos: calculateClasseICalculations(registro.efetivo, registro.dias_operacao, registro.nrRefInt || 0, Number(r.valor_qs), Number(r.valor_qr)).nrCiclos,
                 diasEtapaPaga: 0,
-                diasEtapaSolicitada: calculateClasseICalculations(registro.efetivo, registro.dias_operacao, registro.nrRefInt || 0, registro.valorQS || 0, registro.valorQR || 0).diasEtapaSolicitada,
+                diasEtapaSolicitada: calculateClasseICalculations(registro.efetivo, registro.dias_operacao, registro.nrRefInt || 0, Number(r.valor_qs), Number(r.valor_qr)).diasEtapaSolicitada,
                 totalEtapas: 0,
                 complementoQS: registro.complementoQS,
                 etapaQS: registro.etapaQS,
@@ -944,8 +945,13 @@ const PTrabReportManager = () => {
 
   const renderReport = () => {
     if (!ptrabData) return null;
+    
+    const currentReportOption = REPORT_OPTIONS.find(opt => opt.value === selectedReport);
+    if (!currentReportOption) return null;
+
     const { fileSuffix, label: reportName } = currentReportOption;
     if (!hasDataForReport) return <NoDataFallback reportName={reportName} message={`Não há dados registrados neste P Trab para gerar o relatório de ${reportName}.`} />;
+    
     switch (selectedReport) {
       case 'logistico': return <PTrabLogisticoReport ptrabData={ptrabData} registrosClasseI={registrosClasseI} registrosClasseII={registrosClasseII} registrosClasseIII={registrosClasseIII} nomeRM={nomeRM} omsOrdenadas={omsOrdenadas} gruposPorOM={gruposPorOM} calcularTotaisPorOM={calcularTotaisPorOM} fileSuffix={fileSuffix} generateClasseIMemoriaCalculo={generateClasseIMemoriaCalculoUnificada} generateClasseIIMemoriaCalculo={generateClasseIIMemoriaCalculo} generateClasseVMemoriaCalculo={(r) => generateClasseIIMemoriaCalculo(r, false)} generateClasseVIMemoriaCalculo={(r) => generateClasseIIMemoriaCalculo(r, false)} generateClasseVIIMemoriaCalculo={(r) => generateClasseIIMemoriaCalculo(r, false)} generateClasseVIIIMemoriaCalculo={(r) => generateClasseIIMemoriaCalculo(r, false)} />;
       case 'racao_operacional': return <PTrabRacaoOperacionalReport ptrabData={ptrabData} registrosClasseI={registrosClasseI} fileSuffix={fileSuffix} generateClasseIMemoriaCalculo={generateClasseIMemoriaCalculoUnificada} />;
