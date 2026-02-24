@@ -134,7 +134,6 @@ const CustosOperacionaisPage = () => {
   const [searchParams] = useSearchParams();
   const { user } = useSession();
   const queryClient = useQueryClient();
-  const [loading, setLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false); 
   const hasStartedTour = useRef(false);
   
@@ -148,7 +147,6 @@ const CustosOperacionaisPage = () => {
   const { data: defaultYearData, isLoading: isLoadingDefaultYear } = useDefaultDiretrizYear();
   const defaultYear = defaultYearData?.defaultYear || null;
 
-  // Hooks de consulta movidos para cima para evitar erro de inicialização no useEffect do tour
   const { data: pageData, isLoading: isLoadingPageData, isFetching: isFetchingPageData } = useQuery({
     queryKey: ['diretrizesCustosOperacionais', selectedYear, user?.id],
     queryFn: async () => {
@@ -345,7 +343,7 @@ const CustosOperacionaisPage = () => {
           setTimeout(() => {
               const newItem = {
                   ...data,
-                  id: data.id || `ghost-subitem-${data.nr_subitem}`, // ID fixo para o tour encontrar
+                  id: data.id || `ghost-subitem-${data.nr_subitem}`, 
                   user_id: 'ghost-user',
                   ativo: data.ativo ?? true,
               } as DiretrizMaterialConsumo;
@@ -360,7 +358,6 @@ const CustosOperacionaisPage = () => {
               setIsMaterialConsumoFormOpen(false);
               toast.success("Simulação: Subitem salvo localmente!");
               
-              // Pequeno delay para garantir que o React renderizou a lista antes de avançar o tour
               setTimeout(() => {
                 window.dispatchEvent(new CustomEvent('tour:avancar'));
               }, 200);
@@ -491,14 +488,12 @@ const CustosOperacionaisPage = () => {
 
   const handleDeleteServicosTerceiros = async (id: string, nome: string) => {
       if (!confirm(`Tem certeza que deseja excluir o Subitem da ND "${nome}"?`)) return;
-      setDiretrizesServicosTerceiros(current => current.filter(d => d.id !== id));
       try {
           const { error } = await supabase.from('diretrizes_servicos_terceiros' as any).delete().eq('id', id);
           if (error) throw error;
           toast.success("Subitem da ND excluído!");
       } catch (error) {
           toast.error(sanitizeError(error));
-          queryClient.invalidateQueries({ queryKey: ['diretrizesServicosTerceiros', selectedYear, user?.id] });
       } finally {
           queryClient.invalidateQueries({ queryKey: ['diretrizesServicosTerceiros', selectedYear, user?.id] });
       }
@@ -506,14 +501,12 @@ const CustosOperacionaisPage = () => {
 
   const handleDeleteMaterialPermanente = async (id: string, nome: string) => {
       if (!confirm(`Tem certeza que deseja excluir o Subitem da ND "${nome}"?`)) return;
-      setDiretrizesMaterialPermanente(current => current.filter(d => d.id !== id));
       try {
           const { error } = await supabase.from('diretrizes_material_permanente' as any).delete().eq('id', id);
           if (error) throw error;
           toast.success("Subitem da ND excluído!");
       } catch (error) {
           toast.error(sanitizeError(error));
-          queryClient.invalidateQueries({ queryKey: ['diretrizesMaterialPermanente', selectedYear, user?.id] });
       } finally {
           queryClient.invalidateQueries({ queryKey: ['diretrizesMaterialPermanente', selectedYear, user?.id] });
       }
@@ -911,9 +904,9 @@ const CustosOperacionaisPage = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }, []);
   
-  // Lógica do Tour - Ajustada para esperar o fim do carregamento
+  // Lógica do Tour
   useEffect(() => {
-    if (loading || isLoadingDefaultYear || isLoadingPageData || isFetchingPageData || hasStartedTour.current) return;
+    if (isLoadingDefaultYear || isLoadingPageData || isFetchingPageData || hasStartedTour.current) return;
 
     const startTour = searchParams.get('startTour') === 'true';
     const missionId = localStorage.getItem('active_mission_id');
@@ -921,24 +914,22 @@ const CustosOperacionaisPage = () => {
 
     if (startTour && ghost && missionId === '2') {
       hasStartedTour.current = true;
-      // Pequeno delay para garantir que o DOM estabilizou após o loading
       const timer = setTimeout(() => {
         runMission02(() => {
           const completed = JSON.parse(localStorage.getItem('completed_missions') || '[]');
           if (!completed.includes(2)) {
             localStorage.setItem('completed_missions', JSON.stringify([...completed, 2]));
           }
-          // Redireciona para o gerenciador e abre o Hub
           navigate('/ptrab?showHub=true');
         });
       }, 500);
       return () => clearTimeout(timer);
     }
-  }, [loading, isLoadingDefaultYear, isLoadingPageData, isFetchingPageData, searchParams, navigate]);
+  }, [isLoadingDefaultYear, isLoadingPageData, isFetchingPageData, searchParams, navigate]);
 
+  // Sincronização dos dados da página (Operacional, Passagens, Concessionária)
   useEffect(() => {
     if (pageData) {
-      setLoading(true);
       const loadedData = pageData.operacional;
       const numericData: Partial<DiretrizOperacional> = {
         ...loadedData,
@@ -990,36 +981,33 @@ const CustosOperacionaisPage = () => {
           consumo_pessoa_dia: Number(d.consumo_pessoa_dia),
           custo_unitario: Number(d.custo_unitario),
       })));
-      
-      setLoading(false);
     }
   }, [pageData, selectedYear]);
 
-  // Sincronização de diretrizes com hooks e suporte ao Ghost Mode
+  // Sincronização segura para Material de Consumo
   useEffect(() => {
     if (isGhostMode()) {
       const missionId = getActiveMission();
-      if (missionId === '2') {
-          setDiretrizesMaterialConsumo(GHOST_DATA.missao_02.subitens_lista as any);
-      } else if (missionId === '3') {
-          setDiretrizesMaterialConsumo(GHOST_DATA.missao_03.subitens_lista as any);
-      }
+      const ghostData = missionId === '3' ? GHOST_DATA.missao_03.subitens_lista : GHOST_DATA.missao_02.subitens_lista;
+      setDiretrizesMaterialConsumo(ghostData as any);
     } else if (diretrizesMaterialConsumoHook) {
       setDiretrizesMaterialConsumo(diretrizesMaterialConsumoHook);
     }
-  }, [diretrizesMaterialConsumoHook]);
+  }, [diretrizesMaterialConsumoHook, selectedYear]);
 
+  // Sincronização segura para Serviços de Terceiros
   useEffect(() => {
-    if (diretrizesServicosTerceirosHook) {
+    if (!isGhostMode() && diretrizesServicosTerceirosHook) {
       setDiretrizesServicosTerceiros(diretrizesServicosTerceirosHook);
     }
-  }, [diretrizesServicosTerceirosHook]);
+  }, [diretrizesServicosTerceirosHook, selectedYear]);
 
+  // Sincronização segura para Material Permanente
   useEffect(() => {
-    if (diretrizesMaterialPermanenteHook) {
+    if (!isGhostMode() && diretrizesMaterialPermanenteHook) {
       setDiretrizesMaterialPermanente(diretrizesMaterialPermanenteHook);
     }
-  }, [diretrizesMaterialPermanenteHook]);
+  }, [diretrizesMaterialPermanenteHook, selectedYear]);
 
   useEffect(() => {
     if (!isLoadingDefaultYear && defaultYearData) {
@@ -1427,7 +1415,7 @@ const CustosOperacionaisPage = () => {
     }
   };
 
-  if (loading || isLoadingDefaultYear || isLoadingPageData || isFetchingPageData) {
+  if (isLoadingDefaultYear || isLoadingPageData) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <Loader2 className="h-6 w-6 animate-spin text-primary" />
