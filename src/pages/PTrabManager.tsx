@@ -1483,10 +1483,10 @@ const PTrabManager = () => {
                         </div>
                       </TableCell>
                     </TableRow>
-                  );})}
+                  )})}
                 </TableBody>
               </Table>
-            ) : null}
+            )}
           </CardContent>
         </Card>
       </div>
