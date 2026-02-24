@@ -15,6 +15,18 @@ import { formatCurrency } from "@/lib/formatUtils";
 import { isGhostMode } from "@/lib/ghostStore";
 import { cn } from "@/lib/utils";
 
+interface MaterialConsumoGroupFormProps {
+  group?: MaterialConsumoGroup;
+  onSave: (group: MaterialConsumoGroup) => void;
+  onCancel: () => void;
+  diretrizes: DiretrizMaterialConsumo[];
+  loading?: boolean;
+}
+
+const MaterialConsumoGroupForm = ({ group, onSave, onCancel, diretrizes, loading }: MaterialConsumoGroupFormProps) => {
+  const [nomeGrupo, setNomeGrupo] = useState(group?.nome_grupo || "");
+  const [isSelectorOpen, setIsSelectorOpen] = useState(false);
+
   // Expondo preenchimento para o Tour
   useEffect(() => {
     (window as any).prefillGroupName = () => {
