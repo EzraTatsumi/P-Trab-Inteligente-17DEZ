@@ -635,8 +635,28 @@ const PTrabManager = () => {
   };
 
   const handleLogout = async () => {
-    await supabase.auth.signOut();
-    navigate("/");
+    try {
+      // Feedback visual imediato
+      toast.info("Encerrando sessão...");
+      
+      // Sai do modo fantasma se estiver ativo
+      if (isGhostMode()) {
+        localStorage.removeItem(`is_ghost_mode_${user?.id}`);
+        localStorage.removeItem(`active_mission_id_${user?.id}`);
+      }
+      
+      // Logout no Supabase
+      const { error } = await supabase.auth.signOut();
+      if (error) throw error;
+      
+      // Limpeza manual de segurança e recarregamento total
+      // Isso garante que nenhum dado de cache ou contexto de React impeça a troca de conta
+      window.location.href = "/";
+    } catch (error: any) {
+      console.error("Erro ao sair:", error);
+      // Mesmo com erro no signOut, tentamos forçar a ida para a home
+      window.location.href = "/";
+    }
   };
 
   const handleNumeroPTrabChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -1338,7 +1358,7 @@ const PTrabManager = () => {
           <Card className="border-primary/20 bg-primary/5">
             <CardHeader className="flex flex-row items-center justify-between pb-2">
               <div className="flex items-center gap-2">
-                <GraduationCap className="h-6 w-6 text-primary" />
+                <LogOut className="h-6 w-6 text-primary" />
                 <CardTitle>Centro de Instrução</CardTitle>
               </div>
               <Button variant="ghost" size="sm" onClick={() => setShowInstructionHub(false)}>Ocultar</Button>
