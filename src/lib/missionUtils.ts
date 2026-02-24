@@ -1,59 +1,70 @@
 "use client";
 
-import { supabase } from "@/integrations/supabase/client";
+/**
+ * Utilitários para gerenciar o progresso das missões de treinamento (Onboarding).
+ * Atualmente utiliza LocalStorage para persistência simples.
+ */
 
-const TOTAL_MISSIONS = 6;
+const COMPLETED_MISSIONS_KEY = 'completed_missions';
+const GHOST_MODE_KEY = 'is_ghost_mode';
+const ACTIVE_MISSION_KEY = 'active_mission_id';
 
 /**
- * Marca uma missão como concluída, salva no localStorage e sincroniza com o Supabase.
- * Se todas as missões forem concluídas, dispara o evento de vitória.
+ * Marca uma missão como concluída.
  */
-export const markMissionCompleted = async (missionId: number) => {
-  // 1. Atualiza o localStorage (persistência imediata no navegador)
-  let completed: number[] = JSON.parse(localStorage.getItem('completed_missions') || '[]');
+export const markMissionCompleted = (missionId: number) => {
+  if (typeof window === 'undefined') return;
   
+  const completed = getCompletedMissions();
   if (!completed.includes(missionId)) {
-    completed.push(missionId);
-    localStorage.setItem('completed_missions', JSON.stringify(completed));
+    const updated = [...completed, missionId];
+    localStorage.setItem(COMPLETED_MISSIONS_KEY, JSON.stringify(updated));
     
-    // 2. Sincroniza com o Supabase (persistência permanente na nuvem)
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        // Nota: Assumimos que a coluna 'missoes_concluidas' existe ou será criada no perfil.
-        // Como alternativa segura, podemos usar o campo 'raw_user_meta_data' que já existe.
-        const { data: profile } = await supabase
-            .from('profiles')
-            .select('raw_user_meta_data')
-            .eq('id', user.id)
-            .single();
-
-        const currentMetadata = (profile?.raw_user_meta_data as any) || {};
-        
-        await supabase
-          .from('profiles')
-          .update({ 
-            raw_user_meta_data: {
-                ...currentMetadata,
-                missoes_concluidas: completed
-            }
-          }) 
-          .eq('id', user.id);
-      }
-    } catch (error) {
-      console.error("Erro ao sincronizar progresso na nuvem:", error);
-    }
-
-    // 3. Verifica se o álbum está completo (Bingo!)
-    if (completed.length >= TOTAL_MISSIONS) {
+    // Dispara evento para que componentes React possam reagir
+    window.dispatchEvent(new CustomEvent('mission:completed', { detail: missionId }));
+    
+    // Verifica se todas as missões foram concluídas (assumindo 6 missões principais)
+    if (updated.length >= 6) {
       window.dispatchEvent(new CustomEvent('tour:todas-concluidas'));
     }
   }
 };
 
 /**
- * Recupera as missões concluídas do localStorage.
+ * Retorna a lista de IDs de missões concluídas.
  */
 export const getCompletedMissions = (): number[] => {
-    return JSON.parse(localStorage.getItem('completed_missions') || '[]');
+  if (typeof window === 'undefined') return [];
+  try {
+    const stored = localStorage.getItem(COMPLETED_MISSIONS_KEY);
+    return stored ? JSON.parse(stored) : [];
+  } catch (e) {
+    return [];
+  }
+};
+
+/**
+ * Verifica se uma missão específica foi concluída.
+ */
+export const isMissionCompleted = (missionId: number): boolean => {
+  return getCompletedMissions().includes(missionId);
+};
+
+/**
+ * Reseta todo o progresso de treinamento (útil para testes).
+ */
+export const resetTrainingProgress = () => {
+  if (typeof window === 'undefined') return;
+  localStorage.removeItem(COMPLETED_MISSIONS_KEY);
+  localStorage.removeItem(GHOST_MODE_KEY);
+  localStorage.removeItem(ACTIVE_MISSION_KEY);
+  window.location.reload();
+};
+
+/**
+ * Ativa ou desativa o Modo Fantasma.
+ */
+export const setGhostMode = (active: boolean) => {
+  if (typeof window === 'undefined') return;
+  localStorage.setItem(GHOST_MODE_KEY, active ? 'true' : 'false');
 };
