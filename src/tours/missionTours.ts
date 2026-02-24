@@ -181,7 +181,6 @@ export const runMission01 = (onComplete: () => void) => {
       if (onComplete) onComplete();
     }
   });
-  activeMissionDriver = d;
   d.drive();
 };
 
@@ -768,11 +767,10 @@ export const runMission06 = (onComplete: () => void) => {
           title: 'Explore os Anexos',
           description: 'Nesta lista, pode acessar a todos os outros relatórios (Logístico, DOR, etc.). Missão cumprida!',
           side: 'left',
-          align: 'start',
-          popoverClass: 'z-tour-portal'
+          align: 'start'
         },
         onHighlighted: (element) => {
-          // Expande a lista e garante que o portal do Select fique visível
+          // Expande a lista automaticamente ao destacar
           setTimeout(() => {
             const trigger = document.querySelector('.tour-report-selector') as HTMLElement;
             if (trigger) trigger.click();

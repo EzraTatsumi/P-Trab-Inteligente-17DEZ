@@ -1,25 +1,49 @@
-/* Garante que elementos destacados ou portais (como Select, Dropdown) fiquem acima do overlay do driver.js */
+/* Estilos globais para o driver.js */
+
+.driver-popover {
+  border-radius: 12px !important;
+  border: 1px solid hsl(var(--border)) !important;
+  box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1) !important;
+}
+
+.driver-popover-title {
+  font-family: inherit !important;
+  font-weight: 700 !important;
+  color: hsl(var(--primary)) !important;
+  font-size: 18px !important;
+}
+
+.driver-popover-description {
+  font-family: inherit !important;
+  color: hsl(var(--muted-foreground)) !important;
+  line-height: 1.5 !important;
+}
+
+/* 2. Classe Específica para o passo de Configurações */
+/* Usando seletores mais genéricos para garantir a aplicação */
+.driver-popover.popover-wide {
+  min-width: 550px !important; /* Força uma largura mínima maior */
+  max-width: 700px !important;
+  padding: 15px 25px !important;
+}
+
+/* Garante que elementos marcados como portais do tour fiquem acima do overlay do driver.js */
+/* O driver.js usa z-index na casa dos 100000 */
 .z-tour-portal {
   z-index: 1000001 !important;
 }
 
-/* Ajuste específico para portais de UI (shadcn) durante o tour */
-[data-radix-portal] {
-  z-index: 1000001 !important;
+.driver-popover-next-btn, .driver-popover-prev-btn {
+  border-radius: 6px !important;
+  text-shadow: none !important;
 }
 
-.driver-popover.popover-wide {
-  max-width: 450px;
+.driver-popover-next-btn {
+  background-color: hsl(var(--primary)) !important;
+  color: hsl(var(--primary-foreground)) !important;
 }
 
-.driver-active-element {
-  transition: all 0.3s ease;
-}
-
-/* Melhora a visibilidade do balão de explicação */
-.driver-popover {
-  background-color: #ffffff;
-  color: #1a1a1a;
-  border-radius: 8px;
-  box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+.driver-popover-prev-btn {
+  background-color: hsl(var(--secondary)) !important;
+  color: hsl(var(--secondary-foreground)) !important;
 }
