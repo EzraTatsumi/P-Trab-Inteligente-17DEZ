@@ -7,7 +7,9 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Trash2, Plus, Package, Search, Loader2, Save, X } from "lucide-react";
-
+import { MaterialConsumoGroup, MaterialConsumoItem } from "@/types/materialConsumo";
+import { DiretrizMaterialConsumo } from "@/types/diretrizesMaterialConsumo";
+import MaterialConsumoItemSelectorDialog from "./MaterialConsumoItemSelectorDialog";
 import { formatCurrency } from "@/lib/formatUtils";
 import { isGhostMode } from "@/lib/ghostStore";
 import { cn } from "@/lib/utils";
