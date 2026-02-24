@@ -22,7 +22,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { toast } from "sonner";
-import { Plus, Edit, Trash2, LogOut, FileText, Printer, Settings, PenSquare, MoreVertical, Pencil, Copy, FileSpreadsheet, Download, MessageSquare, ArrowRight, HelpCircle, CheckCircle, GitBranch, Archive, RefreshCw, User, Loader2, Share2, Link, Users, XCircle, ArrowDownUp, ClipboardList, GraduationCap } from "lucide-react";
+import { Plus, Edit, Trash2, LogOut, FileText, Printer, Settings, PenSquare, MoreVertical, Pencil, Copy, FileSpreadsheet, Download, MessageSquare, ArrowRight, HelpCircle, CheckCircle, GitBranch, Archive, RefreshCw, User, Loader2, Share2, Link, Users, XCircle, ArrowDownUp, ClipboardList, GraduationCap, Trophy } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { sanitizeError } from "@/lib/errorUtils";
@@ -65,6 +65,7 @@ import { RequirementsAlert } from "@/components/RequirementsAlert";
 import { InstructionHub } from "@/components/InstructionHub";
 import { runMission01 } from "@/tours/missionTours";
 import { GHOST_DATA, isGhostMode, getActiveMission } from "@/lib/ghostStore";
+import confetti from "canvas-confetti";
 
 export type PTrabDB = Tables<'p_trab'> & {
   origem: 'original' | 'importado' | 'consolidado';
@@ -183,11 +184,41 @@ const PTrabManager = () => {
   const [ptrabToUnlink, setPtrabToUnlink] = useState<PTrab | null>(null);
 
   const [showInstructionHub, setShowInstructionHub] = useState(false);
+  const [showVictory, setShowVictory] = useState(false);
 
   const { data: onboardingStatus, isLoading: isLoadingOnboarding } = useOnboardingStatus();
   const [showWelcomeModal, setShowWelcomeModal] = useState(false);
   const [showRequirementsAlert, setShowRequirementsAlert] = useState(false);
   const hasShownWelcome = useRef(false);
+
+  const dispararConfetes = () => {
+    confetti({
+      particleCount: 150,
+      spread: 80,
+      origin: { y: 0.6 },
+      colors: ['#4CAF50', '#FFEB3B', '#2196F3', '#FF9800', '#E91E63'],
+      zIndex: 999999
+    });
+
+    setTimeout(() => {
+      confetti({
+        particleCount: 100,
+        spread: 120,
+        origin: { y: 0.6 },
+        zIndex: 999999
+      });
+    }, 300);
+  };
+
+  useEffect(() => {
+    const handleVictory = () => {
+      setShowVictory(true);
+      dispararConfetes();
+    };
+
+    window.addEventListener('tour:todas-concluidas', handleVictory);
+    return () => window.removeEventListener('tour:todas-concluidas', handleVictory);
+  }, []);
 
   useEffect(() => {
     if (isGhostMode()) {
@@ -1569,6 +1600,31 @@ const PTrabManager = () => {
       {ptrabToManageSharing && <ManageSharingDialog open={showManageSharingDialog} onOpenChange={setShowManageSharingDialog} ptrabId={ptrabToManageSharing.id} ptrabName={`${ptrabToManageSharing.numero_ptrab} - ${ptrabToManageSharing.nome_operacao}`} onApprove={handleApproveRequest} onReject={handleRejectRequest} onCancelSharing={handleCancelSharing} loading={isActionLoading} />}
       {ptrabToUnlink && <UnlinkPTrabDialog open={showUnlinkPTrabDialog} onOpenChange={setShowUnlinkPTrabDialog} ptrabName={`${ptrabToUnlink.numero_ptrab} - ${ptrabToUnlink.nome_operacao}`} onConfirm={handleConfirmUnlink} loading={isActionLoading} />}
       
+      <Dialog open={showVictory} onOpenChange={setShowVictory}>
+        <DialogContent className="text-center sm:max-w-[400px] z-[999999]">
+          <div className="flex justify-center mb-4">
+            <div className="h-20 w-20 bg-yellow-100 rounded-full flex items-center justify-center">
+              <Trophy className="h-10 w-10 text-yellow-600" />
+            </div>
+          </div>
+          <DialogTitle className="text-2xl font-bold text-center">
+            Aprendizagem Concluída!
+          </DialogTitle>
+          <p className="text-muted-foreground mt-2">
+            Excelente trabalho! Concluiu todas as missões de treino. O P Trab Inteligente está agora totalmente liberado e configurado para você.
+          </p>
+          <Button 
+            className="mt-6 w-full text-lg h-12 bg-green-600 hover:bg-green-700" 
+            onClick={() => {
+                setShowVictory(false);
+                setShowInstructionHub(false);
+            }}
+          >
+            Iniciar Planejamento Real
+          </Button>
+        </DialogContent>
+      </Dialog>
+
       <AIChatDrawer />
     </div>
   );

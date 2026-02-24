@@ -3,6 +3,7 @@
 import { driver } from "driver.js";
 import "driver.js/dist/driver.css";
 import "./tour.css"; 
+import { markMissionCompleted } from "@/lib/missionUtils";
 
 let activeMissionDriver: any = null;
 
@@ -175,7 +176,10 @@ export const runMission01 = (onComplete: () => void) => {
         }
       }
     ],
-    onDestroyed: onComplete
+    onDestroyed: () => {
+      markMissionCompleted(1);
+      if (onComplete) onComplete();
+    }
   });
   d.drive();
 };
@@ -289,7 +293,10 @@ export const runMission02 = (onComplete: () => void) => {
         }
       }
     ],
-    onDestroyed: onComplete
+    onDestroyed: () => {
+      markMissionCompleted(2);
+      if (onComplete) onComplete();
+    }
   });
   activeMissionDriver = d;
   d.drive();
@@ -457,7 +464,10 @@ export const runMission03 = (onComplete: () => void) => {
         }
       }
     ],
-    onDestroyed: onComplete
+    onDestroyed: () => {
+      markMissionCompleted(3);
+      if (onComplete) onComplete();
+    }
   });
   activeMissionDriver = d;
   
@@ -540,7 +550,10 @@ export const runMission04 = (onComplete: () => void) => {
         }
       }
     ],
-    onDestroyed: onComplete
+    onDestroyed: () => {
+      markMissionCompleted(4);
+      if (onComplete) onComplete();
+    }
   });
   activeMissionDriver = d;
   d.drive();
@@ -575,7 +588,7 @@ export const runMission05 = (onComplete: () => void) => {
         element: '.tour-dor-contato',
         popover: {
           title: 'Dados de Contato',
-          description: 'Preencha seu e-mail institucional e um telefone de contato. Estes dados são essenciais para que o setor de aquisições possa tirar dúvidas técnicas.',
+          description: 'Preencha seu e-mail institucional e um telefone de contato. Estas dados são essenciais para que o setor de aquisições possa tirar dúvidas técnicas.',
           side: 'bottom',
           align: 'center'
         }
@@ -694,7 +707,10 @@ export const runMission05 = (onComplete: () => void) => {
         }
       }
     ],
-    onDestroyed: onComplete
+    onDestroyed: () => {
+      markMissionCompleted(5);
+      if (onComplete) onComplete();
+    }
   });
   activeMissionDriver = d;
   d.drive();
@@ -705,7 +721,6 @@ export const runMission06 = (onComplete: () => void) => {
     ...commonConfig,
     steps: [
       {
-        // PASSO 1: A Linha do Material de Consumo
         element: '#tour-mat-consumo-row',
         popover: {
           title: 'O Resultado do seu Trabalho',
@@ -714,13 +729,11 @@ export const runMission06 = (onComplete: () => void) => {
           align: 'center'
         },
         onHighlighted: () => {
-          // Rola a tela suavemente para garantir que a linha está visível
           const el = document.querySelector('#tour-mat-consumo-row');
           if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
         }
       },
       {
-        // PASSO 2: Botão PDF
         element: '.btn-export-pdf',
         popover: {
           title: 'Documento Oficial',
@@ -731,7 +744,6 @@ export const runMission06 = (onComplete: () => void) => {
         onHighlighted: () => { window.scrollTo({ top: 0, behavior: 'smooth' }); }
       },
       {
-        // PASSO 3: Botão Excel
         element: '.btn-export-excel',
         popover: {
           title: 'Matriz de Análise',
@@ -741,7 +753,6 @@ export const runMission06 = (onComplete: () => void) => {
         }
       },
       {
-        // PASSO 4: Botão Imprimir
         element: '.btn-print',
         popover: {
           title: 'Impressão Direta',
@@ -751,7 +762,6 @@ export const runMission06 = (onComplete: () => void) => {
         }
       },
       {
-        // PASSO 5: Lista de Relatórios e Fim
         element: '.tour-report-selector',
         popover: {
           title: 'Explore os Anexos',
@@ -761,7 +771,10 @@ export const runMission06 = (onComplete: () => void) => {
         }
       }
     ],
-    onDestroyed: onComplete
+    onDestroyed: () => {
+      markMissionCompleted(6);
+      if (onComplete) onComplete();
+    }
   });
   
   activeMissionDriver = d;
