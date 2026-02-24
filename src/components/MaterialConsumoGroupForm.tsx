@@ -16,12 +16,13 @@ import { isGhostMode } from "@/lib/ghostStore";
 import { cn } from "@/lib/utils";
 
 /**
- * Definição local das interfaces para resolver erros de log (Module has no exported member)
- * sem precisar mexer no arquivo de tipos global.
+ * Definição local das interfaces para resolver erros de log.
+ * Incluído unidade_medida explicitamente para evitar erros de tipagem no render.
  */
 interface MaterialConsumoItem extends ItemAquisicao {
   quantidade: number;
   valor_total: number;
+  unidade_medida?: string; 
 }
 
 interface MaterialConsumoGroup {
@@ -62,11 +63,11 @@ const MaterialConsumoGroupForm = ({ group, onSave, onCancel, diretrizes, loading
   };
 
   const handleConfirmSelection = (selectedItens: any[]) => {
-    // Mapeia os itens selecionados para a estrutura local com campos de cálculo
     const mappedItens = selectedItens.map(item => ({
       ...item,
       quantidade: item.quantidade || 1,
-      valor_total: (item.quantidade || 1) * (item.valor_unitario || 0)
+      valor_total: (item.quantidade || 1) * (item.valor_unitario || 0),
+      unidade_medida: item.unidade_medida || 'UN'
     }));
     setItens(mappedItens);
     setIsSelectorOpen(false);
@@ -219,6 +220,7 @@ const MaterialConsumoGroupForm = ({ group, onSave, onCancel, diretrizes, loading
         selectedYear={diretrizes[0]?.ano_referencia || new Date().getFullYear()}
         initialItems={itens}
         onSelect={handleConfirmSelection}
+        onAddDiretriz={() => {}} // Prop obrigatória do componente
       />
     </Card>
   );
