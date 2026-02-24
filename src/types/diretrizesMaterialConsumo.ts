@@ -1,211 +1,59 @@
-"use client";
+import { Tables } from "@/integrations/supabase/types";
 
-import { useState, useEffect } from "react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Trash2, Plus, Package, Search, Loader2, Save, X } from "lucide-react";
-// Corrigido: Agora importando do arquivo central de tipos que já configuramos
-import { ItemAquisica, StagingRow, DiretrizMaterialConsumo } from "@/types/diretrizesMaterialConsumo";
-// Corrigido: Apontando para o componente de seleção que realmente existe no seu projeto
-import AcquisitionItemSelectorDialog from "./AcquisitionItemSelectorDialog";
-import { formatCurrency } from "@/lib/formatUtils";
-import { isGhostMode } from "@/lib/ghostStore";
-import { cn } from "@/lib/utils";
-
-interface MaterialConsumoGroupFormProps {
-  group?: MaterialConsumoGroup;
-  onSave: (group: MaterialConsumoGroup) => void;
-  onCancel: () => void;
-  diretrizes: DiretrizMaterialConsumo[];
-  loading?: boolean;
+/**
+ * Estrutura de um item de aquisição dentro de uma Diretriz de Material de Consumo.
+ * 
+ * NOTA: Esta interface é usada tanto para o catálogo (referência) quanto para o cálculo (solicitação).
+ * Os campos de cálculo (quantidade, valor_total, nd, nr_subitem, nome_subitem) são preenchidos
+ * no momento da seleção/cálculo no formulário.
+ */
+export interface ItemAquisicao {
+    id: string; // ID local temporário para manipulação no frontend
+    descricao_item: string; // Descrição completa do item
+    descricao_reduzida: string; // Novo campo: Descrição reduzida do item
+    valor_unitario: number;
+    numero_pregao: string;
+    uasg: string;
+    codigo_catmat: string;
+    // --- Campos de Cálculo e Contexto Adicionados ---
+    quantidade?: number; // Quantidade solicitada
+    valor_total?: number; // Valor total (unitário * quantidade)
+    nd?: string; // Natureza da Despesa (ex: '33.90.30')
+    nr_subitem?: string; // Número do Subitem da ND (para agrupamento)
+    nome_subitem?: string; // Nome do Subitem da ND (para agrupamento)
+    // --- Fim dos Campos Adicionados ---
 }
 
-const MaterialConsumoGroupForm = ({ group, onSave, onCancel, diretrizes, loading }: MaterialConsumoGroupFormProps) => {
-  const [nomeGrupo, setNomeGrupo] = useState(group?.nome_grupo || "");
-  const [itens, setItens] = useState<MaterialConsumoItem[]>(group?.itens || []);
-  const [isSelectorOpen, setIsSelectorOpen] = useState(false);
+/**
+ * Estrutura da Diretriz de Material de Consumo (Tabela diretrizes_material_consumo).
+ */
+export interface DiretrizMaterialConsumo extends Omit<Tables<'diretrizes_material_consumo'>, 'itens_aquisicao'> {
+    // Sobrescreve itens_aquisicao para usar o tipo ItemAquisicao[]
+    itens_aquisicao: ItemAquisicao[];
+}
 
-  // Expondo preenchimento para o Tour
-  useEffect(() => {
-    (window as any).prefillGroupName = () => {
-      setNomeGrupo("Material de Construção");
-    };
-    return () => {
-      delete (window as any).prefillGroupName;
-    };
-  }, []);
+/**
+ * Estrutura de uma linha lida do Excel, com status de validação, antes de ser agrupada.
+ */
+export interface StagingRow {
+    // Dados do Subitem ND
+    nr_subitem: string;
+    nome_subitem: string;
+    descricao_subitem: string | null;
 
-  const handleOpenSelector = () => {
-    setIsSelectorOpen(true);
-    if (isGhostMode()) {
-      window.dispatchEvent(new CustomEvent('tour:avancar'));
-    }
-  };
+    // Dados do Item de Aquisição
+    codigo_catmat: string;
+    descricao_item: string;
+    descricao_reduzida: string;
+    valor_unitario: number;
+    numero_pregao: string;
+    uasg: string;
+    // unidade_medida: string; // REMOVIDO
 
-  const handleConfirmSelection = (selectedItens: any[]) => {
-    // Mapeando os itens para garantir compatibilidade com o tipo esperado
-    const mappedItens = selectedItens.map(item => ({
-      ...item,
-      quantidade: item.quantidade || 1,
-      valor_total: (item.quantidade || 1) * item.valor_unitario
-    }));
-    setItens(mappedItens);
-    setIsSelectorOpen(false);
-    if (isGhostMode()) {
-      setTimeout(() => {
-        window.dispatchEvent(new CustomEvent('tour:avancar'));
-      }, 300);
-    }
-  };
-
-  const handleUpdateQuantity = (index: number, quantity: string) => {
-    const newItens = [...itens];
-    const numQty = parseFloat(quantity) || 0;
-    newItens[index] = {
-      ...newItens[index],
-      quantidade: numQty,
-      valor_total: numQty * newItens[index].valor_unitario
-    };
-    setItens(newItens);
-  };
-
-  const handleRemoveItem = (index: number) => {
-    setItens(itens.filter((_, i) => i !== index));
-  };
-
-  const totalGrupo = itens.reduce((acc, item) => acc + (item.valor_total || 0), 0);
-
-  return (
-    <Card className="shadow-md border-primary/20 tour-group-form-card">
-      <CardHeader className="bg-muted/30 pb-4">
-        <div className="flex justify-between items-center">
-          <CardTitle className="text-lg font-bold flex items-center gap-2">
-            <Package className="h-5 w-5 text-primary" />
-            {group ? "Editar Grupo de Aquisição" : "Novo Grupo de Aquisição"}
-          </CardTitle>
-          <Button variant="ghost" size="icon" onClick={onCancel}>
-            <X className="h-4 w-4" />
-          </Button>
-        </div>
-      </CardHeader>
-      <CardContent className="pt-6 space-y-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="space-y-2">
-            <Label htmlFor="nome_grupo">Nome do Grupo / Finalidade *</Label>
-            <Input
-              id="nome_grupo"
-              value={nomeGrupo}
-              onChange={(e) => setNomeGrupo(e.target.value)}
-              placeholder="Ex: Material para Manutenção do Pavilhão"
-            />
-          </div>
-          <div className="flex items-end">
-            <Button 
-              type="button" 
-              variant="outline" 
-              className="w-full btn-importar-itens-grupo"
-              onClick={handleOpenSelector}
-            >
-              <Search className="mr-2 h-4 w-4" />
-              Importar/Alterar Itens
-            </Button>
-          </div>
-        </div>
-
-        {itens.length > 0 ? (
-          <div className="border rounded-md overflow-hidden">
-            <Table>
-              <TableHeader className="bg-muted/50">
-                <TableRow>
-                  <TableHead className="w-[40%]">Descrição do Item</TableHead>
-                  <TableHead className="text-center">Unidade</TableHead>
-                  <TableHead className="text-right">Vlr. Unitário</TableHead>
-                  <TableHead className="text-center w-[120px]">Qtd.</TableHead>
-                  <TableHead className="text-right">Total</TableHead>
-                  <TableHead className="w-[50px]"></TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {itens.map((item, index) => (
-                  <TableRow key={`${item.id}-${index}`}>
-                    <TableCell className="font-medium">
-                      {item.descricao_reduzida || item.descricao_item}
-                      <div className="text-[10px] text-muted-foreground">
-                        CATMAT: {item.codigo_catmat} | Subitem: {item.nr_subitem}
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-center text-xs">{item.unidade_medida || 'UN'}</TableCell>
-                    <TableCell className="text-right text-xs">{formatCurrency(item.valor_unitario)}</TableCell>
-                    <TableCell>
-                      <Input
-                        type="number"
-                        className={cn("h-8 text-center tour-item-quantity-input", index === 0 && "tour-target-qty")}
-                        value={item.quantidade || ""}
-                        onChange={(e) => handleUpdateQuantity(index, e.target.value)}
-                      />
-                    </TableCell>
-                    <TableCell className="text-right font-semibold text-xs">
-                      {formatCurrency(item.valor_total || 0)}
-                    </TableCell>
-                    <TableCell>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8 text-destructive"
-                        onClick={() => handleRemoveItem(index)}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))}
-                <TableRow className="bg-muted/20 font-bold">
-                  <TableCell colSpan={4} className="text-right">Total do Grupo:</TableCell>
-                  <TableCell className="text-right text-primary">{formatCurrency(totalGrupo)}</TableCell>
-                  <TableCell />
-                </TableRow>
-              </TableBody>
-            </Table>
-          </div>
-        ) : (
-          <div className="text-center py-8 border-2 border-dashed rounded-md text-muted-foreground">
-            Nenhum item selecionado. Clique em "Importar/Alterar Itens" para começar.
-          </div>
-        )}
-
-        <div className="flex justify-end gap-3 pt-4 border-t">
-          <Button variant="outline" onClick={onCancel} disabled={loading}>
-            Cancelar
-          </Button>
-          <Button 
-            className="btn-salvar-grupo-tour"
-            onClick={() => onSave({
-              id: group?.id || crypto.randomUUID(),
-              nome_grupo: nomeGrupo,
-              itens: itens,
-              valor_total: totalGrupo
-            })}
-            disabled={loading || !nomeGrupo || itens.length === 0}
-          >
-            {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-            Salvar Grupo
-          </Button>
-        </div>
-      </CardContent>
-
-      <AcquisitionItemSelectorDialog
-        open={isSelectorOpen}
-        onOpenChange={setIsSelectorOpen}
-        selectedYear={diretrizes[0]?.ano_referencia || new Date().getFullYear()}
-        initialItems={itens}
-        onSelect={handleConfirmSelection}
-        onAddDiretriz={() => {}}
-      />
-    </Card>
-  );
-};
-
-export default MaterialConsumoGroupForm;
+    // Status de Validação
+    isValid: boolean;
+    errors: string[];
+    isDuplicateInternal: boolean; // Duplicidade dentro do arquivo
+    isDuplicateExternal: boolean; // Duplicidade de Subitem ND no DB (apenas para o primeiro item do grupo)
+    originalRowIndex: number; // Linha original no Excel
+}
