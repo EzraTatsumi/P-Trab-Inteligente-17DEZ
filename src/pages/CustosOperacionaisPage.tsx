@@ -986,26 +986,35 @@ const CustosOperacionaisPage = () => {
 
   // Sincronização segura para Material de Consumo
   useEffect(() => {
-    if (isGhostMode()) {
+    const ghost = isGhostMode();
+    if (ghost) {
       const missionId = getActiveMission();
-      const ghostData = missionId === '3' ? GHOST_DATA.missao_03.subitens_lista : GHOST_DATA.missao_02.subitens_lista;
-      setDiretrizesMaterialConsumo(ghostData as any);
+      const ghostData = (missionId === '3' ? GHOST_DATA.missao_03.subitens_lista : GHOST_DATA.missao_02.subitens_lista) as any;
+      if (JSON.stringify(diretrizesMaterialConsumo) !== JSON.stringify(ghostData)) {
+        setDiretrizesMaterialConsumo(ghostData);
+      }
     } else if (diretrizesMaterialConsumoHook) {
-      setDiretrizesMaterialConsumo(diretrizesMaterialConsumoHook);
+      if (JSON.stringify(diretrizesMaterialConsumo) !== JSON.stringify(diretrizesMaterialConsumoHook)) {
+        setDiretrizesMaterialConsumo(diretrizesMaterialConsumoHook);
+      }
     }
   }, [diretrizesMaterialConsumoHook, selectedYear]);
 
   // Sincronização segura para Serviços de Terceiros
   useEffect(() => {
     if (!isGhostMode() && diretrizesServicosTerceirosHook) {
-      setDiretrizesServicosTerceiros(diretrizesServicosTerceirosHook);
+      if (JSON.stringify(diretrizesServicosTerceiros) !== JSON.stringify(diretrizesServicosTerceirosHook)) {
+        setDiretrizesServicosTerceiros(diretrizesServicosTerceirosHook);
+      }
     }
   }, [diretrizesServicosTerceirosHook, selectedYear]);
 
   // Sincronização segura para Material Permanente
   useEffect(() => {
     if (!isGhostMode() && diretrizesMaterialPermanenteHook) {
-      setDiretrizesMaterialPermanente(diretrizesMaterialPermanenteHook);
+      if (JSON.stringify(diretrizesMaterialPermanente) !== JSON.stringify(diretrizesMaterialPermanenteHook)) {
+        setDiretrizesMaterialPermanente(diretrizesMaterialPermanenteHook);
+      }
     }
   }, [diretrizesMaterialPermanenteHook, selectedYear]);
 
@@ -1020,11 +1029,13 @@ const CustosOperacionaisPage = () => {
             }
             
             await loadAvailableYears(defaultYearData.defaultYear);
-            setSelectedYear(defaultYearData.year);
+            if (selectedYear !== defaultYearData.year && selectedYear === currentYear) {
+               setSelectedYear(defaultYearData.year);
+            }
         };
         checkAuthAndLoadYears();
     }
-  }, [isLoadingDefaultYear, defaultYearData?.year, defaultYearData?.defaultYear, navigate]);
+  }, [isLoadingDefaultYear, defaultYearData?.year, defaultYearData?.defaultYear]);
 
   const loadAvailableYears = async (defaultYearId: number | null) => {
     try {
