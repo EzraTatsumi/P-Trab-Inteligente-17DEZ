@@ -65,6 +65,7 @@ import { RequirementsAlert } from "@/components/RequirementsAlert";
 import { InstructionHub } from "@/components/InstructionHub";
 import { runMission01 } from "@/tours/missionTours";
 import { GHOST_DATA, isGhostMode, getActiveMission } from "@/lib/ghostStore";
+import { shouldShowVictory, markVictoryAsShown } from "@/lib/missionUtils";
 import confetti from "canvas-confetti";
 
 export type PTrabDB = Tables<'p_trab'> & {
@@ -211,8 +212,16 @@ const PTrabManager = () => {
   };
 
   useEffect(() => {
+    // Verifica se deve mostrar a vitória ao montar o componente
+    if (shouldShowVictory()) {
+      setShowVictory(true);
+      markVictoryAsShown();
+      dispararConfetes();
+    }
+
     const handleVictory = () => {
       setShowVictory(true);
+      markVictoryAsShown();
       dispararConfetes();
     };
 
