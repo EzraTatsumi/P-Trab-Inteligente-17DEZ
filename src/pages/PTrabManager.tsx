@@ -64,7 +64,7 @@ import { WelcomeModal } from "@/components/WelcomeModal";
 import { RequirementsAlert } from "@/components/RequirementsAlert";
 import { InstructionHub } from "@/components/InstructionHub";
 import { runMission01 } from "@/tours/missionTours";
-import { GHOST_DATA, isGhostMode, getActiveMission } from "@/lib/ghostStore";
+import { GHOST_DATA, isGhostMode, disableGhostMode, getActiveMission } from "@/lib/ghostStore";
 import confetti from "canvas-confetti";
 
 export type PTrabDB = Tables<'p_trab'> & {
@@ -1486,7 +1486,7 @@ const PTrabManager = () => {
                   );})}
                 </TableBody>
               </Table>
-            )}
+            ) : null}
           </CardContent>
         </Card>
       </div>
@@ -1618,6 +1618,8 @@ const PTrabManager = () => {
             onClick={() => {
                 setShowVictory(false);
                 setShowInstructionHub(false);
+                disableGhostMode();
+                window.location.reload();
             }}
           >
             Iniciar Configurações Iniciais
