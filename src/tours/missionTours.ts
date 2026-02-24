@@ -83,7 +83,7 @@ export const runMission01 = (onComplete: () => void) => {
         element: '.btn-ajuda',
         popover: {
           title: 'Suporte e Manuais',
-          description: 'Dúvidas sobre normas ou uso do sistema? Aqui você acessa os manuais e guias rápidos.',
+          description: 'Dúvidas sobre normas ou uso do sistema? Aqui você accesses os manuais e guias rápidos.',
           side: 'bottom',
           align: 'start'
         }
@@ -696,6 +696,74 @@ export const runMission05 = (onComplete: () => void) => {
     ],
     onDestroyed: onComplete
   });
+  activeMissionDriver = d;
+  d.drive();
+};
+
+export const runMission06 = (onComplete: () => void) => {
+  const d = driver({
+    ...commonConfig,
+    steps: [
+      {
+        // PASSO 1: A Linha do Material de Consumo
+        element: '#tour-mat-consumo-row',
+        popover: {
+          title: 'O Resultado do seu Trabalho',
+          description: 'Lembra-se da Missão 3? Aqui está o seu Grupo de Material de Construção, consolidado com o valor de R$ 1.250,50 e a respectiva memória de cálculo gerada pronta para o ordenador de despesas.',
+          side: 'bottom',
+          align: 'center'
+        },
+        onHighlighted: () => {
+          // Rola a tela suavemente para garantir que a linha está visível
+          const el = document.querySelector('#tour-mat-consumo-row');
+          if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      },
+      {
+        // PASSO 2: Botão PDF
+        element: '.btn-export-pdf',
+        popover: {
+          title: 'Documento Oficial',
+          description: 'Precisa anexar ao processo administrativo? Exporte o relatório em PDF com a formatação oficial do Exército.',
+          side: 'bottom',
+          align: 'center'
+        },
+        onHighlighted: () => { window.scrollTo({ top: 0, behavior: 'smooth' }); }
+      },
+      {
+        // PASSO 3: Botão Excel
+        element: '.btn-export-excel',
+        popover: {
+          title: 'Matriz de Análise',
+          description: 'Para conferências da Secção Financeira, exporte a matriz completa para o Excel com todas as colunas separadas.',
+          side: 'bottom',
+          align: 'center'
+        }
+      },
+      {
+        // PASSO 4: Botão Imprimir
+        element: '.btn-print',
+        popover: {
+          title: 'Impressão Direta',
+          description: 'Envie diretamente para a impressora sem precisar baixar o arquivo.',
+          side: 'bottom',
+          align: 'center'
+        }
+      },
+      {
+        // PASSO 5: Lista de Relatórios e Fim
+        element: '.tour-report-selector',
+        popover: {
+          title: 'Explore os Anexos',
+          description: 'Nesta lista, pode acessar a todos os outros relatórios (Logístico, DOR, etc.). Missão cumprida! O seu P Trab está 100% dominado.',
+          side: 'left',
+          align: 'start'
+        }
+      }
+    ],
+    onDestroyed: onComplete
+  });
+  
   activeMissionDriver = d;
   d.drive();
 };
