@@ -737,7 +737,7 @@ export const runMission06 = (onComplete: () => void) => {
         element: '.btn-export-pdf',
         popover: {
           title: 'Documento Oficial',
-          description: 'Precisa anexar ao processo administrativo? Exporte o relatório em PDF com a formatação oficial do Exército.',
+          description: 'Precisa anexar ao processo administrativo? Exporte o relatório em PDF.',
           side: 'bottom',
           align: 'center'
         },
@@ -746,8 +746,8 @@ export const runMission06 = (onComplete: () => void) => {
       {
         element: '.btn-export-excel',
         popover: {
-          title: 'Matriz de Análise',
-          description: 'Para conferências da Secção Financeira, exporte a matriz completa para o Excel com todas as colunas separadas.',
+          title: 'Versão Editável',
+          description: 'Para ajustes manuais, exporte a planilha completa para o Excel com todas as colunas separadas.',
           side: 'bottom',
           align: 'center'
         }
@@ -765,7 +765,7 @@ export const runMission06 = (onComplete: () => void) => {
         element: '.tour-report-selector',
         popover: {
           title: 'Explore os Anexos',
-          description: 'Nesta lista, pode acessar a todos os outros relatórios (Logístico, DOR, etc.). Missão cumprida! O seu P Trab está 100% dominado.',
+          description: 'Nesta lista, pode acessar a todos os outros relatórios (Logístico, DOR, etc.). Missão cumprida!',
           side: 'left',
           align: 'start'
         }
