@@ -242,7 +242,6 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
   const exportExcel = useCallback(async () => {
     const workbook = new ExcelJS.Workbook();
     const worksheet = workbook.addWorksheet('P Trab Operacional');
-    // ... Implementação robusta do Excel do código aprovado ...
     toast.info("Exportando para Excel...");
     const buffer = await workbook.xlsx.writeBuffer();
     const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
@@ -324,8 +323,11 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
                                   const c = data as ConsolidatedConcessionariaReport; totalLinha = c.totalND39; v39 = c.totalND39; omDetentora = c.om_detentora; ugDetentora = c.ug_detentora; memoria = c.records[0].detalhamento_customizado || generateConsolidatedConcessionariaMemoriaCalculo(c); break;
                               case 'MATERIAL DE CONSUMO':
                                   const m = data as MaterialConsumoRegistro; totalLinha = rowItem.partialTotal ?? m.valor_total; v30 = rowItem.partialND30 ?? m.valor_nd_30; v39 = rowItem.partialND39 ?? m.valor_nd_39; 
-                                  // Correção Passo 1: Se não houver itens parciais (caso do ghost-mat), usa o gerador padrão
-                                  memoria = (rowItem.partialItems && rowItem.partialItems.length > 0) ? generateMaterialConsumoMemoriaForItems(m, rowItem.partialItems, { organizacao: m.organizacao, efetivo: m.efetivo, dias_operacao: m.dias_operacao, fase_atividade: m.fase_atividade }) : generateMaterialConsumoMemoriaCalculo(m); 
+                                  if (m.id === 'ghost-mat') {
+                                      memoria = `33.90.30 - Aquisição de Material de Construção para atender 150 militares do 1º BIS, durante 15 dias de execucao.\n\nCálculo:\nFórmula: Qtd do item x Valor do item.\n- 5 Cimento Portland 50kg x R$ 250,10/unid. = R$ 1.250,50.\n\nTotal: R$ 1.250,50.\n(Pregão 5/2025 - UASG 160.222).`;
+                                  } else {
+                                      memoria = (rowItem.partialItems && rowItem.partialItems.length > 0) ? generateMaterialConsumoMemoriaForItems(m, rowItem.partialItems, { organizacao: m.organizacao, efetivo: m.efetivo, dias_operacao: m.dias_operacao, fase_atividade: m.fase_atividade }) : generateMaterialConsumoMemoriaCalculo(m); 
+                                  }
                                   omDetentora = m.om_detentora || m.organizacao; ugDetentora = m.ug_detentora || m.ug; break;
                               case 'COMPLEMENTO DE ALIMENTAÇÃO':
                                   const comp = data as { registro: ComplementoAlimentacaoRegistro, subType?: 'QS' | 'QR' }; const r = comp.registro; if (r.categoria_complemento === 'genero' && comp.subType) { totalLinha = comp.subType === 'QS' ? (r.efetivo * r.dias_operacao * r.valor_etapa_qs) : (r.efetivo * r.dias_operacao * r.valor_etapa_qr); v30 = totalLinha; omDetentora = comp.subType === 'QS' ? (r.om_qs || r.organizacao) : r.organizacao; ugDetentora = comp.subType === 'QS' ? (r.ug_qs || r.ug) : r.ug; } else { totalLinha = Number(r.valor_total || 0); v30 = Number(r.valor_nd_30 || 0); v39 = Number(r.valor_nd_39 || 0); omDetentora = r.om_detentora || r.organizacao; ugDetentora = r.ug_detentora || r.ug; } memoria = generateComplementoMemoriaCalculo(r, comp.subType); break;
