@@ -35,29 +35,43 @@ const ArpUasgSearchForm: React.FC<ArpUasgSearchFormProps> = ({ onResultsFound })
 
     const handleUasgChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const value = e.target.value.replace(/\D/g, '').slice(0, 6);
-        form.setValue('uasg', value);
+        form.setValue('uasg', value, { shouldValidate: true });
     };
 
     const onSubmit = async (values: ArpUasgFormValues) => {
+        const cleanUasg = values.uasg.trim();
         setIsSearching(true);
+        
         try {
-            const results = await fetchArpsByUasg({ uasg: values.uasg });
+            const results = await fetchArpsByUasg({ uasg: cleanUasg });
             
             if (results.length === 0) {
                 toast.warning("Nenhuma ARP encontrada para esta UASG.");
             } else {
-                onResultsFound(results, values.uasg);
+                // Notifica o componente pai sobre os resultados
+                onResultsFound(results, cleanUasg);
                 
-                // CORREÇÃO MISSÃO 2: Avança o tour automaticamente se estiver no modo Ghost e a UASG for a correta
-                if (isGhostMode() && values.uasg === '160222') {
+                // CORREÇÃO MISSÃO 2: Avança o tour automaticamente
+                if (isGhostMode() && cleanUasg === '160222') {
+                    // Timeout pequeno para garantir que a lista de resultados foi renderizada no DOM
                     setTimeout(() => {
                         window.dispatchEvent(new CustomEvent('tour:avancar'));
-                    }, 500);
+                    }, 600);
                 }
             }
         } catch (error: any) {
-            console.error("Erro na busca:", error);
-            toast.error(error.message || "Falha ao consultar PNCP.");
+            console.error("Erro detalhado na busca:", error);
+            
+            // Se for modo treinamento, tentamos um fallback silencioso com os dados locais
+            if (isGhostMode() && cleanUasg === '160222') {
+                const { GHOST_DATA } = await import('@/lib/ghostStore');
+                onResultsFound(GHOST_DATA.missao_02.arp_search_results, cleanUasg);
+                setTimeout(() => {
+                    window.dispatchEvent(new CustomEvent('tour:avancar'));
+                }, 600);
+            } else {
+                toast.error(error.message || "Falha ao consultar PNCP.");
+            }
         } finally {
             setIsSearching(false);
         }
@@ -79,6 +93,7 @@ const ArpUasgSearchForm: React.FC<ArpUasgSearchFormProps> = ({ onResultsFound })
                                     onChange={handleUasgChange}
                                     maxLength={6}
                                     disabled={isSearching}
+                                    className="text-lg font-mono tracking-widest"
                                 />
                             </FormControl>
                             <FormMessage />
