@@ -974,7 +974,7 @@ const PTrabReportManager = () => {
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-2"><FileText className="h-4 w-4 text-primary" /><span className="text-sm font-medium">Relatório:</span></div>
             <Select value={selectedReport} onValueChange={(value) => setSelectedReport(value as ReportType)}>
-              <SelectTrigger className="w-[320px] tour-report-selector">
+              <SelectTrigger className="w-[320px] tour-report-selector relative">
                 <SelectValue placeholder="Selecione o Relatório" />
               </SelectTrigger>
               <SelectContent>
