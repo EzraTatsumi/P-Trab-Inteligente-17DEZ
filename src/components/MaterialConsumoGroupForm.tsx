@@ -17,15 +17,15 @@ import { cn } from "@/lib/utils";
 
 /**
  * Definição local das interfaces para resolver erros de log.
- * Incluído unidade_medida explicitamente para evitar erros de tipagem no render.
+ * Exportadas para que outros componentes (como a página principal) possam utilizá-las.
  */
-interface MaterialConsumoItem extends ItemAquisicao {
+export interface MaterialConsumoItem extends ItemAquisicao {
   quantidade: number;
   valor_total: number;
   unidade_medida?: string; 
 }
 
-interface MaterialConsumoGroup {
+export interface MaterialConsumoGroup {
   id: string;
   nome_grupo: string;
   itens: MaterialConsumoItem[];
@@ -220,7 +220,7 @@ const MaterialConsumoGroupForm = ({ group, onSave, onCancel, diretrizes, loading
         selectedYear={diretrizes[0]?.ano_referencia || new Date().getFullYear()}
         initialItems={itens}
         onSelect={handleConfirmSelection}
-        onAddDiretriz={() => {}} // Prop obrigatória do componente
+        onAddDiretriz={() => {}} 
       />
     </Card>
   );
