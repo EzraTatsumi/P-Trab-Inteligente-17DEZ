@@ -334,10 +334,7 @@ const PTrabManager = () => {
 
     if (startTour && ghost && missionId === '1') {
       runMission01(() => {
-        const completed = JSON.parse(localStorage.getItem('completed_missions') || '[]');
-        if (!completed.includes(1)) {
-          localStorage.setItem('completed_missions', JSON.stringify([...completed, 1]));
-        }
+        // Agora quem cuida do progresso é exclusivamente o markMissionCompleted no driver
         setShowInstructionHub(true);
       });
     }
