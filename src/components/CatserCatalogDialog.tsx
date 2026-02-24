@@ -3,10 +3,11 @@
 import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { Search, Loader2, Briefcase } from "lucide-react";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Search, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
 interface CatserEntry {
     code: string;
@@ -17,7 +18,7 @@ interface CatserEntry {
 interface CatserCatalogDialogProps {
     open: boolean;
     onOpenChange: (open: boolean) => void;
-    onSelect: (entry: CatserEntry) => void;
+    onSelect: (item: CatserEntry) => void;
 }
 
 const CatserCatalogDialog: React.FC<CatserCatalogDialogProps> = ({ open, onOpenChange, onSelect }) => {
@@ -34,15 +35,16 @@ const CatserCatalogDialog: React.FC<CatserCatalogDialogProps> = ({ open, onOpenC
     const fetchEntries = async () => {
         setLoading(true);
         try {
-            const { data, error } = await supabase
-                .from('catalogo_catser' as any)
-                .select('code, description, short_description')
-                .order('description', { ascending: true });
-
+            // Using type assertion to fix the SelectQueryError inference issue
+            const { data, error } = await (supabase.from('catalogo_catser' as any) as any)
+                .select('code, description, short_description');
+            
             if (error) throw error;
-            setEntries(data || []);
+            
+            setEntries((data as any) || []);
         } catch (error) {
-            console.error("Erro ao carregar catálogo CATSER:", error);
+            console.error("Erro ao buscar catálogo CATSER:", error);
+            toast.error("Falha ao carregar catálogo.");
         } finally {
             setLoading(false);
         }
@@ -51,66 +53,58 @@ const CatserCatalogDialog: React.FC<CatserCatalogDialogProps> = ({ open, onOpenC
     const filteredEntries = entries.filter(entry => 
         entry.code.includes(searchTerm) || 
         entry.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (entry.short_description && entry.short_description.toLowerCase().includes(searchTerm.toLowerCase()))
+        (entry.short_description?.toLowerCase().includes(searchTerm.toLowerCase()))
     );
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="max-w-4xl max-h-[80vh] overflow-hidden flex flex-col">
+            <DialogContent className="max-w-3xl max-h-[80vh] overflow-hidden flex flex-col">
                 <DialogHeader>
-                    <DialogTitle className="flex items-center gap-2">
-                        <Briefcase className="h-5 w-5 text-primary" />
-                        Catálogo de Serviços (CATSER)
-                    </DialogTitle>
+                    <DialogTitle>Catálogo de Serviços (CATSER)</DialogTitle>
                 </DialogHeader>
-                
                 <div className="relative my-4">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                     <Input 
-                        placeholder="Buscar por código ou descrição do serviço..." 
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
+                        placeholder="Buscar por código ou descrição..." 
+                        value={searchTerm} 
+                        onChange={(e) => setSearchTerm(e.target.value)} 
                         className="pl-10"
                     />
                 </div>
-
                 <div className="flex-1 overflow-y-auto border rounded-md">
                     {loading ? (
-                        <div className="flex items-center justify-center py-12">
-                            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                        <div className="flex items-center justify-center h-32">
+                            <Loader2 className="h-6 w-6 animate-spin text-primary" />
                         </div>
                     ) : (
                         <Table>
                             <TableHeader>
                                 <TableRow>
-                                    <TableHead className="w-[120px]">Código</TableHead>
+                                    <TableHead className="w-[100px]">Código</TableHead>
                                     <TableHead>Descrição</TableHead>
-                                    <TableHead className="text-right">Ação</TableHead>
+                                    <TableHead className="w-[100px] text-right">Ação</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
-                                {filteredEntries.map((entry) => (
-                                    <TableRow key={entry.code}>
-                                        <TableCell className="font-mono text-xs">{entry.code}</TableCell>
-                                        <TableCell>
-                                            <div className="font-medium text-sm">{entry.description}</div>
-                                            {entry.short_description && (
-                                                <div className="text-xs text-muted-foreground">
-                                                    Reduzido: {entry.short_description}
-                                                </div>
-                                            )}
-                                        </TableCell>
-                                        <TableCell className="text-right">
-                                            <Button size="sm" onClick={() => onSelect(entry)}>Selecionar</Button>
-                                        </TableCell>
-                                    </TableRow>
-                                ))}
-                                {filteredEntries.length === 0 && (
+                                {filteredEntries.length === 0 ? (
                                     <TableRow>
                                         <TableCell colSpan={3} className="text-center py-8 text-muted-foreground">
-                                            Nenhum serviço encontrado no catálogo local.
+                                            Nenhum serviço encontrado.
                                         </TableCell>
                                     </TableRow>
+                                ) : (
+                                    filteredEntries.map((entry) => (
+                                        <TableRow key={entry.code}>
+                                            <TableCell className="font-medium text-xs">{entry.code}</TableCell>
+                                            <TableCell>
+                                                <p className="font-semibold text-sm">{entry.short_description || entry.description.split('\n')[0]}</p>
+                                                <p className="text-[10px] text-muted-foreground line-clamp-2">{entry.description}</p>
+                                            </TableCell>
+                                            <TableCell className="text-right">
+                                                <Button size="sm" variant="outline" onClick={() => onSelect(entry)}>Selecionar</Button>
+                                            </TableCell>
+                                        </TableRow>
+                                    ))
                                 )}
                             </TableBody>
                         </Table>
