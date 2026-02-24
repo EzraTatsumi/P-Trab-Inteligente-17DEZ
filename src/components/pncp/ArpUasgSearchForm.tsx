@@ -1,5 +1,3 @@
-"use client";
-
 import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -10,112 +8,85 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Search, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { fetchArpsByUasg } from '@/integrations/supabase/api';
-import { ArpItemResult } from '@/types/pncp';
-import { isGhostMode } from '@/lib/ghostStore';
+import { ArpItemResult, DetailedArpItem } from '@/types/pncp';
+import ArpSearchResultsList from './ArpSearchResultsList';
 
 const formSchema = z.object({
-    uasg: z.string().min(6, { message: "UASG deve ter 6 dígitos." }).max(6),
+    uasg: z.string().min(6, { message: "A UASG deve ter 6 dígitos." }).max(6).regex(/^\d+$/, { message: "A UASG deve conter apenas números." }),
 });
 
 type ArpUasgFormValues = z.infer<typeof formSchema>;
 
-interface ArpUasgSearchFormProps {
-    onResultsFound: (results: ArpItemResult[], uasg: string) => void;
+export interface ArpUasgSearchFormProps {
+    onItemPreSelect: (item: DetailedArpItem, pregaoFormatado: string, uasg: string) => void;
+    selectedItemIds: string[];
+    onClearSelection: () => void;
+    scrollContainerRef: React.RefObject<HTMLDivElement>;
+    mode?: 'material' | 'servico';
 }
 
-const ArpUasgSearchForm: React.FC<ArpUasgSearchFormProps> = ({ onResultsFound }) => {
+const ArpUasgSearchForm: React.FC<ArpUasgSearchFormProps> = ({ 
+    onItemPreSelect, 
+    selectedItemIds, 
+    onClearSelection,
+    mode = 'material' 
+}) => {
     const [isSearching, setIsSearching] = useState(false);
+    const [results, setResults] = useState<ArpItemResult[]>([]);
 
     const form = useForm<ArpUasgFormValues>({
         resolver: zodResolver(formSchema),
-        defaultValues: {
-            uasg: "",
-        },
+        defaultValues: { uasg: "" },
     });
 
-    const handleUasgChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const value = e.target.value.replace(/\D/g, '').slice(0, 6);
-        form.setValue('uasg', value, { shouldValidate: true });
-    };
-
     const onSubmit = async (values: ArpUasgFormValues) => {
-        const cleanUasg = values.uasg.trim();
         setIsSearching(true);
-        
+        setResults([]);
+        onClearSelection();
         try {
-            const results = await fetchArpsByUasg({ uasg: cleanUasg });
-            
-            if (results.length === 0) {
-                toast.warning("Nenhuma ARP encontrada para esta UASG.");
-            } else {
-                // Notifica o componente pai sobre os resultados
-                onResultsFound(results, cleanUasg);
-                
-                // CORREÇÃO MISSÃO 2: Avança o tour automaticamente
-                if (isGhostMode() && cleanUasg === '160222') {
-                    // Timeout pequeno para garantir que a lista de resultados foi renderizada no DOM
-                    setTimeout(() => {
-                        window.dispatchEvent(new CustomEvent('tour:avancar'));
-                    }, 600);
-                }
-            }
+            const data = await fetchArpsByUasg({ uasg: values.uasg });
+            setResults(data);
+            if (data.length === 0) toast.warning("Nenhuma ARP encontrada para esta UASG.");
         } catch (error: any) {
-            console.error("Erro detalhado na busca:", error);
-            
-            // Se for modo treinamento, tentamos um fallback silencioso com os dados locais
-            if (isGhostMode() && cleanUasg === '160222') {
-                const { GHOST_DATA } = await import('@/lib/ghostStore');
-                onResultsFound(GHOST_DATA.missao_02.arp_search_results, cleanUasg);
-                setTimeout(() => {
-                    window.dispatchEvent(new CustomEvent('tour:avancar'));
-                }, 600);
-            } else {
-                toast.error(error.message || "Falha ao consultar PNCP.");
-            }
+            toast.error(error.message || "Falha ao buscar ARPs.");
         } finally {
             setIsSearching(false);
         }
     };
 
     return (
-        <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 p-4 form-busca-uasg-tour">
-                <FormField
-                    control={form.control}
-                    name="uasg"
-                    render={({ field }) => (
-                        <FormItem>
-                            <FormLabel>Código da Unidade Gestora (UASG) *</FormLabel>
-                            <FormControl>
-                                <Input 
-                                    {...field} 
-                                    placeholder="Ex: 160222" 
-                                    onChange={handleUasgChange}
-                                    maxLength={6}
-                                    disabled={isSearching}
-                                    className="text-lg font-mono tracking-widest"
-                                />
-                            </FormControl>
-                            <FormMessage />
-                        </FormItem>
-                    )}
+        <div className="space-y-6">
+            <Form {...form}>
+                <form onSubmit={form.handleSubmit(onSubmit)} className="flex gap-4 items-end p-4 form-busca-uasg-tour">
+                    <FormField
+                        control={form.control}
+                        name="uasg"
+                        render={({ field }) => (
+                            <FormItem className="flex-1">
+                                <FormLabel>Código UASG da Organização Militar</FormLabel>
+                                <FormControl>
+                                    <Input placeholder="Ex: 160222" maxLength={6} {...field} disabled={isSearching} />
+                                </FormControl>
+                                <FormMessage />
+                            </FormItem>
+                        )}
+                    />
+                    <Button type="submit" disabled={isSearching}>
+                        {isSearching ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Search className="h-4 w-4 mr-2" />}
+                        Buscar ARPs por UASG
+                    </Button>
+                </form>
+            </Form>
+
+            {results.length > 0 && (
+                <ArpSearchResultsList 
+                    results={results} 
+                    onItemPreSelect={onItemPreSelect} 
+                    searchedUasg={form.getValues('uasg')} 
+                    selectedItemIds={selectedItemIds}
                 />
-                
-                <Button type="submit" disabled={isSearching} className="w-full">
-                    {isSearching ? (
-                        <>
-                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                            Consultando PNCP...
-                        </>
-                    ) : (
-                        <>
-                            <Search className="h-4 w-4 mr-2" />
-                            Buscar ARPs por UASG
-                        </>
-                    )}
-                </Button>
-            </form>
-        </Form>
+            )}
+        </div>
     );
 };
 
