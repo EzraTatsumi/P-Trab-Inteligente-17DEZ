@@ -6,14 +6,30 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Trash2, Plus, Package, Search, Loader2, Save, X } from "lucide-react";
-// Corrigido: Agora importando do arquivo central de tipos que já configuramos
-import { MaterialConsumoGroup, MaterialConsumoItem, DiretrizMaterialConsumo } from "@/types/diretrizesMaterialConsumo";
-// Corrigido: Apontando para o componente de seleção que realmente existe no seu projeto
+import { Trash2, Package, Search, Loader2, Save, X } from "lucide-react";
+
+// Importando apenas o que realmente existe no arquivo de tipos
+import { ItemAquisicao, DiretrizMaterialConsumo } from "@/types/diretrizesMaterialConsumo";
 import AcquisitionItemSelectorDialog from "./AcquisitionItemSelectorDialog";
 import { formatCurrency } from "@/lib/formatUtils";
 import { isGhostMode } from "@/lib/ghostStore";
 import { cn } from "@/lib/utils";
+
+/**
+ * Definição local das interfaces para resolver erros de log (Module has no exported member)
+ * sem precisar mexer no arquivo de tipos global.
+ */
+interface MaterialConsumoItem extends ItemAquisicao {
+  quantidade: number;
+  valor_total: number;
+}
+
+interface MaterialConsumoGroup {
+  id: string;
+  nome_grupo: string;
+  itens: MaterialConsumoItem[];
+  valor_total: number;
+}
 
 interface MaterialConsumoGroupFormProps {
   group?: MaterialConsumoGroup;
@@ -28,7 +44,7 @@ const MaterialConsumoGroupForm = ({ group, onSave, onCancel, diretrizes, loading
   const [itens, setItens] = useState<MaterialConsumoItem[]>(group?.itens || []);
   const [isSelectorOpen, setIsSelectorOpen] = useState(false);
 
-  // Expondo preenchimento para o Tour
+  // Auxílio para o Tour de instruções
   useEffect(() => {
     (window as any).prefillGroupName = () => {
       setNomeGrupo("Material de Construção");
@@ -46,14 +62,15 @@ const MaterialConsumoGroupForm = ({ group, onSave, onCancel, diretrizes, loading
   };
 
   const handleConfirmSelection = (selectedItens: any[]) => {
-    // Mapeando os itens para garantir compatibilidade com o tipo esperado
+    // Mapeia os itens selecionados para a estrutura local com campos de cálculo
     const mappedItens = selectedItens.map(item => ({
       ...item,
       quantidade: item.quantidade || 1,
-      valor_total: (item.quantidade || 1) * item.valor_unitario
+      valor_total: (item.quantidade || 1) * (item.valor_unitario || 0)
     }));
     setItens(mappedItens);
     setIsSelectorOpen(false);
+    
     if (isGhostMode()) {
       setTimeout(() => {
         window.dispatchEvent(new CustomEvent('tour:avancar'));
@@ -202,7 +219,6 @@ const MaterialConsumoGroupForm = ({ group, onSave, onCancel, diretrizes, loading
         selectedYear={diretrizes[0]?.ano_referencia || new Date().getFullYear()}
         initialItems={itens}
         onSelect={handleConfirmSelection}
-        onAddDiretriz={() => {}}
       />
     </Card>
   );
