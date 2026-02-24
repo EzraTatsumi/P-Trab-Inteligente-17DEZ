@@ -423,9 +423,9 @@ export const generateClasseIMemoriaCalculoUnificada = (registro: ClasseIRegistro
             calculos: {
                 totalQS: registro.totalQS,
                 totalQR: registro.totalQR,
-                nrCiclos: calculateClasseICalculations(registro.efetivo, registro.dias_operacao, registro.nrRefInt || 0, Number(r.valor_qs), Number(r.valor_qr)).nrCiclos,
+                nrCiclos: calculateClasseICalculations(registro.efetivo, registro.dias_operacao, registro.nrRefInt || 0, registro.valor_qs, registro.valor_qr).nrCiclos,
                 diasEtapaPaga: 0,
-                diasEtapaSolicitada: calculateClasseICalculations(registro.efetivo, registro.dias_operacao, registro.nrRefInt || 0, Number(r.valor_qs), Number(r.valor_qr)).diasEtapaSolicitada,
+                diasEtapaSolicitada: calculateClasseICalculations(registro.efetivo, registro.dias_operacao, registro.nrRefInt || 0, registro.valor_qs, registro.valor_qr).diasEtapaSolicitada,
                 totalEtapas: 0,
                 complementoQS: registro.complementoQS,
                 etapaQS: registro.etapaQS,
@@ -458,9 +458,9 @@ export const generateClasseIMemoriaCalculoUnificada = (registro: ClasseIRegistro
             calculos: {
                 totalQS: registro.totalQS,
                 totalQR: registro.totalQR,
-                nrCiclos: calculateClasseICalculations(registro.efetivo, registro.dias_operacao, registro.nrRefInt || 0, Number(r.valor_qs), Number(r.valor_qr)).nrCiclos,
+                nrCiclos: calculateClasseICalculations(registro.efetivo, registro.dias_operacao, registro.nrRefInt || 0, registro.valor_qs, registro.valor_qr).nrCiclos,
                 diasEtapaPaga: 0,
-                diasEtapaSolicitada: calculateClasseICalculations(registro.efetivo, registro.dias_operacao, registro.nrRefInt || 0, Number(r.valor_qs), Number(r.valor_qr)).diasEtapaSolicitada,
+                diasEtapaSolicitada: calculateClasseICalculations(registro.efetivo, registro.dias_operacao, registro.nrRefInt || 0, registro.valor_qs, registro.valor_qr).diasEtapaSolicitada,
                 totalEtapas: 0,
                 complementoQS: registro.complementoQS,
                 etapaQS: registro.etapaQS,
@@ -781,6 +781,7 @@ const PTrabReportManager = () => {
                   organizacao: '1º BIS', 
                   ug: '160222', 
                   group_name: 'MATERIAL DE CONSTRUÇÃO',
+                  nome_grupo: 'MATERIAL DE CONSTRUÇÃO', // Injetando ambos para garantir compatibilidade
                   valor_total: 1250.50, 
                   valor_nd_30: 1250.50, 
                   valor_nd_39: 0, 
@@ -895,15 +896,15 @@ const PTrabReportManager = () => {
     return oms.sort((a, b) => { const aPriority = getOMPriority(a, rmName); const bPriority = getOMPriority(b, rmName); if (aPriority !== bPriority) return aPriority - bPriority; return a.localeCompare(b); });
   }, [gruposPorOM, nomeRM]);
   
-  const calcularTotaisPorOM = useCallback((grupo: GrupoOM, nomeOM: string) => {
-    const totalQS = grupo.linhasQS.reduce((acc, l) => acc + l.registro.totalQS, 0);
-    const totalQR = grupo.linhasQR.reduce((acc, l) => acc + l.registro.totalQR, 0);
+  const calcularTotaisPorOM = useCallback((group: GrupoOM, nomeOM: string) => {
+    const totalQS = group.linhasQS.reduce((acc, l) => acc + l.registro.totalQS, 0);
+    const totalQR = group.linhasQR.reduce((acc, l) => acc + l.registro.totalQR, 0);
     const sumND30 = (arr: LinhaClasseII[]) => arr.reduce((acc, l) => acc + l.registro.valor_nd_30, 0);
     const sumND39 = (arr: LinhaClasseII[]) => arr.reduce((acc, l) => acc + l.registro.valor_nd_39, 0);
-    const totalLubrificante = grupo.linhasClasseIII.filter(l => l.tipo_suprimento === 'LUBRIFICANTE').reduce((acc, l) => acc + l.valor_total_linha, 0);
-    const t30 = totalQS + totalQR + sumND30(grupo.linhasClasseII) + sumND30(grupo.linhasClasseV) + sumND30(grupo.linhasClasseVI) + sumND30(grupo.linhasClasseVII) + sumND30(grupo.linhasClasseVIII) + sumND30(grupo.linhasClasseIX) + totalLubrificante;
-    const t39 = sumND39(grupo.linhasClasseII) + sumND39(grupo.linhasClasseV) + sumND39(grupo.linhasClasseVI) + sumND39(grupo.linhasClasseVII) + sumND39(grupo.linhasClasseVIII) + sumND39(grupo.linhasClasseIX);
-    const { dieselLitros, gasolinaLitros, valorTotalCombustivel, valorDiesel, valorGasolina } = isRegiaoMilitar(nomeOM, nomeRM) ? grupo.linhasClasseIII.reduce((acc, l) => { if (l.tipo_suprimento === 'COMBUSTIVEL_DIESEL') { acc.dieselLitros += l.total_litros_linha; acc.valorDiesel += l.valor_total_linha; } else if (l.tipo_suprimento === 'COMBUSTIVEL_GASOLINA') { acc.gasolinaLitros += l.total_litros_linha; acc.valorGasolina += l.valor_total_linha; } acc.valorTotalCombustivel = acc.valorDiesel + acc.valorGasolina; return acc; }, { dieselLitros: 0, gasolinaLitros: 0, valorTotalCombustivel: 0, valorDiesel: 0, valorGasolina: 0 }) : { dieselLitros: 0, gasolinaLitros: 0, valorTotalCombustivel: 0, valorDiesel: 0, valorGasolina: 0 };
+    const totalLubrificante = group.linhasClasseIII.filter(l => l.tipo_suprimento === 'LUBRIFICANTE').reduce((acc, l) => acc + l.valor_total_linha, 0);
+    const t30 = totalQS + totalQR + sumND30(group.linhasClasseII) + sumND30(group.linhasClasseV) + sumND30(group.linhasClasseVI) + sumND30(group.linhasClasseVII) + sumND30(group.linhasClasseVIII) + sumND30(group.linhasClasseIX) + totalLubrificante;
+    const t39 = sumND39(group.linhasClasseII) + sumND39(group.linhasClasseV) + sumND39(group.linhasClasseVI) + sumND39(group.linhasClasseVII) + sumND39(group.linhasClasseVIII) + sumND39(group.linhasClasseIX);
+    const { dieselLitros, gasolinaLitros, valorTotalCombustivel, valorDiesel, valorGasolina } = isRegiaoMilitar(nomeOM, nomeRM) ? group.linhasClasseIII.reduce((acc, l) => { if (l.tipo_suprimento === 'COMBUSTIVEL_DIESEL') { acc.dieselLitros += l.total_litros_linha; acc.valorDiesel += l.valor_total_linha; } else if (l.tipo_suprimento === 'COMBUSTIVEL_GASOLINA') { acc.gasolinaLitros += l.total_litros_linha; acc.valorGasolina += l.valor_total_linha; } acc.valorTotalCombustivel = acc.valorDiesel + acc.valorGasolina; return acc; }, { dieselLitros: 0, gasolinaLitros: 0, valorTotalCombustivel: 0, valorDiesel: 0, valorGasolina: 0 }) : { dieselLitros: 0, gasolinaLitros: 0, valorTotalCombustivel: 0, valorDiesel: 0, valorGasolina: 0 };
     return { total_33_90_30: t30, total_33_90_39: t39, total_parte_azul: t30 + t39, total_combustivel: valorTotalCombustivel, total_gnd3: t30 + t39 + valorTotalCombustivel, totalDieselLitros: dieselLitros, totalGasolinaLitros: gasolinaLitros, valorDiesel, valorGasolina };
   }, [nomeRM]);
   
