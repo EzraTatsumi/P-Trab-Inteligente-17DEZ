@@ -981,7 +981,7 @@ const PTrabManager = () => {
     }
   };
   
-  const simplePTrabsToConsolidate = useMemo(() => pTrabs.filter(p => selectedPTrabsToConsolidate.includes(p.id)).map(p => ({ id: p.id, numero_ptrab: p.numero_ptrab, nome_operacao: p.nome_operacao })), [pTrabs, selectedPTrabsToConsolidate]);
+  const simplePTrabsToConsolidate = useMemo(() => pTrabs.filter(p => selectedPTrabsToConsolidate.includes(p.id)).map(p => ({ id: p.id, numero_ptrab: p.numero_ptrab, nome_operacao: p.numero_ptrab })), [pTrabs, selectedPTrabsToConsolidate]);
 
   const handleOpenShareDialog = (ptrab: PTrab) => {
     if (!ptrab.share_token) {
@@ -1611,7 +1611,7 @@ const PTrabManager = () => {
             Aprendizagem Concluída!
           </DialogTitle>
           <p className="text-muted-foreground mt-2">
-            Excelente trabalho! Concluiu todas as missões de treino. O P Trab Inteligente está agora totalmente liberado e configurado para você.
+            Excelente trabalho! Concluiu todas as missões de treinamento. O P Trab Inteligente está agora totalmente liberado para as configurações iniciais.
           </p>
           <Button 
             className="mt-6 w-full text-lg h-12 bg-green-600 hover:bg-green-700" 
@@ -1620,7 +1620,7 @@ const PTrabManager = () => {
                 setShowInstructionHub(false);
             }}
           >
-            Iniciar Planejamento Real
+            Iniciar Configurações Iniciais
           </Button>
         </DialogContent>
       </Dialog>
