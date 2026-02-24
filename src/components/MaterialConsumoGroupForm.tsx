@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Trash2, Plus, Package, Search, Loader2, Save, X } from "lucide-react";
 // Corrigido: Agora importando do arquivo central de tipos que já configuramos
-import { MaterialConsumoGroup, MaterialConsumoItem, DiretrizMaterialConsumo } from "@/types/diretrizesMaterialConsumo";
+import { DiretrizMaterialConsumo } from "@/types/diretrizesMaterialConsumo";
 // Corrigido: Apontando para o componente de seleção que realmente existe no seu projeto
 import AcquisitionItemSelectorDialog from "./AcquisitionItemSelectorDialog";
 import { formatCurrency } from "@/lib/formatUtils";
