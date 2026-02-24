@@ -27,13 +27,11 @@ export const WelcomeModal = ({ open, onOpenChange, status }: WelcomeModalProps) 
 
   const handleNavigateToStep = () => {
     if (!status.hasMissions) {
-      // Dispara evento para abrir o hub de instrução na página principal
       window.dispatchEvent(new CustomEvent('instruction-hub:open'));
       onOpenChange(false);
       return;
     }
 
-    // Se missões ok, segue para as configs reais
     if (!status.hasOMs) {
       navigate("/config/om");
     } else if (!status.hasLogistica) {
@@ -64,10 +62,11 @@ export const WelcomeModal = ({ open, onOpenChange, status }: WelcomeModalProps) 
         <div className="space-y-4 py-4">
           <h4 className="font-semibold text-xs uppercase text-muted-foreground tracking-wider">Passo a Passo de Ativação</h4>
           <div className="space-y-3">
+            {/* O ícone GraduationCap aparece enquanto não concluído. Depois vira CheckCircle2. */}
             <TaskItem 
               label="Concluir Missões do Centro de Instrução" 
               completed={status.hasMissions}
-              icon={<GraduationCap className={`h-5 w-5 ${status.hasMissions ? "text-green-500" : "text-primary"}`} />}
+              icon={<GraduationCap className="h-5 w-5 text-primary" />}
             />
             <div className="h-px bg-border my-2" />
             <TaskItem 
@@ -105,13 +104,13 @@ export const WelcomeModal = ({ open, onOpenChange, status }: WelcomeModalProps) 
 };
 
 const TaskItem = ({ label, completed, icon }: { label: string; completed: boolean; icon?: React.ReactNode }) => (
-  <div className={`flex items-center gap-3 p-3 rounded-lg border transition-colors ${completed ? "bg-card border-green-100" : "bg-muted/30 border-dashed"}`}>
+  <div className={`flex items-center gap-3 p-3 rounded-lg border transition-all duration-300 ${completed ? "bg-green-50 border-green-200" : "bg-muted/30 border-dashed"}`}>
     {completed ? (
-      <CheckCircle2 className="h-5 w-5 text-green-500 shrink-0" />
+      <CheckCircle2 className="h-5 w-5 text-green-600 shrink-0" />
     ) : (
       icon || <Circle className="h-5 w-5 text-muted-foreground shrink-0" />
     )}
-    <span className={`text-sm font-medium ${completed ? "text-foreground" : "text-muted-foreground"}`}>
+    <span className={`text-sm font-medium ${completed ? "text-green-900" : "text-muted-foreground"}`}>
       {label}
     </span>
   </div>
