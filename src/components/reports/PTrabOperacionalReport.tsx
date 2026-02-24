@@ -1,7 +1,8 @@
 "use client";
 
 import React from 'react';
-import { PTrabOperacionalReportProps, formatCurrency, formatFasesParaTexto } from '@/pages/PTrabReportManager';
+import { PTrabOperacionalReportProps, formatFasesParaTexto } from '@/pages/PTrabReportManager';
+import { formatCurrency } from '@/lib/formatUtils';
 import ReportHeader from './ReportHeader';
 import ReportFooter from './ReportFooter';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
