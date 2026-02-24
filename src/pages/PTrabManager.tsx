@@ -212,22 +212,27 @@ const PTrabManager = () => {
   };
 
   useEffect(() => {
-    // Verifica se deve mostrar a vitória ao montar o componente
-    if (shouldShowVictory()) {
+    if (!user?.id) return;
+
+    // Verifica se deve mostrar a vitória ao montar o componente (específico para o usuário logado)
+    if (shouldShowVictory(user.id)) {
       setShowVictory(true);
-      markVictoryAsShown();
+      markVictoryAsShown(user.id);
       dispararConfetes();
     }
 
-    const handleVictory = () => {
-      setShowVictory(true);
-      markVictoryAsShown();
-      dispararConfetes();
+    const handleVictory = (e: any) => {
+      // Só dispara se o evento for para este usuário
+      if (e.detail?.userId === user.id) {
+        setShowVictory(true);
+        markVictoryAsShown(user.id);
+        dispararConfetes();
+      }
     };
 
     window.addEventListener('tour:todas-concluidas', handleVictory);
     return () => window.removeEventListener('tour:todas-concluidas', handleVictory);
-  }, []);
+  }, [user?.id]);
 
   useEffect(() => {
     if (isGhostMode()) {
@@ -343,14 +348,16 @@ const PTrabManager = () => {
 
     if (startTour && ghost && missionId === '1') {
       runMission01(() => {
-        const completed = JSON.parse(localStorage.getItem('completed_missions') || '[]');
-        if (!completed.includes(1)) {
-          localStorage.setItem('completed_missions', JSON.stringify([...completed, 1]));
+        if (user?.id) {
+          const completed = JSON.parse(localStorage.getItem(`completed_missions_${user.id}`) || '[]');
+          if (!completed.includes(1)) {
+            localStorage.setItem(`completed_missions_${user.id}`, JSON.stringify([...completed, 1]));
+          }
         }
         setShowInstructionHub(true);
       });
     }
-  }, [searchParams]);
+  }, [searchParams, user?.id]);
   
   const currentYear = new Date().getFullYear();
   const yearSuffix = `/${currentYear}`;

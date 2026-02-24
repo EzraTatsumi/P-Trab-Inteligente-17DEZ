@@ -1,60 +1,93 @@
 "use client";
 
-const COMPLETED_MISSIONS_KEY = 'completed_missions';
-const GHOST_MODE_KEY = 'is_ghost_mode';
-const ACTIVE_MISSION_KEY = 'active_mission_id';
-const VICTORY_SHOWN_KEY = 'victory_message_shown';
+/**
+ * Utilitários para gerenciar o progresso das missões de treinamento (Onboarding).
+ * As chaves são prefixadas com o userId para garantir isolamento entre contas.
+ */
+
+const getKeys = (userId: string) => ({
+  COMPLETED: `completed_missions_${userId}`,
+  GHOST: `is_ghost_mode_${userId}`,
+  ACTIVE: `active_mission_id_${userId}`,
+  VICTORY: `victory_message_shown_${userId}`,
+});
 
 export const TOTAL_MISSIONS = 6;
 
-export const getCompletedMissions = (): number[] => {
-  if (typeof window === 'undefined') return [];
+/**
+ * Retorna a lista de IDs de missões concluídas para um usuário específico.
+ */
+export const getCompletedMissions = (userId: string | undefined): number[] => {
+  if (!userId || typeof window === 'undefined') return [];
   try {
-    const stored = localStorage.getItem(COMPLETED_MISSIONS_KEY);
+    const keys = getKeys(userId);
+    const stored = localStorage.getItem(keys.COMPLETED);
     return stored ? JSON.parse(stored) : [];
   } catch (e) {
     return [];
   }
 };
 
-export const isAllMissionsCompleted = (): boolean => {
-  return getCompletedMissions().length >= TOTAL_MISSIONS;
+/**
+ * Verifica se todas as missões foram cumpridas por um usuário.
+ */
+export const isAllMissionsCompleted = (userId: string | undefined): boolean => {
+  if (!userId) return false;
+  return getCompletedMissions(userId).length >= TOTAL_MISSIONS;
 };
 
-export const shouldShowVictory = (): boolean => {
-  return isAllMissionsCompleted() && localStorage.getItem(VICTORY_SHOWN_KEY) !== 'true';
+/**
+ * Verifica se a mensagem de vitória deve ser exibida para o usuário.
+ */
+export const shouldShowVictory = (userId: string | undefined): boolean => {
+  if (!userId) return false;
+  const keys = getKeys(userId);
+  return isAllMissionsCompleted(userId) && localStorage.getItem(keys.VICTORY) !== 'true';
 };
 
-export const markVictoryAsShown = () => {
-  localStorage.setItem(VICTORY_SHOWN_KEY, 'true');
+/**
+ * Marca que a mensagem de vitória já foi vista por este usuário.
+ */
+export const markVictoryAsShown = (userId: string | undefined) => {
+  if (!userId) return;
+  const keys = getKeys(userId);
+  localStorage.setItem(keys.VICTORY, 'true');
 };
 
-export const markMissionCompleted = (missionId: number) => {
-  if (typeof window === 'undefined') return;
+/**
+ * Marca uma missão como concluída para o usuário atual.
+ */
+export const markMissionCompleted = (userId: string | undefined, missionId: number) => {
+  if (!userId || typeof window === 'undefined') return;
   
-  const completed = getCompletedMissions();
+  const keys = getKeys(userId);
+  const completed = getCompletedMissions(userId);
+  
   if (!completed.includes(missionId)) {
     const updated = [...completed, missionId];
-    localStorage.setItem(COMPLETED_MISSIONS_KEY, JSON.stringify(updated));
+    localStorage.setItem(keys.COMPLETED, JSON.stringify(updated));
     
-    window.dispatchEvent(new CustomEvent('mission:completed', { detail: missionId }));
+    window.dispatchEvent(new CustomEvent('mission:completed', { 
+      detail: { missionId, userId } 
+    }));
     
     if (updated.length >= TOTAL_MISSIONS) {
-      window.dispatchEvent(new CustomEvent('tour:todas-concluidas'));
+      window.dispatchEvent(new CustomEvent('tour:todas-concluidas', { 
+        detail: { userId } 
+      }));
     }
   }
 };
 
-export const resetTrainingProgress = () => {
-  if (typeof window === 'undefined') return;
-  localStorage.removeItem(COMPLETED_MISSIONS_KEY);
-  localStorage.removeItem(GHOST_MODE_KEY);
-  localStorage.removeItem(ACTIVE_MISSION_KEY);
-  localStorage.removeItem(VICTORY_SHOWN_KEY);
+/**
+ * Reseta o progresso apenas do usuário logado.
+ */
+export const resetTrainingProgress = (userId: string | undefined) => {
+  if (!userId || typeof window === 'undefined') return;
+  const keys = getKeys(userId);
+  localStorage.removeItem(keys.COMPLETED);
+  localStorage.removeItem(keys.GHOST);
+  localStorage.removeItem(keys.ACTIVE);
+  localStorage.removeItem(keys.VICTORY);
   window.location.reload();
-};
-
-export const setGhostMode = (active: boolean) => {
-  if (typeof window === 'undefined') return;
-  localStorage.setItem(GHOST_MODE_KEY, active ? 'true' : 'false');
 };
