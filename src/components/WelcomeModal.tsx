@@ -62,11 +62,9 @@ export const WelcomeModal = ({ open, onOpenChange, status }: WelcomeModalProps) 
         <div className="space-y-4 py-4">
           <h4 className="font-semibold text-xs uppercase text-muted-foreground tracking-wider">Passo a Passo de Ativação</h4>
           <div className="space-y-3">
-            {/* O ícone GraduationCap aparece enquanto não concluído. Depois vira CheckCircle2. */}
             <TaskItem 
               label="Concluir Missões do Centro de Instrução" 
               completed={status.hasMissions}
-              icon={<GraduationCap className="h-5 w-5 text-primary" />}
             />
             <div className="h-px bg-border my-2" />
             <TaskItem 
