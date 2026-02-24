@@ -1,15 +1,16 @@
 "use client";
 
 import React from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { CheckCircle2, Circle, Rocket, PlayCircle, Settings, ArrowRight } from "lucide-react";
+import { CheckCircle2, Circle, Rocket, Settings, ArrowRight, GraduationCap } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
 interface WelcomeModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   status: {
+    hasMissions: boolean;
     hasOMs: boolean;
     hasLogistica: boolean;
     hasOperacional: boolean;
@@ -24,8 +25,15 @@ export const WelcomeModal = ({ open, onOpenChange, status }: WelcomeModalProps) 
 
   if (!status) return null;
 
-  const handleNavigateToConfig = () => {
-    // Lógica de navegação inteligente baseada no que falta
+  const handleNavigateToStep = () => {
+    if (!status.hasMissions) {
+      // Dispara evento para abrir o hub de instrução na página principal
+      window.dispatchEvent(new CustomEvent('instruction-hub:open'));
+      onOpenChange(false);
+      return;
+    }
+
+    // Se missões ok, segue para as configs reais
     if (!status.hasOMs) {
       navigate("/config/om");
     } else if (!status.hasLogistica) {
@@ -33,7 +41,6 @@ export const WelcomeModal = ({ open, onOpenChange, status }: WelcomeModalProps) 
     } else if (!status.hasOperacional) {
       navigate("/config/custos-operacionais");
     } else {
-      // Se tudo estiver pronto, leva para a página de OMs por padrão ou fecha
       navigate("/config/om");
     }
     onOpenChange(false);
@@ -50,13 +57,19 @@ export const WelcomeModal = ({ open, onOpenChange, status }: WelcomeModalProps) 
           </div>
           <DialogTitle className="text-center text-2xl">Bem-vindo ao PTrab Inteligente!</DialogTitle>
           <DialogDescription className="text-center">
-            Para que o sistema realize os cálculos corretamente, precisamos completar a Configuração Inicial.
+            Siga o roteiro abaixo para habilitar todas as funcionalidades do sistema.
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4 py-4">
-          <h4 className="font-semibold text-xs uppercase text-muted-foreground tracking-wider">Checklist de Ativação</h4>
+          <h4 className="font-semibold text-xs uppercase text-muted-foreground tracking-wider">Passo a Passo de Ativação</h4>
           <div className="space-y-3">
+            <TaskItem 
+              label="Concluir Missões do Centro de Instrução" 
+              completed={status.hasMissions}
+              icon={<GraduationCap className={`h-5 w-5 ${status.hasMissions ? "text-green-500" : "text-primary"}`} />}
+            />
+            <div className="h-px bg-border my-2" />
             <TaskItem 
               label="Cadastrar Organizações Militares (OM)" 
               completed={status.hasOMs} 
@@ -74,11 +87,15 @@ export const WelcomeModal = ({ open, onOpenChange, status }: WelcomeModalProps) 
 
         <div className="flex flex-col gap-2">
           <Button onClick={() => onOpenChange(false)} className="w-full">
-            {status.isReady ? "Começar a Operar" : "Entendido, vou configurar"}
+            {status.isReady ? "Começar a Operar" : "Entendido, vou prosseguir"}
           </Button>
-          <Button variant="outline" onClick={handleNavigateToConfig} className="w-full gap-2">
-            <Settings className="h-4 w-4" /> 
-            {status.isReady ? "Ir para Configurações" : "Próxima Configuração"}
+          <Button variant="outline" onClick={handleNavigateToStep} className="w-full gap-2">
+            {!status.hasMissions ? <GraduationCap className="h-4 w-4" /> : <Settings className="h-4 w-4" />}
+            {status.isReady 
+              ? "Ir para Configurações" 
+              : !status.hasMissions 
+                ? "Iniciar Missões de Treinamento" 
+                : "Próxima Configuração Real"}
             {!status.isReady && <ArrowRight className="h-4 w-4 ml-auto" />}
           </Button>
         </div>
@@ -87,12 +104,12 @@ export const WelcomeModal = ({ open, onOpenChange, status }: WelcomeModalProps) 
   );
 };
 
-const TaskItem = ({ label, completed }: { label: string; completed: boolean }) => (
-  <div className="flex items-center gap-3 p-3 rounded-lg border bg-card transition-colors">
+const TaskItem = ({ label, completed, icon }: { label: string; completed: boolean; icon?: React.ReactNode }) => (
+  <div className={`flex items-center gap-3 p-3 rounded-lg border transition-colors ${completed ? "bg-card border-green-100" : "bg-muted/30 border-dashed"}`}>
     {completed ? (
       <CheckCircle2 className="h-5 w-5 text-green-500 shrink-0" />
     ) : (
-      <Circle className="h-5 w-5 text-muted-foreground shrink-0" />
+      icon || <Circle className="h-5 w-5 text-muted-foreground shrink-0" />
     )}
     <span className={`text-sm font-medium ${completed ? "text-foreground" : "text-muted-foreground"}`}>
       {label}
