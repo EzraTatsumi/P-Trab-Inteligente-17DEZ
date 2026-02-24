@@ -2,58 +2,51 @@
 
 import { supabase } from "@/integrations/supabase/client";
 
-const TOTAL_MISSIONS = 6;
-
 /**
- * Marca uma missão como concluída, salva no localStorage e sincroniza com o Supabase.
- * Se todas as missões forem concluídas, dispara o evento de vitória.
+ * Marca uma missão como concluída tanto localmente quanto na nuvem (Supabase).
  */
 export const markMissionCompleted = async (missionId: number) => {
-  // 1. Atualiza o localStorage (persistência imediata no navegador)
-  let completed: number[] = JSON.parse(localStorage.getItem('completed_missions') || '[]');
-  
+  if (typeof window === 'undefined') return;
+
+  // 1. Gravação Rápida (localStorage)
+  const completed = JSON.parse(localStorage.getItem('completed_missions') || '[]');
   if (!completed.includes(missionId)) {
-    completed.push(missionId);
-    localStorage.setItem('completed_missions', JSON.stringify(completed));
+    const newCompleted = [...completed, missionId].sort((a, b) => a - b);
+    localStorage.setItem('completed_missions', JSON.stringify(newCompleted));
     
-    // 2. Sincroniza com o Supabase (persistência permanente na nuvem)
+    // 2. Gravação Definitiva (Supabase)
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
-        // Nota: Assumimos que a coluna 'missoes_concluidas' existe ou será criada no perfil.
-        // Como alternativa segura, podemos usar o campo 'raw_user_meta_data' que já existe.
+        // Buscamos o perfil atual para não sobrescrever outros metadados
         const { data: profile } = await supabase
-            .from('profiles')
-            .select('raw_user_meta_data')
-            .eq('id', user.id)
-            .single();
-
-        const currentMetadata = (profile?.raw_user_meta_data as any) || {};
+          .from('profiles')
+          .select('raw_user_meta_data')
+          .eq('id', user.id)
+          .single();
+          
+        const currentMeta = (profile?.raw_user_meta_data as any) || {};
         
         await supabase
           .from('profiles')
-          .update({ 
+          .update({
             raw_user_meta_data: {
-                ...currentMetadata,
-                missoes_concluidas: completed
+              ...currentMeta,
+              missoes_concluidas: newCompleted
             }
-          }) 
+          })
           .eq('id', user.id);
       }
     } catch (error) {
-      console.error("Erro ao sincronizar progresso na nuvem:", error);
-    }
-
-    // 3. Verifica se o álbum está completo (Bingo!)
-    if (completed.length >= TOTAL_MISSIONS) {
-      window.dispatchEvent(new CustomEvent('tour:todas-concluidas'));
+      console.error("Erro ao sincronizar progresso com a nuvem:", error);
     }
   }
 };
 
 /**
- * Recupera as missões concluídas do localStorage.
+ * Retorna as missões concluídas do localStorage.
  */
-export const getCompletedMissions = (): number[] => {
-    return JSON.parse(localStorage.getItem('completed_missions') || '[]');
+export const getLocalCompletedMissions = (): number[] => {
+  if (typeof window === 'undefined') return [];
+  return JSON.parse(localStorage.getItem('completed_missions') || '[]');
 };
