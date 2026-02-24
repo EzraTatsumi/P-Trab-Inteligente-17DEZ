@@ -7,10 +7,9 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Trash2, Plus, Package, Search, Loader2, Save, X } from "lucide-react";
-// Corrigido: Agora importando do arquivo central de tipos do projeto
-import { MaterialConsumoGroup, MaterialConsumoItem, DiretrizMaterialConsumo } from "@/types/diretrizesMaterialConsumo";
-// Corrigido: Usando caminho absoluto para garantir que o TS encontre o componente
-import MaterialConsumoItemSelectorDialog from "@/components/MaterialConsumoItemSelectorDialog";
+import { MaterialConsumoGroup, MaterialConsumoItem } from "@/types/materialConsumo";
+import { DiretrizMaterialConsumo } from "@/types/diretrizesMaterialConsumo";
+import MaterialConsumoItemSelectorDialog from "./MaterialConsumoItemSelectorDialog";
 import { formatCurrency } from "@/lib/formatUtils";
 import { isGhostMode } from "@/lib/ghostStore";
 import { cn } from "@/lib/utils";
@@ -41,6 +40,7 @@ const MaterialConsumoGroupForm = ({ group, onSave, onCancel, diretrizes, loading
   const handleOpenSelector = () => {
     setIsSelectorOpen(true);
     if (isGhostMode()) {
+      // Avança do passo 7 para o 8 ao clicar no botão
       window.dispatchEvent(new CustomEvent('tour:avancar'));
     }
   };
@@ -49,6 +49,7 @@ const MaterialConsumoGroupForm = ({ group, onSave, onCancel, diretrizes, loading
     setItens(selectedItens);
     setIsSelectorOpen(false);
     if (isGhostMode()) {
+      // Avança do passo 8 para o 9 após a seleção ser confirmada e o modal fechar
       setTimeout(() => {
         window.dispatchEvent(new CustomEvent('tour:avancar'));
       }, 300);
@@ -131,7 +132,7 @@ const MaterialConsumoGroupForm = ({ group, onSave, onCancel, diretrizes, loading
                         CATMAT: {item.codigo_catmat} | Subitem: {item.nr_subitem}
                       </div>
                     </TableCell>
-                    <TableCell className="text-center text-xs">{item.unidade_medida || 'UN'}</TableCell>
+                    <TableCell className="text-center text-xs">{item.unidade_medida}</TableCell>
                     <TableCell className="text-right text-xs">{formatCurrency(item.valor_unitario)}</TableCell>
                     <TableCell>
                       <Input

@@ -1,44 +1,59 @@
-import { Json } from "@/integrations/supabase/types";
+import { Tables } from "@/integrations/supabase/types";
 
+/**
+ * Estrutura de um item de aquisição dentro de uma Diretriz de Material de Consumo.
+ * 
+ * NOTA: Esta interface é usada tanto para o catálogo (referência) quanto para o cálculo (solicitação).
+ * Os campos de cálculo (quantidade, valor_total, nd, nr_subitem, nome_subitem) são preenchidos
+ * no momento da seleção/cálculo no formulário.
+ */
 export interface ItemAquisicao {
-    id: string;
-    descricao_item: string;
-    descricao_reduzida?: string;
+    id: string; // ID local temporário para manipulação no frontend
+    descricao_item: string; // Descrição completa do item
+    descricao_reduzida: string; // Novo campo: Descrição reduzida do item
     valor_unitario: number;
     numero_pregao: string;
     uasg: string;
     codigo_catmat: string;
-    // Campos opcionais usados no contexto de planejamento/P Trab
-    quantidade?: number;
-    valor_total?: number;
-    nd?: string;
-    nr_subitem?: string;
-    nome_subitem?: string;
-    unidade_medida?: string;
+    // --- Campos de Cálculo e Contexto Adicionados ---
+    quantidade?: number; // Quantidade solicitada
+    valor_total?: number; // Valor total (unitário * quantidade)
+    nd?: string; // Natureza da Despesa (ex: '33.90.30')
+    nr_subitem?: string; // Número do Subitem da ND (para agrupamento)
+    nome_subitem?: string; // Nome do Subitem da ND (para agrupamento)
+    // --- Fim dos Campos Adicionados ---
 }
 
-export interface DiretrizMaterialConsumo {
-    id: string;
-    user_id: string;
-    ano_referencia: number;
+/**
+ * Estrutura da Diretriz de Material de Consumo (Tabela diretrizes_material_consumo).
+ */
+export interface DiretrizMaterialConsumo extends Omit<Tables<'diretrizes_material_consumo'>, 'itens_aquisicao'> {
+    // Sobrescreve itens_aquisicao para usar o tipo ItemAquisicao[]
+    itens_aquisicao: ItemAquisicao[];
+}
+
+/**
+ * Estrutura de uma linha lida do Excel, com status de validação, antes de ser agrupada.
+ */
+export interface StagingRow {
+    // Dados do Subitem ND
     nr_subitem: string;
     nome_subitem: string;
     descricao_subitem: string | null;
-    itens_aquisicao: ItemAquisicao[];
-    ativo: boolean;
-    created_at?: string;
-    updated_at?: string;
-}
 
-// Tipos específicos para a funcionalidade de Grupos no formulário do P Trab
-export interface MaterialConsumoItem extends ItemAquisicao {
-    quantidade: number;
-    valor_total: number;
-}
+    // Dados do Item de Aquisição
+    codigo_catmat: string;
+    descricao_item: string;
+    descricao_reduzida: string;
+    valor_unitario: number;
+    numero_pregao: string;
+    uasg: string;
+    // unidade_medida: string; // REMOVIDO
 
-export interface MaterialConsumoGroup {
-    id: string;
-    nome_grupo: string;
-    itens: MaterialConsumoItem[];
-    valor_total: number;
+    // Status de Validação
+    isValid: boolean;
+    errors: string[];
+    isDuplicateInternal: boolean; // Duplicidade dentro do arquivo
+    isDuplicateExternal: boolean; // Duplicidade de Subitem ND no DB (apenas para o primeiro item do grupo)
+    originalRowIndex: number; // Linha original no Excel
 }
