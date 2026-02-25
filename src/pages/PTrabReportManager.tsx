@@ -137,6 +137,8 @@ export type ComplementoAlimentacaoRegistro = ComplementoAlimentacaoRegistroType;
 
 export type ServicoTerceiroRegistro = ServicoTerceiroRegistroType;
 
+export type MaterialPermanenteRegistro = Tables<'material_permanente_registros'>;
+
 export interface HorasVooRegistro extends Tables<'horas_voo_registros'> {
   quantidade_hv: number;
   valor_nd_30: number;
@@ -233,7 +235,7 @@ export interface GrupoOMOperacional {
   materialConsumo: MaterialConsumoRegistro[]; 
   complementoAlimentacao: { registro: ComplementoAlimentacaoRegistro, subType?: 'QS' | 'QR' }[];
   servicosTerceiros: ServicoTerceiroRegistro[];
-  materialPermanente: any[];
+  materialPermanente: MaterialPermanenteRegistro[];
   horasVoo: HorasVooRegistro[];
 }
 
@@ -310,7 +312,7 @@ const PTrabReportManager = () => {
   const [selectedReport, setSelectedReport] = useState<ReportType>('logistico');
   const [ptrabData, setPtrabData] = useState<PTrabData | null>(null);
   
-  const { user } = { user: { id: 'ghost-user' } }; // Simplified for Ghost logic
+  const { user } = { user: { id: 'ghost-user' } }; 
 
   useEffect(() => {
     const startTour = searchParams.get('startTour') === 'true';
@@ -323,14 +325,12 @@ const PTrabReportManager = () => {
     }
   }, [searchParams, user?.id]);
 
-  // Funções de carregamento de dados e renderização (Simplificado para restauração da estrutura)
   const loadData = useCallback(async () => {
     if (!ptrabId && !isGhostMode()) {
         navigate('/ptrab');
         return;
     }
     setLoading(true);
-    // Simulação ou carregamento real de dados ocorreria aqui
     if (isGhostMode()) {
         setPtrabData(GHOST_DATA.p_trab_exemplo);
     }
@@ -343,7 +343,11 @@ const PTrabReportManager = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      <PageMetadata title="Relatórios do P Trab" />
+      <PageMetadata 
+        title="Relatórios P Trab" 
+        description="Gerenciador de Relatórios do P Trab" 
+        canonicalPath="/ptrab/relatorios" 
+      />
       <div className="print:hidden p-4 border-b flex justify-between items-center sticky top-0 bg-background z-10">
           <Button variant="ghost" onClick={() => navigate('/ptrab')}><ArrowLeft className="mr-2 h-4 w-4" />Voltar</Button>
           <Select value={selectedReport} onValueChange={(v) => setSelectedReport(v as ReportType)}>
@@ -352,7 +356,6 @@ const PTrabReportManager = () => {
           </Select>
       </div>
       <div className="container max-w-7xl mx-auto py-8">
-          {/* Renderização condicional dos relatórios ocorre aqui */}
           {selectedReport === 'operacional' && ptrabData && (
               <PTrabOperacionalReport 
                 ptrab={ptrabData} 
