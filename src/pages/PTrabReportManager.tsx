@@ -323,7 +323,7 @@ export interface PTrabOperacionalReportProps {
 export const CLASSE_V_CATEGORIES = ["Armt L", "Armt P", "IODCT", "DQBRN"];
 export const CLASSE_VI_CATEGORIES = ["Gerador", "Embarcação", "Equipamento de Engenharia"];
 export const CLASSE_VII_CATEGORIES = ["Comunicações", "Informática"];
-export const CLASSE_VIII_CATEGORIES = ["Saúde", "Remonta/Veterinária"];
+export const CLASSE_VIII_CATEGORIES = ["Saúde", "Remonta/Veteridária"];
 export const CLASSE_IX_CATEGORIES = ["Vtr Administrativa", "Vtr Operacional", "Motocicleta", "Vtr Blindada"];
 
 export const formatDate = (date: string) => {
@@ -416,7 +416,7 @@ export const generateClasseIMemoriaCalculoUnificada = (registro: ClasseIRegistro
             organizacao: registro.organizacao,
             ug: registro.ug,
             diasOperacao: registro.diasOperacao,
-            faseAtividade: registro.faseAtividade,
+            faseAtividade: r.fase_atividade,
             omQS: registro.omQS,
             ugQS: registro.ugQS,
             efetivo: registro.efetivo,
@@ -582,7 +582,7 @@ export const generateConcessionariaMemoriaCalculada = (registro: ConcessionariaR
 
 export const generateMaterialConsumoMemoriaCalculada = (registro: MaterialConsumoRegistro): string => {
     if (registro.detalhamento_customizado && registro.detalhamento_customizado.trim().length > 0) return registro.detalhamento_customizado;
-    const context = { organizacao: registro.organizacao, efetivo: registro.efetivo, dias_operacao: registro.dias_operacao, fase_atividade: registro.fase_atividade };
+    const context = { organizacao: registro.organizacao, efetivo: registro.efetivo, dias_operacao: registro.dias_operacao, fase_atividade: r.fase_atividade };
     return generateMaterialConsumoMemoriaCalculoUtility(registro, context);
 };
 
@@ -751,19 +751,19 @@ const PTrabReportManager = () => {
             valor_nd_30: 212.50,
             valor_nd_39: 0,
             detalhamento_customizado: "33.90.30 - Aquisição de Material de Construção para atender 150 militares do 1º BIS, durante 15 dias de execução.\n\nCálculo:\nFórmula: Qtd do item x Valor do item.\n- 5 Cimento Portland 50kg x R$ 42,50/unid. = R$ 212,50.\n\nTotal: R$ 212,50.\n(Pregão 5/2025 - UASG 160.222).",
-            // BLINDAGEM MÁXIMA DO ITEM: Colocamos item, nome e os valores totais aqui dentro para a splitMaterialConsumoItems
+            // CHAVES CORRIGIDAS PARA O GERADOR LER CORRETAMENTE:
             itens_aquisicao: [
                 { 
                   id: 'item-cimento-1', 
-                  item: 'Cimento Portland 50kg', 
-                  nome: 'Cimento Portland 50kg', 
+                  descricao_item: 'Cimento Portland 50kg', 
+                  descricao_reduzida: 'Cimento Portland 50kg', 
                   quantidade: 5, 
                   valor_unitario: 42.50,
                   valor_total: 212.50,
                   valor_nd_30: 212.50,
                   valor_nd_39: 0,
-                  pregao: '5/2025',
-                  uasg: '160.222'
+                  numero_pregao: '5/2025',
+                  uasg: '160222'
                 }
             ],
             created_at: new Date().toISOString(),
