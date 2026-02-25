@@ -68,8 +68,6 @@ import { markMissionCompleted } from "@/lib/missionUtils";
 
 type DiretrizOperacional = Tables<'diretrizes_operacionais'>;
 
-// ... (interfaces mantidas)
-
 const DIARIA_RANKS_CONFIG = [
   { key: 'of_gen', label: 'Of Gen', fieldPrefix: 'diaria_of_gen' },
   { key: 'of_sup', label: 'Of Sup', fieldPrefix: 'diaria_of_sup' },
@@ -123,23 +121,32 @@ const CustosOperacionaisPage = () => {
   const hasStartedTour = useRef(false);
   
   const currentYear = new Date().getFullYear();
-  const [diretrizes, setDiretrizes] = useState<Partial<DiretrizOperacional>>(defaultDiretrizes(currentYear));
-  
-  const [availableYears, setAvailableYears] = useState<number[]>([]);
   const [selectedYear, setSelectedYear] = useState<number>(currentYear);
+  const [availableYears, setAvailableYears] = useState<number[]>([]);
   const [isYearManagementDialogOpen, setIsYearManagementDialogOpen] = useState(false);
   
+  const [diretrizes, setDiretrizes] = useState<Partial<DiretrizOperacional>>(defaultDiretrizes(currentYear));
+  const [rawInputs, setRawInputs] = useState<Record<string, string>>({});
+  
+  const [diretrizesPassagens, setDiretrizesPassagens] = useState<DiretrizPassagem[]>([]);
+  const [isPassagemDialogOpen, setIsPassagemDialogOpen] = useState(false);
+  const [passagemToEdit, setPassagemToEdit] = useState<DiretrizPassagem | null>(null);
+
+  const [diretrizesConcessionaria, setDiretrizesConcessionaria] = useState<DiretrizConcessionaria[]>([]);
+  const [isConcessionariaDialogOpen, setIsConcessionariaDialogOpen] = useState(false);
+  const [concessionariaToEdit, setConcessionariaToEdit] = useState<DiretrizConcessionaria | null>(null);
+
   const { data: defaultYearData, isLoading: isLoadingDefaultYear } = useDefaultDiretrizYear();
   const defaultYear = defaultYearData?.defaultYear || null;
 
-  // ... (useQuery de pageData mantido)
+  const ghostActive = isGhostMode();
 
   const { data: pageData, isLoading: isLoadingPageData, isFetching: isFetchingPageData } = useQuery({
-    queryKey: ['diretrizesCustosOperacionais', selectedYear, user?.id],
+    queryKey: ['diretrizesCustosOperacionais', selectedYear, user?.id, ghostActive],
     queryFn: async () => {
       if (!user?.id || !selectedYear) return null;
 
-      if (isGhostMode()) {
+      if (ghostActive) {
           return {
               operacional: defaultDiretrizes(selectedYear),
               passagens: [],
@@ -166,8 +173,39 @@ const CustosOperacionaisPage = () => {
     enabled: !!user?.id && !!selectedYear,
     staleTime: 1000 * 60 * 5, 
   });
-  
-  // ... (estados de formulários e hooks mantidos)
+
+  const { 
+    diretrizes: materialConsumoDiretrizes, 
+    isLoading: isLoadingMatConsumo,
+    saveDiretriz: saveMatConsumo,
+    deleteDiretriz: deleteMatConsumo
+  } = useMaterialConsumoDiretrizes(selectedYear);
+
+  const [isMatConsumoDialogOpen, setIsMatConsumoDialogOpen] = useState(false);
+  const [matConsumoToEdit, setMatConsumoToEdit] = useState<DiretrizMaterialConsumo | null>(null);
+  const [isMatConsumoExportImportOpen, setIsMatConsumoExportImportOpen] = useState(false);
+
+  const { 
+    diretrizes: servicosTerceirosDiretrizes, 
+    isLoading: isLoadingServicos,
+    saveDiretriz: saveServico,
+    deleteDiretriz: deleteServico
+  } = useServicosTerceirosDiretrizes(selectedYear);
+
+  const [isServicoDialogOpen, setIsServicoDialogOpen] = useState(false);
+  const [servicoToEdit, setServicoToEdit] = useState<DiretrizServicosTerceiros | null>(null);
+  const [isServicoExportImportOpen, setIsServicoExportImportOpen] = useState(false);
+
+  const { 
+    diretrizes: materialPermanenteDiretrizes, 
+    isLoading: isLoadingMatPermanente,
+    saveDiretriz: saveMatPermanente,
+    deleteDiretriz: deleteMatPermanente
+  } = useMaterialPermanenteDiretrizes(selectedYear);
+
+  const [isMatPermanenteDialogOpen, setIsMatPermanenteDialogOpen] = useState(false);
+  const [matPermanenteToEdit, setMatPermanenteToEdit] = useState<DiretrizMaterialPermanente | null>(null);
+  const [isMatPermanenteExportImportOpen, setIsMatPermanenteExportImportOpen] = useState(false);
 
   const [fieldCollapseState, setFieldCollapseState] = useState<Record<string, boolean>>(() => {
     const initialState: Record<string, boolean> = {};
@@ -185,7 +223,21 @@ const CustosOperacionaisPage = () => {
     return initialState;
   });
 
-  // ... (handlers de eventos e formulários mantidos)
+  const collapsibleRefs = useRef<Record<string, HTMLDivElement | null>>({});
+
+  useEffect(() => {
+    (window as any).expandMaterialConsumo = () => {
+        setFieldCollapseState(prev => ({ ...prev, material_consumo_detalhe: true }));
+        setTimeout(() => {
+            const el = document.querySelector('.aba-material-consumo');
+            if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }, 300);
+    };
+
+    return () => {
+        delete (window as any).expandMaterialConsumo;
+    };
+  }, []);
 
   useEffect(() => {
     if (isLoadingDefaultYear || isLoadingPageData || isFetchingPageData || hasStartedTour.current) return;
@@ -198,7 +250,6 @@ const CustosOperacionaisPage = () => {
       hasStartedTour.current = true;
       const timer = setTimeout(() => {
         runMission02(user.id, () => {
-          // Correção: Usando o utilitário padronizado para marcar como concluído
           markMissionCompleted(2, user.id);
           navigate('/ptrab?showHub=true');
         });
@@ -207,7 +258,46 @@ const CustosOperacionaisPage = () => {
     }
   }, [isLoadingDefaultYear, isLoadingPageData, isFetchingPageData, searchParams, navigate, user?.id]);
 
-  // ... (restante do componente mantido até o final)
+  useEffect(() => {
+    const loadAvailableYears = async () => {
+      if (!user?.id) return;
+      
+      const { data, error } = await supabase
+        .from("diretrizes_operacionais")
+        .select("ano_referencia")
+        .eq("user_id", user.id);
+
+      if (error) {
+        console.error("Erro ao buscar anos:", error);
+        return;
+      }
+
+      const yearsFromOp = data.map((d) => d.ano_referencia);
+      
+      const { data: passData } = await supabase
+        .from("diretrizes_passagens")
+        .select("ano_referencia")
+        .eq("user_id", user.id);
+      
+      const yearsFromPass = (passData || []).map(d => d.ano_referencia);
+      
+      const { data: concData } = await supabase
+        .from("diretrizes_concessionaria")
+        .select("ano_referencia")
+        .eq("user_id", user.id);
+        
+      const yearsFromConc = (concData || []).map(d => d.ano_referencia);
+
+      const allYears = Array.from(new Set([...yearsFromOp, ...yearsFromPass, ...yearsFromConc, currentYear])).sort((a, b) => b - a);
+      setAvailableYears(allYears);
+
+      if (allYears.length > 0 && !selectedYear) {
+        setSelectedYear(allYears[0]);
+      }
+    };
+
+    loadAvailableYears();
+  }, [user?.id, currentYear, selectedYear]);
 
   useEffect(() => {
     if (pageData) {
@@ -265,37 +355,659 @@ const CustosOperacionaisPage = () => {
     }
   }, [pageData, selectedYear]);
 
-  // ... (Restante do arquivo exatamente como antes, mas garantindo que a renderização use isDataLoading)
-  // ... (Omitido para brevidade, mantendo as correções de iDataLoading feitas anteriormente)
+  const handleCollapseChange = (key: string, open: boolean) => {
+    setFieldCollapseState(prev => ({ ...prev, [key]: open }));
+    if (open) {
+      setTimeout(() => {
+        collapsibleRefs.current[key]?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 300);
+    }
+  };
+
+  const handleCurrencyChange = (field: keyof DiretrizOperacional, numericValue: number, digits: string) => {
+    setDiretrizes(prev => ({ ...prev, [field]: numericValue }));
+    setRawInputs(prev => ({ ...prev, [field]: digits }));
+  };
+
+  const handleSaveDiretrizes = async () => {
+    if (!user?.id) return;
+    setIsSaving(true);
+    try {
+      const dataToValidate = {
+        ...diretrizes,
+        ano_referencia: selectedYear,
+        user_id: user.id,
+      };
+
+      const validatedData = diretrizOperacionalSchema.parse(dataToValidate);
+
+      const { error } = await supabase
+        .from("diretrizes_operacionais")
+        .upsert(validatedData, { onConflict: "user_id,ano_referencia" });
+
+      if (error) throw error;
+      
+      queryClient.invalidateQueries({ queryKey: ['diretrizesCustosOperacionais', selectedYear, user.id] });
+      toast.success("Diretrizes operacionais salvas com sucesso!");
+    } catch (error: any) {
+      if (error instanceof z.ZodError) {
+        error.errors.forEach(err => toast.error(`${err.path.join('.')}: ${err.message}`));
+      } else {
+        toast.error(sanitizeError(error));
+      }
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleSetDefaultYear = async () => {
+    if (!user?.id || !selectedYear) return;
+    setIsSaving(true);
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({ default_operacional_year: selectedYear })
+        .eq('id', user.id);
+
+      if (error) throw error;
+      
+      queryClient.invalidateQueries({ queryKey: ['defaultDiretrizYear', user.id] });
+      toast.success(`Ano ${selectedYear} definido como padrão para cálculos operacionais.`);
+    } catch (error) {
+      toast.error(sanitizeError(error));
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleSavePassagem = async (data: Partial<DiretrizPassagem> & { ano_referencia: number }) => {
+      if (!user?.id) return;
+      setIsSaving(true);
+      try {
+          const payload = {
+              ...data,
+              user_id: user.id,
+              trechos: (data.trechos as unknown as Json) || [] as Json,
+          };
+
+          const { error } = await supabase
+              .from('diretrizes_passagens')
+              .upsert(payload as TablesInsert<'diretrizes_passagens'>);
+
+          if (error) throw error;
+          
+          queryClient.invalidateQueries({ queryKey: ['diretrizesCustosOperacionais', selectedYear, user.id] });
+          toast.success("Diretriz de passagem salva!");
+          setIsPassagemDialogOpen(false);
+          setPassagemToEdit(null);
+      } catch (error) {
+          toast.error(sanitizeError(error));
+      } finally {
+          setIsSaving(false);
+      }
+  };
+
+  const handleDeletePassagem = async (id: string) => {
+      if (!confirm("Tem certeza que deseja excluir esta diretriz de passagem?")) return;
+      setIsSaving(true);
+      try {
+          const { error } = await supabase.from('diretrizes_passagens').delete().eq('id', id);
+          if (error) throw error;
+          queryClient.invalidateQueries({ queryKey: ['diretrizesCustosOperacionais', selectedYear, user.id] });
+          toast.success("Diretriz excluída.");
+      } catch (error) {
+          toast.error(sanitizeError(error));
+      } finally {
+          setIsSaving(false);
+      }
+  };
+
+  const handleSaveConcessionaria = async (data: Partial<DiretrizConcessionaria> & { ano_referencia: number }) => {
+      if (!user?.id) return;
+      setIsSaving(true);
+      try {
+          const payload = {
+              ...data,
+              user_id: user.id,
+          };
+
+          const { error } = await supabase
+              .from('diretrizes_concessionaria')
+              .upsert(payload as TablesInsert<'diretrizes_concessionaria'>);
+
+          if (error) throw error;
+          
+          queryClient.invalidateQueries({ queryKey: ['diretrizesCustosOperacionais', selectedYear, user.id] });
+          toast.success("Diretriz de concessionária salva!");
+          setIsConcessionariaDialogOpen(false);
+          setConcessionariaToEdit(null);
+      } catch (error) {
+          toast.error(sanitizeError(error));
+      } finally {
+          setIsSaving(false);
+      }
+  };
+
+  const handleDeleteConcessionaria = async (id: string) => {
+      if (!confirm("Tem certeza que deseja excluir esta diretriz de concessionária?")) return;
+      setIsSaving(true);
+      try {
+          const { error } = await supabase.from('diretrizes_concessionaria').delete().eq('id', id);
+          if (error) throw error;
+          queryClient.invalidateQueries({ queryKey: ['diretrizesCustosOperacionais', selectedYear, user.id] });
+          toast.success("Diretriz excluída.");
+      } catch (error) {
+          toast.error(sanitizeError(error));
+      } finally {
+          setIsSaving(false);
+      }
+  };
+
+  const isDataLoading = isLoadingPageData || isFetchingPageData || isLoadingDefaultYear;
+
+  const renderDiariaTable = () => (
+    <div className="overflow-x-auto border rounded-md">
+      <div className="p-3 bg-muted/30 border-b flex flex-col md:flex-row md:items-center justify-between gap-2">
+        <div className="flex items-center gap-2">
+          <Activity className="h-4 w-4 text-primary" />
+          <span className="text-sm font-semibold">Tabela de Diárias (Referência Legal)</span>
+        </div>
+        <Input 
+          className="max-w-xs h-8 text-xs" 
+          placeholder="Ex: Decreto Nº 12.324 de 19DEZ24"
+          value={diretrizes.diaria_referencia_legal || ""}
+          onChange={(e) => setDiretrizes({...diretrizes, diaria_referencia_legal: e.target.value})}
+        />
+      </div>
+      <Table>
+        <TableHeader>
+          <TableRow className="bg-muted/50">
+            <TableHead className="w-[30%]">Posto / Graduação</TableHead>
+            <TableHead className="text-center">Brasília/Manaus/Rio/SP</TableHead>
+            <TableHead className="text-center">Demais Capitais</TableHead>
+            <TableHead className="text-center">Demais Cidades</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {DIARIA_RANKS_CONFIG.map((rank) => (
+            <TableRow key={rank.key}>
+              <TableCell className="font-medium text-xs">{rank.label}</TableCell>
+              <TableCell>
+                <CurrencyInput 
+                  className="h-8 text-xs text-center font-semibold"
+                  rawDigits={rawInputs[`${rank.fieldPrefix}_bsb`] || ""}
+                  onChange={(val, digits) => handleCurrencyChange(`${rank.fieldPrefix}_bsb` as keyof DiretrizOperacional, val, digits)}
+                />
+              </TableCell>
+              <TableCell>
+                <CurrencyInput 
+                  className="h-8 text-xs text-center font-semibold"
+                  rawDigits={rawInputs[`${rank.fieldPrefix}_capitais`] || ""}
+                  onChange={(val, digits) => handleCurrencyChange(`${rank.fieldPrefix}_capitais` as keyof DiretrizOperacional, val, digits)}
+                />
+              </TableCell>
+              <TableCell>
+                <CurrencyInput 
+                  className="h-8 text-xs text-center font-semibold"
+                  rawDigits={rawInputs[`${rank.fieldPrefix}_demais`] || ""}
+                  onChange={(val, digits) => handleCurrencyChange(`${rank.fieldPrefix}_demais` as keyof DiretrizOperacional, val, digits)}
+                />
+              </TableCell>
+            </TableRow>
+          ))}
+          <TableRow className="bg-muted/20">
+            <TableCell className="font-medium text-xs flex items-center gap-2">
+              Taxa de Embarque (Aéreo)
+            </TableCell>
+            <TableCell colSpan={3}>
+              <div className="flex justify-center">
+                <CurrencyInput 
+                  className="h-8 text-xs text-center font-semibold max-w-[150px]"
+                  rawDigits={rawInputs['taxa_embarque'] || ""}
+                  onChange={(val, digits) => handleCurrencyChange('taxa_embarque', val, digits)}
+                />
+              </div>
+            </TableCell>
+          </TableRow>
+        </TableBody>
+      </Table>
+    </div>
+  );
+
+  const renderPassagensSection = () => (
+      <div className="space-y-4">
+          <div className="flex justify-between items-center bg-muted/30 p-2 rounded-md">
+              <span className="text-sm font-medium">Contratos de Passagens Cadastrados</span>
+              <Button size="sm" onClick={() => { setPassagemToEdit(null); setIsPassagemDialogOpen(true); }}>
+                  <Plus className="h-4 w-4 mr-1" /> Novo Contrato
+              </Button>
+          </div>
+          
+          <div className="space-y-2">
+              {diretrizesPassagens.length === 0 ? (
+                  <div className="text-center py-8 border-2 border-dashed rounded-lg text-muted-foreground">
+                      Nenhum contrato de passagens cadastrado para {selectedYear}.
+                  </div>
+              ) : (
+                  diretrizesPassagens.map(diretriz => (
+                      <PassagemDiretrizRow 
+                          key={diretriz.id} 
+                          diretriz={diretriz} 
+                          onEdit={(d) => { setPassagemToEdit(d); setIsPassagemDialogOpen(true); }}
+                          onDelete={handleDeletePassagem}
+                      />
+                  ))
+              )}
+          </div>
+      </div>
+  );
+
+  const renderConcessionariaSection = () => (
+      <div className="space-y-4">
+          <div className="flex justify-between items-center bg-muted/30 p-2 rounded-md">
+              <span className="text-sm font-medium">Parâmetros de Concessionárias</span>
+              <Button size="sm" onClick={() => { setConcessionariaToEdit(null); setIsConcessionariaDialogOpen(true); }}>
+                  <Plus className="h-4 w-4 mr-1" /> Novo Parâmetro
+              </Button>
+          </div>
+          
+          <div className="space-y-2">
+              {diretrizesConcessionaria.length === 0 ? (
+                  <div className="text-center py-8 border-2 border-dashed rounded-lg text-muted-foreground">
+                      Nenhum parâmetro de concessionária cadastrado para {selectedYear}.
+                  </div>
+              ) : (
+                  diretrizesConcessionaria.map(diretriz => (
+                      <ConcessionariaDiretrizRow 
+                          key={diretriz.id} 
+                          diretriz={diretriz} 
+                          onEdit={(d) => { setConcessionariaToEdit(d); setIsConcessionariaDialogOpen(true); }}
+                          onDelete={handleDeleteConcessionaria}
+                      />
+                  ))
+              )}
+          </div>
+      </div>
+  );
+
+  const renderMaterialConsumoSection = () => (
+    <div className="space-y-4 aba-material-consumo-container">
+        <div className="flex justify-between items-center bg-muted/30 p-2 rounded-md">
+            <span className="text-sm font-medium">Subitens da Natureza de Despesa (ND 30)</span>
+            <div className="flex gap-2">
+                <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={() => setIsMatConsumoExportImportOpen(true)}
+                    disabled={isLoadingMatConsumo}
+                >
+                    <FileSpreadsheet className="h-4 w-4 mr-1" /> Exp/Imp Excel
+                </Button>
+                <Button size="sm" onClick={() => { setMatConsumoToEdit(null); setIsMatConsumoDialogOpen(true); }} className="btn-novo-subitem">
+                    <Plus className="h-4 w-4 mr-1" /> Novo Subitem
+                </Button>
+            </div>
+        </div>
+        
+        <div className="space-y-3 listagem-material-consumo">
+            {isLoadingMatConsumo ? (
+                <div className="text-center py-12">
+                    <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary" />
+                    <p className="text-sm text-muted-foreground mt-2">Carregando subitens...</p>
+                </div>
+            ) : materialConsumoDiretrizes.length === 0 ? (
+                <div className="text-center py-12 border-2 border-dashed rounded-lg text-muted-foreground">
+                    Nenhum subitem de material de consumo cadastrado para {selectedYear}.
+                </div>
+            ) : (
+                materialConsumoDiretrizes.map(diretriz => (
+                    <MaterialConsumoDiretrizRow 
+                        key={diretriz.id} 
+                        diretriz={diretriz} 
+                        onEdit={(d) => { setMatConsumoToEdit(d); setIsMatConsumoDialogOpen(true); }}
+                        onDelete={deleteMatConsumo}
+                    />
+                ))
+            )}
+        </div>
+    </div>
+  );
+
+  const renderServicosTerceirosSection = () => (
+    <div className="space-y-4">
+        <div className="flex justify-between items-center bg-muted/30 p-2 rounded-md">
+            <span className="text-sm font-medium">Subitens da Natureza de Despesa (ND 33 e 39)</span>
+            <div className="flex gap-2">
+                <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={() => setIsServicoExportImportOpen(true)}
+                    disabled={isLoadingServicos}
+                >
+                    <FileSpreadsheet className="h-4 w-4 mr-1" /> Exp/Imp Excel
+                </Button>
+                <Button size="sm" onClick={() => { setServicoToEdit(null); setIsServicoDialogOpen(true); }}>
+                    <Plus className="h-4 w-4 mr-1" /> Novo Subitem
+                </Button>
+            </div>
+        </div>
+        
+        <div className="space-y-3">
+            {isLoadingServicos ? (
+                <div className="text-center py-12">
+                    <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary" />
+                    <p className="text-sm text-muted-foreground mt-2">Carregando subitens...</p>
+                </div>
+            ) : servicosTerceirosDiretrizes.length === 0 ? (
+                <div className="text-center py-12 border-2 border-dashed rounded-lg text-muted-foreground">
+                    Nenhum subitem de serviço cadastrado para {selectedYear}.
+                </div>
+            ) : (
+                servicosTerceirosDiretrizes.map(diretriz => (
+                    <ServicosTerceirosDiretrizRow 
+                        key={diretriz.id} 
+                        diretriz={diretriz} 
+                        onEdit={(d) => { setServicoToEdit(d); setIsServicoDialogOpen(true); }}
+                        onDelete={deleteServico}
+                    />
+                ))
+            )}
+        </div>
+    </div>
+  );
+
+  const renderMaterialPermanenteSection = () => (
+    <div className="space-y-4">
+        <div className="flex justify-between items-center bg-muted/30 p-2 rounded-md">
+            <span className="text-sm font-medium">Subitens da Natureza de Despesa (ND 52)</span>
+            <div className="flex gap-2">
+                <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={() => setIsMatPermanenteExportImportOpen(true)}
+                    disabled={isLoadingMatPermanente}
+                >
+                    <FileSpreadsheet className="h-4 w-4 mr-1" /> Exp/Imp Excel
+                </Button>
+                <Button size="sm" onClick={() => { setMatPermanenteToEdit(null); setIsMatPermanenteDialogOpen(true); }}>
+                    <Plus className="h-4 w-4 mr-1" /> Novo Subitem
+                </Button>
+            </div>
+        </div>
+        
+        <div className="space-y-3">
+            {isLoadingMatPermanente ? (
+                <div className="text-center py-12">
+                    <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary" />
+                    <p className="text-sm text-muted-foreground mt-2">Carregando subitens...</p>
+                </div>
+            ) : materialPermanenteDiretrizes.length === 0 ? (
+                <div className="text-center py-12 border-2 border-dashed rounded-lg text-muted-foreground">
+                    Nenhum subitem de material permanente cadastrado para {selectedYear}.
+                </div>
+            ) : (
+                materialPermanenteDiretrizes.map(diretriz => (
+                    <MaterialPermanenteDiretrizRow 
+                        key={diretriz.id} 
+                        diretriz={diretriz} 
+                        onEdit={(d) => { setMatPermanenteToEdit(d); setIsMatPermanenteDialogOpen(true); }}
+                        onDelete={deleteMatPermanente}
+                    />
+                ))
+            )}
+        </div>
+    </div>
+  );
 
   return (
     <div className="min-h-screen bg-background p-4 md:p-8">
-      {/* ... conteúdo da página ... */}
-      <PageMetadata title="Configurações de Custos Operacionais" description="Defina os valores de diárias, contratos de passagens, concessionárias e fatores de custeio operacional para o cálculo do P Trab." canonicalPath="/config/custos-operacionais" />
+      <PageMetadata 
+        title="Configurações de Custos Operacionais" 
+        description="Defina os valores de diárias, contratos de passagens, concessionárias e fatores de custeio operacional para o cálculo do P Trab." 
+        canonicalPath="/config/custos-operacionais" 
+      />
+      
       <div className="max-w-3xl mx-auto space-y-6">
-          {/* ... (Todo o JSX do componente conforme a versão anterior) */}
-          <div className="flex items-center justify-between"><Button variant="ghost" onClick={() => navigate("/ptrab")} className="mb-2"><ArrowLeft className="mr-2 h-4 w-4" />Voltar para Planos de Trabalho</Button><Button variant="outline" onClick={() => setIsYearManagementDialogOpen(true)} disabled={isSaving || isLoadingDefaultYear}><Settings className="mr-2 h-4 w-4" />Gerenciar Anos</Button></div>
+          <div className="flex items-center justify-between">
+            <Button variant="ghost" onClick={() => navigate("/ptrab")} className="mb-2">
+              <ArrowLeft className="mr-2 h-4 w-4" />
+              Voltar para Planos de Trabalho
+            </Button>
+            <Button variant="outline" onClick={() => setIsYearManagementDialogOpen(true)} disabled={isSaving || isLoadingDefaultYear}>
+              <Settings className="mr-2 h-4 w-4" />
+              Gerenciar Anos
+            </Button>
+          </div>
+
           <Card className="card-diretrizes-operacionais">
-          <CardHeader><h1 className="text-2xl font-bold">Configurações dos Custos Operacionais</h1><CardDescription>Defina os valores e fatores de referência para o cálculo de despesas operacionais (GND 3 e GND4).</CardDescription></CardHeader>
+          <CardHeader>
+            <h1 className="text-2xl font-bold">Configurações dos Custos Operacionais</h1>
+            <CardDescription>Defina os valores e fatores de referência para o cálculo de despesas operacionais (GND 3 e GND 4).</CardDescription>
+          </CardHeader>
           <CardContent className={cn("space-y-6", "aba-material-consumo-container")}>
-            <form onSubmit={(e) => { e.preventDefault(); handleSaveDiretrizes(); }}>
-              <div className="space-y-2 mb-6"><Label>Ano de Referência</Label><Select value={selectedYear.toString()} onValueChange={(value) => setSelectedYear(parseInt(value))}><SelectTrigger><SelectValue placeholder="Selecione o ano" /></SelectTrigger><SelectContent>{availableYears.map((year) => (<SelectItem key={year} value={year.toString()}>{year} {year === defaultYear && "(Padrão)"}</SelectItem>))}</SelectContent></Select><p className="text-sm text-muted-foreground pt-1">Ano Padrão de Cálculo: <span className="font-semibold text-primary ml-1">{defaultYear ? defaultYear : 'Não definido (usando o mais recente)'}</span></p></div>
-              <div className="border-t pt-4 mt-6">
-                <div className="space-y-4">
-                  <div ref={el => collapsibleRefs.current['diarias_detalhe'] = el} className="border-b pb-4 last:border-b-0 last:pb-0"><Collapsible open={fieldCollapseState['diarias_detalhe']} onOpenChange={(open) => handleCollapseChange('diarias_detalhe', open)}><CollapsibleTrigger asChild><div className="flex items-center justify-between cursor-pointer py-2"><h2 className="text-base font-medium">Pagamento de Diárias</h2>{fieldCollapseState['diarias_detalhe'] ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}</div></CollapsibleTrigger><CollapsibleContent><div className="mt-2">{renderDiariaTable()}</div></CollapsibleContent></Collapsible></div>
-                  <div ref={el => collapsibleRefs.current['passagens_detalhe'] = el} className="border-b pb-4 last:border-b-0 last:pb-0"><Collapsible open={fieldCollapseState['passagens_detalhe']} onOpenChange={(open) => handleCollapseChange('passagens_detalhe', open)}><CollapsibleTrigger asChild><div className="flex items-center justify-between cursor-pointer py-2"><h2 className="text-base font-medium flex items-center gap-2">Aquisição de Passagens</h2>{fieldCollapseState['passagens_detalhe'] ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}</div></CollapsibleTrigger><CollapsibleContent><div className="mt-2">{renderPassagensSection()}</div></CollapsibleContent></Collapsible></div>
-                  <div ref={el => collapsibleRefs.current['concessionaria_detalhe'] = el} className="border-b pb-4 last:border-b-0 last:pb-0"><Collapsible open={fieldCollapseState['concessionaria_detalhe']} onOpenChange={(open) => handleCollapseChange('concessionaria_detalhe', open)}><CollapsibleTrigger asChild><div className="flex items-center justify-between cursor-pointer py-2"><h2 className="text-base font-medium flex items-center gap-2">Pagamento de Concessionárias</h2>{fieldCollapseState['concessionaria_detalhe'] ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}</div></CollapsibleTrigger><CollapsibleContent><div className="mt-2">{renderConcessionariaSection()}</div></CollapsibleContent></Collapsible></div>
-                  <div ref={el => collapsibleRefs.current['material_consumo_detalhe'] = el} className="border-b pb-4 last:border-b-0 last:pb-0 aba-material-consumo"><Collapsible open={fieldCollapseState['material_consumo_detalhe']} onOpenChange={(open) => handleCollapseChange('material_consumo_detalhe', open)}><CollapsibleTrigger asChild><div className="flex items-center justify-between cursor-pointer py-2 gatilho-material-consumo"><h2 className="text-base font-medium flex items-center gap-2">Aquisição de Material de Consumo</h2>{fieldCollapseState['material_consumo_detalhe'] ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}</div></CollapsibleTrigger><CollapsibleContent><div className="mt-2">{renderMaterialConsumoSection()}</div></CollapsibleContent></Collapsible></div>
-                  <div ref={el => collapsibleRefs.current['material_permanente_detalhe'] = el} className="border-b pb-4 last:border-b-0 last:pb-0"><Collapsible open={fieldCollapseState['material_permanente_detalhe']} onOpenChange={(open) => handleCollapseChange('material_permanente_detalhe', open)}><CollapsibleTrigger asChild><div className="flex items-center justify-between cursor-pointer py-2"><h2 className="text-base font-medium flex items-center gap-2">Aquisição de Material Permanente</h2>{fieldCollapseState['material_permanente_detalhe'] ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}</div></CollapsibleTrigger><CollapsibleContent><div className="mt-2">{renderMaterialPermanenteSection()}</div></CollapsibleContent></Collapsible></div>
-                  <div ref={el => collapsibleRefs.current['servicos_terceiros_detalhe'] = el} className="border-b pb-4 last:border-b-0 last:pb-0"><Collapsible open={fieldCollapseState['servicos_terceiros_detalhe']} onOpenChange={(open) => handleCollapseChange('servicos_terceiros_detalhe', open)}><CollapsibleTrigger asChild><div className="flex items-center justify-between cursor-pointer py-2"><h2 className="text-base font-medium flex items-center gap-2">Contratação de Serviços de Terceiros / Locações (Transporte)</h2>{fieldCollapseState['servicos_terceiros_detalhe'] ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}</div></CollapsibleTrigger><CollapsibleContent><div className="mt-2">{renderServicosTerceirosSection()}</div></CollapsibleContent></Collapsible></div>
-                </div>
+            {isDataLoading ? (
+              <div className="flex flex-col items-center justify-center py-12 gap-4">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                <p className="text-sm text-muted-foreground">Carregando parâmetros do ano {selectedYear}...</p>
               </div>
-              <div className="flex justify-end gap-3 mt-6"><Button type="button" variant="secondary" onClick={handleSetDefaultYear} disabled={isSaving || selectedYear === defaultYear || !selectedYear}>{selectedYear === defaultYear ? "Padrão Atual" : "Adotar como Padrão"}</Button><Button type="submit" disabled={isSaving} className="btn-adotar-padrao">{isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}Salvar Diretrizes</Button></div>
-            </form>
+            ) : (
+              <form onSubmit={(e) => { e.preventDefault(); handleSaveDiretrizes(); }}>
+                <div className="space-y-2 mb-6">
+                  <Label>Ano de Referência</Label>
+                  <Select value={selectedYear.toString()} onValueChange={(value) => setSelectedYear(parseInt(value))}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione o ano" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {availableYears.map((year) => (
+                        <SelectItem key={year} value={year.toString()}>
+                          {year} {year === defaultYear && "(Padrão)"}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-sm text-muted-foreground pt-1">
+                    Ano Padrão de Cálculo: <span className="font-semibold text-primary ml-1">{defaultYear ? defaultYear : 'Não definido (usando o mais recente)'}</span>
+                  </p>
+                </div>
+
+                <div className="border-t pt-4 mt-6">
+                  <div className="space-y-4">
+                    <div ref={el => collapsibleRefs.current['diarias_detalhe'] = el} className="border-b pb-4 last:border-b-0 last:pb-0">
+                      <Collapsible open={fieldCollapseState['diarias_detalhe']} onOpenChange={(open) => handleCollapseChange('diarias_detalhe', open)}>
+                        <CollapsibleTrigger asChild>
+                          <div className="flex items-center justify-between cursor-pointer py-2">
+                            <h2 className="text-base font-medium">Pagamento de Diárias</h2>
+                            {fieldCollapseState['diarias_detalhe'] ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                          </div>
+                        </CollapsibleTrigger>
+                        <CollapsibleContent>
+                          <div className="mt-2">{renderDiariaTable()}</div>
+                        </CollapsibleContent>
+                      </Collapsible>
+                    </div>
+
+                    <div ref={el => collapsibleRefs.current['passagens_detalhe'] = el} className="border-b pb-4 last:border-b-0 last:pb-0">
+                      <Collapsible open={fieldCollapseState['passagens_detalhe']} onOpenChange={(open) => handleCollapseChange('passagens_detalhe', open)}>
+                        <CollapsibleTrigger asChild>
+                          <div className="flex items-center justify-between cursor-pointer py-2">
+                            <h2 className="text-base font-medium flex items-center gap-2">
+                              <Plane className="h-4 w-4 text-primary" />
+                              Aquisição de Passagens
+                            </h2>
+                            {fieldCollapseState['passagens_detalhe'] ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                          </div>
+                        </CollapsibleTrigger>
+                        <CollapsibleContent>
+                          <div className="mt-2">{renderPassagensSection()}</div>
+                        </CollapsibleContent>
+                      </Collapsible>
+                    </div>
+
+                    <div ref={el => collapsibleRefs.current['concessionaria_detalhe'] = el} className="border-b pb-4 last:border-b-0 last:pb-0">
+                      <Collapsible open={fieldCollapseState['concessionaria_detalhe']} onOpenChange={(open) => handleCollapseChange('concessionaria_detalhe', open)}>
+                        <CollapsibleTrigger asChild>
+                          <div className="flex items-center justify-between cursor-pointer py-2">
+                            <h2 className="text-base font-medium flex items-center gap-2">
+                              <Activity className="h-4 w-4 text-primary" />
+                              Pagamento de Concessionárias
+                            </h2>
+                            {fieldCollapseState['concessionaria_detalhe'] ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                          </div>
+                        </CollapsibleTrigger>
+                        <CollapsibleContent>
+                          <div className="mt-2">{renderConcessionariaSection()}</div>
+                        </CollapsibleContent>
+                      </Collapsible>
+                    </div>
+
+                    <div ref={el => collapsibleRefs.current['material_consumo_detalhe'] = el} className="border-b pb-4 last:border-b-0 last:pb-0 aba-material-consumo">
+                      <Collapsible open={fieldCollapseState['material_consumo_detalhe']} onOpenChange={(open) => handleCollapseChange('material_consumo_detalhe', open)}>
+                        <CollapsibleTrigger asChild>
+                          <div className="flex items-center justify-between cursor-pointer py-2 gatilho-material-consumo">
+                            <h2 className="text-base font-medium flex items-center gap-2">
+                              <Package className="h-4 w-4 text-primary" />
+                              Aquisição de Material de Consumo
+                            </h2>
+                            {fieldCollapseState['material_consumo_detalhe'] ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                          </div>
+                        </CollapsibleTrigger>
+                        <CollapsibleContent>
+                          <div className="mt-2">{renderMaterialConsumoSection()}</div>
+                        </CollapsibleContent>
+                      </Collapsible>
+                    </div>
+
+                    <div ref={el => collapsibleRefs.current['material_permanente_detalhe'] = el} className="border-b pb-4 last:border-b-0 last:pb-0">
+                      <Collapsible open={fieldCollapseState['material_permanente_detalhe']} onOpenChange={(open) => handleCollapseChange('material_permanente_detalhe', open)}>
+                        <CollapsibleTrigger asChild>
+                          <div className="flex items-center justify-between cursor-pointer py-2">
+                            <h2 className="text-base font-medium flex items-center gap-2">
+                              <HardDrive className="h-4 w-4 text-primary" />
+                              Aquisição de Material Permanente
+                            </h2>
+                            {fieldCollapseState['material_permanente_detalhe'] ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                          </div>
+                        </CollapsibleTrigger>
+                        <CollapsibleContent>
+                          <div className="mt-2">{renderMaterialPermanenteSection()}</div>
+                        </CollapsibleContent>
+                      </Collapsible>
+                    </div>
+
+                    <div ref={el => collapsibleRefs.current['servicos_terceiros_detalhe'] = el} className="border-b pb-4 last:border-b-0 last:pb-0">
+                      <Collapsible open={fieldCollapseState['servicos_terceiros_detalhe']} onOpenChange={(open) => handleCollapseChange('servicos_terceiros_detalhe', open)}>
+                        <CollapsibleTrigger asChild>
+                          <div className="flex items-center justify-between cursor-pointer py-2">
+                            <h2 className="text-base font-medium flex items-center gap-2">
+                              <Activity className="h-4 w-4 text-primary" />
+                              Contratação de Serviços de Terceiros / Locações
+                            </h2>
+                            {fieldCollapseState['servicos_terceiros_detalhe'] ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                          </div>
+                        </CollapsibleTrigger>
+                        <CollapsibleContent>
+                          <div className="mt-2">{renderServicosTerceirosSection()}</div>
+                        </CollapsibleContent>
+                      </Collapsible>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex justify-end gap-3 mt-6">
+                  <Button type="button" variant="secondary" onClick={handleSetDefaultYear} disabled={isSaving || selectedYear === defaultYear || !selectedYear}>
+                    {selectedYear === defaultYear ? "Padrão Atual" : "Adotar como Padrão"}
+                  </Button>
+                  <Button type="submit" disabled={isSaving} className="btn-adotar-padrao">
+                    {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+                    Salvar Diretrizes
+                  </Button>
+                </div>
+              </form>
+            )}
           </CardContent>
         </Card>
       </div>
-      {/* ... (dialogs) */}
+
+      <YearManagementDialog 
+        open={isYearManagementDialogOpen} 
+        onOpenChange={setIsYearManagementDialogOpen} 
+        tableName="diretrizes_operacionais" 
+        currentYears={availableYears} 
+        onYearAdded={(year) => {
+          setAvailableYears(prev => Array.from(new Set([...prev, year])).sort((a, b) => b - a));
+          setSelectedYear(year);
+        }}
+      />
+
+      <PassagemDiretrizFormDialog 
+          open={isPassagemDialogOpen} 
+          onOpenChange={setIsPassagemDialogOpen} 
+          selectedYear={selectedYear} 
+          diretrizToEdit={passagemToEdit} 
+          onSave={handleSavePassagem} 
+          loading={isSaving} 
+      />
+
+      <ConcessionariaDiretrizFormDialog 
+          open={isConcessionariaDialogOpen} 
+          onOpenChange={setIsConcessionariaDialogOpen} 
+          selectedYear={selectedYear} 
+          diretrizToEdit={concessionariaToEdit} 
+          onSave={handleSaveConcessionaria} 
+          loading={isSaving} 
+      />
+
+      <MaterialConsumoDiretrizFormDialog 
+          open={isMatConsumoDialogOpen} 
+          onOpenChange={setIsMatConsumoDialogOpen} 
+          selectedYear={selectedYear} 
+          diretrizToEdit={matConsumoToEdit} 
+          onSave={saveMatConsumo as any} 
+          loading={isSaving} 
+      />
+
+      <MaterialConsumoExportImportDialog 
+          open={isMatConsumoExportImportOpen}
+          onOpenChange={setIsMatConsumoExportImportOpen}
+          selectedYear={selectedYear}
+          diretrizes={materialConsumoDiretrizes}
+          onImportSuccess={() => queryClient.invalidateQueries({ queryKey: ['materialConsumoDiretrizes', selectedYear] })}
+      />
+
+      <ServicosTerceirosDiretrizFormDialog 
+          open={isServicoDialogOpen} 
+          onOpenChange={setIsServicoDialogOpen} 
+          selectedYear={selectedYear} 
+          diretrizToEdit={servicoToEdit} 
+          onSave={saveServico as any} 
+          loading={isSaving} 
+      />
+
+      <ServicosTerceirosExportImportDialog 
+          open={isServicoExportImportOpen}
+          onOpenChange={setIsServicoExportImportOpen}
+          selectedYear={selectedYear}
+          diretrizes={servicosTerceirosDiretrizes}
+          onImportSuccess={() => queryClient.invalidateQueries({ queryKey: ['servicosTerceirosDiretrizes', selectedYear] })}
+      />
+
+      <MaterialPermanenteDiretrizFormDialog 
+          open={isMatPermanenteDialogOpen} 
+          onOpenChange={setIsMatPermanenteDialogOpen} 
+          selectedYear={selectedYear} 
+          diretrizToEdit={matPermanenteToEdit} 
+          onSave={saveMatPermanente as any} 
+          loading={isSaving} 
+      />
+
+      <MaterialPermanenteExportImportDialog 
+          open={isMatPermanenteExportImportOpen}
+          onOpenChange={setIsMatPermanenteExportImportOpen}
+          selectedYear={selectedYear}
+          diretrizes={materialPermanenteDiretrizes}
+          onImportSuccess={() => queryClient.invalidateQueries({ queryKey: ['materialPermanenteDiretrizes', selectedYear] })}
+      />
     </div>
   );
 };
