@@ -416,7 +416,7 @@ export const generateClasseIMemoriaCalculoUnificada = (registro: ClasseIRegistro
             organizacao: registro.organizacao,
             ug: registro.ug,
             diasOperacao: registro.diasOperacao,
-            faseAtividade: r.fase_atividade,
+            faseAtividade: registro.faseAtividade,
             omQS: registro.omQS,
             ugQS: registro.ugQS,
             efetivo: registro.efetivo,
@@ -582,7 +582,7 @@ export const generateConcessionariaMemoriaCalculada = (registro: ConcessionariaR
 
 export const generateMaterialConsumoMemoriaCalculada = (registro: MaterialConsumoRegistro): string => {
     if (registro.detalhamento_customizado && registro.detalhamento_customizado.trim().length > 0) return registro.detalhamento_customizado;
-    const context = { organizacao: registro.organizacao, efetivo: registro.efetivo, dias_operacao: registro.dias_operacao, fase_atividade: r.fase_atividade };
+    const context = { organizacao: registro.organizacao, efetivo: registro.efetivo, dias_operacao: registro.dias_operacao, fase_atividade: registro.fase_atividade };
     return generateMaterialConsumoMemoriaCalculoUtility(registro, context);
 };
 
@@ -1086,7 +1086,7 @@ const PTrabReportManager = () => {
     switch (selectedReport) {
       case 'logistico': return <PTrabLogisticoReport ptrabData={ptrabData} registrosClasseI={registrosClasseI} registrosClasseII={registrosClasseII} registrosClasseIII={registrosClasseIII} nomeRM={nomeRM} omsOrdenadas={omsOrdenadas} gruposPorOM={gruposPorOM} calcularTotaisPorOM={calcularTotaisPorOM} fileSuffix={fileSuffix} generateClasseIMemoriaCalculo={generateClasseIMemoriaCalculoUnificada} generateClasseIIMemoriaCalculo={generateClasseIIMemoriaCalculo} generateClasseVMemoriaCalculo={(registro) => generateClasseIIMemoriaCalculo(registro, false)} generateClasseVIMemoriaCalculo={(registro) => generateClasseIIMemoriaCalculo(registro, false)} generateClasseVIIMemoriaCalculo={(registro) => generateClasseIIMemoriaCalculo(registro, false)} generateClasseVIIIMemoriaCalculo={(registro) => generateClasseIIMemoriaCalculo(registro, false)} />;
       case 'racao_operacional': return <PTrabRacaoOperacionalReport ptrabData={ptrabData} registrosClasseI={registrosClasseI} fileSuffix={fileSuffix} generateClasseIMemoriaCalculo={generateClasseIMemoriaCalculoUnificada} />;
-      case 'operacional': return <PTrabOperacionalReport ptrabData={ptrabData} omsOrdenadas={omsOperacionaisOrdenadas} gruposPorOM={gruposOperacionaisPorOM} registrosDiaria={registrosDiaria} registrosVerbaOperacional={registrosVerbaOperacional} registrosSuprimentoFundos={registrosSuprimentoFundos} registrosPassagem={registrosPassagem} registrosConcessionaria={registrosConcessionaria} registrosMaterialConsumo={registrosMaterialConsumo} registrosComplementoAlimentacao={registrosComplementoAlimentacao} registrosServicosTerceiros={registrosServicosTerceiros} diretrizesOperacionais={diretrizesOperacionais} diretrizesPassagens={diretrizesPassagens} fileSuffix={fileSuffix} generateDiariaMemoriaCalculo={generateDiariaMemoriaCalculoUnificada} generateVerbaOperacionalMemoriaCalculo={generateVerbaOperacionalMemoriaCalculada} generateSuprimentoFundosMemoriaCalculo={generateSuprimentoFundosMemoriaCalculada} generatePassagemMemoriaCalculo={generatePassagemMemoriaCalculada} generateConcessionariaMemoriaCalculo={generateConcessionariaMemoriaCalculada} generateMaterialConsumoMemoriaCalculo={generateMaterialConsumoMemoriaCalculada} generateComplementoMemoriaCalculo={generateComplementoMemoriaCalculada} generateServicoMemoriaCalculo={generateServicoMemoriaCalculada} />;
+      case 'operacional': return <PTrabOperacionalReport ptrabData={ptrabData} omsOrdenadas={omsOperacionaisOrdenadas} gruposPorOM={gruposOperacionaisPorOM} registrosDiaria={registrosDiaria} registrosVerbaOperacional={registrosVerbaOperacional} registrosSuprimentoFundos={registrosSuprimentoFundos} registrosPassagem={registrosPassagem} registrosConcessionaria={registrosConcessionaria} registrosMaterialConsumo={registrosMaterialConsumo} registrosComplementoAlimentacao={registrosComplementoAlimentacao} registrosServicosTerceiros={registrosServicosTerceiros} diretrizesOperacionais={diretrizesOperacionais} diretrizesPassagens={diretrizesPassagens} fileSuffix={fileSuffix} generateDiariaMemoriaCalculo={generateDiariaMemoriaCalculoUnificada} generateVerbaOperacionalMemoriaCalculo={generateVerbaOperacionalMemoriaCalculada} generateSuprimentoFundosMemoriaCalculo={generateSuprimentoFundosMemoriaCalculada} generatePassagemMemoriaCalculo={generatePassagemMemoriaCalculada} generateConcessionariaMemoriaCalculo={generateConcessionariaMemoriaCalculada} generateMaterialConsumoMemoriaCalculo={(registro) => generateMaterialConsumoMemoriaCalculada(registro)} generateComplementoMemoriaCalculo={generateComplementoMemoriaCalculada} generateServicoMemoriaCalculo={generateServicoMemoriaCalculada} />;
       case 'material_permanente': return <PTrabMaterialPermanenteReport ptrabData={ptrabData} registrosMaterialPermanente={registrosMaterialPermanente} fileSuffix={fileSuffix} />;
       case 'hora_voo': return <PTrabHorasVooReport ptrabData={ptrabData} omsOrdenadas={omsHorasVooOrdenadas} gruposPorOM={gruposHorasVooPorOM} fileSuffix={fileSuffix} />;
       case 'dor':
