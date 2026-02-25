@@ -1,184 +1,128 @@
-"use client";
-
 import React, { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Trash2, Plus, Loader2, Calendar } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Input } from "@/components/ui/input";
+import { Copy, Trash2, Loader2, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
-import { useSession } from '@/components/SessionContextProvider';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
 interface YearManagementDialogProps {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  tableName: 'diretrizes_custeio' | 'diretrizes_operacionais';
-  currentYears: number[];
-  onYearAdded: (year: number) => void;
+    open: boolean;
+    onOpenChange: (open: boolean) => void;
+    availableYears: number[];
+    defaultYear: number | null;
+    onCopy: (sourceYear: number, targetYear: number) => Promise<void>;
+    onDelete: (year: number) => Promise<void>;
+    loading: boolean;
 }
 
 export const YearManagementDialog: React.FC<YearManagementDialogProps> = ({
-  open,
-  onOpenChange,
-  tableName,
-  currentYears = [], // Garantimos que inicia como array vazio
-  onYearAdded,
+    open,
+    onOpenChange,
+    availableYears,
+    defaultYear,
+    onCopy,
+    onDelete,
+    loading
 }) => {
-  const { user } = useSession();
-  const [newYear, setNewYear] = useState<string>(new Date().getFullYear().toString());
-  const [isLoading, setIsLoading] = useState(false);
+    const [sourceYear, setSourceYear] = useState<string>("");
+    const [targetYear, setTargetYear] = useState<string>("");
 
-  const handleAddYear = async () => {
-    if (!user?.id) return;
-    const year = parseInt(newYear);
-    
-    if (isNaN(year) || year < 2000 || year > 2100) {
-      toast.error("Por favor, insira um ano válido.");
-      return;
-    }
+    const handleCopy = async () => {
+        if (!sourceYear || !targetYear) {
+            toast.error("Selecione o ano de origem e informe o ano de destino.");
+            return;
+        }
+        if (sourceYear === targetYear) {
+            toast.error("O ano de destino deve ser diferente do ano de origem.");
+            return;
+        }
+        await onCopy(parseInt(sourceYear), parseInt(targetYear));
+        setTargetYear("");
+    };
 
-    if (currentYears?.includes(year)) {
-      toast.error("Este ano já possui diretrizes cadastradas.");
-      return;
-    }
+    return (
+        <Dialog open={open} onOpenChange={onOpenChange}>
+            <DialogContent className="sm:max-w-[500px]">
+                <DialogHeader>
+                    <DialogTitle>Gerenciamento de Anos de Referência</DialogTitle>
+                    <DialogDescription>
+                        Copie diretrizes de um ano para outro ou exclua anos que não são mais necessários.
+                    </DialogDescription>
+                </DialogHeader>
 
-    setIsLoading(true);
-    try {
-      // Cria uma entrada básica para o novo ano
-      const { error } = await supabase
-        .from(tableName)
-        .insert({
-          user_id: user.id,
-          ano_referencia: year,
-        } as any);
-
-      if (error) throw error;
-
-      toast.success(`Ano ${year} adicionado com sucesso!`);
-      onYearAdded(year);
-      setNewYear((year + 1).toString());
-    } catch (error: any) {
-      console.error("Erro ao adicionar ano:", error);
-      toast.error("Falha ao criar diretrizes para o novo ano.");
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleDeleteYear = async (year: number) => {
-    if (!user?.id) return;
-    
-    // Verificação de segurança adicional para o erro relatado
-    const yearsCount = currentYears?.length || 0;
-    if (yearsCount <= 1) {
-      toast.error("Não é possível excluir o único ano cadastrado.");
-      return;
-    }
-
-    if (!confirm(`Tem certeza que deseja excluir TODAS as diretrizes do ano ${year}? Esta ação não pode ser desfeita.`)) {
-      return;
-    }
-
-    setIsLoading(true);
-    try {
-      const { error } = await supabase
-        .from(tableName)
-        .delete()
-        .eq('user_id', user.id)
-        .eq('ano_referencia', year);
-
-      if (error) throw error;
-
-      toast.success(`Diretrizes de ${year} excluídas.`);
-      // Recarrega a página para atualizar o estado global dos anos
-      window.location.reload();
-    } catch (error: any) {
-      console.error("Erro ao excluir ano:", error);
-      toast.error("Falha ao excluir diretrizes do ano.");
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[425px]">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <Calendar className="h-5 w-5 text-primary" />
-            Gerenciar Anos de Referência
-          </DialogTitle>
-          <DialogDescription>
-            Adicione novos anos para planejamento ou remova anos obsoletos.
-          </DialogDescription>
-        </DialogHeader>
-
-        <div className="space-y-6 py-4">
-          <div className="flex items-end gap-2">
-            <div className="grid gap-2 flex-1">
-              <Label htmlFor="new-year">Novo Ano</Label>
-              <Input
-                id="new-year"
-                type="number"
-                value={newYear}
-                onChange={(e) => setNewYear(e.target.value)}
-                placeholder="Ex: 2026"
-                disabled={isLoading}
-              />
-            </div>
-            <Button onClick={handleAddYear} disabled={isLoading}>
-              {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4 mr-2" />}
-              Adicionar
-            </Button>
-          </div>
-
-          <div className="border rounded-md">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Anos Ativos</TableHead>
-                  <TableHead className="text-right">Ações</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {currentYears && currentYears.length > 0 ? (
-                  currentYears.sort((a, b) => b - a).map((year) => (
-                    <TableRow key={year}>
-                      <TableCell className="font-medium">{year}</TableCell>
-                      <TableCell className="text-right">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                          onClick={() => handleDeleteYear(year)}
-                          disabled={isLoading || (currentYears?.length || 0) <= 1}
-                          title="Excluir este ano"
+                <div className="space-y-6 py-4">
+                    <div className="space-y-4 p-4 border rounded-lg bg-muted/30">
+                        <h3 className="text-sm font-medium flex items-center gap-2">
+                            <Copy className="h-4 w-4" />
+                            Copiar Diretrizes
+                        </h3>
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                                <Label>Origem</Label>
+                                <Select value={sourceYear} onValueChange={setSourceYear}>
+                                    <SelectTrigger>
+                                        <SelectValue placeholder="Ano" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {availableYears.map(year => (
+                                            <SelectItem key={year} value={year.toString()}>{year}</SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                            <div className="space-y-2">
+                                <Label>Destino</Label>
+                                <Input 
+                                    type="number" 
+                                    placeholder="Ex: 2025" 
+                                    value={targetYear}
+                                    onChange={(e) => setTargetYear(e.target.value)}
+                                />
+                            </div>
+                        </div>
+                        <Button 
+                            className="w-full" 
+                            variant="secondary" 
+                            onClick={handleCopy}
+                            disabled={loading || !sourceYear || !targetYear}
                         >
-                          <Trash2 className="h-4 w-4" />
+                            {loading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Copy className="h-4 w-4 mr-2" />}
+                            Iniciar Cópia de Dados
                         </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))
-                ) : (
-                  <TableRow>
-                    <TableCell colSpan={2} className="text-center text-muted-foreground py-4">
-                      Nenhum ano cadastrado.
-                    </TableCell>
-                  </TableRow>
-                )}
-              </TableBody>
-            </Table>
-          </div>
-        </div>
+                    </div>
 
-        <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isLoading}>
-            Fechar
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  );
+                    <div className="space-y-4">
+                        <h3 className="text-sm font-medium flex items-center gap-2">
+                            <AlertCircle className="h-4 w-4 text-destructive" />
+                            Excluir Anos
+                        </h3>
+                        <div className="space-y-2">
+                            {availableYears.map(year => (
+                                <div key={year} className="flex items-center justify-between p-2 border rounded-md">
+                                    <span className="text-sm font-medium">
+                                        {year} {year === defaultYear && "(Ano Padrão)"}
+                                    </span>
+                                    <Button 
+                                        variant="ghost" 
+                                        size="icon" 
+                                        className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                                        disabled={loading || year === defaultYear}
+                                        onClick={() => onDelete(year)}
+                                    >
+                                        <Trash2 className="h-4 w-4" />
+                                    </Button>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+
+                <DialogFooter>
+                    <Button variant="outline" onClick={() => onOpenChange(false)}>Fechar</Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
+    );
 };
