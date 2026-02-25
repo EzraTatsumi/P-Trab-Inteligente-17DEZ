@@ -1,63 +1,66 @@
 "use client";
 
-import { useEffect } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { getCompletedMissions } from "@/lib/missionUtils";
 import { useSession } from "@/components/SessionContextProvider";
 
 export const useOnboardingStatus = () => {
   const { user } = useSession();
-  const queryClient = useQueryClient();
-
-  // Escuta o evento de missão concluída para atualizar o checklist na hora
-  useEffect(() => {
-    const handleMissionUpdate = (event: any) => {
-      if (event.detail?.userId === user?.id) {
-        queryClient.invalidateQueries({ queryKey: ["onboarding-status", user?.id] });
-      }
-    };
-
-    window.addEventListener('mission:completed', handleMissionUpdate);
-    return () => window.removeEventListener('mission:completed', handleMissionUpdate);
-  }, [queryClient, user?.id]);
 
   return useQuery({
-    queryKey: ["onboarding-status", user?.id],
+    queryKey: ['activation-status', user?.id],
     queryFn: async () => {
       if (!user?.id) return null;
 
-      // 1. Verifica Missões (Centro de Instrução)
-      const completedMissions = JSON.parse(localStorage.getItem(`completed_missions_${user.id}`) || '[]');
-      // Consideramos apto quem fez as 3 principais ou explorou o sistema
-      const hasMissions = completedMissions.length >= 3;
+      // 1. Verifica Perfil
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', user.id)
+        .single();
 
       // 2. Verifica OMs
       const { count: omCount } = await supabase
-        .from("organizacoes_militares")
-        .select("*", { count: "exact", head: true })
-        .eq("user_id", user.id);
+        .from('organizacoes_militares')
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', user.id);
 
-      // 3. Verifica Diretrizes Logísticas e Operacionais
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("default_logistica_year, default_operacional_year")
-        .eq("id", user.id)
-        .single();
+      // 3. Verifica Diretrizes Logísticas
+      const { data: logistica } = await supabase
+        .from('diretrizes_custeio')
+        .select('ano_referencia')
+        .eq('user_id', user.id)
+        .limit(1);
 
-      const hasLogistica = !!profile?.default_logistica_year;
-      const hasOperacional = !!profile?.default_operacional_year;
+      // 4. Verifica Diretrizes Operacionais
+      const { data: operacional } = await supabase
+        .from('diretrizes_operacionais')
+        .select('ano_referencia')
+        .eq('user_id', user.id)
+        .limit(1);
+
+      // 5. Verifica Missões (Todas as 6 concluídas)
+      const completedCount = getCompletedMissions(user.id).length;
+      const hasMissions = completedCount >= 6;
+
+      const hasOMs = (omCount || 0) > 0;
+      const hasLogistica = (logistica?.length || 0) > 0;
+      const hasOperacional = (operacional?.length || 0) > 0;
 
       return {
         hasMissions,
-        hasOMs: (omCount || 0) > 0,
+        hasOMs,
         hasLogistica,
         hasOperacional,
-        logYear: profile?.default_logistica_year,
-        opYear: profile?.default_operacional_year,
-        isReady: hasMissions && (omCount || 0) > 0 && hasLogistica && hasOperacional,
+        logYear: profile?.default_logistica_year || logistica?.[0]?.ano_referencia,
+        opYear: profile?.default_operacional_year || operacional?.[0]?.ano_referencia,
+        isReady: hasMissions && hasOMs && hasLogistica && hasOperacional
       };
     },
     enabled: !!user?.id,
-    staleTime: 1000 * 30, // 30 segundos
+    staleTime: 0, // Garante que o dado seja considerado antigo imediatamente
+    refetchOnWindowFocus: true, // Atualiza ao voltar para a aba do navegador
+    refetchOnMount: true // Atualiza sempre que o componente que usa o hook for montado
   });
 };
