@@ -11,10 +11,10 @@ import { cn } from '@/lib/utils';
 const MISSIONS = [
   { id: 1, title: "Comandante do P Trab", desc: "Aprenda a gerenciar o ciclo de vida dos seus Planos de Trabalho.", icon: Target },
   { id: 2, title: "Inteligência PNCP", desc: "Configure diretrizes importando dados do Portal Nacional de Contratações Públicas.", icon: Database },
-  { id: 3, title: "Detalhamento Operacional", desc: "Lance necessidades de material de consumo e serviços com apoio da IA.", icon: Layout },
+  { id: 3, title: "Detalhamento das Necessidades", desc: "Lance necessidades de logísticas e operacionais.", icon: Layout },
   { id: 4, title: "Contabilidade Gerencial", desc: "Analise custos consolidados e distribuição por Organização Militar.", icon: ShieldCheck },
   { id: 5, title: "Redação de DOR", desc: "Gere o Documento de Oficialização da Requisição com agrupamento inteligente.", icon: Cpu },
-  { id: 6, title: "Aprovações e Relatórios", desc: "Exporte memórias de cálculo e relatórios oficiais para auditoria.", icon: Trophy },
+  { id: 6, title: "Relatórios", desc: "Exporte os relatórios (em PDF ou Editáveis) para auditoria ou imprima para despachos.", icon: Trophy },
 ];
 
 export const InstructionHub = () => {
