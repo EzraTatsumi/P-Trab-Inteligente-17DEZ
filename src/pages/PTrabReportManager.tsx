@@ -11,6 +11,8 @@ import { toast } from "sonner";
 import { isGhostMode, GHOST_DATA } from "@/lib/ghostStore";
 import PTrabOperacionalReport from "@/components/reports/PTrabOperacionalReport";
 import { runMission06 } from "@/tours/missionTours";
+import { markMissionCompleted } from "@/lib/missionUtils";
+import { useSession } from "@/components/SessionContextProvider";
 
 const REPORT_OPTIONS = [
   { value: "logistico", label: "P Trab Logístico", icon: Package, iconClass: "text-orange-600" },
@@ -24,6 +26,7 @@ const REPORT_OPTIONS = [
 const PTrabReportManager = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+  const { user } = useSession();
   const ptrabId = searchParams.get("ptrabId");
   const [selectedReport, setSelectedReport] = useState("operacional");
   const [loading, setLoading] = useState(true);
@@ -49,9 +52,11 @@ const PTrabReportManager = () => {
         setPtrabData(GHOST_DATA.p_trab_exemplo);
         setLoading(false);
         
-        if (searchParams.get('startTour') === 'true') {
+        const startTour = searchParams.get('startTour') === 'true';
+        if (startTour && user?.id) {
           setTimeout(() => {
-            runMission06(() => {
+            runMission06(user.id, () => {
+              markMissionCompleted(6, user.id);
               navigate('/ptrab?showHub=true');
             });
           }, 800);
@@ -75,7 +80,7 @@ const PTrabReportManager = () => {
       setLoading(false);
     };
     loadData();
-  }, [ptrabId, navigate, searchParams]);
+  }, [ptrabId, navigate, searchParams, user?.id]);
 
   if (loading || !ptrabData) {
     return (

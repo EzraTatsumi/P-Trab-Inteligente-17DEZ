@@ -12,6 +12,7 @@ import { formatNumber, formatCodug } from "@/lib/formatUtils";
 import { PTrabImporter, DorGroup } from "@/components/PTrabImporter";
 import { GHOST_DATA, isGhostMode } from "@/lib/ghostStore";
 import { runMission05 } from "@/tours/missionTours";
+import { markMissionCompleted } from "@/lib/missionUtils";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -119,23 +120,22 @@ const DOREditor = () => {
 
   // Lógica de inicialização do Tour (Missão 05)
   useEffect(() => {
-    if (!loading) {
+    if (!loading && user?.id) {
       const startTour = searchParams.get('startTour') === 'true';
       const missionId = localStorage.getItem('active_mission_id');
       if (startTour && missionId === '5' && ghost) {
         const timer = setTimeout(() => {
-          runMission05(() => {
-            const completed = JSON.parse(localStorage.getItem('completed_missions') || '[]');
-            if (!completed.includes(5)) {
-              localStorage.setItem('completed_missions', JSON.stringify([...completed, 5]));
-            }
+          runMission05(user.id, () => {
+            // markMissionCompleted já é chamado no onDestroyed do driver, 
+            // mas reforçamos aqui para garantir o redirecionamento correto
+            markMissionCompleted(5, user.id);
             navigate('/ptrab?showHub=true');
           });
         }, 500);
         return () => clearTimeout(timer);
       }
     }
-  }, [loading, searchParams, navigate, ghost]);
+  }, [loading, searchParams, navigate, ghost, user?.id]);
 
   // Lógica de preenchimento para Missão 05 (Ghost Mode)
   useEffect(() => {
