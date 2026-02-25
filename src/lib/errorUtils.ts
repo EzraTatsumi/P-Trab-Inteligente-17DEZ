@@ -1,46 +1,45 @@
 /**
- * Utility para sanitizar erros e evitar vazamento de informações técnicas.
- * Mapeia erros técnicos para mensagens amigáveis ao usuário.
+ * Error sanitization utility to prevent information leakage
+ * Maps technical errors to user-friendly messages
  */
 
 const isDev = import.meta.env.DEV;
 
 export const sanitizeError = (error: any): string => {
+  // Log full error for debugging (visible in browser console)
   console.error('Error details:', error.code, error.message, error);
 
+  // In development, show full errors for debugging
   if (isDev) {
     return error.message || 'Ocorreu um erro inesperado';
   }
 
-  // Erros comuns do PostgreSQL
+  // PostgreSQL error codes
   if (error.code === '23505') return 'Este registro já existe para o ano selecionado';
   if (error.code === '23503') return 'Dados relacionados não encontrados';
+  if (error.code === '23502') return 'Campos obrigatórios não preenchidos no banco';
   if (error.code === '42501') return 'Acesso negado pelas políticas de segurança (RLS)';
 
+  // Supabase/Postgres common patterns
   if (error.message?.includes('policy')) return 'Acesso negado: você não tem permissão para esta ação';
   if (error.message?.includes('duplicate key')) return 'Já existe um registro com estes dados';
-  
-  return 'Ocorreu um erro ao processar a solicitação. Tente novamente.';
+  if (error.message?.includes('JWT')) return 'Sessão expirada. Por favor, faça login novamente';
+
+  // Generic fallback with a bit more context
+  return error.message || 'Ocorreu um erro ao processar a solicitação. Tente novamente.';
 };
 
 /**
- * Sanitiza erros específicos de autenticação
+ * Sanitize authentication errors specifically
  */
 export const sanitizeAuthError = (error: any): string => {
-  const message = error?.message || '';
-  const code = error?.code || '';
+  const message = error.message || '';
 
-  // Tratamento por código (mais preciso)
-  if (code === 'invalid_credentials' || message.includes('Invalid login credentials')) {
-    return 'E-mail ou senha incorretos. Verifique seus dados e tente novamente.';
-  }
-  
-  if (code === 'email_not_confirmed') return 'Confirme seu e-mail antes de fazer login.';
-  if (code === 'user_already_exists') return 'Este e-mail já está cadastrado.';
-  if (code === 'over_email_send_rate_limit') return 'Muitas tentativas. Aguarde alguns minutos antes de tentar novamente.';
-  
-  // Fallbacks por mensagem
-  if (message.includes('Password')) return 'Senha inválida ou muito fraca.';
+  if (message.includes('Invalid login')) return 'Email ou senha incorretos';
+  if (message.includes('Email not confirmed')) return 'Confirme seu email antes de fazer login';
+  if (message.includes('already registered')) return 'Este email já está cadastrado';
+  if (message.includes('Password')) return 'Senha inválida ou muito fraca';
+  if (message.includes('rate limit')) return 'Muitas tentativas. Aguarde alguns minutos';
   
   if (isDev) return message;
   return 'Erro ao autenticar. Verifique seus dados e tente novamente.';
