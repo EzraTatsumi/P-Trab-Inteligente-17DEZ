@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { ArrowLeft, Save, FileText, Loader2, ClipboardList, Send } from "lucide-react";
+import { ArrowLeft, Save, FileText, ClipboardList } from "lucide-react";
 import { useSession } from '@/components/SessionContextProvider';
 import { runMission05 } from '@/tours/missionTours';
 import { isGhostMode } from '@/lib/ghostStore';
@@ -18,21 +18,24 @@ const DOREditor = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { user } = useSession();
-  const ptrabId = searchParams.get('ptrabId');
-  const [loading, setLoading] = useState(false);
+  const [isTourRunning, setIsTourRunning] = useState(false);
 
   useEffect(() => {
     const startTour = searchParams.get('startTour') === 'true';
-    if (startTour && isGhostMode() && user?.id) {
+    const isGhost = isGhostMode();
+    
+    if (startTour && isGhost && user?.id && !isTourRunning) {
+      setIsTourRunning(true);
       const timer = setTimeout(() => {
         runMission05(user.id, () => {
-          // Quando a missão 5 termina, volta para o PTrabManager com o Hub aberto
+          setIsTourRunning(false);
+          toast.success("Missão 05 concluída!");
           navigate('/ptrab?showHub=true');
         });
-      }, 500);
+      }, 800);
       return () => clearTimeout(timer);
     }
-  }, [searchParams, user?.id, navigate]);
+  }, [searchParams, user?.id, navigate, isTourRunning]);
 
   return (
     <div className="min-h-screen bg-background p-4 md:p-8">
@@ -69,7 +72,7 @@ const DOREditor = () => {
               </div>
             </div>
           </CardHeader>
-          <CardContent className="space-y-8 pt-6">
+          <CardContent className="space-y-8 pt-6 text-foreground">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 tour-dor-contato">
               <div className="space-y-2">
                 <Label>E-mail do Requisitante *</Label>
@@ -83,29 +86,29 @@ const DOREditor = () => {
 
             <div className="space-y-2 tour-dor-finalidade">
               <Label>Finalidade *</Label>
-              <Textarea placeholder="Descreva a finalidade técnica da requisição..." rows={3} defaultValue="Atender às necessidades logísticas da OPERAÇÃO SENTINELA..." />
+              <Textarea placeholder="Descreva a finalidade técnica da requisição..." rows={3} defaultValue="Atender às necessidades logísticas da OPERAÇÃO SENTINELA, garantindo o suporte necessário às tropas empregadas na faixa de fronteira." />
             </div>
 
             <div className="space-y-2 tour-dor-motivacao">
               <Label>Motivação *</Label>
-              <Textarea placeholder="Descreva a motivação/amparo legal..." rows={3} defaultValue="Msg Op nº 196 - CCOp/CMN, de 15 ABR 24." />
+              <Textarea placeholder="Descreva a motivação/amparo legal..." rows={3} defaultValue="Msg Op nº 196 - CCOp/CMN, de 15 ABR 24. Necessidade de recompletamento de material de consumo para manutenção de instalações temporárias." />
             </div>
 
             <div className="space-y-2 tour-dor-consequencia">
               <Label>Consequência do Não Atendimento *</Label>
-              <Textarea placeholder="Descreva os riscos..." rows={3} />
+              <Textarea placeholder="Descreva os riscos..." rows={3} defaultValue="Degradação das condições de habitabilidade e comprometimento da segurança orgânica do Posto de Vigilância." />
             </div>
 
             <div className="space-y-2 tour-dor-observacoes">
               <Label>Observações Gerais</Label>
-              <Textarea placeholder="Observações adicionais..." rows={3} defaultValue="Os custos estão em conformidade com o SIOP e memórias de cálculo anexas." />
+              <Textarea placeholder="Observações adicionais..." rows={3} defaultValue="Os custos detalhados estão em conformidade com o SIOP e memórias de cálculo extraídas do Plano de Trabalho nº 001/2026." />
             </div>
 
             <div className="border rounded-lg p-6 bg-muted/10 tour-dor-descricao-item">
               <h3 className="font-semibold mb-4 text-lg border-b pb-2">Descrição dos Itens e Valores</h3>
               <div className="text-center py-12 text-muted-foreground tour-dor-items-section">
                 <ClipboardList className="h-12 w-12 mx-auto mb-4 opacity-20" />
-                <p>Use o botão "Agrupar Custos" acima para importar dados do seu P Trab.</p>
+                <p>Agrupe os custos do seu P Trab para preencher esta tabela automaticamente.</p>
               </div>
             </div>
           </CardContent>
