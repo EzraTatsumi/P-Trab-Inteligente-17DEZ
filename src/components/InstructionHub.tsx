@@ -1,121 +1,157 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { GraduationCap, Trophy, PlayCircle, CheckCircle2, X } from "lucide-react";
-import { Progress } from "@/components/ui/progress";
-import { isGhostMode } from "@/lib/ghostStore";
+import { Badge } from "@/components/ui/badge";
+import { CheckCircle2, PlayCircle, Trophy, GraduationCap, ArrowRight, Loader2 } from "lucide-react";
+import { useNavigate } from 'react-router-dom';
+import { toast } from "sonner";
+import { useSession } from '@/components/SessionContextProvider';
+import { getCompletedMissions, isMissionCompleted } from '@/lib/missionUtils';
+import { useQueryClient } from '@tanstack/react-query';
+import { cn } from '@/lib/utils';
 
 interface Mission {
   id: number;
   title: string;
   description: string;
-  onStart: () => void;
+  targetPath: string;
+  category: 'logistica' | 'operacional' | 'gestao';
 }
 
-interface InstructionHubProps {
-  missions: Mission[];
-  completedMissions: number[];
-}
+const MISSIONS: Mission[] = [
+  { id: 1, title: "Gestão do P Trab", description: "Conheça as ferramentas de controle e o ciclo de vida dos planos.", targetPath: "/ptrab", category: 'gestao' },
+  { id: 2, title: "Inteligência PNCP", description: "Aprenda a importar itens reais de atas do Governo Federal.", targetPath: "/config/custos-operacionais", category: 'operacional' },
+  { id: 3, title: "Detalhamento Operacional", description: "Lance necessidades de material de consumo vinculadas a OMs.", targetPath: "/ptrab/form", category: 'operacional' },
+  { id: 4, title: "Contabilidade Gerencial", description: "Analise o impacto financeiro e distribuição por OM.", targetPath: "/ptrab/form", category: 'gestao' },
+  { id: 5, title: "Editor de DOR", description: "Redija o Documento de Oficialização da Requisição com agilidade.", targetPath: "/ptrab/dor", category: 'gestao' },
+  { id: 6, title: "Anexos e Exportação", description: "Gere relatórios técnicos em PDF e Excel para o processo.", targetPath: "/ptrab/print", category: 'gestao' },
+];
 
-const InstructionHub = ({ missions, completedMissions }: InstructionHubProps) => {
-  const [isOpen, setIsOpen] = useState(false);
-  
-  // Ocultamos o Hub se estivermos em modo simulação (missão ativa) para não poluir a tela
-  const isMissionActive = isGhostMode();
+export const InstructionHub: React.FC = () => {
+  const navigate = useNavigate();
+  const { user } = useSession();
+  const queryClient = useQueryClient();
+  const [completedIds, setCompletedIds] = useState<number[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  // Função para carregar o progresso atualizado
+  const refreshProgress = () => {
+    if (user?.id) {
+      const completed = getCompletedMissions(user.id);
+      setCompletedIds(completed);
+    }
+  };
 
   useEffect(() => {
-    const handleOpen = () => setIsOpen(true);
-    const handleClose = () => setIsOpen(false);
+    if (user?.id) {
+      refreshProgress();
+      setLoading(false);
 
-    window.addEventListener('instruction-hub:open', handleOpen);
-    window.addEventListener('instruction-hub:close', handleClose);
+      // Ouve o evento global de conclusão de missão para atualizar a UI em tempo real
+      const handleMissionComplete = (event: any) => {
+        if (event.detail?.userId === user.id || !event.detail?.userId) {
+          refreshProgress();
+        }
+      };
+
+      window.addEventListener('mission:completed', handleMissionComplete);
+      return () => window.removeEventListener('mission:completed', handleMissionComplete);
+    }
+  }, [user?.id]);
+
+  const startMission = async (mission: Mission) => {
+    // 1. Define as flags de treinamento
+    localStorage.setItem('is_ghost_mode', 'true');
+    localStorage.setItem('active_mission_id', mission.id.toString());
     
-    return () => {
-      window.removeEventListener('instruction-hub:open', handleOpen);
-      window.removeEventListener('instruction-hub:close', handleClose);
-    };
-  }, []);
+    // 2. Limpa o cache das consultas principais para forçar a leitura do GHOST_DATA
+    await queryClient.invalidateQueries({ queryKey: ['pTrabs'] });
+    await queryClient.invalidateQueries({ queryKey: ['ptrabTotals'] });
+    await queryClient.invalidateQueries({ queryKey: ['diretrizesCustosOperacionais'] });
+    
+    toast.success(`Missão "${mission.title}" iniciada no modo de treinamento.`);
+    
+    const path = mission.targetPath.includes('?') 
+      ? `${mission.targetPath}&startTour=true` 
+      : `${mission.targetPath}?startTour=true`;
+      
+    navigate(path);
+  };
 
-  if (!isOpen || isMissionActive) return null;
+  const totalCompleted = completedIds.length;
+  const progressPercent = Math.round((totalCompleted / MISSIONS.length) * 100);
 
-  const progress = (completedMissions.length / missions.length) * 100;
+  if (loading && !user) {
+    return (
+      <div className="flex items-center justify-center p-12">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   return (
-    <Card className="border-primary/20 bg-primary/5 animate-in fade-in slide-in-from-top-4 duration-500 shadow-lg">
-      <CardHeader className="pb-3">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="bg-primary p-2.5 rounded-xl shadow-sm">
-              <GraduationCap className="h-6 w-6 text-primary-foreground" />
-            </div>
-            <div>
-              <CardTitle className="text-xl font-bold">Centro de Instrução</CardTitle>
-              <CardDescription>Domine as ferramentas do P Trab Inteligente</CardDescription>
-            </div>
-          </div>
-          <Button variant="ghost" size="icon" onClick={() => setIsOpen(false)} className="hover:bg-primary/10">
-            <X className="h-4 w-4" />
-          </Button>
+    <div className="space-y-6">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-muted/30 p-6 rounded-lg border border-border">
+        <div className="space-y-1">
+          <h3 className="text-xl font-bold flex items-center gap-2">
+            <Trophy className="h-5 w-5 text-yellow-500" />
+            Seu Progresso de Instrução
+          </h3>
+          <p className="text-sm text-muted-foreground">
+            Complete todas as missões para dominar o P Trab Inteligente.
+          </p>
         </div>
-      </CardHeader>
-      <CardContent>
-        <div className="mb-6 space-y-2">
-          <div className="flex justify-between text-sm font-semibold text-primary">
-            <span>Progresso de Aprendizado</span>
-            <span>{Math.round(progress)}%</span>
+        <div className="flex items-center gap-4 w-full md:w-auto">
+          <div className="flex-1 md:w-48 h-3 bg-secondary rounded-full overflow-hidden border border-border">
+            <div 
+              className="h-full bg-primary transition-all duration-500 ease-out" 
+              style={{ width: `${progressPercent}%` }}
+            />
           </div>
-          <Progress value={progress} className="h-2.5 bg-primary/10" />
+          <span className="text-sm font-bold whitespace-nowrap">{totalCompleted} / {MISSIONS.length}</span>
         </div>
+      </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-4">
-          {missions.map((mission) => {
-            const isCompleted = completedMissions.includes(mission.id);
-            return (
-              <div 
-                key={mission.id}
-                className={`p-4 rounded-xl border-2 transition-all group hover:shadow-md ${
-                  isCompleted 
-                    ? "bg-green-50/50 border-green-200" 
-                    : "bg-background border-dashed border-muted-foreground/30 hover:border-primary/50"
-                }`}
-              >
-                <div className="flex justify-between items-start mb-2">
-                  <h4 className={`font-bold text-base ${isCompleted ? "text-green-800" : "text-foreground"}`}>
-                    Missão {mission.id}: {mission.title}
-                  </h4>
-                  {isCompleted && (
-                    <div className="bg-green-100 p-1 rounded-full">
-                      <Trophy className="h-4 w-4 text-green-600" />
-                    </div>
-                  )}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        {MISSIONS.map((mission) => {
+          const isDone = completedIds.includes(mission.id);
+          
+          return (
+            <Card key={mission.id} className={cn(
+              "relative overflow-hidden transition-all border-2",
+              isDone ? "bg-green-50/10 border-green-500/30" : "hover:border-primary/50"
+            )}>
+              <CardHeader className="pb-2">
+                <div className="flex justify-between items-start mb-1">
+                  <Badge variant="outline" className="text-[10px] uppercase">Missão {mission.id}</Badge>
+                  {isDone && <CheckCircle2 className="h-5 w-5 text-green-500" />}
                 </div>
-                <p className="text-sm text-muted-foreground mb-4 leading-relaxed">
+                <CardTitle className="text-lg">{mission.title}</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <CardDescription className="line-clamp-2 min-h-[40px]">
                   {mission.description}
-                </p>
+                </CardDescription>
+                
                 <Button 
-                  size="sm" 
-                  variant={isCompleted ? "outline" : "default"} 
-                  className={cn(
-                    "w-full gap-2 font-semibold h-10",
-                    isCompleted ? "border-green-200 text-green-700 hover:bg-green-50" : "shadow-sm"
-                  )}
-                  onClick={mission.onStart}
+                  onClick={() => startMission(mission)}
+                  variant={isDone ? "outline" : "default"}
+                  className="w-full group"
+                  size="sm"
                 >
-                  {isCompleted ? (
-                    <><RefreshCw className="h-4 w-4" /> Refazer Missão</>
+                  {isDone ? (
+                    <>Revisar Missão <ArrowRight className="ml-2 h-4 w-4" /></>
                   ) : (
-                    <><PlayCircle className="h-4 w-4" /> Iniciar Treinamento</>
+                    <>Iniciar Missão <PlayCircle className="ml-2 h-4 w-4 group-hover:scale-110 transition-transform" /></>
                   )}
                 </Button>
-              </div>
-            );
-          })}
-        </div>
-      </CardContent>
-    </Card>
+              </CardContent>
+            </Card>
+          );
+        })}
+      </div>
+    </div>
   );
 };
-
-export default InstructionHub;

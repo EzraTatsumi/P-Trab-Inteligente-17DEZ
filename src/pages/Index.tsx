@@ -1,30 +1,28 @@
-"use client";
-
-import { useEffect } from "react";
-import { useNavigate } from "react-router-dom";
-import { useSession } from "@/components/SessionContextProvider";
-import { Loader2 } from "lucide-react";
+import { Hero } from "@/components/Hero";
+import { Features } from "@/components/Features";
+import { Benefits } from "@/components/Benefits";
+import { Process } from "@/components/Process";
+import { Stakeholders } from "@/components/Stakeholders";
+import { Footer } from "@/components/Footer";
+// import ScrollToTopAndPlatformButton from "@/components/ScrollToTopAndPlatformButton"; // Importar o novo componente
 
 const Index = () => {
-  const navigate = useNavigate();
-  const { user, isLoading } = useSession();
-
-  useEffect(() => {
-    if (!isLoading) {
-      if (user) {
-        navigate("/ptrab");
-      } else {
-        navigate("/login");
-      }
+  const handleScrollToFeatures = () => {
+    const featuresSection = document.getElementById('features-section');
+    if (featuresSection) {
+      featuresSection.scrollIntoView({ behavior: 'smooth' });
     }
-  }, [user, isLoading, navigate]);
+  };
 
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center">
-      <div className="text-center space-y-4">
-        <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto" />
-        <p className="text-muted-foreground font-medium">Acessando sistema...</p>
-      </div>
+    <div className="min-h-screen bg-background">
+      <Hero onScrollToFeatures={handleScrollToFeatures} /> {/* Passando a função como prop */}
+      <Features />
+      <Process />
+      <Benefits />
+      <Stakeholders />
+      <Footer />
+      {/* <ScrollToTopAndPlatformButton /> */} {/* Adicionar o botão aqui */}
     </div>
   );
 };
