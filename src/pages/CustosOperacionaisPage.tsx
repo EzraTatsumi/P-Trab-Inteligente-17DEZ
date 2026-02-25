@@ -1,8 +1,8 @@
 "use client";
 
 /**
- * Página de Configuração de Custos Operacionais - v1.0.2
- * Gerencia os parâmetros de diárias, passagens, concessionárias e materiais.
+ * Página de Configuração de Custos Operacionais - v1.0.3
+ * Layout restaurado conforme aprovação prévia.
  */
 
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
@@ -19,43 +19,34 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { sanitizeError } from "@/lib/errorUtils";
 import { useFormNavigation } from "@/hooks/useFormNavigation";
 import { YearManagementDialog } from "@/components/YearManagementDialog";
-import { formatCurrencyInput, numberToRawDigits, formatCurrency, formatCodug } from "@/lib/formatUtils";
+import { numberToRawDigits } from "@/lib/formatUtils";
 import { useSession } from "@/components/SessionContextProvider";
-import { Tables, TablesInsert, TablesUpdate, Json, TableName } from "@/integrations/supabase/types";
+import { Tables, TablesInsert, Json } from "@/integrations/supabase/types";
 import { diretrizOperacionalSchema } from "@/lib/validationSchemas";
 import * as z from "zod";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useDefaultDiretrizYear } from "@/hooks/useDefaultDiretrizYear";
-import { useQueryClient, useQuery, useMutation } from "@tanstack/react-query";
-import { OmSelector } from "@/components/OmSelector";
-import { OMData } from "@/lib/omUtils";
-import { DiretrizPassagem, TrechoPassagem, TipoTransporte, DiretrizPassagemForm } from "@/types/diretrizesPassagens";
+import { useQueryClient, useQuery } from "@tanstack/react-query";
+import { TrechoPassagem } from "@/types/diretrizesPassagens";
 import CurrencyInput from "@/components/CurrencyInput";
-import { Switch } from "@/components/ui/switch";
-import { useMilitaryOrganizations } from "@/hooks/useMilitaryOrganizations";
 import PassagemDiretrizFormDialog from "@/components/PassagemDiretrizFormDialog";
 import PassagemDiretrizRow from "@/components/PassagemDiretrizRow"; 
 import ConcessionariaDiretrizFormDialog from "@/components/ConcessionariaDiretrizFormDialog";
 import ConcessionariaDiretrizRow from "@/components/ConcessionariaDiretrizRow";
 import { 
     DiretrizConcessionaria, 
-    DiretrizConcessionariaForm, 
-    CATEGORIAS_CONCESSIONARIA, 
-    CategoriaConcessionaria 
 } from "@/types/diretrizesConcessionaria";
 import { 
     DiretrizMaterialConsumo, 
-    ItemAquisicao 
 } from "@/types/diretrizesMaterialConsumo";
 import MaterialConsumoDiretrizFormDialog from "@/components/MaterialConsumoDiretrizFormDialog";
 import MaterialConsumoDiretrizRow from "@/components/MaterialConsumoDiretrizRow";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useMaterialConsumoDiretrizes } from "@/hooks/useMaterialConsumoDiretrizes";
 import PageMetadata from "@/components/PageMetadata";
 import MaterialConsumoExportImportDialog from "@/components/MaterialConsumoExportImportDialog";
 
-import { DiretrizServicosTerceiros, ItemAquisicaoServico } from "@/types/diretrizesServicosTerceiros";
+import { DiretrizServicosTerceiros } from "@/types/diretrizesServicosTerceiros";
 import { useServicosTerceirosDiretrizes } from "@/hooks/useServicosTerceirosDiretrizes";
 import ServicosTerceirosDiretrizRow from "@/components/ServicosTerceirosDiretrizRow";
 import ServicosTerceirosDiretrizFormDialog from "@/components/ServicosTerceirosDiretrizFormDialog";
@@ -67,7 +58,7 @@ import MaterialPermanenteDiretrizRow from "@/components/MaterialPermanenteDiretr
 import MaterialPermanenteDiretrizFormDialog from "@/components/MaterialPermanenteDiretrizFormDialog";
 import MaterialPermanenteExportImportDialog from "@/components/MaterialPermanenteExportImportDialog";
 import { runMission02 } from "@/tours/missionTours";
-import { GHOST_DATA, isGhostMode, getActiveMission } from "@/lib/ghostStore";
+import { isGhostMode } from "@/lib/ghostStore";
 import { cn } from "@/lib/utils";
 import { markMissionCompleted } from "@/lib/missionUtils";
 
@@ -78,11 +69,6 @@ const DIARIA_RANKS_CONFIG = [
   { key: 'of_sup', label: 'Of Sup', fieldPrefix: 'diaria_of_sup' },
   { key: 'of_int_sgt', label: 'Of Int/Sub/Asp Of/ST/Sgt', fieldPrefix: 'diaria_of_int_sgt' },
   { key: 'demais_pracas', label: 'Demais Praças', fieldPrefix: 'diaria_demais_pracas' },
-];
-
-const OPERATIONAL_FIELDS = [
-  { key: 'fator_servicos_terceiros', label: 'Serviços de Terceiros (Fator)', type: 'factor' as const, placeholder: 'Ex: 0.10 (para 10%)' },
-  { key: 'fator_material_consumo', label: 'Material de Consumo (Fator)', type: 'factor' as const, placeholder: 'Ex: 0.02 (para 2%)' },
 ];
 
 const defaultDiretrizes = (year: number): Partial<DiretrizOperacional> => ({
@@ -133,9 +119,9 @@ const CustosOperacionaisPage = () => {
   const [diretrizes, setDiretrizes] = useState<Partial<DiretrizOperacional>>(defaultDiretrizes(currentYear));
   const [rawInputs, setRawInputs] = useState<Record<string, string>>({});
   
-  const [diretrizesPassagens, setDiretrizesPassagens] = useState<DiretrizPassagem[]>([]);
+  const [diretrizesPassagens, setDiretrizesPassagens] = useState<any[]>([]);
   const [isPassagemDialogOpen, setIsPassagemDialogOpen] = useState(false);
-  const [passagemToEdit, setPassagemToEdit] = useState<DiretrizPassagem | null>(null);
+  const [passagemToEdit, setPassagemToEdit] = useState<any | null>(null);
 
   const [diretrizesConcessionaria, setDiretrizesConcessionaria] = useState<DiretrizConcessionaria[]>([]);
   const [isConcessionariaDialogOpen, setIsConcessionariaDialogOpen] = useState(false);
@@ -214,10 +200,6 @@ const CustosOperacionaisPage = () => {
 
   const [fieldCollapseState, setFieldCollapseState] = useState<Record<string, boolean>>(() => {
     const initialState: Record<string, boolean> = {};
-    OPERATIONAL_FIELDS.forEach(field => {
-      initialState[field.key as string] = false;
-    });
-    
     const s = location.state as any;
     initialState['diarias_detalhe'] = false; 
     initialState['passagens_detalhe'] = s?.openPassagens || false; 
@@ -278,22 +260,7 @@ const CustosOperacionaisPage = () => {
       }
 
       const yearsFromOp = data.map((d) => d.ano_referencia);
-      
-      const { data: passData } = await supabase
-        .from("diretrizes_passagens")
-        .select("ano_referencia")
-        .eq("user_id", user.id);
-      
-      const yearsFromPass = (passData || []).map(d => d.ano_referencia);
-      
-      const { data: concData } = await supabase
-        .from("diretrizes_concessionaria")
-        .select("ano_referencia")
-        .eq("user_id", user.id);
-        
-      const yearsFromConc = (concData || []).map(d => d.ano_referencia);
-
-      const allYears = Array.from(new Set([...yearsFromOp, ...yearsFromPass, ...yearsFromConc, currentYear])).sort((a, b) => b - a);
+      const allYears = Array.from(new Set([...yearsFromOp, currentYear])).sort((a, b) => b - a);
       setAvailableYears(allYears);
 
       if (allYears.length > 0 && !selectedYear) {
@@ -345,11 +312,9 @@ const CustosOperacionaisPage = () => {
       initialRawInputs['taxa_embarque'] = numberToRawDigits(numericData.taxa_embarque as number);
       setRawInputs(initialRawInputs);
 
-      setDiretrizesPassagens((pageData.passagens || []).map(d => ({
+      setDiretrizesPassagens((pageData.passagens || []).map((d: any) => ({
           ...d,
           trechos: (d.trechos as unknown as TrechoPassagem[]) || [],
-          data_inicio_vigencia: d.data_inicio_vigencia || null,
-          data_fim_vigencia: d.data_fim_vigencia || null,
       })));
       
       setDiretrizesConcessionaria((pageData.concessionaria || []).map((d: any) => ({
@@ -425,7 +390,7 @@ const CustosOperacionaisPage = () => {
     }
   };
 
-  const handleSavePassagem = async (data: Partial<DiretrizPassagem> & { ano_referencia: number }) => {
+  const handleSavePassagem = async (data: any) => {
       if (!user?.id) return;
       setIsSaving(true);
       try {
@@ -437,7 +402,7 @@ const CustosOperacionaisPage = () => {
 
           const { error } = await supabase
               .from('diretrizes_passagens')
-              .upsert(payload as TablesInsert<'diretrizes_passagens'>);
+              .upsert(payload as any);
 
           if (error) throw error;
           
@@ -467,7 +432,7 @@ const CustosOperacionaisPage = () => {
       }
   };
 
-  const handleSaveConcessionaria = async (data: Partial<DiretrizConcessionaria> & { ano_referencia: number }) => {
+  const handleSaveConcessionaria = async (data: any) => {
       if (!user?.id) return;
       setIsSaving(true);
       try {
@@ -478,7 +443,7 @@ const CustosOperacionaisPage = () => {
 
           const { error } = await supabase
               .from('diretrizes_concessionaria')
-              .upsert(payload as TablesInsert<'diretrizes_concessionaria'>);
+              .upsert(payload as any);
 
           if (error) throw error;
           
@@ -512,7 +477,7 @@ const CustosOperacionaisPage = () => {
 
   const renderDiariaTable = () => (
     <div className="overflow-x-auto border rounded-md">
-      <div className="p-3 bg-muted/30 border-b flex flex-col md:flex-row md:items-center justify-between gap-2">
+      <div className="p-3 border-b flex flex-col md:flex-row md:items-center justify-between gap-2">
         <div className="flex items-center gap-2">
           <Activity className="h-4 w-4 text-primary" />
           <span className="text-sm font-semibold">Tabela de Diárias (Referência Legal)</span>
@@ -581,9 +546,9 @@ const CustosOperacionaisPage = () => {
 
   const renderPassagensSection = () => (
       <div className="space-y-4">
-          <div className="flex justify-between items-center bg-muted/30 p-2 rounded-md">
-              <span className="text-sm font-medium">Contratos de Passagens Cadastrados</span>
-              <Button size="sm" onClick={() => { setPassagemToEdit(null); setIsPassagemDialogOpen(true); }}>
+          <div className="flex justify-between items-center px-1">
+              <span className="text-sm font-medium text-muted-foreground">Contratos de Passagens Cadastrados</span>
+              <Button size="sm" onClick={() => { setPassagemToEdit(null); setIsPassagemDialogOpen(true); }} className="bg-[#0f172a] hover:bg-[#0f172a]/90 text-white rounded-full px-4">
                   <Plus className="h-4 w-4 mr-1" /> Novo Contrato
               </Button>
           </div>
@@ -609,9 +574,9 @@ const CustosOperacionaisPage = () => {
 
   const renderConcessionariaSection = () => (
       <div className="space-y-4">
-          <div className="flex justify-between items-center bg-muted/30 p-2 rounded-md">
-              <span className="text-sm font-medium">Parâmetros de Concessionárias</span>
-              <Button size="sm" onClick={() => { setConcessionariaToEdit(null); setIsConcessionariaDialogOpen(true); }}>
+          <div className="flex justify-between items-center px-1">
+              <span className="text-sm font-medium text-muted-foreground">Parâmetros de Concessionárias</span>
+              <Button size="sm" onClick={() => { setConcessionariaToEdit(null); setIsConcessionariaDialogOpen(true); }} className="bg-[#0f172a] hover:bg-[#0f172a]/90 text-white rounded-full px-4">
                   <Plus className="h-4 w-4 mr-1" /> Novo Parâmetro
               </Button>
           </div>
@@ -637,18 +602,19 @@ const CustosOperacionaisPage = () => {
 
   const renderMaterialConsumoSection = () => (
     <div className="space-y-4 aba-material-consumo-container">
-        <div className="flex justify-between items-center bg-muted/30 p-2 rounded-md">
-            <span className="text-sm font-medium">Subitens da Natureza de Despesa (ND 30)</span>
+        <div className="flex justify-between items-center px-1">
+            <span className="text-sm font-medium text-muted-foreground">Subitens da Natureza de Despesa (ND 30)</span>
             <div className="flex gap-2">
                 <Button 
                     variant="outline" 
                     size="sm" 
                     onClick={() => setIsMatConsumoExportImportOpen(true)}
                     disabled={isLoadingMatConsumo}
+                    className="rounded-full"
                 >
                     <FileSpreadsheet className="h-4 w-4 mr-1" /> Exp/Imp Excel
                 </Button>
-                <Button size="sm" onClick={() => { setMatConsumoToEdit(null); setIsMatConsumoDialogOpen(true); }} className="btn-novo-subitem">
+                <Button size="sm" onClick={() => { setMatConsumoToEdit(null); setIsMatConsumoDialogOpen(true); }} className="btn-novo-subitem bg-[#0f172a] hover:bg-[#0f172a]/90 text-white rounded-full px-4">
                     <Plus className="h-4 w-4 mr-1" /> Novo Subitem
                 </Button>
             </div>
@@ -680,18 +646,19 @@ const CustosOperacionaisPage = () => {
 
   const renderServicosTerceirosSection = () => (
     <div className="space-y-4">
-        <div className="flex justify-between items-center bg-muted/30 p-2 rounded-md">
-            <span className="text-sm font-medium">Subitens da Natureza de Despesa (ND 33 e 39)</span>
+        <div className="flex justify-between items-center px-1">
+            <span className="text-sm font-medium text-muted-foreground">Subitens da Natureza de Despesa (ND 33 e 39)</span>
             <div className="flex gap-2">
                 <Button 
                     variant="outline" 
                     size="sm" 
                     onClick={() => setIsServicoExportImportOpen(true)}
                     disabled={isLoadingServicos}
+                    className="rounded-full"
                 >
                     <FileSpreadsheet className="h-4 w-4 mr-1" /> Exp/Imp Excel
                 </Button>
-                <Button size="sm" onClick={() => { setServicoToEdit(null); setIsServicoDialogOpen(true); }}>
+                <Button size="sm" onClick={() => { setServicoToEdit(null); setIsServicoDialogOpen(true); }} className="bg-[#0f172a] hover:bg-[#0f172a]/90 text-white rounded-full px-4">
                     <Plus className="h-4 w-4 mr-1" /> Novo Subitem
                 </Button>
             </div>
@@ -723,18 +690,19 @@ const CustosOperacionaisPage = () => {
 
   const renderMaterialPermanenteSection = () => (
     <div className="space-y-4">
-        <div className="flex justify-between items-center bg-muted/30 p-2 rounded-md">
-            <span className="text-sm font-medium">Subitens da Natureza de Despesa (ND 52)</span>
+        <div className="flex justify-between items-center px-1">
+            <span className="text-sm font-medium text-muted-foreground">Subitens da Natureza de Despesa (ND 52)</span>
             <div className="flex gap-2">
                 <Button 
                     variant="outline" 
                     size="sm" 
                     onClick={() => setIsMatPermanenteExportImportOpen(true)}
                     disabled={isLoadingMatPermanente}
+                    className="rounded-full"
                 >
                     <FileSpreadsheet className="h-4 w-4 mr-1" /> Exp/Imp Excel
                 </Button>
-                <Button size="sm" onClick={() => { setMatPermanenteToEdit(null); setIsMatPermanenteDialogOpen(true); }}>
+                <Button size="sm" onClick={() => { setMatPermanenteToEdit(null); setIsMatPermanenteDialogOpen(true); }} className="bg-[#0f172a] hover:bg-[#0f172a]/90 text-white rounded-full px-4">
                     <Plus className="h-4 w-4 mr-1" /> Novo Subitem
                 </Button>
             </div>
@@ -784,12 +752,12 @@ const CustosOperacionaisPage = () => {
             </Button>
           </div>
 
-          <Card className="card-diretrizes-operacionais">
-          <CardHeader>
+          <Card className="card-diretrizes-operacionais border-none shadow-none bg-transparent">
+          <CardHeader className="px-0">
             <h1 className="text-2xl font-bold">Configurações dos Custos Operacionais</h1>
             <CardDescription>Defina os valores e fatores de referência para o cálculo de despesas operacionais (GND 3 e GND 4).</CardDescription>
           </CardHeader>
-          <CardContent className={cn("space-y-6", "aba-material-consumo-container")}>
+          <CardContent className={cn("space-y-6 p-0", "aba-material-consumo-container")}>
             {isDataLoading ? (
               <div className="flex flex-col items-center justify-center py-12 gap-4">
                 <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -811,119 +779,114 @@ const CustosOperacionaisPage = () => {
                       ))}
                     </SelectContent>
                   </Select>
-                  <p className="text-sm text-muted-foreground pt-1">
-                    Ano Padrão de Cálculo: <span className="font-semibold text-primary ml-1">{defaultYear ? defaultYear : 'Não definido (usando o mais recente)'}</span>
-                  </p>
                 </div>
 
-                <div className="border-t pt-4 mt-6">
-                  <div className="space-y-4">
-                    <div ref={el => collapsibleRefs.current['diarias_detalhe'] = el} className="border-b pb-4 last:border-b-0 last:pb-0">
+                <div className="space-y-4">
+                    <div ref={el => collapsibleRefs.current['diarias_detalhe'] = el} className="border rounded-lg bg-white">
                       <Collapsible open={fieldCollapseState['diarias_detalhe']} onOpenChange={(open) => handleCollapseChange('diarias_detalhe', open)}>
                         <CollapsibleTrigger asChild>
-                          <div className="flex items-center justify-between cursor-pointer py-2">
-                            <h2 className="text-base font-medium">Pagamento de Diárias</h2>
+                          <div className="flex items-center justify-between cursor-pointer p-4">
+                            <h2 className="text-base font-semibold">Pagamento de Diárias</h2>
                             {fieldCollapseState['diarias_detalhe'] ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
                           </div>
                         </CollapsibleTrigger>
-                        <CollapsibleContent>
-                          <div className="mt-2">{renderDiariaTable()}</div>
+                        <CollapsibleContent className="px-4 pb-4 border-t pt-4">
+                          {renderDiariaTable()}
                         </CollapsibleContent>
                       </Collapsible>
                     </div>
 
-                    <div ref={el => collapsibleRefs.current['passagens_detalhe'] = el} className="border-b pb-4 last:border-b-0 last:pb-0">
+                    <div ref={el => collapsibleRefs.current['passagens_detalhe'] = el} className="border rounded-lg bg-white">
                       <Collapsible open={fieldCollapseState['passagens_detalhe']} onOpenChange={(open) => handleCollapseChange('passagens_detalhe', open)}>
                         <CollapsibleTrigger asChild>
-                          <div className="flex items-center justify-between cursor-pointer py-2">
-                            <h2 className="text-base font-medium flex items-center gap-2">
-                              <Plane className="h-4 w-4 text-primary" />
+                          <div className="flex items-center justify-between cursor-pointer p-4">
+                            <h2 className="text-base font-semibold flex items-center gap-2">
+                              <Plane className="h-4 w-4" />
                               Aquisição de Passagens
                             </h2>
                             {fieldCollapseState['passagens_detalhe'] ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
                           </div>
                         </CollapsibleTrigger>
-                        <CollapsibleContent>
-                          <div className="mt-2">{renderPassagensSection()}</div>
+                        <CollapsibleContent className="px-4 pb-4 border-t pt-4">
+                          {renderPassagensSection()}
                         </CollapsibleContent>
                       </Collapsible>
                     </div>
 
-                    <div ref={el => collapsibleRefs.current['concessionaria_detalhe'] = el} className="border-b pb-4 last:border-b-0 last:pb-0">
+                    <div ref={el => collapsibleRefs.current['concessionaria_detalhe'] = el} className="border rounded-lg bg-white">
                       <Collapsible open={fieldCollapseState['concessionaria_detalhe']} onOpenChange={(open) => handleCollapseChange('concessionaria_detalhe', open)}>
                         <CollapsibleTrigger asChild>
-                          <div className="flex items-center justify-between cursor-pointer py-2">
-                            <h2 className="text-base font-medium flex items-center gap-2">
-                              <Activity className="h-4 w-4 text-primary" />
+                          <div className="flex items-center justify-between cursor-pointer p-4">
+                            <h2 className="text-base font-semibold flex items-center gap-2">
+                              <Activity className="h-4 w-4" />
                               Pagamento de Concessionárias
                             </h2>
                             {fieldCollapseState['concessionaria_detalhe'] ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
                           </div>
                         </CollapsibleTrigger>
-                        <CollapsibleContent>
-                          <div className="mt-2">{renderConcessionariaSection()}</div>
+                        <CollapsibleContent className="px-4 pb-4 border-t pt-4">
+                          {renderConcessionariaSection()}
                         </CollapsibleContent>
                       </Collapsible>
                     </div>
 
-                    <div ref={el => collapsibleRefs.current['material_consumo_detalhe'] = el} className="border-b pb-4 last:border-b-0 last:pb-0 aba-material-consumo">
+                    <div ref={el => collapsibleRefs.current['material_consumo_detalhe'] = el} className="border rounded-lg bg-white aba-material-consumo">
                       <Collapsible open={fieldCollapseState['material_consumo_detalhe']} onOpenChange={(open) => handleCollapseChange('material_consumo_detalhe', open)}>
                         <CollapsibleTrigger asChild>
-                          <div className="flex items-center justify-between cursor-pointer py-2 gatilho-material-consumo">
-                            <h2 className="text-base font-medium flex items-center gap-2">
-                              <Package className="h-4 w-4 text-primary" />
+                          <div className="flex items-center justify-between cursor-pointer p-4 gatilho-material-consumo">
+                            <h2 className="text-base font-semibold flex items-center gap-2">
+                              <Package className="h-4 w-4" />
                               Aquisição de Material de Consumo
                             </h2>
                             {fieldCollapseState['material_consumo_detalhe'] ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
                           </div>
                         </CollapsibleTrigger>
-                        <CollapsibleContent>
-                          <div className="mt-2">{renderMaterialConsumoSection()}</div>
+                        <CollapsibleContent className="px-4 pb-4 border-t pt-4">
+                          {renderMaterialConsumoSection()}
                         </CollapsibleContent>
                       </Collapsible>
                     </div>
 
-                    <div ref={el => collapsibleRefs.current['material_permanente_detalhe'] = el} className="border-b pb-4 last:border-b-0 last:pb-0">
+                    <div ref={el => collapsibleRefs.current['material_permanente_detalhe'] = el} className="border rounded-lg bg-white">
                       <Collapsible open={fieldCollapseState['material_permanente_detalhe']} onOpenChange={(open) => handleCollapseChange('material_permanente_detalhe', open)}>
                         <CollapsibleTrigger asChild>
-                          <div className="flex items-center justify-between cursor-pointer py-2">
-                            <h2 className="text-base font-medium flex items-center gap-2">
-                              <HardDrive className="h-4 w-4 text-primary" />
+                          <div className="flex items-center justify-between cursor-pointer p-4">
+                            <h2 className="text-base font-semibold flex items-center gap-2">
+                              <HardDrive className="h-4 w-4" />
                               Aquisição de Material Permanente
                             </h2>
                             {fieldCollapseState['material_permanente_detalhe'] ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
                           </div>
                         </CollapsibleTrigger>
-                        <CollapsibleContent>
-                          <div className="mt-2">{renderMaterialPermanenteSection()}</div>
+                        <CollapsibleContent className="px-4 pb-4 border-t pt-4">
+                          {renderMaterialPermanenteSection()}
                         </CollapsibleContent>
                       </Collapsible>
                     </div>
 
-                    <div ref={el => collapsibleRefs.current['servicos_terceiros_detalhe'] = el} className="border-b pb-4 last:border-b-0 last:pb-0">
+                    <div ref={el => collapsibleRefs.current['servicos_terceiros_detalhe'] = el} className="border rounded-lg bg-white">
                       <Collapsible open={fieldCollapseState['servicos_terceiros_detalhe']} onOpenChange={(open) => handleCollapseChange('servicos_terceiros_detalhe', open)}>
                         <CollapsibleTrigger asChild>
-                          <div className="flex items-center justify-between cursor-pointer py-2">
-                            <h2 className="text-base font-medium flex items-center gap-2">
-                              <Activity className="h-4 w-4 text-primary" />
+                          <div className="flex items-center justify-between cursor-pointer p-4">
+                            <h2 className="text-base font-semibold flex items-center gap-2">
+                              <Activity className="h-4 w-4" />
                               Contratação de Serviços de Terceiros / Locações
                             </h2>
                             {fieldCollapseState['servicos_terceiros_detalhe'] ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
                           </div>
                         </CollapsibleTrigger>
-                        <CollapsibleContent>
-                          <div className="mt-2">{renderServicosTerceirosSection()}</div>
+                        <CollapsibleContent className="px-4 pb-4 border-t pt-4">
+                          {renderServicosTerceirosSection()}
                         </CollapsibleContent>
                       </Collapsible>
                     </div>
-                  </div>
                 </div>
 
                 <div className="flex justify-end gap-3 mt-6">
                   <Button type="button" variant="secondary" onClick={handleSetDefaultYear} disabled={isSaving || selectedYear === defaultYear || !selectedYear}>
                     {selectedYear === defaultYear ? "Padrão Atual" : "Adotar como Padrão"}
                   </Button>
-                  <Button type="submit" disabled={isSaving} className="btn-adotar-padrao">
+                  <Button type="submit" disabled={isSaving} className="btn-adotar-padrao bg-[#0f172a] hover:bg-[#0f172a]/90 text-white rounded-full px-6">
                     {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
                     Salvar Diretrizes
                   </Button>
