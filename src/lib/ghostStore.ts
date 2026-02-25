@@ -46,8 +46,30 @@ export const GHOST_DATA = {
             nd: "30"
           }
         ]
+      },
+      {
+        id: "ghost-subitem-16",
+        nr_subitem: "16",
+        nome_subitem: "Material de Expediente",
+        descricao_subitem: "Suprimentos para atividades administrativas",
+        ativo: true,
+        itens_aquisicao: [
+          {
+            id: "ghost-item-papel",
+            descricao_item: "Papel A4 Branco - Resma 500 folhas",
+            descricao_reduzida: "Papel A4 Resma",
+            valor_unitario: 28.90,
+            numero_pregao: "005/2025",
+            uasg: "160222",
+            codigo_catmat: "150544",
+            quantidade: 0,
+            valor_total: 0,
+            nd: "30"
+          }
+        ]
       }
     ],
+    // Resultado da busca por UASG no PNCP (Simulação de Importação)
     arp_search_results: [
       {
         id: "ghost-compra-1",
@@ -81,6 +103,7 @@ export const GHOST_DATA = {
     ]
   },
 
+  // Missão 03: Dados para o formulário de P Trab (Já com o item criado na Missão 2)
   missao_03: {
     subitens_lista: [
       {
@@ -103,13 +126,61 @@ export const GHOST_DATA = {
             nd: "30"
           }
         ]
+      },
+      {
+        id: "ghost-subitem-22",
+        nr_subitem: "22",
+        nome_subitem: "Material de Limpeza",
+        descricao_subitem: "Itens para higiene e conservação das instalações",
+        ativo: true,
+        itens_aquisicao: [
+          {
+            id: "ghost-item-detergente",
+            descricao_item: "Detergente Líquido Neutro 500ml",
+            descricao_reduzida: "Detergente Neutro 500ml",
+            valor_unitario: 2.45,
+            numero_pregao: "010/2025",
+            uasg: "160222",
+            codigo_catmat: "445566",
+            quantidade: 0,
+            valor_total: 0,
+            nd: "30"
+          }
+        ]
+      },
+      {
+        id: "ghost-subitem-16",
+        nr_subitem: "16",
+        nome_subitem: "Material de Expediente",
+        descricao_subitem: "Suprimentos para atividades administrativas",
+        ativo: true,
+        itens_aquisicao: [
+          {
+            id: "ghost-item-papel",
+            descricao_item: "Papel A4 Branco - Resma 500 folhas",
+            descricao_reduzida: "Papel A4 Resma",
+            valor_unitario: 28.90,
+            numero_pregao: "005/2025",
+            uasg: "160222",
+            codigo_catmat: "150544",
+            quantidade: 0,
+            valor_total: 0,
+            nd: "30"
+          }
+        ]
       }
     ]
   },
 
+  oms_exemplo: [
+    { id: "om-1", nome_om: "1º BIS", codug_om: "160222", rm_vinculacao: "12ª RM", codug_rm_vinculacao: "160060", cidade: "Manaus/AM", ativo: true },
+    { id: "om-2", nome_om: "2º BIS", codug_om: "160223", rm_vinculacao: "12ª RM", codug_rm_vinculacao: "160060", cidade: "Belém/PA", ativo: true },
+    { id: "om-3", nome_om: "3º BIS", codug_om: "160224", rm_vinculacao: "12ª RM", codug_rm_vinculacao: "160060", cidade: "Marabá/PA", ativo: true },
+  ],
+
   totais_exemplo: {
     totalLogisticoGeral: 45000.50,
-    totalOperacional: 1250.50,
+    totalOperacional: 1250.50, // Valor mockado para Missão 04
     totalMaterialPermanente: 8900.00,
     totalAviacaoExercito: 0,
     totalClasseI: 15000,
@@ -119,6 +190,11 @@ export const GHOST_DATA = {
     totalLubrificanteValor: 5000.50,
     credit_gnd3: 150000.00,
     credit_gnd4: 50000.00,
+    totalMaterialConsumo: 1250.50,
+    totalMaterialConsumoND30: 1250.50,
+    groupedMaterialConsumoCategories: {
+      "Material de Construção": { totalValor: 1250.50, totalND30: 1250.50, totalND39: 0 }
+    }
   } as any
 };
 
@@ -130,10 +206,4 @@ export const isGhostMode = () => {
 export const getActiveMission = () => {
   if (typeof window === 'undefined') return null;
   return localStorage.getItem('active_mission_id');
-};
-
-export const enterGhostMode = (missionId: string) => {
-  localStorage.setItem('is_ghost_mode', 'true');
-  localStorage.setItem('active_mission_id', missionId);
-  window.dispatchEvent(new CustomEvent('ghost-mode:change', { detail: { active: true, missionId } }));
 };

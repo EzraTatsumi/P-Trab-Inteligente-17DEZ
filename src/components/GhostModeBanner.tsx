@@ -1,72 +1,44 @@
 "use client";
 
-import React, { useEffect, useState } from 'react';
-import { Ghost, X, PlayCircle, Info } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { isGhostMode, getActiveMission } from '@/lib/ghostStore';
-import { exitGhostMode } from '@/lib/missionUtils';
-import { cn } from '@/lib/utils';
+import React from 'react';
+import { Button } from "@/components/ui/button";
+import { AlertTriangle, XCircle } from "lucide-react";
 
-export const GhostModeBanner: React.FC = () => {
-  const [active, setActive] = useState(false);
-  const [missionId, setMissionId] = useState<string | null>(null);
+export const GhostModeBanner = () => {
+  const [active, setActive] = React.useState(false);
 
-  useEffect(() => {
-    const checkStatus = () => {
-      setActive(isGhostMode());
-      setMissionId(getActiveMission());
+  React.useEffect(() => {
+    const checkGhost = () => {
+      setActive(localStorage.getItem('is_ghost_mode') === 'true');
     };
-
-    checkStatus();
-    
-    // Ouve mudanças no localStorage e eventos customizados
-    window.addEventListener('ghost-mode:change', checkStatus);
-    window.addEventListener('storage', checkStatus);
-    
-    return () => {
-      window.removeEventListener('ghost-mode:change', checkStatus);
-      window.removeEventListener('storage', checkStatus);
-    };
+    checkGhost();
+    window.addEventListener('storage', checkGhost);
+    return () => window.removeEventListener('storage', checkGhost);
   }, []);
 
   if (!active) return null;
 
+  const handleExit = () => {
+    localStorage.removeItem('is_ghost_mode');
+    localStorage.removeItem('active_mission_id');
+    window.location.href = '/ptrab';
+  };
+
   return (
-    <div className="fixed top-0 left-0 right-0 z-[100] animate-in slide-in-from-top duration-300">
-      <div className="bg-primary/95 text-primary-foreground py-2 px-4 shadow-lg border-b border-white/20 backdrop-blur-sm">
-        <div className="max-w-7xl mx-auto flex items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <div className="bg-white/20 p-1.5 rounded-full animate-pulse">
-              <Ghost className="h-4 w-4" />
-            </div>
-            <div>
-              <p className="text-xs md:text-sm font-bold flex items-center gap-2">
-                MODO SIMULAÇÃO ATIVO
-                <span className="hidden md:inline bg-white/20 px-2 py-0.5 rounded text-[10px] uppercase tracking-wider">
-                  Missão {missionId}
-                </span>
-              </p>
-              <p className="text-[10px] md:text-xs text-white/80 leading-tight">
-                Você está navegando em um ambiente controlado para treinamento. Dados reais não serão afetados.
-              </p>
-            </div>
-          </div>
-          
-          <div className="flex items-center gap-2">
-            <Button 
-              variant="outline" 
-              size="sm" 
-              onClick={() => exitGhostMode()}
-              className="h-8 text-xs bg-white/10 border-white/30 hover:bg-white/20 hover:text-white"
-            >
-              <X className="h-3 w-3 mr-1.5" />
-              Sair da Simulação
-            </Button>
-          </div>
-        </div>
+    <div className="bg-amber-600 text-white py-2 px-4 flex items-center justify-between shadow-md sticky top-0 z-[100] animate-in slide-in-from-top duration-300">
+      <div className="flex items-center gap-2 text-sm font-bold">
+        <AlertTriangle className="h-4 w-4" />
+        <span>MODO DE INSTRUÇÃO ATIVO: Você está operando em um ambiente de simulação.</span>
       </div>
-      {/* Overlay sutil para indicar ambiente de teste */}
-      <div className="pointer-events-none fixed inset-0 border-4 border-primary/20 z-[99]" />
+      <Button 
+        variant="ghost" 
+        size="sm" 
+        onClick={handleExit}
+        className="text-white hover:bg-white/20 h-8 gap-2 border border-white/30"
+      >
+        <XCircle className="h-4 w-4" />
+        Sair da Simulação
+      </Button>
     </div>
   );
 };
