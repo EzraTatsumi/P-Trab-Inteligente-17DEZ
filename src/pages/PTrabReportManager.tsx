@@ -582,7 +582,12 @@ export const generateConcessionariaMemoriaCalculada = (registro: ConcessionariaR
 
 export const generateMaterialConsumoMemoriaCalculada = (registro: MaterialConsumoRegistro): string => {
     if (registro.detalhamento_customizado && registro.detalhamento_customizado.trim().length > 0) return registro.detalhamento_customizado;
-    const context = { organizacao: registro.organizacao, efetivo: registro.efetivo, dias_operacao: registro.dias_operacao, fase_atividade: registro.fase_atividade };
+    const context = { 
+        organizacao: registro.organizacao, 
+        efetivo: registro.efetivo, 
+        dias_operacao: registro.dias_operacao, 
+        fase_atividade: registro.fase_atividade 
+    };
     return generateMaterialConsumoMemoriaCalculoUtility(registro, context);
 };
 
@@ -1116,7 +1121,7 @@ const PTrabReportManager = () => {
               onOpenChange={setIsReportMenuOpen}
             >
               <SelectTrigger className="w-[320px] tour-report-selector"><SelectValue placeholder="Selecione o Relatório" /></SelectTrigger>
-              <SelectContent>{REPORT_OPTIONS.map(option => (<SelectItem key={option.value} value={option.value}><div className="flex items-center gap-2"><option.icon className={`h-4 w-4 ${option.iconClass}`} />{option.label}</div></SelectItem>))}</SelectContent>
+              <SelectContent className="z-tour-portal">{REPORT_OPTIONS.map(option => (<SelectItem key={option.value} value={option.value}><div className="flex items-center gap-2"><option.icon className={`h-4 w-4 ${option.iconClass}`} />{option.label}</div></SelectItem>))}</SelectContent>
             </Select>
           </div>
         </div>
