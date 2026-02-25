@@ -1,180 +1,121 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { useSearchParams, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowLeft, Loader2, FileText, Package, Briefcase, Plane, ClipboardList, HardDrive, Utensils } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
-import { toast } from "sonner";
-import { isGhostMode, GHOST_DATA } from "@/lib/ghostStore";
-import PTrabOperacionalReport from "@/components/reports/PTrabOperacionalReport";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { ArrowLeft, Printer, FileText, Download, Share2, Loader2, CheckCircle2 } from "lucide-react";
+import { useSession } from "@/components/SessionContextProvider";
+import { isGhostMode } from "@/lib/ghostStore";
 import { runMission06 } from "@/tours/missionTours";
-
-const REPORT_OPTIONS = [
-  { value: "logistico", label: "P Trab Logístico", icon: Package, iconClass: "text-orange-600" },
-  { value: "racao", label: "P Trab Cl I - Ração Operacional", icon: Utensils, iconClass: "text-amber-600" },
-  { value: "operacional", label: "P Trab Operacional", icon: Briefcase, iconClass: "text-blue-600" },
-  { value: "permanente", label: "P Trab Material Permanente", icon: HardDrive, iconClass: "text-green-600" },
-  { value: "avex", label: "P Trab Hora de Voo", icon: Plane, iconClass: "text-purple-600" },
-  { value: "dor", label: "DOR", icon: ClipboardList, iconClass: "text-gray-600" },
-];
+import { markMissionCompleted } from "@/lib/missionUtils";
+import { formatCurrency } from "@/lib/formatUtils";
+import { toast } from "sonner";
 
 const PTrabReportManager = () => {
-  const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const ptrabId = searchParams.get("ptrabId");
-  const [selectedReport, setSelectedReport] = useState("operacional");
-  const [loading, setLoading] = useState(true);
-  const [ptrabData, setPtrabData] = useState<any | null>(null);
-  
-  // Estado para controle remoto do menu (Tour)
-  const [isReportMenuOpen, setIsReportMenuOpen] = useState(false);
+  const navigate = useNavigate();
+  const { user } = useSession();
+  const startTour = searchParams.get('startTour') === 'true';
 
-  // Expondo funções para o Driver.js conseguir abrir a lista de relatórios
+  // Tour da Missão 06
   useEffect(() => {
-    (window as any).openReportMenu = () => setIsReportMenuOpen(true);
-    (window as any).closeReportMenu = () => setIsReportMenuOpen(false);
-    
-    return () => {
-      delete (window as any).openReportMenu;
-      delete (window as any).closeReportMenu;
-    };
-  }, []);
-
-  useEffect(() => {
-    const loadData = async () => {
-      if (isGhostMode()) {
-        setPtrabData(GHOST_DATA.p_trab_exemplo);
-        setLoading(false);
-        
-        if (searchParams.get('startTour') === 'true') {
-          setTimeout(() => {
-            runMission06(() => {
-              navigate('/ptrab?showHub=true');
-            });
-          }, 800);
-        }
-        return;
-      }
-
-      if (!ptrabId) {
-        toast.error("P Trab não selecionado.");
-        navigate("/ptrab");
-        return;
-      }
-
-      const { data, error } = await supabase.from("p_trab").select("*").eq("id", ptrabId).single();
-      if (error || !data) {
-        toast.error("Falha ao carregar P Trab.");
-        navigate("/ptrab");
-        return;
-      }
-      setPtrabData(data);
-      setLoading(false);
-    };
-    loadData();
-  }, [ptrabId, navigate, searchParams]);
-
-  if (loading || !ptrabData) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        <span className="ml-3 text-lg text-muted-foreground">Gerando relatórios...</span>
-      </div>
-    );
-  }
-
-  const mockOms = ["1º BIS"];
-  const mockGrupos = {
-    "1º BIS": {
-      diarias: [],
-      verbaOperacional: [],
-      suprimentoFundos: [],
-      passagens: [],
-      concessionarias: [],
-      materialConsumo: [{
-        id: 'ghost-mat',
-        organizacao: '1º BIS',
-        ug: '160222',
-        efetivo: 150,
-        dias_operacao: 15,
-        valor_total: 1250.50,
-        valor_nd_30: 1250.50,
-        valor_nd_39: 0,
-        group_name: 'Material de Construção'
-      }],
-      complementoAlimentacao: [],
-      servicosTerceiros: []
+    if (startTour && isGhostMode() && user?.id) {
+      const timer = setTimeout(() => {
+        runMission06(user.id, () => {
+          markMissionCompleted(6, user.id);
+          navigate('/ptrab?showHub=true');
+        });
+      }, 500);
+      return () => clearTimeout(timer);
     }
-  };
+  }, [startTour, user?.id]);
 
   return (
-    <div className="min-h-screen bg-muted/30 p-4 md:p-8 print:p-0 print:bg-white">
-      <div className="max-w-7xl mx-auto space-y-6">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 print:hidden">
-          <Button variant="ghost" onClick={() => navigate(`/ptrab/form?ptrabId=${ptrabId}`)}>
-            <ArrowLeft className="mr-2 h-4 w-4" /> Voltar ao Formulário
+    <div className="min-h-screen bg-background p-4 md:p-8">
+      <div className="max-w-6xl mx-auto space-y-6">
+        <div className="flex justify-between items-center">
+          <Button variant="ghost" onClick={() => navigate(-1)}>
+            <ArrowLeft className="mr-2 h-4 w-4" /> Voltar
           </Button>
-
-          <div className="tour-report-selector bg-background rounded-md relative">
-            <Select 
-              value={selectedReport} 
-              onValueChange={setSelectedReport}
-              open={isReportMenuOpen}
-              onOpenChange={setIsReportMenuOpen}
-            >
-              <SelectTrigger className="w-[320px]">
-                <SelectValue placeholder="Selecione o Relatório" />
-              </SelectTrigger>
-              <SelectContent className="z-[999999]">
-                {REPORT_OPTIONS.map(option => (
-                  <SelectItem key={option.value} value={option.value}>
-                    <div className="flex items-center gap-2">
-                      <option.icon className={`h-4 w-4 ${option.iconClass}`} />
-                      {option.label}
-                    </div>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+          <div className="flex gap-2">
+             <Button variant="outline" className="btn-export-pdf"><Download className="mr-2 h-4 w-4" /> PDF</Button>
+             <Button variant="outline" className="btn-export-excel"><FileText className="mr-2 h-4 w-4" /> Excel</Button>
+             <Button variant="default" className="btn-print"><Printer className="mr-2 h-4 w-4" /> Imprimir</Button>
           </div>
         </div>
 
-        <Card className="shadow-2xl border-none print:shadow-none">
+        <Card className="shadow-lg border-2">
+          <CardHeader className="bg-primary/5 border-b flex flex-row justify-between items-center">
+            <div>
+              <CardTitle className="text-xl">Relatório Consolidado do P Trab</CardTitle>
+              <p className="text-sm text-muted-foreground">Minuta 001/2026 - OPERAÇÃO SENTINELA</p>
+            </div>
+            <div className="tour-report-selector">
+                <Button variant="outline" size="sm" className="gap-2">
+                    Outros Relatórios (Anexos)
+                    <Share2 className="h-4 w-4" />
+                </Button>
+            </div>
+          </CardHeader>
           <CardContent className="p-0">
-            {selectedReport === "operacional" && (
-              <PTrabOperacionalReport 
-                ptrabData={ptrabData}
-                omsOrdenadas={mockOms}
-                gruposPorOM={mockGrupos}
-                registrosDiaria={[]}
-                registrosVerbaOperacional={[]}
-                registrosSuprimentoFundos={[]}
-                registrosPassagem={[]}
-                registrosConcessionaria={[]}
-                registrosMaterialConsumo={mockGrupos["1º BIS"].materialConsumo}
-                registrosComplementoAlimentacao={[]}
-                registrosServicosTerceiros={[]}
-                diretrizesOperacionais={null}
-                diretrizesPassagens={[]}
-                fileSuffix="Operacional"
-                generateDiariaMemoriaCalculo={() => ""}
-                generateVerbaOperacionalMemoriaCalculo={() => ""}
-                generateSuprimentoFundosMemoriaCalculo={() => ""}
-                generatePassagemMemoriaCalculo={() => ""}
-                generateConcessionariaMemoriaCalculo={() => ""}
-                generateMaterialConsumoMemoriaCalculo={() => ""}
-                generateComplementoMemoriaCalculo={() => ""}
-                generateServicoMemoriaCalculo={() => ""}
-              />
-            )}
-            {selectedReport !== "operacional" && (
-              <div className="p-12 text-center text-muted-foreground italic">
-                Este relatório ({selectedReport}) está disponível na versão completa do sistema.
+            {/* Simulação de Relatório */}
+            <div className="p-8 space-y-8 bg-white min-h-[800px]">
+              <div className="text-center space-y-1">
+                <h2 className="font-bold uppercase">Ministério da Defesa</h2>
+                <h2 className="font-bold uppercase">Exército Brasileiro</h2>
+                <h3 className="font-medium italic">Plano de Trabalho Operacional e Logístico</h3>
               </div>
-            )}
+
+              <div className="grid grid-cols-2 gap-4 text-sm border p-4 rounded-lg">
+                <div><strong>OM Requisitante:</strong> 1º BIS</div>
+                <div><strong>Operação:</strong> SENTINELA</div>
+                <div><strong>Período:</strong> 01/03/2026 a 15/03/2026</div>
+                <div><strong>Valor Total:</strong> {formatCurrency(55150.50)}</div>
+              </div>
+
+              <div className="space-y-4">
+                <h4 className="font-bold border-b pb-2">Resumo de Itens Detalhados</h4>
+                <table className="w-full text-sm">
+                  <thead className="bg-muted">
+                    <tr>
+                      <th className="p-2 text-left">Categoria</th>
+                      <th className="p-2 text-center">GND</th>
+                      <th className="p-2 text-right">Valor Consolidado</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr className="border-b" id="tour-mat-consumo-row">
+                      <td className="p-2">Material de Consumo (Construção Civil)</td>
+                      <td className="p-2 text-center">3.3.90.30</td>
+                      <td className="p-2 text-right">{formatCurrency(1250.50)}</td>
+                    </tr>
+                    <tr className="border-b">
+                      <td className="p-2">Alimentação e Subsistência (Classe I)</td>
+                      <td className="p-2 text-center">3.3.90.30</td>
+                      <td className="p-2 text-right">{formatCurrency(45000.00)}</td>
+                    </tr>
+                    <tr className="border-b">
+                      <td className="p-2">Material Permanente (Equipamentos)</td>
+                      <td className="p-2 text-center">4.4.90.52</td>
+                      <td className="p-2 text-right">{formatCurrency(8900.00)}</td>
+                    </tr>
+                  </tbody>
+                  <tfoot className="font-bold bg-muted/50">
+                    <tr>
+                      <td colSpan={2} className="p-2 text-right">TOTAL GERAL DO PLANO:</td>
+                      <td className="p-2 text-right">{formatCurrency(55150.50)}</td>
+                    </tr>
+                  </tfoot>
+                </table>
+              </div>
+
+              <div className="pt-20 text-center">
+                <div className="w-64 h-px bg-black mx-auto mb-2" />
+                <p className="font-bold uppercase">Comandante da OM</p>
+                <p className="text-xs">Ordenador de Despesas</p>
+              </div>
+            </div>
           </CardContent>
         </Card>
       </div>
