@@ -3,6 +3,7 @@
 import React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { PlayCircle, CheckCircle2, Lock, Medal, ArrowRight, ShieldCheck, Database, FileText, BarChart3, Printer } from "lucide-react";
 import { useSession } from './SessionContextProvider';
 import { getCompletedMissions } from '@/lib/missionUtils';
