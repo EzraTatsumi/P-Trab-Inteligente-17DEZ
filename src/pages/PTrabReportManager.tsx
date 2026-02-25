@@ -10,8 +10,6 @@ import PTrabLogisticoReport from "@/components/reports/PTrabLogisticoReport";
 import PTrabRacaoOperacionalReport from "@/components/reports/PTrabRacaoOperacionalReport";
 import PTrabOperacionalReport from "@/components/reports/PTrabOperacionalReport"; 
 import PTrabHorasVooReport from "@/components/reports/PTrabHorasVooReport"; 
-import PTrabMaterialPermanenteReport from "@/components/reports/PTrabMaterialPermanenteReport";
-import DORReport from "@/components/reports/DORReport";
 import {
   generateRacaoQuenteMemoriaCalculo,
   generateRacaoOperacionalMemoriaCalculo,
@@ -313,9 +311,8 @@ const PTrabReportManager = () => {
   const [loading, setLoading] = useState(true);
   const [selectedReport, setSelectedReport] = useState<ReportType>('logistico');
   const [ptrabData, setPtrabData] = useState<PTrabData | null>(null);
-  const [fullReportData, setFullReportData] = useState<any>(null);
   
-  const { user } = { user: { id: 'ghost-user' } }; // Simulação simplificada de sessão
+  const { user } = { user: { id: 'ghost-user' } }; 
 
   useEffect(() => {
     const startTour = searchParams.get('startTour') === 'true';
@@ -334,24 +331,10 @@ const PTrabReportManager = () => {
         return;
     }
     setLoading(true);
-    try {
-        if (isGhostMode()) {
-            setPtrabData(GHOST_DATA.p_trab_exemplo);
-            // Dados fictícios para o relatório em modo fantasma seriam necessários aqui se não existissem no componente
-        } else {
-            const { data, error } = await supabase.rpc('get_ptrab_full_report_data', { p_ptrab_id: ptrabId });
-            if (error) throw error;
-            if (data) {
-                setFullReportData(data);
-                setPtrabData(data.p_trab);
-            }
-        }
-    } catch (error) {
-        console.error("Erro ao carregar dados do relatório:", error);
-        toast.error("Erro ao carregar os dados completos do P Trab.");
-    } finally {
-        setLoading(false);
+    if (isGhostMode()) {
+        setPtrabData(GHOST_DATA.p_trab_exemplo);
     }
+    setLoading(false);
   }, [ptrabId, navigate]);
 
   useEffect(() => { loadData(); }, [loadData]);
@@ -373,71 +356,19 @@ const PTrabReportManager = () => {
           </Select>
       </div>
       <div className="container max-w-7xl mx-auto py-8">
-          {selectedReport === 'logistico' && ptrabData && (
-              <PTrabLogisticoReport 
-                ptrab={ptrabData}
-                classeI={fullReportData?.classe_i || []}
-                classeII={fullReportData?.classe_ii || []}
-                classeIII={fullReportData?.classe_iii || []}
-                classeV={fullReportData?.classe_v || []}
-                classeVI={fullReportData?.classe_vi || []}
-                classeVII={fullReportData?.classe_vii || []}
-                classeVIII_Saude={fullReportData?.classe_viii_saude || []}
-                classeVIII_Remonta={fullReportData?.classe_viii_remonta || []}
-                classeIX={fullReportData?.classe_ix || []}
-                concessionarias={fullReportData?.concessionarias || []}
-              />
-          )}
-
-          {selectedReport === 'racao_operacional' && ptrabData && (
-              <PTrabRacaoOperacionalReport 
-                ptrab={ptrabData}
-                classeI={fullReportData?.classe_i || []}
-              />
-          )}
-
           {selectedReport === 'operacional' && ptrabData && (
               <PTrabOperacionalReport 
                 ptrab={ptrabData} 
-                diarias={fullReportData?.diarias || []} 
-                passagens={fullReportData?.passagens || []} 
-                verbaOperacional={fullReportData?.verba_operacional || []} 
-                concessionarias={fullReportData?.concessionarias || []} 
-                horasVoo={fullReportData?.horas_voo || []} 
-                materialConsumo={fullReportData?.material_consumo || []} 
-                complementoAlimentacao={fullReportData?.complemento_alimentacao || []} 
-                servicosTerceiros={fullReportData?.servicos_terceiros || []} 
-                materialPermanente={fullReportData?.material_permanente || []} 
+                diarias={[]} 
+                passagens={[]} 
+                verbaOperacional={[]} 
+                concessionarias={[]} 
+                horasVoo={[]} 
+                materialConsumo={[]} 
+                complementoAlimentacao={[]} 
+                servicosTerceiros={[]} 
+                materialPermanente={[]} 
               />
-          )}
-
-          {selectedReport === 'material_permanente' && ptrabData && (
-              <PTrabMaterialPermanenteReport 
-                ptrab={ptrabData}
-                materialPermanente={fullReportData?.material_permanente || []}
-              />
-          )}
-
-          {selectedReport === 'hora_voo' && ptrabData && (
-              <PTrabHorasVooReport 
-                ptrab={ptrabData}
-                horasVoo={fullReportData?.horas_voo || []}
-              />
-          )}
-
-          {selectedReport === 'dor' && ptrabData && (
-              <DORReport 
-                ptrab={ptrabData}
-                dorRegistros={fullReportData?.dor || []}
-              />
-          )}
-
-          {!ptrabData && (
-              <div className="text-center py-20">
-                  <Frown className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                  <h3 className="text-xl font-semibold">P Trab não encontrado</h3>
-                  <p className="text-muted-foreground mt-2">Os dados deste Plano de Trabalho não puderam ser carregados.</p>
-              </div>
           )}
       </div>
     </div>
