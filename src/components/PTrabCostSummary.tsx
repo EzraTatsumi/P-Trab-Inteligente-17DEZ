@@ -186,7 +186,7 @@ const initializeOmTotals = (omName: string, ug: string): OmTotals => ({
   passagens: { total: 0, totalQuantidade: 0, totalTrechos: 0 },
   concessionaria: { total: 0, totalAgua: 0, totalEnergia: 0, totalRegistros: 0 },
   horasVoo: { total: 0, totalND30: 0, totalND39: 0, quantidadeHV: 0, groupedHV: {} },
-  materialConsumo: { total: 0, totalND30: number, totalND39: number, groupedCategories: {} },
+  materialConsumo: { total: 0, totalND30: 0, totalND39: 0, groupedCategories: {} },
   complementoAlimentacao: { total: 0, totalND30: 0, totalND39: 0, groupedCategories: {} },
   servicosTerceiros: { total: 0, totalND33: 0, totalND39: 0, groupedCategories: {} },
   materialPermanente: { total: 0, totalND52: 0, groupedCategories: {} },
@@ -747,7 +747,7 @@ export const fetchPTrabTotals = async (ptrabId: string): Promise<PTrabAggregated
       globalTotals.totalServicosTerceiros += omTotals.servicosTerceiros.total;
       globalTotals.totalServicosTerceirosND33 += omTotals.servicosTerceiros.totalND33;
       globalTotals.totalServicosTerceirosND39 += omTotals.servicosTerceiros.totalND39;
-      Object.entries(omTotals.servicosTerceiros.groupedCategories || {}).forEach(([cat, data]) => {
+      Object.entries(omTotals.servicosTerceiros.groupedCategories || {}).sort(([a], [b]) => a.localeCompare(b)).forEach(([cat, data]) => {
         if (!globalTotals.groupedServicosTerceirosCategories[cat]) {
           globalTotals.groupedServicosTerceirosCategories[cat] = { totalValor: 0, totalND33: 0, totalND39: 0 };
         }
@@ -757,7 +757,7 @@ export const fetchPTrabTotals = async (ptrabId: string): Promise<PTrabAggregated
       });
 
       globalTotals.totalMaterialPermanenteND52 += omTotals.materialPermanente.totalND52;
-      Object.entries(omTotals.materialPermanente.groupedCategories || {}).forEach(([cat, data]: [string, any]) => {
+      Object.entries(omTotals.materialPermanente.groupedCategories || {}).sort(([a], [b]) => a.localeCompare(b)).forEach(([cat, data]: [string, any]) => {
         if (!globalTotals.groupedMaterialPermanenteCategories[cat]) {
           globalTotals.groupedMaterialPermanenteCategories[cat] = { totalValor: 0, totalND52: 0 };
         }
