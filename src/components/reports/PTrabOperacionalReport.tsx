@@ -41,9 +41,10 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
     servicosTerceiros,
     materialPermanente
 }) => {
-    // Exemplo de cast solicitado para evitar erro do Supabase
-    const fetchExemplo = async () => {
-        const { data } = await supabase.from('servicos_terceiros_registros' as any).select('*');
+    // Correção cirúrgica: Cast para 'any' na chamada do supabase.from para evitar erro de tipagem
+    const fetchRegistrosServicos = async () => {
+        const { data, error } = await (supabase.from('servicos_terceiros_registros' as any)).select('*');
+        if (error) throw error;
         return data;
     };
 
@@ -55,7 +56,6 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
                 <p className="text-xs mt-1">OM: {ptrab.nome_om_extenso || ptrab.nome_om}</p>
             </div>
 
-            {/* Layout visual preservado conforme regra estrita */}
             <div className="space-y-6">
                 <div className="grid grid-cols-2 gap-4 text-xs">
                     <div className="border p-2">
