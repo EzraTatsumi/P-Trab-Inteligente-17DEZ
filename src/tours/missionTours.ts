@@ -770,10 +770,21 @@ export const runMission06 = (userId: string, onComplete: () => void) => {
           align: 'start'
         },
         onHighlighted: () => {
-          if ((window as any).openReportMenu) (window as any).openReportMenu();
+          // Segue a lógica da Missão 1: Abre o menu e garante o foco
+          if ((window as any).openReportMenu) {
+            (window as any).openReportMenu();
+          }
+          // Pequeno delay para garantir que o DOM renderizou o portal
+          setTimeout(() => {
+            const portal = document.querySelector('.z-tour-portal');
+            if (portal) portal.classList.add('driver-active-element');
+          }, 100);
         },
         onDeselected: () => {
-          if ((window as any).closeReportMenu) (window as any).closeReportMenu();
+          // Fecha o menu ao sair do passo
+          if ((window as any).closeReportMenu) {
+            (window as any).closeReportMenu();
+          }
         }
       }
     ],
