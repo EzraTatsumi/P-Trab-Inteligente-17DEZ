@@ -92,7 +92,7 @@ export const WelcomeModal = ({ open, onOpenChange, status }: WelcomeModalProps) 
               ? "Ir para Configurações" 
               : !status.hasMissions 
                 ? "Iniciar Missões de Treinamento" 
-                : "Próxima Configuração Real"}
+                : "Próxima Configuração Inicial"}
             {!status.isReady && <ArrowRight className="h-4 w-4 ml-auto" />}
           </Button>
         </div>
