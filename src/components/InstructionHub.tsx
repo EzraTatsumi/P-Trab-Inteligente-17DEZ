@@ -1,80 +1,143 @@
 "use client";
 
-import React from 'react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import React, { useState, useEffect } from 'react';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { PlayCircle, CheckCircle2, ShieldCheck, Database, FileEdit, BarChart3, FileText, Send } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { CheckCircle2, PlayCircle, Trophy, GraduationCap, ArrowRight, Loader2 } from "lucide-react";
+import { useNavigate } from 'react-router-dom';
+import { toast } from "sonner";
+import { useSession } from '@/components/SessionContextProvider';
+import { getCompletedMissions, isMissionCompleted } from '@/lib/missionUtils';
+import { cn } from '@/lib/utils';
 
-const MISSIONS = [
-  { id: 1, title: "01: Centro de Comando", icon: ShieldCheck, desc: "Gestão e clonagem de P Trabs no Manager.", path: "/ptrab" },
-  { id: 2, title: "02: Inteligência PNCP", icon: Database, desc: "Importação automática via API do PNCP.", path: "/config/custos-operacionais" },
-  { id: 3, title: "03: Linha de Frente", icon: FileEdit, desc: "A lógica das 5 seções do formulário.", path: "/ptrab/form" },
-  { id: 4, title: "04: Monitoramento", icon: BarChart3, desc: "Contabilidade gerencial e limites de OM.", path: "/ptrab/form" },
-  { id: 5, title: "05: Redação Técnica", icon: FileText, desc: "Geração automática do Editor DOR.", path: "/ptrab/dor" },
-  { id: 6, title: "06: Entrega Final", icon: Send, desc: "Gerenciamento e exportação de relatórios.", path: "/ptrab/print" },
+interface Mission {
+  id: number;
+  title: string;
+  description: string;
+  targetPath: string;
+  category: 'logistica' | 'operacional' | 'gestao';
+}
+
+const MISSIONS: Mission[] = [
+  { id: 1, title: "Gestão do P Trab", description: "Conheça as ferramentas de controle e o ciclo de vida dos planos.", targetPath: "/ptrab", category: 'gestao' },
+  { id: 2, title: "Inteligência PNCP", description: "Aprenda a importar itens reais de atas do Governo Federal.", targetPath: "/config/custos-operacionais", category: 'operacional' },
+  { id: 3, title: "Detalhamento Operacional", description: "Lance necessidades de material de consumo vinculadas a OMs.", targetPath: "/ptrab/form", category: 'operacional' },
+  { id: 4, title: "Contabilidade Gerencial", description: "Analise o impacto financeiro e distribuição por OM.", targetPath: "/ptrab/form", category: 'gestao' },
+  { id: 5, title: "Editor de DOR", description: "Redija o Documento de Oficialização da Requisição com agilidade.", targetPath: "/ptrab/dor", category: 'gestao' },
+  { id: 6, title: "Anexos e Exportação", description: "Gere relatórios técnicos em PDF e Excel para o processo.", targetPath: "/ptrab/print", category: 'gestao' },
 ];
 
-export const InstructionHub = () => {
-  const [completed, setCompleted] = React.useState<number[]>([]);
+export const InstructionHub: React.FC = () => {
+  const navigate = useNavigate();
+  const { user } = useSession();
+  const [completedIds, setCompletedIds] = useState<number[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  React.useEffect(() => {
-    const saved = localStorage.getItem('completed_missions');
-    if (saved) setCompleted(JSON.parse(saved));
-  }, []);
-
-  const startMission = (path: string, id: number) => {
-    localStorage.setItem('is_ghost_mode', 'true');
-    localStorage.setItem('active_mission_id', id.toString());
-    
-    // Se for missão de formulário, precisamos de um ID fictício na URL
-    const finalPath = (id === 3 || id === 4) ? `${path}?ptrabId=ghost-ptrab-123&startTour=true` : `${path}?startTour=true`;
-    window.location.href = finalPath;
+  // Função para carregar o progresso atualizado
+  const refreshProgress = () => {
+    if (user?.id) {
+      const completed = getCompletedMissions(user.id);
+      setCompletedIds(completed);
+    }
   };
+
+  useEffect(() => {
+    if (user?.id) {
+      refreshProgress();
+      setLoading(false);
+
+      // Ouve o evento global de conclusão de missão para atualizar a UI em tempo real
+      const handleMissionComplete = (event: any) => {
+        if (event.detail?.userId === user.id || !event.detail?.userId) {
+          refreshProgress();
+        }
+      };
+
+      window.addEventListener('mission:completed', handleMissionComplete);
+      return () => window.removeEventListener('mission:completed', handleMissionComplete);
+    }
+  }, [user?.id]);
+
+  const startMission = (mission: Mission) => {
+    localStorage.setItem('is_ghost_mode', 'true');
+    localStorage.setItem('active_mission_id', mission.id.toString());
+    
+    toast.success(`Missão "${mission.title}" iniciada no modo de treinamento.`);
+    
+    const path = mission.targetPath.includes('?') 
+      ? `${mission.targetPath}&startTour=true` 
+      : `${mission.targetPath}?startTour=true`;
+      
+    navigate(path);
+  };
+
+  const totalCompleted = completedIds.length;
+  const progressPercent = Math.round((totalCompleted / MISSIONS.length) * 100);
+
+  if (loading && !user) {
+    return (
+      <div className="flex items-center justify-center p-12">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col gap-1">
-        <h2 className="text-2xl font-bold tracking-tight">Sala de Briefing</h2>
-        <p className="text-muted-foreground text-sm">Complete as missões de instrução para dominar o P Trab Inteligente.</p>
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-muted/30 p-6 rounded-lg border border-border">
+        <div className="space-y-1">
+          <h3 className="text-xl font-bold flex items-center gap-2">
+            <Trophy className="h-5 w-5 text-yellow-500" />
+            Seu Progresso de Instrução
+          </h3>
+          <p className="text-sm text-muted-foreground">
+            Complete todas as missões para dominar o P Trab Inteligente.
+          </p>
+        </div>
+        <div className="flex items-center gap-4 w-full md:w-auto">
+          <div className="flex-1 md:w-48 h-3 bg-secondary rounded-full overflow-hidden border border-border">
+            <div 
+              className="h-full bg-primary transition-all duration-500 ease-out" 
+              style={{ width: `${progressPercent}%` }}
+            />
+          </div>
+          <span className="text-sm font-bold whitespace-nowrap">{totalCompleted} / {MISSIONS.length}</span>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {MISSIONS.map((m) => {
-          const isDone = completed.includes(m.id);
+        {MISSIONS.map((mission) => {
+          const isDone = completedIds.includes(mission.id);
           
           return (
-            <Card key={m.id} className={cn(
-              "relative overflow-hidden transition-all hover:shadow-md border-2",
-              isDone ? "border-green-500/30 bg-green-50/5" : "border-transparent"
+            <Card key={mission.id} className={cn(
+              "relative overflow-hidden transition-all border-2",
+              isDone ? "bg-green-50/10 border-green-500/30" : "hover:border-primary/50"
             )}>
               <CardHeader className="pb-2">
-                <div className="flex justify-between items-start">
-                  <div className={cn(
-                    "p-2 rounded-lg",
-                    isDone ? "bg-green-100 text-green-600" : "bg-primary/10 text-primary"
-                  )}>
-                    <m.icon className="h-6 w-6" />
-                  </div>
-                  {isDone && (
-                    <Badge variant="secondary" className="bg-green-100 text-green-700 border-green-200">
-                      <CheckCircle2 className="h-3 w-3 mr-1" /> Concluída
-                    </Badge>
-                  )}
+                <div className="flex justify-between items-start mb-1">
+                  <Badge variant="outline" className="text-[10px] uppercase">Missão {mission.id}</Badge>
+                  {isDone && <CheckCircle2 className="h-5 w-5 text-green-500" />}
                 </div>
-                <CardTitle className="text-lg mt-2">{m.title}</CardTitle>
-                <CardDescription className="text-xs line-clamp-2">{m.desc}</CardDescription>
+                <CardTitle className="text-lg">{mission.title}</CardTitle>
               </CardHeader>
-              <CardContent>
+              <CardContent className="space-y-4">
+                <CardDescription className="line-clamp-2 min-h-[40px]">
+                  {mission.description}
+                </CardDescription>
+                
                 <Button 
-                  onClick={() => startMission(m.path, m.id)}
+                  onClick={() => startMission(mission)}
                   variant={isDone ? "outline" : "default"}
+                  className="w-full group"
                   size="sm"
-                  className="w-full gap-2"
                 >
-                  <PlayCircle className="h-4 w-4" />
-                  {isDone ? "Revisar Instrução" : "Iniciar Missão"}
+                  {isDone ? (
+                    <>Revisar Missão <ArrowRight className="ml-2 h-4 w-4" /></>
+                  ) : (
+                    <>Iniciar Missão <PlayCircle className="ml-2 h-4 w-4 group-hover:scale-110 transition-transform" /></>
+                  )}
                 </Button>
               </CardContent>
             </Card>
