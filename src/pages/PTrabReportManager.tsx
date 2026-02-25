@@ -730,11 +730,11 @@ const PTrabReportManager = () => {
       return;
     }
 
-    // INTERCEPTAÇÃO GHOST MODE COM LINHA FIXA E ARRAY DE ITENS
+    // INTERCEPTAÇÃO GHOST MODE COM LINHA FIXA E ARRAY DE ITENS ENRIQUECIDO
     if (isGhostMode()) {
         setPtrabData(GHOST_DATA.p_trab_exemplo);
         
-        // LINHA CHUMBADA COM O ARRAY DE ITENS OBRIGATÓRIO
+        // LINHA CHUMBADA COM BLINDAGEM MÁXIMA PARA A RENDERIZAÇÃO DA TABELA
         setRegistrosMaterialConsumo([{
             id: 'mock-tour-id',
             p_trab_id: ptrabId || 'ghost-id',
@@ -744,16 +744,27 @@ const PTrabReportManager = () => {
             ug_detentora: '160222',
             efetivo: 150,
             dias_operacao: 15,
-            fase_atividade: 'execucao',
+            fase_atividade: 'execução',
             detalhamento: 'Material de Construção', 
             group_name: 'Material de Construção',   
             valor_total: 212.50,
             valor_nd_30: 212.50,
             valor_nd_39: 0,
-            detalhamento_customizado: "33.90.30 - Aquisição de Material de Construção para atender 150 militares do 1º BIS, durante 15 dias de execucao.\n\nCálculo:\nFórmula: Qtd do item x Valor do item.\n- 5 Cimento Portland 50kg x R$ 42,50/unid. = R$ 212,50.\n\nTotal: R$ 212,50.\n(Pregão 5/2025 - UASG 160.222).",
-            // A PEÇA QUE FALTAVA: O array que o PTrabOperacionalReport usa para gerar a linha
+            detalhamento_customizado: "33.90.30 - Aquisição de Material de Construção para atender 150 militares do 1º BIS, durante 15 dias de execução.\n\nCálculo:\nFórmula: Qtd do item x Valor do item.\n- 5 Cimento Portland 50kg x R$ 42,50/unid. = R$ 212,50.\n\nTotal: R$ 212,50.\n(Pregão 5/2025 - UASG 160.222).",
+            // BLINDAGEM MÁXIMA DO ITEM: Colocamos item, nome e os valores totais aqui dentro para a splitMaterialConsumoItems
             itens_aquisicao: [
-                { id: 'item-cimento-1', nome: 'Cimento Portland 50kg', quantidade: 5, valor_unitario: 42.50 }
+                { 
+                  id: 'item-cimento-1', 
+                  item: 'Cimento Portland 50kg', 
+                  nome: 'Cimento Portland 50kg', 
+                  quantidade: 5, 
+                  valor_unitario: 42.50,
+                  valor_total: 212.50,
+                  valor_nd_30: 212.50,
+                  valor_nd_39: 0,
+                  pregao: '5/2025',
+                  uasg: '160.222'
+                }
             ],
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString()
@@ -846,7 +857,7 @@ const PTrabReportManager = () => {
               ...(classeVData || []).map((r: any) => ({ ...r, categoria: r.categoria, om_detentora: r.om_detentora, ug_detentora: r.ug_detentora, efetivo: r.efetivo || 0 })),
               ...(classeVIData || []).map((r: any) => ({ ...r, categoria: r.categoria, om_detentora: r.om_detentora, ug_detentora: r.ug_detentora, efetivo: r.efetivo || 0 })), 
               ...(classeVIIData || []).map((r: any) => ({ ...r, categoria: r.categoria, om_detentora: r.om_detentora, ug_detentora: r.ug_detentora, efetivo: r.efetivo || 0 })), 
-              ...(classeVIIISaudeData || []).map((r: any) => ({ ...r, itens_saude: r.itens_saude, categoria: 'Saúde', om_detentora: r.om_detentora, ug_detentora: r.ug_detentora, efetivo: r.efetivo || 0 })), 
+              ...(classeVIIISaudeData || []).map((r: any) => ({ ...r, itens_equipamentos: r.itens_saude, categoria: 'Saúde', om_detentora: r.om_detentora, ug_detentora: r.ug_detentora, efetivo: r.efetivo || 0 })), 
               ...(classeVIIIRemontaData || []).map((r: any) => ({ ...r, itens_remonta: r.itens_remonta, categoria: 'Remonta/Veterinária', animal_tipo: r.animal_tipo, quantidade_animais: r.quantidade_animais, om_detentora: r.om_detentora, ug_detentora: r.ug_detentora, efetivo: r.efetivo || 0 })), 
               ...(classeIXData || []).map((r: any) => ({ ...r, itens_motomecanizacao: r.itens_motomecanizacao, categoria: r.categoria, om_detentora: r.om_detentora, ug_detentora: r.ug_detentora, efetivo: r.efetivo || 0 })), 
           ];
