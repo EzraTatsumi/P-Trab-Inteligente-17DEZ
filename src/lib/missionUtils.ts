@@ -5,6 +5,7 @@
  */
 
 const getBaseKey = (userId?: string) => userId ? `completed_missions_${userId}` : 'completed_missions';
+const VICTORY_SHOWN_KEY = (userId?: string) => userId ? `victory_shown_${userId}` : 'victory_shown';
 const GHOST_MODE_KEY = 'is_ghost_mode';
 const ACTIVE_MISSION_KEY = 'active_mission_id';
 
@@ -26,8 +27,9 @@ export const markMissionCompleted = (missionId: number, userId?: string) => {
     // Notifica o sistema via eventos customizados
     window.dispatchEvent(new CustomEvent('mission:completed', { detail: { missionId, userId } }));
     
+    // Se completou as 6 missões, dispara evento de vitória
     if (updated.length >= 6) {
-      window.dispatchEvent(new CustomEvent('tour:todas-concluidas'));
+      window.dispatchEvent(new CustomEvent('tour:todas-concluidas', { detail: { userId } }));
     }
   }
 };
@@ -54,11 +56,37 @@ export const isMissionCompleted = (missionId: number, userId?: string): boolean 
 };
 
 /**
+ * Verifica se o usuário deve ver a tela de vitória (todas as missões concluídas e ainda não mostrada).
+ */
+export const shouldShowVictory = (userId?: string): boolean => {
+  const completed = getCompletedMissions(userId);
+  const alreadyShown = localStorage.getItem(VICTORY_SHOWN_KEY(userId)) === 'true';
+  return completed.length >= 6 && !alreadyShown;
+};
+
+/**
+ * Marca que a tela de vitória já foi exibida para evitar repetições.
+ */
+export const markVictoryAsShown = (userId?: string) => {
+  localStorage.setItem(VICTORY_SHOWN_KEY(userId), 'true');
+};
+
+/**
+ * Finaliza o treinamento, limpando as flags de modo fantasma.
+ */
+export const exitGhostMode = (userId?: string) => {
+  localStorage.removeItem(GHOST_MODE_KEY);
+  localStorage.removeItem(ACTIVE_MISSION_KEY);
+  window.location.href = '/ptrab'; // Recarrega para limpar estados de memória
+};
+
+/**
  * Reseta o progresso (Limpeza de pane).
  */
 export const resetTrainingProgress = (userId?: string) => {
   if (typeof window === 'undefined') return;
   localStorage.removeItem(getBaseKey(userId));
+  localStorage.removeItem(VICTORY_SHOWN_KEY(userId));
   localStorage.removeItem(GHOST_MODE_KEY);
   localStorage.removeItem(ACTIVE_MISSION_KEY);
   window.location.reload();
