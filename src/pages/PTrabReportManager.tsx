@@ -12,6 +12,8 @@ import PTrabLogisticoReport from "@/components/reports/PTrabLogisticoReport";
 import PTrabRacaoOperacionalReport from "@/components/reports/PTrabRacaoOperacionalReport";
 import PTrabOperacionalReport from "@/components/reports/PTrabOperacionalReport"; 
 import PTrabHorasVooReport from "@/components/reports/PTrabHorasVooReport"; 
+import PTrabMaterialPermanenteReport from "@/components/reports/PTrabMaterialPermanenteReport";
+import PTrabDORReport from "@/components/reports/PTrabDORReport";
 import {
   generateRacaoQuenteMemoriaCalculo,
   generateRacaoOperacionalMemoriaCalculo,
@@ -60,7 +62,7 @@ import { RefLPC } from "@/types/refLPC";
 import { fetchDiretrizesOperacionais, fetchDiretrizesPassagens } from "@/lib/ptrabUtils"; 
 import { Tables, Json } from "@/integrations/supabase/types"; 
 import { ItemAquisicao } from "@/types/diretrizesMaterialConsumo";
-import { GHOST_DATA, isGhostMode } from "@/lib/ghostStore";
+import { isGhostMode, GHOST_DATA } from "@/lib/ghostStore";
 import { runMission06 } from "@/tours/missionTours";
 import PageMetadata from "@/components/PageMetadata";
 
@@ -128,10 +130,7 @@ export interface VerbaOperacionalRegistro extends Tables<'verba_operacional_regi
 
 export type PassagemRegistro = PassagemRegistroType;
 
-export interface ConcessionariaRegistro extends Tables<'concessionaria_registros'> {
-  totalND39?: number;
-  diretriz?: Tables<'diretrizes_concessionaria'>;
-}
+export type ConcessionariaRegistro = ConcessionariaRegistroComDiretriz;
 
 export type MaterialConsumoRegistro = MaterialConsumoRegistroType; 
 
@@ -139,7 +138,12 @@ export type ComplementoAlimentacaoRegistro = ComplementoAlimentacaoRegistroType;
 
 export type ServicoTerceiroRegistro = ServicoTerceiroRegistroType;
 
-export type MaterialPermanenteRegistro = Tables<'material_permanente_registros'>;
+export interface MaterialPermanenteRegistro extends Tables<'material_permanente_registros'> {
+  valor_total: number;
+  valor_nd_52: number;
+  dias_operacao: number;
+  efetivo: number;
+}
 
 export interface HorasVooRegistro extends Tables<'horas_voo_registros'> {
   quantidade_hv: number;
@@ -237,8 +241,6 @@ export interface GrupoOMOperacional {
   materialConsumo: MaterialConsumoRegistro[]; 
   complementoAlimentacao: { registro: ComplementoAlimentacaoRegistro, subType?: 'QS' | 'QR' }[];
   servicosTerceiros: ServicoTerceiroRegistro[];
-  materialPermanente: MaterialPermanenteRegistro[];
-  horasVoo: HorasVooRegistro[];
 }
 
 export interface GrupoOM {
@@ -355,56 +357,60 @@ const PTrabReportManager = () => {
   const [registrosClasseIII, setRegistrosClasseIII] = useState<ClasseIIIRegistro[]>([]);
   const [registrosDiaria, setRegistrosDiaria] = useState<DiariaRegistro[]>([]);
   const [registrosVerbaOperacional, setRegistrosVerbaOperacional] = useState<VerbaOperacionalRegistro[]>([]);
+  const [registrosSuprimentoFundos, setRegistrosSuprimentoFundos] = useState<VerbaOperacionalRegistro[]>([]);
   const [registrosPassagem, setRegistrosPassagem] = useState<PassagemRegistro[]>([]);
   const [registrosConcessionaria, setRegistrosConcessionaria] = useState<ConcessionariaRegistro[]>([]);
   const [registrosMaterialConsumo, setRegistrosMaterialConsumo] = useState<MaterialConsumoRegistro[]>([]);
   const [registrosComplementoAlimentacao, setRegistrosComplementoAlimentacao] = useState<ComplementoAlimentacaoRegistro[]>([]);
   const [registrosServicosTerceiros, setRegistrosServicosTerceiros] = useState<ServicoTerceiroRegistro[]>([]);
+  const [registrosMaterialPermanente, setRegistrosMaterialPermanente] = useState<MaterialPermanenteRegistro[]>([]);
   const [registrosHorasVoo, setRegistrosHorasVoo] = useState<HorasVooRegistro[]>([]);
+  const [registrosDOR, setRegistrosDOR] = useState<any[]>([]);
+  const [selectedDorId, setSelectedDorId] = useState<string | null>(null);
   const [diretrizesOperacionais, setDiretrizesOperacionais] = useState<any>(null);
   const [diretrizesPassagens, setDiretrizesPassagens] = useState<any[]>([]);
   
-  const { user } = { user: { id: 'ghost-user' } };
+  const ghostActive = isGhostMode();
 
   useEffect(() => {
     const startTour = searchParams.get('startTour') === 'true';
-    if (startTour && isGhostMode() && user?.id) {
+    if (startTour && isGhostMode() && selectedReport === 'operacional') {
       setTimeout(() => {
-        runMission06(user.id, () => {
+        runMission06('ghost-user', () => {
             navigate('/ptrab?showHub=true');
         });
       }, 500);
     }
-  }, [searchParams, user?.id]);
+  }, [selectedReport, searchParams, navigate]);
 
   const loadData = useCallback(async () => {
     if (!ptrabId && !isGhostMode()) {
         navigate('/ptrab');
         return;
     }
-    setLoading(true);
-    
+
     if (isGhostMode()) {
-        setPtrabData(GHOST_DATA.p_trab_exemplo);
-        // Mock data for Ghost Mode to show report
-        setRegistrosMaterialConsumo([{
-          id: 'ghost-mc-1',
-          p_trab_id: ptrabId || 'ghost',
-          organizacao: '1º BIS',
-          ug: '160222',
-          dias_operacao: 15,
-          efetivo: 150,
-          group_name: 'Material de Construção',
-          valor_total: 1250.50,
-          valor_nd_30: 1250.50,
-          valor_nd_39: 0,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-          itens_aquisicao: [] as any
-        } as any]);
-    } else {
-        // Fetch real data logic would go here
+        setPtrabData(GHOST_DATA.p_trab_exemplo as any);
+        
+        // Mock data for Ghost Mode
+        setRegistrosClasseI(GHOST_DATA.mockRegistrosClasseI as any || []);
+        setRegistrosClasseII(GHOST_DATA.mockRegistrosClasseII as any || []);
+        setRegistrosClasseIII(GHOST_DATA.mockRegistrosClasseIII as any || []);
+        setRegistrosDiaria(GHOST_DATA.mockRegistrosDiaria as any || []);
+        
+        const omName = "1º BIS";
+        if (GHOST_DATA.mockGrupos?.[omName]) {
+            const mockGroup = GHOST_DATA.mockGrupos[omName];
+            setRegistrosMaterialConsumo(mockGroup.materialConsumo as any || []);
+            setRegistrosServicosTerceiros(mockGroup.servicosTerceiros as any || []);
+        }
+
+        setLoading(false);
+        return;
     }
+
+    setLoading(true);
+    // Real fetching logic here...
     setLoading(false);
   }, [ptrabId, navigate]);
 
@@ -414,11 +420,14 @@ const PTrabReportManager = () => {
     if (isGhostMode()) return true;
     switch (selectedReport) {
       case 'logistico': return registrosClasseI.length > 0 || registrosClasseII.length > 0 || registrosClasseIII.length > 0;
+      case 'racao_operacional': return registrosClasseI.some(r => r.categoria === 'RACAO_OPERACIONAL');
       case 'operacional': return registrosDiaria.length > 0 || registrosMaterialConsumo.length > 0 || registrosServicosTerceiros.length > 0;
+      case 'material_permanente': return registrosMaterialPermanente.length > 0;
       case 'hora_voo': return registrosHorasVoo.length > 0;
+      case 'dor': return registrosDOR.length > 0;
       default: return false;
     }
-  }, [selectedReport, registrosClasseI, registrosClasseII, registrosClasseIII, registrosDiaria, registrosMaterialConsumo, registrosServicosTerceiros, registrosHorasVoo]);
+  }, [selectedReport, registrosClasseI, registrosClasseII, registrosClasseIII, registrosDiaria, registrosMaterialConsumo, registrosServicosTerceiros, registrosHorasVoo, registrosMaterialPermanente, registrosDOR]);
 
   const renderReport = () => {
     if (!ptrabData) return null;
@@ -454,20 +463,36 @@ const PTrabReportManager = () => {
       case 'operacional':
         return (
             <PTrabOperacionalReport
-                ptrab={ptrabData}
-                diarias={registrosDiaria}
-                passagens={registrosPassagem}
-                verbaOperacional={registrosVerbaOperacional}
-                concessionarias={registrosConcessionaria}
-                horasVoo={registrosHorasVoo}
-                materialConsumo={registrosMaterialConsumo}
-                complementoAlimentacao={registrosComplementoAlimentacao}
-                servicosTerceiros={registrosServicosTerceiros}
-                materialPermanente={[]}
+                ptrabData={ptrabData}
+                omsOrdenadas={[ptrabData.nome_om]}
+                gruposPorOM={{}}
+                registrosDiaria={registrosDiaria}
+                registrosVerbaOperacional={registrosVerbaOperacional}
+                registrosSuprimentoFundos={registrosSuprimentoFundos}
+                registrosPassagem={registrosPassagem}
+                registrosConcessionaria={registrosConcessionaria}
+                registrosMaterialConsumo={registrosMaterialConsumo}
+                registrosComplementoAlimentacao={registrosComplementoAlimentacao}
+                registrosServicosTerceiros={registrosServicosTerceiros}
+                diretrizesOperacionais={diretrizesOperacionais}
+                diretrizesPassagens={diretrizesPassagens}
+                fileSuffix={currentOption.fileSuffix}
+                generateDiariaMemoriaCalculo={generateDiariaMemoriaCalculoUnificada as any}
+                generateVerbaOperacionalMemoriaCalculo={generateVerbaOperacionalMemoriaCalculada as any}
+                generateSuprimentoFundosMemoriaCalculo={generateSuprimentoFundosMemoriaCalculada as any}
+                generatePassagemMemoriaCalculo={generatePassagemMemoriaCalculada as any}
+                generateConcessionariaMemoriaCalculo={generateConcessionariaMemoriaCalculada as any}
+                generateMaterialConsumoMemoriaCalculo={generateMaterialConsumoMemoriaCalculada as any}
+                generateComplementoMemoriaCalculo={generateComplementoMemoriaCalculada as any}
+                generateServicoMemoriaCalculo={generateServicoMemoriaCalculada as any}
             />
         );
+      case 'material_permanente':
+        return <PTrabMaterialPermanenteReport ptrabData={ptrabData} registrosMaterialPermanente={registrosMaterialPermanente} fileSuffix={currentOption.fileSuffix} />;
       case 'hora_voo':
         return <PTrabHorasVooReport ptrabData={ptrabData} omsOrdenadas={[ptrabData.nome_om]} gruposPorOM={{}} fileSuffix={currentOption.fileSuffix} />;
+      case 'dor':
+        return <PTrabDORReport ptrabData={ptrabData} dorData={registrosDOR.find(d => d.id === selectedDorId) || registrosDOR[0]} selector={null} />;
       default:
         return <div className="text-center py-12 text-muted-foreground">Relatório não implementado.</div>;
     }
@@ -477,7 +502,11 @@ const PTrabReportManager = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      <PageMetadata title="Relatórios P Trab" description="Gerenciador de Relatórios do P Trab" canonicalPath="/ptrab/relatorios" />
+      <PageMetadata 
+        title="Relatórios P Trab" 
+        description="Gerenciador de Relatórios do P Trab" 
+        canonicalPath="/ptrab/relatorios" 
+      />
       
       <div className="print:hidden sticky top-0 z-50 bg-background border-b border-border/50 shadow-sm">
         <div className="container max-w-7xl mx-auto py-4 px-4 flex items-center justify-between">
