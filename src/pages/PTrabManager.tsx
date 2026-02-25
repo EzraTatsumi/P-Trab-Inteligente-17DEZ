@@ -186,6 +186,9 @@ const PTrabManager = () => {
   const [showInstructionHub, setShowInstructionHub] = useState(false);
   const [showVictory, setShowVictory] = useState(false);
 
+  // Detecta o modo fantasma de forma reativa para a query
+  const ghostActive = isGhostMode();
+
   const { data: onboardingStatus, isLoading: isLoadingOnboarding } = useOnboardingStatus();
   const [showWelcomeModal, setShowWelcomeModal] = useState(false);
   const [showRequirementsAlert, setShowRequirementsAlert] = useState(false);
@@ -255,12 +258,12 @@ const PTrabManager = () => {
   }, [isLoadingOnboarding, onboardingStatus]);
 
   const { data: pTrabs = [], isLoading: loading, refetch: loadPTrabs } = useQuery({
-    queryKey: ['pTrabs', user?.id],
+    // Adicionamos ghostActive na chave para que o React Query invalide o cache real e use o simulado
+    queryKey: ['pTrabs', user?.id, ghostActive],
     queryFn: async () => {
       if (!user?.id) return [];
       
-      const ghost = isGhostMode();
-      if (ghost) {
+      if (ghostActive) {
         return [{
           ...GHOST_DATA.p_trab_exemplo,
           isOwner: true,
@@ -323,6 +326,8 @@ const PTrabManager = () => {
     enabled: !!user?.id,
     staleTime: 1000 * 60 * 5,
   });
+
+  // ... (restante do componente mantido sem alterações nas funções auxiliares)
 
   useEffect(() => {
     (window as any).openSettings = () => setSettingsOpen(true);
@@ -781,7 +786,7 @@ const PTrabManager = () => {
     }
     if (!confirm("Tem certeza?")) return;
     
-    queryClient.setQueryData(['pTrabs', user?.id], (old: PTrab[] | undefined) => 
+    queryClient.setQueryData(['pTrabs', user?.id, ghostActive], (old: PTrab[] | undefined) => 
       old ? old.filter(p => p.id !== id) : []
     );
     

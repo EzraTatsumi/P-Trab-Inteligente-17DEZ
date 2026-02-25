@@ -9,6 +9,7 @@ import { useNavigate } from 'react-router-dom';
 import { toast } from "sonner";
 import { useSession } from '@/components/SessionContextProvider';
 import { getCompletedMissions, isMissionCompleted } from '@/lib/missionUtils';
+import { useQueryClient } from '@tanstack/react-query';
 import { cn } from '@/lib/utils';
 
 interface Mission {
@@ -31,6 +32,7 @@ const MISSIONS: Mission[] = [
 export const InstructionHub: React.FC = () => {
   const navigate = useNavigate();
   const { user } = useSession();
+  const queryClient = useQueryClient();
   const [completedIds, setCompletedIds] = useState<number[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -59,9 +61,15 @@ export const InstructionHub: React.FC = () => {
     }
   }, [user?.id]);
 
-  const startMission = (mission: Mission) => {
+  const startMission = async (mission: Mission) => {
+    // 1. Define as flags de treinamento
     localStorage.setItem('is_ghost_mode', 'true');
     localStorage.setItem('active_mission_id', mission.id.toString());
+    
+    // 2. Limpa o cache das consultas principais para forçar a leitura do GHOST_DATA
+    await queryClient.invalidateQueries({ queryKey: ['pTrabs'] });
+    await queryClient.invalidateQueries({ queryKey: ['ptrabTotals'] });
+    await queryClient.invalidateQueries({ queryKey: ['diretrizesCustosOperacionais'] });
     
     toast.success(`Missão "${mission.title}" iniciada no modo de treinamento.`);
     
