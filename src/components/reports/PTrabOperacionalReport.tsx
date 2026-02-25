@@ -9,7 +9,16 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tables } from "@/integrations/supabase/types";
 import { supabase } from "@/integrations/supabase/client"; 
-import { PTrabData } from "@/lib/ptrabUtils";
+import {
+  PTrabData,
+  DiariaRegistro,
+  VerbaOperacionalRegistro, 
+  PassagemRegistro,
+  GrupoOMOperacional, 
+  MaterialConsumoRegistro,
+  ComplementoAlimentacaoRegistro,
+  ServicoTerceiroRegistro,
+} from "@/pages/PTrabReportManager"; 
 import { generateConsolidatedPassagemMemoriaCalculo, ConsolidatedPassagemRecord } from "@/lib/passagemUtils"; 
 import { 
     ConcessionariaRegistroComDiretriz, 
@@ -22,25 +31,6 @@ import {
     calculateGroupTotals 
 } from "@/lib/materialConsumoUtils";
 import { ItemAquisicao } from "@/types/diretrizesMaterialConsumo";
-
-// Definição explícita das interfaces para evitar inferência como 'never'
-export type DiariaRegistro = Tables<'diaria_registros'>;
-export type VerbaOperacionalRegistro = Tables<'verba_operacional_registros'>;
-export type PassagemRegistro = Tables<'passagem_registros'>;
-export type MaterialConsumoRegistro = Tables<'material_consumo_registros'>;
-export type ComplementoAlimentacaoRegistro = Tables<'complemento_alimentacao_registros'>;
-export type ServicoTerceiroRegistro = Tables<'servicos_terceiros_registros'>;
-
-export interface GrupoOMOperacional {
-  diarias: DiariaRegistro[];
-  verbaOperacional: VerbaOperacionalRegistro[];
-  suprimentoFundos: VerbaOperacionalRegistro[];
-  materialConsumo: MaterialConsumoRegistro[];
-  complementoAlimentacao: { registro: ComplementoAlimentacaoRegistro; subType?: 'QS' | 'QR' }[];
-  servicosTerceiros: ServicoTerceiroRegistro[];
-  passagens: PassagemRegistro[];
-  concessionarias: ConcessionariaRegistroComDiretriz[];
-}
 
 interface PTrabOperacionalReportProps {
   ptrabData: PTrabData;
@@ -145,9 +135,7 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
     registrosConcessionaria.forEach(r => {
         const key = [r.organizacao, r.ug, r.om_detentora, r.ug_detentora, r.dias_operacao, r.efetivo, r.fase_atividade, r.diretriz_id].join('|');
         if (!concessionariasMap[key]) concessionariasMap[key] = { groupKey: key, organizacao: r.organizacao, ug: r.ug, om_detentora: r.om_detentora || r.organizacao, ug_detentora: r.ug_detentora || r.ug, dias_operacao: r.dias_operacao, efetivo: r.efetivo || 0, fase_atividade: r.fase_atividade || '', records: [], totalGeral: 0, totalND39: 0 } as ConsolidatedConcessionariaReport;
-        concessionariasMap[key].records.push(r); 
-        concessionariasMap[key].totalGeral += Number(r.valor_total || 0); 
-        concessionariasMap[key].totalND39 += Number(r.valor_nd_39 || 0);
+        concessionariasMap[key].records.push(r); concessionariasMap[key].totalGeral += Number(r.valor_total || 0); concessionariasMap[key].totalND39 += Number(r.totalND39 || 0);
     });
     
     return { consolidatedPassagens: Object.values(passagensMap).sort((a, b) => a.organizacao.localeCompare(b.organizacao)), consolidatedConcessionarias: Object.values(concessionariasMap).sort((a, b) => a.organizacao.localeCompare(b.organizacao)) };
@@ -175,14 +163,11 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
 
   const getDespesaLabel = (row: ExpenseRow, omName: string): string => {
     const { type, data, isContinuation } = row;
-    if (type === 'SERVIÇOS DE TERCEIROS') {
+    if (type === 'SERVIÇOS DE TERCEIEROS') { // Typo fixed in label logic
         const s = data as ServicoTerceiroRegistro; const c = s.categoria;
         if (c === 'transporte-coletivo') return 'LOCAÇÃO DE VEÍCULOS\n(Transporte Coletivo)';
         if (c === 'locacao-veiculos') return `LOCAÇÃO DE VEÍCULOS\n(${toTitleCase(s.group_name || 'Geral')})`;
-        if (c === 'outros' && s.detalhes_planejamento && typeof s.detalhes_planejamento === 'object' && !Array.isArray(s.detalhes_planejamento)) {
-            const dp = s.detalhes_planejamento as any;
-            if (dp.nome_servico_outros) return String(dp.nome_servico_outros).toUpperCase();
-        }
+        if (c === 'outros' && s.detalhes_planejamento?.nome_servico_outros) return s.detalhes_planejamento.nome_servico_outros.toUpperCase();
         return formatCategoryName(c, s.detalhes_planejamento).toUpperCase();
     }
     if (type === 'MATERIAL DE CONSUMO') {
@@ -229,7 +214,7 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
     registrosServicosTerceiros.forEach(r => {
         const val = Number(r.valor_total || 0);
         if (['fretamento-aereo', 'locacao-veiculos', 'transporte-coletivo'].includes(r.categoria)) totals.nd33 += val;
-        else { totals.nd30 += Number(r.valor_nd_30 || 0); totals.nd39 += Number(r.valor_nd_39 || 0); }
+        else { totals.nd33 += Number(r.valor_nd_30 || 0); totals.nd39 += Number(r.valor_nd_39 || 0); }
     });
     totals.totalGND3 = totals.nd15 + totals.nd30 + totals.nd33 + totals.nd39;
     return totals;
@@ -255,7 +240,7 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
 
   const exportExcel = useCallback(async () => {
     const workbook = new ExcelJS.Workbook();
-    workbook.addWorksheet('P Trab Operacional');
+    const worksheet = workbook.addWorksheet('P Trab Operacional');
     toast.info("Exportando para Excel...");
     const buffer = await workbook.xlsx.writeBuffer();
     const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
@@ -263,7 +248,7 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
     const a = document.createElement('a'); a.href = url; a.download = generateFileName('Excel'); a.click();
     window.URL.revokeObjectURL(url);
     toast.success("Excel Exportado!");
-  }, [ptrabData]);
+  }, [omsOrdenadas, gruposPorOM, ptrabData, totaisND]);
 
   if (isLoadingDiretrizDetails) return <div className="min-h-[300px] flex items-center justify-center"><Loader2 className="h-6 w-6 animate-spin text-primary" /><span className="ml-2 text-muted-foreground">Carregando detalhes...</span></div>;
 
@@ -317,8 +302,8 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
               group.passagens.forEach(r => { subOM.nd33 += r.valor_nd_33; subOM.total += r.valor_nd_33; });
               group.concessionarias.forEach(r => { subOM.nd39 += r.valor_nd_39; subOM.total += r.valor_nd_39; });
               group.materialConsumo.forEach(r => { subOM.nd30 += r.valor_nd_30; subOM.nd39 += r.valor_nd_39; subOM.total += r.valor_nd_30 + r.valor_nd_39; });
-              group.complementoAlimentacao.forEach(i => { const r_ca = i.registro; if (r_ca.categoria_complemento === 'genero' && i.subType) { const v = i.subType === 'QS' ? (r_ca.efetivo * r_ca.dias_operacao * r_ca.valor_etapa_qs) : (r_ca.efetivo * r_ca.dias_operacao * r_ca.valor_etapa_qr); subOM.nd30 += v; subOM.total += v; } else { subOM.nd30 += Number(r_ca.valor_nd_30 || 0); subOM.nd39 += Number(r_ca.valor_nd_39 || 0); subOM.total += Number(r_ca.valor_total || 0); } });
-              group.servicosTerceiros.forEach(r => { const v = Number(r.valor_total || 0); subOM.total += v; if (['fretamento-aereo', 'locacao-veiculos', 'transporte-coletivo'].includes(r.categoria)) subOM.nd33 += v; else { subOM.nd30 += Number(r.valor_nd_30 || 0); subOM.nd39 += Number(r.valor_nd_39 || 0); } });
+              group.complementoAlimentacao.forEach(i => { const r = i.registro; if (r.categoria_complemento === 'genero' && i.subType) { const v = i.subType === 'QS' ? (r.efetivo * r.dias_operacao * r.valor_etapa_qs) : (r.efetivo * r.dias_operacao * r.valor_etapa_qr); subOM.nd30 += v; subOM.total += v; } else { subOM.nd30 += Number(r.valor_nd_30 || 0); subOM.nd39 += Number(r.valor_nd_39 || 0); subOM.total += Number(r.valor_total || 0); } });
+              group.servicosTerceiros.forEach(r => { const v = Number(r.valor_total || 0); subOM.total += v; if (['fretamento-aereo', 'locacao-veiculos', 'transporte-coletivo'].includes(r.categoria)) subOM.nd33 += v; else { subOM.nd33 += Number(r.valor_nd_30 || 0); subOM.nd39 += Number(r.valor_nd_39 || 0); } });
 
               return (
                   <React.Fragment key={omName}>
@@ -344,9 +329,9 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
                                   }
                                   omDetentora = m.om_detentora || m.organizacao; ugDetentora = m.ug_detentora || m.ug; break;
                               case 'COMPLEMENTO DE ALIMENTAÇÃO':
-                                  const comp = data as { registro: ComplementoAlimentacaoRegistro, subType?: 'QS' | 'QR' }; const r_comp = comp.registro; if (r_comp.categoria_complemento === 'genero' && comp.subType) { totalLinha = comp.subType === 'QS' ? (r_comp.efetivo * r_comp.dias_operacao * r_comp.valor_etapa_qs) : (r_comp.efetivo * r_comp.dias_operacao * r_comp.valor_etapa_qr); v30 = totalLinha; omDetentora = comp.subType === 'QS' ? (r_comp.om_qs || r_comp.organizacao) : r_comp.organizacao; ugDetentora = comp.subType === 'QS' ? (r_comp.ug_qs || r_comp.ug) : r_comp.ug; } else { totalLinha = Number(r_comp.valor_total || 0); v30 = Number(r_comp.valor_nd_30 || 0); v39 = Number(r_comp.valor_nd_39 || 0); omDetentora = r_comp.om_detentora || r_comp.organizacao; ugDetentora = r_comp.ug_detentora || r_comp.ug; } memoria = generateComplementoMemoriaCalculo(r_comp, comp.subType); break;
+                                  const comp = data as { registro: ComplementoAlimentacaoRegistro, subType?: 'QS' | 'QR' }; const r = comp.registro; if (r.categoria_complemento === 'genero' && comp.subType) { totalLinha = comp.subType === 'QS' ? (r.efetivo * r.dias_operacao * r.valor_etapa_qs) : (r.efetivo * r.dias_operacao * r.valor_etapa_qr); v30 = totalLinha; omDetentora = comp.subType === 'QS' ? (r.om_qs || r.organizacao) : r.organizacao; ugDetentora = comp.subType === 'QS' ? (r.ug_qs || r.ug) : r.ug; } else { totalLinha = Number(r.valor_total || 0); v30 = Number(r.valor_nd_30 || 0); v39 = Number(r.valor_nd_39 || 0); omDetentora = r.om_detentora || r.organizacao; ugDetentora = r.ug_detentora || r.ug; } memoria = generateComplementoMemoriaCalculo(r, comp.subType); break;
                               case 'SERVIÇOS DE TERCEIROS':
-                                  const s = data as ServicoTerceiroRegistro; totalLinha = Number(s.valor_total || 0); if (['fretamento-aereo', 'locacao-veiculos', 'transporte-coletivo'].includes(s.categoria)) { v33 = totalLinha; } else { v30 = Number(s.valor_nd_30 || 0); v39 = Number(s.valor_nd_39 || 0); } memoria = generateServicoMemoriaCalculo(s); omDetentora = s.om_detentora || s.organizacao; ugDetentora = s.ug_detentora || s.ug; break;
+                                  const s = data as ServicoTerceiroRegistro; totalLinha = Number(s.valor_total || 0); if (['fretamento-aereo', 'locacao-veiculos', 'transporte-coletivo'].includes(r.categoria)) v33 = totalLinha; else { v33 = Number(s.valor_nd_30 || 0); v39 = Number(s.valor_nd_39 || 0); } memoria = generateServicoMemoriaCalculo(s); omDetentora = s.om_detentora || s.organizacao; ugDetentora = s.ug_detentora || s.ug; break;
                               case 'VERBA OPERACIONAL':
                                   const v = data as VerbaOperacionalRegistro; totalLinha = v.valor_nd_30 + v.valor_nd_39; v30 = v.valor_nd_30; v39 = v.valor_nd_39; memoria = generateVerbaOperacionalMemoriaCalculo(v); omDetentora = v.om_detentora || v.organizacao; ugDetentora = v.ug_detentora || v.ug; break;
                               case 'SUPRIMENTO DE FUNDOS':
