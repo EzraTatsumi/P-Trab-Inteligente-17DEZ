@@ -5,7 +5,6 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import { GraduationCap, Trophy, PlayCircle, CheckCircle2, X } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
-import { useSession } from "@/components/SessionContextProvider";
 import { isGhostMode } from "@/lib/ghostStore";
 
 interface Mission {
@@ -22,10 +21,9 @@ interface InstructionHubProps {
 
 const InstructionHub = ({ missions, completedMissions }: InstructionHubProps) => {
   const [isOpen, setIsOpen] = useState(false);
-  const { user } = useSession();
   
-  // Se estiver em modo fantasma, escondemos o hub para dar foco à missão
-  const isMissionInProgress = isGhostMode();
+  // Ocultamos o Hub se estivermos em modo simulação (missão ativa) para não poluir a tela
+  const isMissionActive = isGhostMode();
 
   useEffect(() => {
     const handleOpen = () => setIsOpen(true);
@@ -40,71 +38,75 @@ const InstructionHub = ({ missions, completedMissions }: InstructionHubProps) =>
     };
   }, []);
 
-  if (!isOpen || isMissionInProgress) return null;
+  if (!isOpen || isMissionActive) return null;
 
   const progress = (completedMissions.length / missions.length) * 100;
 
   return (
-    <Card className="mb-8 border-primary/20 bg-primary/5 animate-in fade-in slide-in-from-top-4 duration-500">
+    <Card className="border-primary/20 bg-primary/5 animate-in fade-in slide-in-from-top-4 duration-500 shadow-lg">
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="bg-primary p-2 rounded-lg">
-              <GraduationCap className="h-5 w-5 text-primary-foreground" />
+          <div className="flex items-center gap-3">
+            <div className="bg-primary p-2.5 rounded-xl shadow-sm">
+              <GraduationCap className="h-6 w-6 text-primary-foreground" />
             </div>
             <div>
-              <CardTitle className="text-xl">Centro de Instrução</CardTitle>
-              <CardDescription>Conclua as missões para dominar o sistema</CardDescription>
+              <CardTitle className="text-xl font-bold">Centro de Instrução</CardTitle>
+              <CardDescription>Domine as ferramentas do P Trab Inteligente</CardDescription>
             </div>
           </div>
-          <Button variant="ghost" size="icon" onClick={() => setIsOpen(false)}>
+          <Button variant="ghost" size="icon" onClick={() => setIsOpen(false)} className="hover:bg-primary/10">
             <X className="h-4 w-4" />
           </Button>
         </div>
       </CardHeader>
       <CardContent>
         <div className="mb-6 space-y-2">
-          <div className="flex justify-between text-sm font-medium">
-            <span>Progresso de Ativação</span>
+          <div className="flex justify-between text-sm font-semibold text-primary">
+            <span>Progresso de Aprendizado</span>
             <span>{Math.round(progress)}%</span>
           </div>
-          <Progress value={progress} className="h-2" />
+          <Progress value={progress} className="h-2.5 bg-primary/10" />
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-4">
           {missions.map((mission) => {
             const isCompleted = completedMissions.includes(mission.id);
             return (
               <div 
                 key={mission.id}
-                className={`p-4 rounded-xl border-2 transition-all ${
+                className={`p-4 rounded-xl border-2 transition-all group hover:shadow-md ${
                   isCompleted 
-                    ? "bg-green-50 border-green-200" 
-                    : "bg-white border-dashed border-muted-foreground/20"
+                    ? "bg-green-50/50 border-green-200" 
+                    : "bg-background border-dashed border-muted-foreground/30 hover:border-primary/50"
                 }`}
               >
                 <div className="flex justify-between items-start mb-2">
-                  <h4 className={`font-bold ${isCompleted ? "text-green-800" : "text-foreground"}`}>
-                    {mission.id}. {mission.title}
+                  <h4 className={`font-bold text-base ${isCompleted ? "text-green-800" : "text-foreground"}`}>
+                    Missão {mission.id}: {mission.title}
                   </h4>
-                  {isCompleted && <Trophy className="h-4 w-4 text-green-600" />}
+                  {isCompleted && (
+                    <div className="bg-green-100 p-1 rounded-full">
+                      <Trophy className="h-4 w-4 text-green-600" />
+                    </div>
+                  )}
                 </div>
-                <p className="text-xs text-muted-foreground mb-4 line-clamp-2">
+                <p className="text-sm text-muted-foreground mb-4 leading-relaxed">
                   {mission.description}
                 </p>
                 <Button 
                   size="sm" 
-                  variant={isCompleted ? "outline" : "primary"} 
-                  className="w-full gap-2"
-                  onClick={() => {
-                    mission.onStart();
-                    // O hub se fechará automaticamente via isMissionInProgress
-                  }}
+                  variant={isCompleted ? "outline" : "default"} 
+                  className={cn(
+                    "w-full gap-2 font-semibold h-10",
+                    isCompleted ? "border-green-200 text-green-700 hover:bg-green-50" : "shadow-sm"
+                  )}
+                  onClick={mission.onStart}
                 >
                   {isCompleted ? (
-                    <><CheckCircle2 className="h-4 w-4" /> Refazer</>
+                    <><RefreshCw className="h-4 w-4" /> Refazer Missão</>
                   ) : (
-                    <><PlayCircle className="h-4 w-4" /> Iniciar</>
+                    <><PlayCircle className="h-4 w-4" /> Iniciar Treinamento</>
                   )}
                 </Button>
               </div>
