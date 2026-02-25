@@ -5,7 +5,7 @@ import { AlertCircle, XCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { isGhostMode, exitGhostMode } from "@/lib/ghostStore";
 
-const GhostModeBanner = () => {
+export const GhostModeBanner = () => {
   if (!isGhostMode()) return null;
 
   const handleExit = () => {
@@ -14,7 +14,7 @@ const GhostModeBanner = () => {
   };
 
   return (
-    <div className="bg-amber-500 text-white py-2 px-4 flex items-center justify-between sticky top-0 z-50 shadow-md">
+    <div className="bg-amber-500 text-white py-2 px-4 flex items-center justify-between sticky top-0 z-[100] shadow-md w-full">
       <div className="flex items-center gap-2 max-w-[80%]">
         <AlertCircle className="h-5 w-5 shrink-0" />
         <p className="text-sm font-medium leading-tight">
@@ -33,5 +33,3 @@ const GhostModeBanner = () => {
     </div>
   );
 };
-
-export default GhostModeBanner;
