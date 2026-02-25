@@ -323,7 +323,7 @@ export interface PTrabOperacionalReportProps {
 export const CLASSE_V_CATEGORIES = ["Armt L", "Armt P", "IODCT", "DQBRN"];
 export const CLASSE_VI_CATEGORIES = ["Gerador", "Embarcação", "Equipamento de Engenharia"];
 export const CLASSE_VII_CATEGORIES = ["Comunicações", "Informática"];
-export const CLASSE_VIII_CATEGORIES = ["Saúde", "Remonta/Veterinária"];
+export const CLASSE_VIII_CATEGORIES = ["Saúde", "Remonta/Veteridária"];
 export const CLASSE_IX_CATEGORIES = ["Vtr Administrativa", "Vtr Operacional", "Motocicleta", "Vtr Blindada"];
 
 export const formatDate = (date: string) => {
@@ -708,7 +708,7 @@ const PTrabReportManager = () => {
   const [loading, setLoading] = useState(true);
   const [selectedReport, setSelectedReport] = useState<ReportType>('logistico');
 
-  // A) Estado do Menu
+  // A) Estado do Menu (logo abaixo de const [selectedReport...])
   const [isReportMenuOpen, setIsReportMenuOpen] = useState(false);
   useEffect(() => {
     (window as any).openReportMenu = () => setIsReportMenuOpen(true);
@@ -730,37 +730,34 @@ const PTrabReportManager = () => {
       return;
     }
 
-    // INTERCEPTAÇÃO GHOST MODE
+    // INTERCEPTAÇÃO GHOST MODE COM LINHA FIXA E MEMÓRIA DE CÁLCULO REALISTA
     if (isGhostMode()) {
-      setPtrabData(GHOST_DATA.p_trab_exemplo);
-      
-      // Injeta dados mockados para o relatório operacional (Missão 6)
-      const mockMaterialConsumo = GHOST_DATA.missao_03.subitens_lista.flatMap(si =>
-        si.itens_aquisicao.map(item => ({
-           ...item,
-           id: item.id,
-           p_trab_id: ptrabId || 'ghost-id',
-           organizacao: "1º BIS",
-           ug: "160222",
-           om_detentora: "1º BIS",
-           ug_detentora: "160222",
-           dias_operacao: 15,
-           efetivo: 150,
-           fase_atividade: "Execução",
-           group_name: "Material de Construção",
-           group_purpose: "Manutenção",
-           valor_total: item.valor_unitario * (item.quantidade || 5),
-           valor_nd_30: item.valor_unitario * (item.quantidade || 5),
-           valor_nd_39: 0,
-           created_at: new Date().toISOString(),
-           updated_at: new Date().toISOString()
-        }))
-      );
-      setRegistrosMaterialConsumo(mockMaterialConsumo as any);
-      
-      setLoading(false);
-      setFetchedReports(prev => new Set(prev).add(selectedReport));
-      return;
+        setPtrabData(GHOST_DATA.p_trab_exemplo);
+        
+        // LINHA CHUMBADA E GARANTIDA PARA O TOUR NÃO FALHAR
+        setRegistrosMaterialConsumo([{
+            id: 'mock-tour-id',
+            p_trab_id: ptrabId || 'ghost-id',
+            organizacao: '1º BIS',
+            ug: '160222',
+            om_detentora: '1º BIS',
+            ug_detentora: '160222',
+            efetivo: 150,
+            dias_operacao: 15,
+            fase_atividade: 'execucao',
+            detalhamento: 'Material de Construção', 
+            group_name: 'Material de Construção',   
+            valor_total: 212.50,
+            valor_nd_30: 212.50,
+            valor_nd_39: 0,
+            detalhamento_customizado: "33.90.30 - Aquisição de Material de Construção para atender 150 militares do 1º BIS, durante 15 dias de execucao.\n\nCálculo:\nFórmula: Qtd do item x Valor do item.\n- 5 Cimento Portland 50kg x R$ 42,50/unid. = R$ 212,50.\n\nTotal: R$ 212,50.\n(Pregão 5/2025 - UASG 160.222).",
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+        } as any]);
+        
+        setLoading(false);
+        setFetchedReports(prev => new Set(prev).add(selectedReport));
+        return;
     }
 
     if (fetchedReports.has(selectedReport) && ptrabData) return;
@@ -845,9 +842,9 @@ const PTrabReportManager = () => {
               ...(classeVData || []).map((r: any) => ({ ...r, categoria: r.categoria, om_detentora: r.om_detentora, ug_detentora: r.ug_detentora, efetivo: r.efetivo || 0 })),
               ...(classeVIData || []).map((r: any) => ({ ...r, categoria: r.categoria, om_detentora: r.om_detentora, ug_detentora: r.ug_detentora, efetivo: r.efetivo || 0 })), 
               ...(classeVIIData || []).map((r: any) => ({ ...r, categoria: r.categoria, om_detentora: r.om_detentora, ug_detentora: r.ug_detentora, efetivo: r.efetivo || 0 })), 
-              ...(classeVIIISaudeData || []).map((r: any) => ({ ...r, itens_equipamentos: r.itens_saude, categoria: 'Saúde', om_detentora: r.om_detentora, ug_detentora: r.ug_detentora, efetivo: r.efetivo || 0 })), 
+              ...(classeVIIISaudeData || []).map((r: any) => ({ ...r, itens_saude: r.itens_saude, categoria: 'Saúde', om_detentora: r.om_detentora, ug_detentora: r.ug_detentora, efetivo: r.efetivo || 0 })), 
               ...(classeVIIIRemontaData || []).map((r: any) => ({ ...r, itens_remonta: r.itens_remonta, categoria: 'Remonta/Veterinária', animal_tipo: r.animal_tipo, quantidade_animais: r.quantidade_animais, om_detentora: r.om_detentora, ug_detentora: r.ug_detentora, efetivo: r.efetivo || 0 })), 
-              ...(classeIXData || []).map((r: any) => ({ ...r, itens_equipamentos: r.itens_motomecanizacao, categoria: r.categoria, om_detentora: r.om_detentora, ug_detentora: r.ug_detentora, efetivo: r.efetivo || 0 })), 
+              ...(classeIXData || []).map((r: any) => ({ ...r, itens_motomecanizacao: r.itens_motomecanizacao, categoria: r.categoria, om_detentora: r.om_detentora, ug_detentora: r.ug_detentora, efetivo: r.efetivo || 0 })), 
           ];
           setRegistrosClasseII(allClasseItems as ClasseIIRegistro[]);
       }
