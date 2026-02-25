@@ -721,23 +721,23 @@ export const runMission06 = (userId: string, onComplete: () => void) => {
     ...commonConfig,
     steps: [
       {
-        element: '#tour-mat-consumo-row',
+        element: '.tour-material-row',
         popover: {
-          title: 'O Resultado do seu Trabalho',
-          description: 'Lembra-se da Missão 3? Aqui está o seu Grupo de Material de Construção, consolidado com o valor de R$ 1.250,50 e a respectiva memória de cálculo gerada pronta para o ordenador de despesas.',
+          title: 'Material de Consumo',
+          description: 'Veja aqui o item que mockamos. Ele aparece com todos os valores e a memória de cálculo que definimos.',
           side: 'bottom',
           align: 'center'
         },
         onHighlighted: () => {
-          const el = document.querySelector('#tour-mat-consumo-row');
+          const el = document.querySelector('.tour-material-row');
           if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
         }
       },
       {
         element: '.btn-export-pdf',
         popover: {
-          title: 'Documento Oficial',
-          description: 'Precisa anexar ao processo administrativo? Exporte o relatório em PDF.',
+          title: 'Exportar PDF',
+          description: 'Gere o documento oficial em formato PDF pronto para assinatura.',
           side: 'bottom',
           align: 'center'
         },
@@ -746,8 +746,8 @@ export const runMission06 = (userId: string, onComplete: () => void) => {
       {
         element: '.btn-export-excel',
         popover: {
-          title: 'Versão Editável',
-          description: 'Para ajustes manuais, exporte a planilha completa para o Excel com todas as colunas separadas.',
+          title: 'Exportar Excel',
+          description: 'Precisa manipular os dados? Exporte para planilha com um clique.',
           side: 'bottom',
           align: 'center'
         }
@@ -756,7 +756,7 @@ export const runMission06 = (userId: string, onComplete: () => void) => {
         element: '.btn-print',
         popover: {
           title: 'Impressão Direta',
-          description: 'Envie diretamente para a impressora sem precisar baixar o arquivo.',
+          description: 'Envie o relatório para a impressora sem precisar baixar arquivos.',
           side: 'bottom',
           align: 'center'
         }
@@ -764,8 +764,8 @@ export const runMission06 = (userId: string, onComplete: () => void) => {
       {
         element: '.tour-report-selector',
         popover: {
-          title: 'Explore os Anexos',
-          description: 'Nesta lista, pode aceder a todos os outros relatórios (Logístico, DOR, etc.). Missão cumprida! O seu P Trab está 100% dominado.',
+          title: 'Outros Relatórios',
+          description: 'Missão cumprida! Utilize este menu para navegar entre os anexos Logístico, de Ração, Horas de Voo e DOR.',
           side: 'left',
           align: 'start'
         },
