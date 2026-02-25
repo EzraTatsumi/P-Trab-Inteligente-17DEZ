@@ -48,7 +48,7 @@ interface OmTotals {
   suprimentoFundos: { total: number, totalND30: number, totalND39: number, totalEquipes: number, totalDias: number };
   passagens: { total: number, totalQuantidade: number, totalTrechos: number };
   concessionaria: { total: number, totalAgua: number, totalEnergia: number, totalRegistros: number };
-  horasVoo: { total: number, totalND30: number, totalND39: number, quantidadeHV: number, groupedHV: Record<string, { totalValor: number, totalHV: number }> };
+  horasVoo: { total: number, totalND30: number, totalND39: number, quantidadeHV: number, groupedHV: Record<string, { totalValor: number, totalHV: number }>; };
   materialConsumo: { total: number, totalND30: number, totalND39: number, groupedCategories: Record<string, { totalValor: number, totalND30: number, totalND39: number }> };
   complementoAlimentacao: { total: number, totalND30: number, totalND39: number, groupedCategories: Record<string, { totalValor: number, totalND30: number, totalND39: number }> };
   servicosTerceiros: { total: number, totalND33: number, totalND39: number, groupedCategories: Record<string, { totalValor: number, totalND33: number, totalND39: number }> };
@@ -186,7 +186,7 @@ const initializeOmTotals = (omName: string, ug: string): OmTotals => ({
   passagens: { total: 0, totalQuantidade: 0, totalTrechos: 0 },
   concessionaria: { total: 0, totalAgua: 0, totalEnergia: 0, totalRegistros: 0 },
   horasVoo: { total: 0, totalND30: 0, totalND39: 0, quantidadeHV: 0, groupedHV: {} },
-  materialConsumo: { total: 0, totalND30: 0, totalND39: 0, groupedCategories: {} },
+  materialConsumo: { total: 0, totalND30: number, totalND39: number, groupedCategories: {} },
   complementoAlimentacao: { total: 0, totalND30: 0, totalND39: 0, groupedCategories: {} },
   servicosTerceiros: { total: 0, totalND33: 0, totalND39: 0, groupedCategories: {} },
   materialPermanente: { total: 0, totalND52: 0, groupedCategories: {} },
@@ -893,10 +893,10 @@ const OmDetailsDialog = ({ om, totals, onClose }: any) => {
             <div>
               <h3 className="text-base font-bold text-purple-600 uppercase tracking-wider mb-5 flex items-center justify-between border-b border-purple-500/20 pb-2">
                 <div className="flex items-center gap-2"><Helicopter className="h-5 w-5" />Aba Aviação do Exército</div>
-                <span className="text-xl font-extrabold">{formatCurrency(om.totalAviacaoExercito)}</span>
+                <span className="text-xl font-extrabold">{formatNumber(om.horasVoo.quantidadeHV, 2)} HV</span>
               </h3>
               <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
-                <CategoryCard label="Horas de Voo" value={om.horasVoo.total} icon={Helicopter} colorClass="bg-purple-500/10 text-purple-600" nd30={om.horasVoo.totalND30} nd39={om.horasVoo.totalND39} extraInfo={`${formatNumber(om.horasVoo.quantidadeHV, 2)} HV`} details={<div className="space-y-2.5 text-[12px]">{Object.entries(om.horasVoo.groupedHV || {}).sort(([a], [b]) => a.localeCompare(b)).map(([tipo, data]: any) => (<div key={tipo} className="flex justify-between text-muted-foreground border-b border-border/20 pb-2 last:border-0"><span className="font-medium w-1/2 text-left truncate pr-3">{tipo}</span><div className="flex w-1/2 justify-between gap-3"><span className="font-medium text-right w-1/2 whitespace-nowrap">{formatNumber(data.totalHV, 2)} HV</span><span className="font-bold text-foreground text-right w-1/2 whitespace-nowrap">{formatCurrency(data.totalValor)}</span></div></div>))}</div>} />
+                <CategoryCard label="Horas de Voo" value={0} icon={Helicopter} colorClass="bg-purple-500/10 text-purple-600" nd30={om.horasVoo.totalND30} nd39={om.horasVoo.totalND39} extraInfo={`${formatNumber(om.horasVoo.quantidadeHV, 2)} HV`} details={<div className="space-y-2.5 text-[12px]">{Object.entries(om.horasVoo.groupedHV || {}).sort(([a], [b]) => a.localeCompare(b)).map(([tipo, data]: any) => (<div key={tipo} className="flex justify-between text-muted-foreground border-b border-border/20 pb-2 last:border-0"><span className="font-medium w-1/2 text-left truncate pr-3">{tipo}</span><div className="flex w-1/2 justify-between gap-3"><span className="font-medium text-right w-1/2 whitespace-nowrap">{formatNumber(data.totalHV, 2)} HV</span><span className="font-bold text-foreground text-right w-1/2 whitespace-nowrap">{formatCurrency(data.totalValor)}</span></div></div>))}</div>} />
               </div>
             </div>
           )}
@@ -1514,8 +1514,7 @@ export const PTrabCostSummary = ({ ptrabId, onOpenCreditDialog, creditGND3, cred
           <div className="flex justify-between text-purple-600 cursor-pointer" onClick={handleSummaryClick}>
             <span className="font-semibold text-sm">Aba Aviação do Exército</span>
             <div className="flex flex-col items-end">
-              <span className="font-bold text-sm">{formatCurrency(totals.totalAviacaoExercito)}</span>
-              <span className="text-[10px] font-medium leading-none">{formatNumber(totals.quantidadeHorasVoo, 2)} HV</span>
+              <span className="font-bold text-sm">{formatNumber(totals.quantidadeHorasVoo, 2)} HV</span>
             </div>
           </div>
         </div>
