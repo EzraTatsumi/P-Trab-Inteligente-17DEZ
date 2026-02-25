@@ -985,15 +985,15 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
   return (
     <div className="space-y-4">
       <div className="flex justify-end gap-2 print:hidden">
-        <Button onClick={exportPDF} variant="outline">
+        <Button onClick={exportPDF} variant="outline" className="btn-export-pdf">
           <Download className="mr-2 h-4 w-4" />
           Exportar PDF
         </Button>
-        <Button onClick={exportExcel} variant="outline">
+        <Button onClick={exportExcel} variant="outline" className="btn-export-excel">
           <FileSpreadsheet className="mr-2 h-4 w-4" />
           Exportar Excel
         </Button>
-        <Button onClick={handlePrint} variant="default">
+        <Button onClick={handlePrint} variant="default" className="btn-print">
           <Printer className="mr-2 h-4 w-4" />
           Imprimir
         </Button>
@@ -1178,7 +1178,7 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
                           }
 
                           return (
-                              <tr key={`${type}-${omName}-${(data as any).id || (data as any).groupKey || (data as any).registro?.id}-${rowItem.isContinuation ? `cont-${rowItem.continuationIndex}` : 'orig'}-${(data as any).subType || ''}`} className="expense-row">
+                              <tr key={`${type}-${omName}-${(data as any).id || (data as any).groupKey || (data as any).registro?.id}-${rowItem.isContinuation ? `cont-${rowItem.continuationIndex}` : 'orig'}-${(data as any).subType || ''}`} className={`expense-row ${type === 'MATERIAL DE CONSUMO' ? 'tour-material-row' : ''}`} id={type === 'MATERIAL DE CONSUMO' ? 'tour-mat-consumo-row' : undefined}>
                                 <td className="col-despesas-op"> 
                                   <div style={{ whiteSpace: 'pre-wrap' }}>{despesasLabel}</div>
                                 </td>
@@ -1280,6 +1280,7 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
         .col-om-op { width: 10%; text-align: center; vertical-align: top; }
         .col-nd-group { background-color: #D9D9D9; font-weight: bold; text-align: center; }
         .col-nd-op-small { width: 7%; text-align: center; vertical-align: middle; background-color: #B4C7E7 !important; }
+        .col-nd-op-small.total-gnd3-cell { background-color: #B4C7E7 !important; }
         .col-detalhamento-op { width: 38%; text-align: left; vertical-align: top; }
         .total-gnd3-cell { background-color: #B4C7E7 !important; }
         .subtotal-om-soma-row { font-weight: bold; page-break-inside: avoid; background-color: #D9D9D9; }
