@@ -1,5 +1,7 @@
 "use client";
 
+import { supabase } from "@/integrations/supabase/client";
+
 /**
  * Utilitários para gerenciar o progresso das missões de treinamento (Onboarding).
  */
@@ -39,22 +41,82 @@ export const startMission = (missionId: number, userId?: string) => {
 };
 
 /**
- * Marca uma missão como concluída.
+ * Busca as missões concluídas do banco de dados e atualiza o cache local.
+ * @returns Array de IDs de missões concluídas.
  */
-export const markMissionCompleted = (missionId: number, userId?: string) => {
+export const fetchCompletedMissions = async (userId: string): Promise<number[]> => {
+  try {
+    const { data, error } = await supabase
+      .from('user_missions')
+      .select('mission_id')
+      .eq('user_id', userId);
+
+    if (error) throw error;
+
+    const missionIds = (data || []).map(m => m.mission_id);
+    
+    // Atualiza o cache local para consistência síncrona
+    if (typeof window !== 'undefined') {
+      localStorage.setItem(getBaseKey(userId), JSON.stringify(missionIds));
+    }
+    
+    return missionIds;
+  } catch (error) {
+    console.error("Erro ao buscar missões do banco:", error);
+    return getCompletedMissions(userId); // Fallback para o cache
+  }
+};
+
+/**
+ * Marca uma missão como concluída no Supabase e no cache local.
+ */
+export const markMissionCompleted = async (missionId: number, userId?: string) => {
   if (typeof window === 'undefined') return;
   
-  const key = getBaseKey(userId);
-  const completed = getCompletedMissions(userId);
-  
-  if (!completed.includes(missionId)) {
-    const updated = [...completed, missionId];
-    localStorage.setItem(key, JSON.stringify(updated));
+  // Se não houver userId, não podemos salvar no banco devido às políticas de RLS
+  if (!userId) {
+    console.warn("markMissionCompleted: userId não fornecido, salvando apenas localmente.");
+    const key = getBaseKey();
+    const completed = getCompletedMissions();
+    if (!completed.includes(missionId)) {
+      localStorage.setItem(key, JSON.stringify([...completed, missionId]));
+    }
+    return;
+  }
+
+  try {
+    // 1. Salva no Supabase (Fonte da Verdade)
+    // Usamos o upsert para garantir que não haja duplicidade
+    const { error } = await supabase
+      .from('user_missions')
+      .upsert(
+        { user_id: userId, mission_id: missionId },
+        { onConflict: 'user_id, mission_id' }
+      );
+
+    if (error) throw error;
+
+    // 2. Atualiza o cache local e dispara eventos
+    const key = getBaseKey(userId);
+    const completed = getCompletedMissions(userId);
     
-    window.dispatchEvent(new CustomEvent('mission:completed', { detail: { missionId, userId } }));
-    
-    if (updated.length >= 6) {
-      window.dispatchEvent(new CustomEvent('tour:todas-concluidas', { detail: { userId } }));
+    if (!completed.includes(missionId)) {
+      const updated = [...completed, missionId];
+      localStorage.setItem(key, JSON.stringify(updated));
+      
+      window.dispatchEvent(new CustomEvent('mission:completed', { detail: { missionId, userId } }));
+      
+      if (updated.length >= 6) {
+        window.dispatchEvent(new CustomEvent('tour:todas-concluidas', { detail: { userId } }));
+      }
+    }
+  } catch (error) {
+    console.error("Erro ao persistir conclusão da missão:", error);
+    // Em caso de erro no banco, ainda atualizamos o local para não travar a UI do usuário
+    const key = getBaseKey(userId);
+    const completed = getCompletedMissions(userId);
+    if (!completed.includes(missionId)) {
+      localStorage.setItem(key, JSON.stringify([...completed, missionId]));
     }
   }
 };
