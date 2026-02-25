@@ -1661,7 +1661,7 @@ const PTrabManager = () => {
                 }
             }}
           >
-            Iniciar Configurações Reais
+            Iniciar Configurações Iniciais
           </Button>
         </DialogContent>
       </Dialog>
