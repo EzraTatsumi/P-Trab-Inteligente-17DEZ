@@ -3,25 +3,38 @@
 import React from 'react';
 import { Button } from "@/components/ui/button";
 import { AlertTriangle, XCircle } from "lucide-react";
+import { exitGhostMode } from '@/lib/missionUtils';
+import { useSession } from './SessionContextProvider';
 
 export const GhostModeBanner = () => {
   const [active, setActive] = React.useState(false);
+  const { user } = useSession();
 
   React.useEffect(() => {
     const checkGhost = () => {
       setActive(localStorage.getItem('is_ghost_mode') === 'true');
     };
+    
+    // Verifica inicialmente
     checkGhost();
+    
+    // Ouve mudanças no localStorage (útil entre abas ou mudanças programáticas)
     window.addEventListener('storage', checkGhost);
-    return () => window.removeEventListener('storage', checkGhost);
+    
+    // Custom event para quando o modo muda na mesma aba
+    const handleModeChange = () => checkGhost();
+    window.addEventListener('ghost-mode:change', handleModeChange);
+    
+    return () => {
+      window.removeEventListener('storage', checkGhost);
+      window.removeEventListener('ghost-mode:change', handleModeChange);
+    };
   }, []);
 
   if (!active) return null;
 
   const handleExit = () => {
-    localStorage.removeItem('is_ghost_mode');
-    localStorage.removeItem('active_mission_id');
-    window.location.href = '/ptrab';
+    exitGhostMode(user?.id);
   };
 
   return (
