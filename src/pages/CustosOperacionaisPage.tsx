@@ -1,5 +1,10 @@
 "use client";
 
+/**
+ * Página de Configuração de Custos Operacionais - v1.0.2
+ * Gerencia os parâmetros de diárias, passagens, concessionárias e materiais.
+ */
+
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useNavigate, useLocation, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
