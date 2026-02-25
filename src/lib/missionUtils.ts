@@ -6,6 +6,8 @@ import { supabase } from "@/integrations/supabase/client";
  * Utilitários para gerenciar o progresso das missões de treinamento (Onboarding).
  */
 
+export const TOTAL_MISSIONS = 6;
+
 const getBaseKey = (userId?: string) => userId ? `completed_missions_${userId}` : 'completed_missions';
 const VICTORY_SHOWN_KEY = (userId?: string) => userId ? `victory_shown_${userId}` : 'victory_shown';
 const GHOST_MODE_KEY = 'is_ghost_mode';
@@ -106,7 +108,7 @@ export const markMissionCompleted = async (missionId: number, userId?: string) =
       
       window.dispatchEvent(new CustomEvent('mission:completed', { detail: { missionId, userId } }));
       
-      if (updated.length >= 6) {
+      if (updated.length >= TOTAL_MISSIONS) {
         window.dispatchEvent(new CustomEvent('tour:todas-concluidas', { detail: { userId } }));
       }
     }
@@ -139,7 +141,7 @@ export const isMissionCompleted = (missionId: number, userId?: string): boolean 
 export const shouldShowVictory = (userId?: string): boolean => {
   const completed = getCompletedMissions(userId);
   const alreadyShown = localStorage.getItem(VICTORY_SHOWN_KEY(userId)) === 'true';
-  return completed.length >= 6 && !alreadyShown;
+  return completed.length >= TOTAL_MISSIONS && !alreadyShown;
 };
 
 export const markVictoryAsShown = (userId?: string) => {
