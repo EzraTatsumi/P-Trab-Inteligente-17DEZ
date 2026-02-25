@@ -213,7 +213,8 @@ export const fetchPTrabTotals = async (ptrabId: string): Promise<PTrabAggregated
       totalLogisticoGeral: 45000.50,
       totalOperacional: 1250.50,
       totalMaterialPermanente: 8900.00,
-      totalAviacaoExercito: 0,
+      totalAviacaoExercito: 15400.00, // Simula valor para 70 HV
+      quantidadeHorasVoo: 70,
       totalRacoesOperacionaisGeral: 0,
       totalClasseI: 15000,
       totalComplemento: 5000,
@@ -240,7 +241,10 @@ export const fetchPTrabTotals = async (ptrabId: string): Promise<PTrabAggregated
       totalSuprimentoFundos: 0, totalSuprimentoFundosND30: 0, totalSuprimentoFundosND39: 0, totalEquipesSuprimento: 0, totalDiasSuprimento: 0,
       totalPassagensND33: 0, totalQuantidadePassagens: 0, totalTrechosPassagens: 0,
       totalConcessionariaND39: 0, totalConcessionariaRegistros: 0, totalConcessionariaAgua: 0, totalConcessionariaEnergia: 0,
-      totalHorasVoo: 0, totalHorasVooND30: 0, totalHorasVooND39: 0, quantidadeHorasVoo: 0, groupedHorasVoo: {},
+      totalHorasVoo: 15400.00, totalHorasVooND30: 15400.00, totalHorasVooND39: 0, 
+      groupedHorasVoo: {
+        "HM-4 Pantera": { totalValor: 15400.00, totalHV: 70 }
+      },
       totalMaterialConsumo: 1250.50,
       totalMaterialConsumoND30: 1250.50,
       totalMaterialConsumoND39: 0,
@@ -256,8 +260,9 @@ export const fetchPTrabTotals = async (ptrabId: string): Promise<PTrabAggregated
       groupedByOmSolicitante: {
         "1 BIS": {
           ...initializeOmTotals("1º BIS", "160222"),
-          totalGeral: 1250.50,
+          totalGeral: 1250.50 + 15400.00, // Material + AvEx
           totalOperacional: 1250.50,
+          totalAviacaoExercito: 15400.00,
           materialConsumo: {
             total: 1250.50,
             totalND30: 1250.50,
@@ -265,14 +270,19 @@ export const fetchPTrabTotals = async (ptrabId: string): Promise<PTrabAggregated
             groupedCategories: {
               "Material de Construção": { totalValor: 1250.50, totalND30: 1250.50, totalND39: 0 }
             }
+          },
+          horasVoo: {
+            total: 15400.00, totalND30: 15400.00, totalND39: 0, quantidadeHV: 70,
+            groupedHV: { "HM-4 Pantera": { totalValor: 15400.00, totalHV: 70 } }
           }
         }
       },
       groupedByOmDestino: {
         "1 BIS": {
           ...initializeOmTotals("1º BIS", "160222"),
-          totalGeral: 1250.50,
+          totalGeral: 1250.50 + 15400.00,
           totalOperacional: 1250.50,
+          totalAviacaoExercito: 15400.00,
           materialConsumo: {
             total: 1250.50,
             totalND30: 1250.50,
@@ -470,6 +480,30 @@ export const fetchPTrabTotals = async (ptrabId: string): Promise<PTrabAggregated
         omTotals.concessionaria.totalRegistros += 1;
         if (record.categoria === 'Água/Esgoto') omTotals.concessionaria.totalAgua += val39;
         else if (record.categoria === 'Energia Elétrica') omTotals.concessionaria.totalEnergia += val39;
+      });
+    });
+
+    // --- 11. Horas de Voo (AvEx) ---
+    (horasVoo || []).forEach(record => {
+      const omS = getOmTotals(record.organizacao, record.ug, 'solicitante');
+      const omD = getOmTotals(record.om_detentora || record.organizacao, record.ug_detentora || record.ug, 'destino');
+      [omS, omD].forEach(omTotals => {
+        const val30 = Number(record.valor_nd_30 || 0);
+        const val39 = Number(record.valor_nd_39 || 0);
+        const total = val30 + val39;
+        
+        // Atualiza o campo robusto para agregação direta
+        omTotals.totalAviacaoExercito += total;
+        
+        omTotals.horasVoo.total += total;
+        omTotals.horasVoo.totalND30 += val30;
+        omTotals.horasVoo.totalND39 += val39;
+        omTotals.horasVoo.quantidadeHV += Number(record.quantidade_hv || 0);
+        
+        const tipo = record.tipo_anv || 'Geral';
+        if (!omTotals.horasVoo.groupedHV[tipo]) omTotals.horasVoo.groupedHV[tipo] = { totalValor: 0, totalHV: 0 };
+        omTotals.horasVoo.groupedHV[tipo].totalValor += total;
+        omTotals.horasVoo.groupedHV[tipo].totalHV += Number(record.quantidade_hv || 0);
       });
     });
 
@@ -1479,7 +1513,10 @@ export const PTrabCostSummary = ({ ptrabId, onOpenCreditDialog, creditGND3, cred
           </div>
           <div className="flex justify-between text-purple-600 cursor-pointer" onClick={handleSummaryClick}>
             <span className="font-semibold text-sm">Aba Aviação do Exército</span>
-            <span className="font-bold text-sm">{formatNumber(totals.quantidadeHorasVoo, 2)} HV</span>
+            <div className="flex flex-col items-end">
+              <span className="font-bold text-sm">{formatCurrency(totals.totalAviacaoExercito)}</span>
+              <span className="text-[10px] font-medium leading-none">{formatNumber(totals.quantidadeHorasVoo, 2)} HV</span>
+            </div>
           </div>
         </div>
       );
