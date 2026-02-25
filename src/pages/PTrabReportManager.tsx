@@ -708,6 +708,17 @@ const PTrabReportManager = () => {
   const [loading, setLoading] = useState(true);
   const [selectedReport, setSelectedReport] = useState<ReportType>('logistico');
 
+  // A) Estado do Menu
+  const [isReportMenuOpen, setIsReportMenuOpen] = useState(false);
+  useEffect(() => {
+    (window as any).openReportMenu = () => setIsReportMenuOpen(true);
+    (window as any).closeReportMenu = () => setIsReportMenuOpen(false);
+    return () => {
+      delete (window as any).openReportMenu;
+      delete (window as any).closeReportMenu;
+    };
+  }, []);
+
   const isLubrificante = (r: ClasseIIIRegistro) => r.tipo_equipamento === 'LUBRIFICANTE_CONSOLIDADO';
   const isCombustivel = (r: ClasseIIIRegistro) => r.tipo_equipamento === 'COMBUSTIVEL_CONSOLIDADO';
   const currentReportOption = useMemo(() => REPORT_OPTIONS.find(r => r.value === selectedReport)!, [selectedReport]);
@@ -723,7 +734,7 @@ const PTrabReportManager = () => {
     if (isGhostMode()) {
       setPtrabData(GHOST_DATA.p_trab_exemplo);
       
-      // Injeta dados mockados para o relatório
+      // Injeta dados mockados para o relatório operacional (Missão 6)
       const mockMaterialConsumo = GHOST_DATA.missao_03.subitens_lista.flatMap(si =>
         si.itens_aquisicao.map(item => ({
            ...item,
@@ -887,12 +898,16 @@ const PTrabReportManager = () => {
     loadData();
   }, [loadData]);
 
-  // GATILHO DO TOUR MISSÃO 06
+  // B) Corrigir o Gatilho do Tour (Substituir o useEffect da Missão 06 atual por este)
   useEffect(() => {
     if (loading || !user?.id) return;
     const startTour = searchParams.get('startTour') === 'true';
     const missionId = localStorage.getItem('active_mission_id');
-    if (startTour && isGhostMode() && missionId === '6') {
+    
+    // O Tour precisa da aba operacional aberta para encontrar a tabela
+    if (startTour && isGhostMode() && (missionId === '6' || !missionId)) {
+      setSelectedReport('operacional'); 
+      
       setTimeout(() => {
         runMission06(user.id, () => {
           const completed = JSON.parse(localStorage.getItem(`completed_missions_${user.id}`) || '[]');
@@ -902,9 +917,9 @@ const PTrabReportManager = () => {
           window.dispatchEvent(new CustomEvent('tour:todas-concluidas', { detail: { userId: user.id } }));
           navigate('/ptrab?showHub=true');
         });
-      }, 500);
+      }, 800);
     }
-  }, [loading, user?.id, searchParams]);
+  }, [loading, user?.id, searchParams, navigate]);
 
   const gruposPorOM = useMemo(() => {
     const grupos: Record<string, GrupoOM> = {};
@@ -1081,7 +1096,13 @@ const PTrabReportManager = () => {
           <Button variant="ghost" onClick={() => navigate('/ptrab')}><ArrowLeft className="mr-2 h-4 w-4" />Voltar para Gerenciamento</Button>
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-2"><FileText className="h-4 w-4 text-primary" /><span className="text-sm font-medium">Relatório:</span></div>
-            <Select value={selectedReport} onValueChange={(value) => setSelectedReport(value as ReportType)}>
+            {/* C) Vincular a abertura do Menu ao Select (no JSX) */}
+            <Select 
+              value={selectedReport} 
+              onValueChange={(value) => setSelectedReport(value as ReportType)}
+              open={isReportMenuOpen}
+              onOpenChange={setIsReportMenuOpen}
+            >
               <SelectTrigger className="w-[320px] tour-report-selector"><SelectValue placeholder="Selecione o Relatório" /></SelectTrigger>
               <SelectContent>{REPORT_OPTIONS.map(option => (<SelectItem key={option.value} value={option.value}><div className="flex items-center gap-2"><option.icon className={`h-4 w-4 ${option.iconClass}`} />{option.label}</div></SelectItem>))}</SelectContent>
             </Select>
