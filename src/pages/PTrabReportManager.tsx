@@ -1,3 +1,5 @@
+"use client";
+
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -293,6 +295,33 @@ export const getClasseIILabel = (category: string): string => {
     }
 };
 
+export const generateClasseIMemoriaCalculoUnificada = (registro: ClasseIRegistro, tipo: 'QS' | 'QR' | 'OP'): string => {
+    if (registro.categoria === 'RACAO_OPERACIONAL') {
+        if (tipo === 'OP') {
+            if (registro.memoria_calculo_op_customizada) return registro.memoria_calculo_op_customizada;
+            return generateRacaoOperacionalMemoriaCalculo({ ...registro, diasOperacao: registro.dias_operacao, omQS: null, ugQS: null, nrRefInt: null, valorQS: null, valorQR: null, calculos: {} as any } as any);
+        }
+        return "Memória não aplicável.";
+    }
+    if (tipo === 'QS') return registro.memoriaQSCustomizada || "Memória QS padrão";
+    if (tipo === 'QR') return registro.memoriaQRCustomizada || "Memória QR padrão";
+    return "";
+};
+
+export const generateClasseIIMemoriaCalculo = (registro: any, isClasseII: boolean): string => registro.detalhamento_customizado || "Memória de cálculo padrão";
+export const generateDiariaMemoriaCalculoUnificada = (registro: any, diretrizesOp: any) => registro.detalhamento_customizado || "Memória Diária padrão";
+export const generateVerbaOperacionalMemoriaCalculada = (registro: any) => registro.detalhamento_customizado || "Memória Verba padrão";
+export const generateSuprimentoFundosMemoriaCalculada = (registro: any) => registro.detalhamento_customizado || "Memória Suprimento padrão";
+export const generatePassagemMemoriaCalculada = (registro: any) => registro.detalhamento_customizado || "Memória Passagem padrão";
+export const generateConcessionariaMemoriaCalculada = (registro: any) => registro.detalhamento_customizado || "Memória Concessionária padrão";
+export const generateMaterialConsumoMemoriaCalculada = (registro: any) => registro.detalhamento_customizado || "Memória Consumo padrão";
+export const generateComplementoMemoriaCalculada = (registro: any, subType?: any) => registro.detalhamento_customizado || "Memória Complemento padrão";
+export const generateServicoMemoriaCalculada = (registro: any) => registro.detalhamento_customizado || "Memória Serviço padrão";
+
+// =================================================================
+// COMPONENTE PRINCIPAL
+// =================================================================
+
 type ReportType = 'logistico' | 'racao_operacional' | 'operacional' | 'material_permanente' | 'hora_voo' | 'dor';
 
 const REPORT_OPTIONS = [
@@ -304,6 +333,14 @@ const REPORT_OPTIONS = [
   { value: 'dor', label: 'DOR', icon: ClipboardList, iconClass: 'text-gray-500', fileSuffix: 'Aba DOR' },
 ] as const;
 
+const NoDataFallback = ({ reportName, message }: { reportName: string, message: string }) => (
+    <div className="text-center py-16 border border-dashed border-muted-foreground/30 rounded-lg bg-muted/20">
+        <Frown className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+        <h3 className="text-xl font-semibold">{reportName}</h3>
+        <p className="text-muted-foreground mt-2 max-w-md mx-auto">{message}</p>
+    </div>
+);
+
 const PTrabReportManager = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -311,8 +348,23 @@ const PTrabReportManager = () => {
   const [loading, setLoading] = useState(true);
   const [selectedReport, setSelectedReport] = useState<ReportType>('logistico');
   const [ptrabData, setPtrabData] = useState<PTrabData | null>(null);
+
+  // Estados de dados
+  const [registrosClasseI, setRegistrosClasseI] = useState<ClasseIRegistro[]>([]);
+  const [registrosClasseII, setRegistrosClasseII] = useState<ClasseIIRegistro[]>([]);
+  const [registrosClasseIII, setRegistrosClasseIII] = useState<ClasseIIIRegistro[]>([]);
+  const [registrosDiaria, setRegistrosDiaria] = useState<DiariaRegistro[]>([]);
+  const [registrosVerbaOperacional, setRegistrosVerbaOperacional] = useState<VerbaOperacionalRegistro[]>([]);
+  const [registrosPassagem, setRegistrosPassagem] = useState<PassagemRegistro[]>([]);
+  const [registrosConcessionaria, setRegistrosConcessionaria] = useState<ConcessionariaRegistro[]>([]);
+  const [registrosMaterialConsumo, setRegistrosMaterialConsumo] = useState<MaterialConsumoRegistro[]>([]);
+  const [registrosComplementoAlimentacao, setRegistrosComplementoAlimentacao] = useState<ComplementoAlimentacaoRegistro[]>([]);
+  const [registrosServicosTerceiros, setRegistrosServicosTerceiros] = useState<ServicoTerceiroRegistro[]>([]);
+  const [registrosHorasVoo, setRegistrosHorasVoo] = useState<HorasVooRegistro[]>([]);
+  const [diretrizesOperacionais, setDiretrizesOperacionais] = useState<any>(null);
+  const [diretrizesPassagens, setDiretrizesPassagens] = useState<any[]>([]);
   
-  const { user } = { user: { id: 'ghost-user' } }; 
+  const { user } = { user: { id: 'ghost-user' } };
 
   useEffect(() => {
     const startTour = searchParams.get('startTour') === 'true';
@@ -331,45 +383,129 @@ const PTrabReportManager = () => {
         return;
     }
     setLoading(true);
+    
     if (isGhostMode()) {
         setPtrabData(GHOST_DATA.p_trab_exemplo);
+        // Mock data for Ghost Mode to show report
+        setRegistrosMaterialConsumo([{
+          id: 'ghost-mc-1',
+          p_trab_id: ptrabId || 'ghost',
+          organizacao: '1º BIS',
+          ug: '160222',
+          dias_operacao: 15,
+          efetivo: 150,
+          group_name: 'Material de Construção',
+          valor_total: 1250.50,
+          valor_nd_30: 1250.50,
+          valor_nd_39: 0,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+          itens_aquisicao: [] as any
+        } as any]);
+    } else {
+        // Fetch real data logic would go here
     }
     setLoading(false);
   }, [ptrabId, navigate]);
 
   useEffect(() => { loadData(); }, [loadData]);
 
-  if (loading) return <div className="min-h-screen flex items-center justify-center"><Loader2 className="animate-spin" /></div>;
+  const hasDataForReport = useMemo(() => {
+    if (isGhostMode()) return true;
+    switch (selectedReport) {
+      case 'logistico': return registrosClasseI.length > 0 || registrosClasseII.length > 0 || registrosClasseIII.length > 0;
+      case 'operacional': return registrosDiaria.length > 0 || registrosMaterialConsumo.length > 0 || registrosServicosTerceiros.length > 0;
+      case 'hora_voo': return registrosHorasVoo.length > 0;
+      default: return false;
+    }
+  }, [selectedReport, registrosClasseI, registrosClasseII, registrosClasseIII, registrosDiaria, registrosMaterialConsumo, registrosServicosTerceiros, registrosHorasVoo]);
+
+  const renderReport = () => {
+    if (!ptrabData) return null;
+    const currentOption = REPORT_OPTIONS.find(o => o.value === selectedReport)!;
+
+    if (!hasDataForReport) {
+        return <NoDataFallback reportName={currentOption.label} message="Não há dados registrados para este relatório." />;
+    }
+
+    switch (selectedReport) {
+      case 'logistico':
+        return (
+          <PTrabLogisticoReport
+            ptrabData={ptrabData}
+            registrosClasseI={registrosClasseI}
+            registrosClasseII={registrosClasseII}
+            registrosClasseIII={registrosClasseIII}
+            nomeRM={ptrabData.rm_vinculacao || ""}
+            omsOrdenadas={[ptrabData.nome_om]}
+            gruposPorOM={{}}
+            calcularTotaisPorOM={() => ({})}
+            fileSuffix={currentOption.fileSuffix}
+            generateClasseIMemoriaCalculo={generateClasseIMemoriaCalculoUnificada as any}
+            generateClasseIIMemoriaCalculo={generateClasseIIMemoriaCalculo as any}
+            generateClasseVMemoriaCalculo={(r: any) => generateClasseIIMemoriaCalculo(r, false)}
+            generateClasseVIMemoriaCalculo={(r: any) => generateClasseIIMemoriaCalculo(r, false)}
+            generateClasseVIIMemoriaCalculo={(r: any) => generateClasseIIMemoriaCalculo(r, false)}
+            generateClasseVIIIMemoriaCalculo={(r: any) => generateClasseIIMemoriaCalculo(r, false)}
+          />
+        );
+      case 'racao_operacional':
+        return <PTrabRacaoOperacionalReport ptrabData={ptrabData} registrosClasseI={registrosClasseI} fileSuffix={currentOption.fileSuffix} generateClasseIMemoriaCalculo={generateClasseIMemoriaCalculoUnificada as any} />;
+      case 'operacional':
+        return (
+            <PTrabOperacionalReport
+                ptrab={ptrabData}
+                diarias={registrosDiaria}
+                passagens={registrosPassagem}
+                verbaOperacional={registrosVerbaOperacional}
+                concessionarias={registrosConcessionaria}
+                horasVoo={registrosHorasVoo}
+                materialConsumo={registrosMaterialConsumo}
+                complementoAlimentacao={registrosComplementoAlimentacao}
+                servicosTerceiros={registrosServicosTerceiros}
+                materialPermanente={[]}
+            />
+        );
+      case 'hora_voo':
+        return <PTrabHorasVooReport ptrabData={ptrabData} omsOrdenadas={[ptrabData.nome_om]} gruposPorOM={{}} fileSuffix={currentOption.fileSuffix} />;
+      default:
+        return <div className="text-center py-12 text-muted-foreground">Relatório não implementado.</div>;
+    }
+  };
+
+  if (loading) return <div className="min-h-screen flex items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
 
   return (
     <div className="min-h-screen bg-background">
-      <PageMetadata 
-        title="Relatórios P Trab" 
-        description="Gerenciador de Relatórios do P Trab" 
-        canonicalPath="/ptrab/relatorios" 
-      />
-      <div className="print:hidden p-4 border-b flex justify-between items-center sticky top-0 bg-background z-10">
+      <PageMetadata title="Relatórios P Trab" description="Gerenciador de Relatórios do P Trab" canonicalPath="/ptrab/relatorios" />
+      
+      <div className="print:hidden sticky top-0 z-50 bg-background border-b border-border/50 shadow-sm">
+        <div className="container max-w-7xl mx-auto py-4 px-4 flex items-center justify-between">
           <Button variant="ghost" onClick={() => navigate('/ptrab')}><ArrowLeft className="mr-2 h-4 w-4" />Voltar</Button>
-          <Select value={selectedReport} onValueChange={(v) => setSelectedReport(v as ReportType)}>
-              <SelectTrigger className="w-[300px]"><SelectValue /></SelectTrigger>
-              <SelectContent>{REPORT_OPTIONS.map(o => (<SelectItem key={o.value} value={o.value}><div className="flex items-center gap-2"><o.icon className={o.iconClass} />{o.label}</div></SelectItem>))}</SelectContent>
-          </Select>
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2">
+              <FileText className="h-4 w-4 text-primary" />
+              <span className="text-sm font-medium">Relatório:</span>
+            </div>
+            <Select value={selectedReport} onValueChange={(value) => setSelectedReport(value as ReportType)}>
+              <SelectTrigger className="w-[320px]"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {REPORT_OPTIONS.map(option => (
+                  <SelectItem key={option.value} value={option.value}>
+                    <div className="flex items-center gap-2">
+                      <option.icon className={`h-4 w-4 ${option.iconClass}`} />
+                      {option.label}
+                    </div>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
       </div>
-      <div className="container max-w-7xl mx-auto py-8">
-          {selectedReport === 'operacional' && ptrabData && (
-              <PTrabOperacionalReport 
-                ptrab={ptrabData} 
-                diarias={[]} 
-                passagens={[]} 
-                verbaOperacional={[]} 
-                concessionarias={[]} 
-                horasVoo={[]} 
-                materialConsumo={[]} 
-                complementoAlimentacao={[]} 
-                servicosTerceiros={[]} 
-                materialPermanente={[]} 
-              />
-          )}
+
+      <div className="container max-w-7xl mx-auto py-4 px-4">
+        {renderReport()}
       </div>
     </div>
   );
