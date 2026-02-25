@@ -1,44 +1,37 @@
 "use client";
 
 import React from 'react';
+import { AlertCircle, XCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { AlertTriangle, XCircle } from "lucide-react";
+import { isGhostMode, exitGhostMode } from "@/lib/ghostStore";
 
-export const GhostModeBanner = () => {
-  const [active, setActive] = React.useState(false);
-
-  React.useEffect(() => {
-    const checkGhost = () => {
-      setActive(localStorage.getItem('is_ghost_mode') === 'true');
-    };
-    checkGhost();
-    window.addEventListener('storage', checkGhost);
-    return () => window.removeEventListener('storage', checkGhost);
-  }, []);
-
-  if (!active) return null;
+const GhostModeBanner = () => {
+  if (!isGhostMode()) return null;
 
   const handleExit = () => {
-    localStorage.removeItem('is_ghost_mode');
-    localStorage.removeItem('active_mission_id');
-    window.location.href = '/ptrab';
+    exitGhostMode();
+    window.location.reload();
   };
 
   return (
-    <div className="bg-amber-600 text-white py-2 px-4 flex items-center justify-between shadow-md sticky top-0 z-[100] animate-in slide-in-from-top duration-300">
-      <div className="flex items-center gap-2 text-sm font-bold">
-        <AlertTriangle className="h-4 w-4" />
-        <span>MODO DE INSTRUÇÃO ATIVO: Você está operando em um ambiente de simulação.</span>
+    <div className="bg-amber-500 text-white py-2 px-4 flex items-center justify-between sticky top-0 z-50 shadow-md">
+      <div className="flex items-center gap-2 max-w-[80%]">
+        <AlertCircle className="h-5 w-5 shrink-0" />
+        <p className="text-sm font-medium leading-tight">
+          <span className="font-bold">Modo Simulação Ativo:</span> Você está em um ambiente de treinamento com dados fictícios. Nenhuma alteração afetará seus Planos de Trabalho reais.
+        </p>
       </div>
       <Button 
         variant="ghost" 
         size="sm" 
         onClick={handleExit}
-        className="text-white hover:bg-white/20 h-8 gap-2 border border-white/30"
+        className="text-white hover:bg-amber-600 hover:text-white border-white/20 ml-4 h-8 gap-2"
       >
         <XCircle className="h-4 w-4" />
-        Sair da Simulação
+        Sair do Treinamento
       </Button>
     </div>
   );
 };
+
+export default GhostModeBanner;
