@@ -323,7 +323,7 @@ export interface PTrabOperacionalReportProps {
 export const CLASSE_V_CATEGORIES = ["Armt L", "Armt P", "IODCT", "DQBRN"];
 export const CLASSE_VI_CATEGORIES = ["Gerador", "Embarcação", "Equipamento de Engenharia"];
 export const CLASSE_VII_CATEGORIES = ["Comunicações", "Informática"];
-export const CLASSE_VIII_CATEGORIES = ["Saúde", "Remonta/Veteridária"];
+export const CLASSE_VIII_CATEGORIES = ["Saúde", "Remonta/Veterinária"];
 export const CLASSE_IX_CATEGORIES = ["Vtr Administrativa", "Vtr Operacional", "Motocicleta", "Vtr Blindada"];
 
 export const formatDate = (date: string) => {
@@ -730,11 +730,11 @@ const PTrabReportManager = () => {
       return;
     }
 
-    // INTERCEPTAÇÃO GHOST MODE COM LINHA FIXA E MEMÓRIA DE CÁLCULO REALISTA
+    // INTERCEPTAÇÃO GHOST MODE COM LINHA FIXA E ARRAY DE ITENS
     if (isGhostMode()) {
         setPtrabData(GHOST_DATA.p_trab_exemplo);
         
-        // LINHA CHUMBADA E GARANTIDA PARA O TOUR NÃO FALHAR
+        // LINHA CHUMBADA COM O ARRAY DE ITENS OBRIGATÓRIO
         setRegistrosMaterialConsumo([{
             id: 'mock-tour-id',
             p_trab_id: ptrabId || 'ghost-id',
@@ -751,6 +751,10 @@ const PTrabReportManager = () => {
             valor_nd_30: 212.50,
             valor_nd_39: 0,
             detalhamento_customizado: "33.90.30 - Aquisição de Material de Construção para atender 150 militares do 1º BIS, durante 15 dias de execucao.\n\nCálculo:\nFórmula: Qtd do item x Valor do item.\n- 5 Cimento Portland 50kg x R$ 42,50/unid. = R$ 212,50.\n\nTotal: R$ 212,50.\n(Pregão 5/2025 - UASG 160.222).",
+            // A PEÇA QUE FALTAVA: O array que o PTrabOperacionalReport usa para gerar a linha
+            itens_aquisicao: [
+                { id: 'item-cimento-1', nome: 'Cimento Portland 50kg', quantidade: 5, valor_unitario: 42.50 }
+            ],
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString()
         } as any]);
