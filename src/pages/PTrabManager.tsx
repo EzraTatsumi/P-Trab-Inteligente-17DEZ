@@ -84,6 +84,9 @@ export interface PTrab extends PTrabDB {
   hasPendingRequests: boolean;
 }
 
+/**
+ * Interface simples para exibição e seleção de P Trabs em diálogos de consolidação/clonagem.
+ */
 export interface SimplePTrab {
   id: string;
   numero_ptrab: string;
@@ -183,6 +186,7 @@ const PTrabManager = () => {
   const [showInstructionHub, setShowInstructionHub] = useState(false);
   const [showVictory, setShowVictory] = useState(false);
 
+  // Detecta o modo fantasma de forma reativa para a query
   const ghostActive = isGhostMode();
 
   const { data: onboardingStatus, isLoading: isLoadingOnboarding } = useOnboardingStatus();
@@ -231,22 +235,14 @@ const PTrabManager = () => {
         window.scrollTo({ top: 0, behavior: 'smooth' });
     };
 
-    // Escuta conclusão de missão para atualizar a interface
-    const handleMissionCompleted = () => {
-        queryClient.invalidateQueries({ queryKey: ['pTrabs'] });
-        queryClient.invalidateQueries({ queryKey: ['activation-status'] });
-    };
-
     window.addEventListener('tour:todas-concluidas', handleVictory);
     window.addEventListener('instruction-hub:open', handleOpenHub);
-    window.addEventListener('mission:completed', handleMissionCompleted);
     
     return () => {
         window.removeEventListener('tour:todas-concluidas', handleVictory);
         window.removeEventListener('instruction-hub:open', handleOpenHub);
-        window.removeEventListener('mission:completed', handleMissionCompleted);
     };
-  }, [user?.id, queryClient]);
+  }, [user?.id]);
 
   useEffect(() => {
     if (isGhostMode()) {
@@ -262,6 +258,7 @@ const PTrabManager = () => {
   }, [isLoadingOnboarding, onboardingStatus]);
 
   const { data: pTrabs = [], isLoading: loading, refetch: loadPTrabs } = useQuery({
+    // Adicionamos ghostActive na chave para que o React Query invalide o cache real e use o simulado
     queryKey: ['pTrabs', user?.id, ghostActive],
     queryFn: async () => {
       if (!user?.id) return [];
@@ -327,7 +324,10 @@ const PTrabManager = () => {
       });
     },
     enabled: !!user?.id,
+    staleTime: 1000 * 60 * 5,
   });
+
+  // ... (restante do componente mantido sem alterações nas funções auxiliares)
 
   useEffect(() => {
     (window as any).openSettings = () => setSettingsOpen(true);
@@ -359,7 +359,10 @@ const PTrabManager = () => {
 
     if (startTour && ghost && missionId === '1' && user?.id) {
       runMission01(user.id, () => {
-        markMissionCompleted(1, user.id);
+        const completed = JSON.parse(localStorage.getItem(`completed_missions_${user.id}`) || '[]');
+        if (!completed.includes(1)) {
+          localStorage.setItem(`completed_missions_${user.id}`, JSON.stringify([...completed, 1]));
+        }
         setShowInstructionHub(true);
       });
     }
