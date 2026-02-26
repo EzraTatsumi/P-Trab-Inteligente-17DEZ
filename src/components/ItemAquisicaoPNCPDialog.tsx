@@ -1,4 +1,5 @@
 "use client";
+
 import React, { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -93,8 +94,9 @@ const ItemAquisicaoPNCPDialog: React.FC<ItemAquisicaoPNCPDialogProps> = ({
                     existing.uasg === item.uasg
                 );
 
-                // Cruza com o resultado do Banco
-                const catalogEntry = catalogData?.find(c => c.code === item.codigo_catmat);
+                // Força a tipagem do retorno para evitar erros de SelectQueryError
+                const entries = (catalogData as any[]) || [];
+                const catalogEntry = entries.find(c => c.code === item.codigo_catmat);
                 const hasCatalogShortDesc = !!(catalogEntry && catalogEntry.short_description && catalogEntry.short_description.trim() !== '');
                 
                 let finalShortDesc = '';
@@ -104,10 +106,10 @@ const ItemAquisicaoPNCPDialog: React.FC<ItemAquisicaoPNCPDialogProps> = ({
                 if (hasCatalogShortDesc) {
                     finalShortDesc = catalogEntry.short_description;
                     isCataloged = true;
-                    needsInfo = false; // Vai direto para PRONTOS
+                    needsInfo = false;
                 } else {
                     finalShortDesc = item.descricao_item.substring(0, 50);
-                    needsInfo = true;  // Vai para REQUER REVISÃO
+                    needsInfo = true;
                 }
 
                 return {
@@ -118,6 +120,7 @@ const ItemAquisicaoPNCPDialog: React.FC<ItemAquisicaoPNCPDialogProps> = ({
                     status: isDuplicate ? 'duplicate' : (needsInfo ? 'needs_catmat_info' : 'valid'),
                     messages: isDuplicate ? ['Chave de contrato duplicada'] : [],
                     isCatmatCataloged: isCataloged,
+                    nomePdm: item.descricao_item.substring(0, 30), // Adicionado para cumprir a interface
                 };
             });
             setInspectionList(listToInspect);
