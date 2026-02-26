@@ -10,6 +10,7 @@ import { toast } from "sonner";
 import { fetchArpsByUasg } from '@/integrations/supabase/api';
 import { ArpItemResult, DetailedArpItem } from '@/types/pncp';
 import ArpSearchResultsList from './ArpSearchResultsList';
+import { isGhostMode } from '@/lib/ghostStore';
 
 const formSchema = z.object({
     uasg: z.string().min(6, { message: "A UASG deve ter 6 dígitos." }).max(6).regex(/^\d+$/, { message: "A UASG deve conter apenas números." }),
@@ -46,7 +47,16 @@ const ArpUasgSearchForm: React.FC<ArpUasgSearchFormProps> = ({
         try {
             const data = await fetchArpsByUasg({ uasg: values.uasg });
             setResults(data);
-            if (data.length === 0) toast.warning("Nenhuma ARP encontrada para esta UASG.");
+            
+            if (data.length === 0) {
+                toast.warning("Nenhuma ARP encontrada para esta UASG.");
+            } else if (isGhostMode() && values.uasg === '160222') {
+                // GATILHO AUTOMÁTICO PARA A MISSÃO 2 DO TOUR
+                // Pequeno delay para o React processar os resultados antes do tour avançar
+                setTimeout(() => {
+                    window.dispatchEvent(new CustomEvent('tour:avancar'));
+                }, 300);
+            }
         } catch (error: any) {
             toast.error(error.message || "Falha ao buscar ARPs.");
         } finally {

@@ -54,8 +54,15 @@ const ArpSearchResultsList: React.FC<ArpSearchResultsListProps> = ({
             <h3 className="text-sm font-semibold text-muted-foreground px-1">
                 {searchedOmName || `Resultados para UASG ${searchedUasg}`}
             </h3>
-            {results.map((arp) => (
-                <Card key={arp.id} className="overflow-hidden border-primary/20">
+            {results.map((arp, index) => (
+                <Card 
+                    key={arp.id} 
+                    className={cn(
+                        "overflow-hidden border-2 transition-all", 
+                        expandedArpId === arp.id ? "border-primary/50 shadow-md" : "hover:border-primary/30 border-primary/20",
+                        index === 0 && "tour-item-pregao" // ADICIONA A IDENTIFICAÇÃO PARA O TOUR
+                    )}
+                >
                     <CardHeader className="p-4 cursor-pointer hover:bg-muted/50 transition-colors tour-expand-pregao" onClick={() => toggleArp(arp)}>
                         <div className="flex items-center justify-between">
                             <div className="space-y-1">
