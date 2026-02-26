@@ -213,9 +213,14 @@ const CustosOperacionaisPage = () => {
       if (passRes.error) throw passRes.error;
       if (concRes.error) throw concRes.error;
 
+      const passagensFormatted = (passRes.data as any || []).map((item: any) => ({
+          ...item,
+          trechos: item.trechos as unknown as TrechoPassagem[]
+      })) as DiretrizPassagem[];
+
       return {
         operacional: opRes.data || defaultDiretrizes(selectedYear),
-        passagens: (passRes.data as DiretrizPassagem[]) || [],
+        passagens: passagensFormatted,
         concessionaria: (concRes.data as DiretrizConcessionaria[]) || []
       };
     },

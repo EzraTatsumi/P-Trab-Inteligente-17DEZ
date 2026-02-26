@@ -23,7 +23,7 @@ export const useOnboardingStatus = () => {
         supabase.from('organizacoes_militares').select('id', { count: 'exact', head: true }).eq('user_id', user.id),
         supabase.from('diretrizes_custeio').select('id', { count: 'exact', head: true }).eq('user_id', user.id),
         supabase.from('diretrizes_operacionais').select('id', { count: 'exact', head: true }).eq('user_id', user.id),
-        supabase.from('user_missions').select('id', { count: 'exact', head: true }).eq('user_id', user.id)
+        supabase.from('user_missions' as any).select('id', { count: 'exact', head: true }).eq('user_id', user.id)
       ]);
 
       const hasOMs = (oms.count || 0) > 0;

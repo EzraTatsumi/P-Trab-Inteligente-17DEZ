@@ -49,13 +49,13 @@ export const startMission = (missionId: number, userId?: string) => {
 export const fetchCompletedMissions = async (userId: string): Promise<number[]> => {
   try {
     const { data, error } = await supabase
-      .from('user_missions')
+      .from('user_missions' as any)
       .select('mission_id')
       .eq('user_id', userId);
 
     if (error) throw error;
 
-    const missionIds = (data || []).map(m => m.mission_id);
+    const missionIds = (data as any[] || []).map(m => m.mission_id);
     
     // Atualiza o cache local para consistência síncrona
     if (typeof window !== 'undefined') {
@@ -90,7 +90,7 @@ export const markMissionCompleted = async (missionId: number, userId?: string) =
     // 1. Salva no Supabase (Fonte da Verdade)
     // Usamos o upsert para garantir que não haja duplicidade
     const { error } = await supabase
-      .from('user_missions')
+      .from('user_missions' as any)
       .upsert(
         { user_id: userId, mission_id: missionId },
         { onConflict: 'user_id, mission_id' }
