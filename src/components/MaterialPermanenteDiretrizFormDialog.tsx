@@ -173,9 +173,10 @@ const MaterialPermanenteDiretrizFormDialog: React.FC<MaterialPermanenteDiretrizF
                         </div>
                         {subitemForm.itens_aquisicao.length > 0 && (
                             <Table>
-                                <TableHeader><TableRow><TableHead>Descrição</TableHead><TableHead className="text-center">CATMAT</TableHead><TableHead className="text-center">Pregão</TableHead><TableHead className="text-center">UASG</TableHead><TableHead className="text-right">Valor</TableHead><TableHead className="text-right">Ações</TableHead></TableRow></TableHeader>
+                                <TableHeader><TableRow><TableHead>Nome Reduzido</TableHead><TableHead>Descrição</TableHead><TableHead className="text-center">CATMAT</TableHead><TableHead className="text-center">Pregão</TableHead><TableHead className="text-center">UASG</TableHead><TableHead className="text-right">Valor</TableHead><TableHead className="text-right">Ações</TableHead></TableRow></TableHeader>
                                 <TableBody>{subitemForm.itens_aquisicao.map(item => (
                                     <TableRow key={item.id}>
+                                        <TableCell className="text-sm font-medium">{item.descricao_reduzida || 'N/A'}</TableCell>
                                         <TableCell className="text-xs">{item.descricao_item}</TableCell>
                                         <TableCell className="text-center text-sm">{item.codigo_catmat || 'N/A'}</TableCell>
                                         <TableCell className="text-center text-sm">{formatPregao(item.numero_pregao)}</TableCell>
@@ -199,7 +200,7 @@ const MaterialPermanenteDiretrizFormDialog: React.FC<MaterialPermanenteDiretrizF
                 mode="permanente" 
                 onSelect={(c) => setSubitemForm(p => ({ ...p, nr_subitem: c.nr_subitem, nome_subitem: c.nome_subitem, descricao_subitem: c.descricao_subitem }))} 
             />
-            <CatmatCatalogDialog open={isCatmatCatalogOpen} onOpenChange={setIsCatmatCatalogOpen} onSelect={(c) => setItemForm(p => ({ ...p, codigo_catmat: c.code }))} />
+            <CatmatCatalogDialog open={isCatmatCatalogOpen} onOpenChange={setIsCatmatCatalogOpen} onSelect={(c) => setItemForm(p => ({ ...p, codigo_catmat: c.code, descricao_item: c.description, descricao_reduzida: c.short_description || '' }))} />
             <ItemAquisicaoBulkUploadDialog 
                 open={isBulkUploadOpen} 
                 onOpenChange={setIsBulkUploadOpen} 
