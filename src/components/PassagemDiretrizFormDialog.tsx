@@ -14,11 +14,9 @@ import { OMData } from "@/lib/omUtils";
 import { numberToRawDigits, formatCurrency, formatCodug } from "@/lib/formatUtils";
 import { useFormNavigation } from "@/hooks/useFormNavigation";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-// Importações de tipos assumidas do arquivo src/types/diretrizesPassagens
-// Como não posso editar o arquivo de tipos, redefino as interfaces necessárias para resolver os erros de compilação.
 
 // Tipos redefinidos/ajustados para resolver erros de compilação:
-export type TipoTransporte = 'AEREO' | 'TERRESTRE' | 'FLUVIAL'; // Corrigido: 'AÉREO' -> 'AEREO'
+export type TipoTransporte = 'AEREO' | 'TERRESTRE' | 'FLUVIAL';
 
 export interface TrechoPassagem {
     id: string;
@@ -27,10 +25,9 @@ export interface TrechoPassagem {
     valor: number;
     tipo_transporte: TipoTransporte;
     is_ida_volta: boolean;
-    // Removido 'quantidade_passagens' para o contexto de diretriz (custo unitário)
 }
 
-// Estrutura base da diretriz (como está no Supabase, com datas como string)
+// Estrutura base da diretriz
 export interface DiretrizPassagem {
     id: string;
     user_id: string;
@@ -46,7 +43,7 @@ export interface DiretrizPassagem {
     data_fim_vigencia: string | null;
 }
 
-// Estrutura do formulário (sem campos de sistema e com datas como Date)
+// Estrutura do formulário
 export interface DiretrizPassagemForm extends Omit<DiretrizPassagem, 'id' | 'user_id' | 'created_at' | 'updated_at' | 'data_inicio_vigencia' | 'data_fim_vigencia'> {
     data_inicio_vigencia: Date | null;
     data_fim_vigencia: Date | null;
@@ -77,15 +74,14 @@ const initialTrechoForm: Omit<TrechoPassagem, 'id'> & { rawValor: string } = {
     destino: '',
     valor: 0,
     rawValor: numberToRawDigits(0),
-    tipo_transporte: 'AEREO', // CORREÇÃO 1: Acentuação
+    tipo_transporte: 'AEREO',
     is_ida_volta: false,
 };
 
-// Definindo o tipo interno do formulário para incluir Date objects e campos obrigatórios
+// Definindo o tipo interno do formulário
 type InternalPassagemForm = DiretrizPassagemForm & { 
     trechos: TrechoPassagem[], 
     id?: string,
-    // Campos obrigatórios que estavam faltando no tipo base (DiretrizPassagemForm)
     ano_referencia: number;
     ativo: boolean;
 };
@@ -109,9 +105,8 @@ const PassagemDiretrizFormDialog: React.FC<PassagemDiretrizFormDialogProps> = ({
                 numero_pregao: editData.numero_pregao || '',
                 trechos: editData.trechos,
                 id: editData.id,
-                ano_referencia: editData.ano_referencia, // CORREÇÃO 2: Incluído
-                ativo: editData.ativo, // CORREÇÃO 2: Incluído
-                // CORREÇÃO 3 & 4: Conversão de string ISO para Date object
+                ano_referencia: editData.ano_referencia,
+                ativo: editData.ativo,
                 data_inicio_vigencia: editData.data_inicio_vigencia ? parseISO(editData.data_inicio_vigencia) : null,
                 data_fim_vigencia: editData.data_fim_vigencia ? parseISO(editData.data_fim_vigencia) : null,
             };
@@ -122,14 +117,14 @@ const PassagemDiretrizFormDialog: React.FC<PassagemDiretrizFormDialogProps> = ({
             ug_referencia: '', 
             numero_pregao: '', 
             trechos: [],
-            ano_referencia: selectedYear, // CORREÇÃO 5: Incluído
-            ativo: true, // CORREÇÃO 5: Incluído
+            ano_referencia: selectedYear,
+            ativo: true,
             data_inicio_vigencia: null,
             data_fim_vigencia: null,
         };
     };
 
-    const [passagemForm, setPassagemForm] = useState<InternalPassagemForm>(() => getInitialFormState(diretrizToEdit)); // CORREÇÃO 2 & 5: Uso de função inicializadora
+    const [passagemForm, setPassagemForm] = useState<InternalPassagemForm>(() => getInitialFormState(diretrizToEdit));
     
     const [selectedOmReferenciaId, setSelectedOmReferenciaId] = useState<string | undefined>(undefined);
     const [trechoForm, setTrechoForm] = useState<typeof initialTrechoForm>(initialTrechoForm);
@@ -179,7 +174,7 @@ const PassagemDiretrizFormDialog: React.FC<PassagemDiretrizFormDialogProps> = ({
             return;
         }
 
-        const newTrecho: TrechoPassagem = { // CORREÇÃO 6: TrechoPassagem agora não exige 'quantidade_passagens'
+        const newTrecho: TrechoPassagem = {
             id: editingTrechoId || Math.random().toString(36).substring(2, 9),
             origem: trechoForm.origem.toUpperCase(),
             destino: trechoForm.destino.toUpperCase(),
@@ -194,14 +189,13 @@ const PassagemDiretrizFormDialog: React.FC<PassagemDiretrizFormDialogProps> = ({
 
         setPassagemForm(prev => ({ ...prev, trechos: updatedTrechos }));
 
-        // Resetar formulário de trecho
         setEditingTrechoId(null);
         setTrechoForm(initialTrechoForm);
     };
 
     const handleEditTrecho = (trecho: TrechoPassagem) => {
         setEditingTrechoId(trecho.id);
-        setTrechoForm({ // CORREÇÃO 7: O tipo de trechoForm agora é compatível com TrechoPassagem sem 'quantidade_passagens'
+        setTrechoForm({
             origem: trecho.origem,
             destino: trecho.destino,
             valor: trecho.valor,
@@ -227,13 +221,11 @@ const PassagemDiretrizFormDialog: React.FC<PassagemDiretrizFormDialogProps> = ({
             return;
         }
         
-        // Validação de datas
         if (passagemForm.data_inicio_vigencia && passagemForm.data_fim_vigencia && passagemForm.data_inicio_vigencia > passagemForm.data_fim_vigencia) {
             toast.error("A data de início da vigência não pode ser posterior à data de fim.");
             return;
         }
 
-        // Conversão de Date objects para string ISO (formato YYYY-MM-DD) para salvar no Supabase
         const dataToSave = {
             ...passagemForm,
             ano_referencia: selectedYear,
@@ -261,7 +253,7 @@ const PassagemDiretrizFormDialog: React.FC<PassagemDiretrizFormDialogProps> = ({
                 </DialogHeader>
 
                 <div className="space-y-6 py-2">
-                    {/* Seção de Dados do Contrato */}
+                    {/* Dados do Contrato */}
                     <Card className="p-4">
                         <CardTitle className="text-base mb-4">
                             Dados do Contrato
@@ -295,14 +287,13 @@ const PassagemDiretrizFormDialog: React.FC<PassagemDiretrizFormDialogProps> = ({
                             </div>
                         </div>
                         
-                        {/* Novas Datas de Vigência */}
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
                             <div className="space-y-2">
                                 <Label htmlFor="data_inicio_vigencia">Início da Vigência</Label>
                                 <DatePicker
                                     id="data_inicio_vigencia"
                                     date={passagemForm.data_inicio_vigencia}
-                                    setDate={(date) => setPassagemForm(prev => ({ ...prev, data_inicio_vigencia: date || null }))} // CORREÇÃO 8: Tipagem resolvida
+                                    setDate={(date) => setPassagemForm(prev => ({ ...prev, data_inicio_vigencia: date || null }))}
                                     placeholder="Selecione a data de início"
                                     disabled={loading}
                                 />
@@ -312,7 +303,7 @@ const PassagemDiretrizFormDialog: React.FC<PassagemDiretrizFormDialogProps> = ({
                                 <DatePicker
                                     id="data_fim_vigencia"
                                     date={passagemForm.data_fim_vigencia}
-                                    setDate={(date) => setPassagemForm(prev => ({ ...prev, data_fim_vigencia: date || null }))} // CORREÇÃO 9: Tipagem resolvida
+                                    setDate={(date) => setPassagemForm(prev => ({ ...prev, data_fim_vigencia: date || null }))}
                                     placeholder="Selecione a data final"
                                     disabled={loading}
                                 />
@@ -320,16 +311,13 @@ const PassagemDiretrizFormDialog: React.FC<PassagemDiretrizFormDialogProps> = ({
                         </div>
                     </Card>
 
-                    {/* Seção de Gerenciamento de Trechos */}
+                    {/* Gerenciamento de Trechos */}
                     <Card className="p-4 space-y-4">
                         <CardTitle className="text-base font-semibold">
                             {editingTrechoId ? "Editar Trecho" : "Adicionar Novo Trecho"}
                         </CardTitle>
                         
-                        {/* Formulário de Trecho */}
-                        {/* Ajustado para grid-cols-6 para otimizar o espaço */}
                         <div className="grid grid-cols-1 md:grid-cols-6 gap-4 border p-3 rounded-lg bg-muted/50">
-                            {/* Campo Origem (1 coluna) */}
                             <div className="space-y-2 col-span-1">
                                 <Label htmlFor="trecho-origem">Origem *</Label>
                                 <Input
@@ -340,7 +328,6 @@ const PassagemDiretrizFormDialog: React.FC<PassagemDiretrizFormDialogProps> = ({
                                     onKeyDown={handleEnterToNextField}
                                 />
                             </div>
-                            {/* Campo Destino (1 coluna) */}
                             <div className="space-y-2 col-span-1">
                                 <Label htmlFor="trecho-destino">Destino *</Label>
                                 <Input
@@ -351,7 +338,6 @@ const PassagemDiretrizFormDialog: React.FC<PassagemDiretrizFormDialogProps> = ({
                                     onKeyDown={handleEnterToNextField}
                                 />
                             </div>
-                            {/* Campo Valor (1 coluna) */}
                             <div className="space-y-2 col-span-1">
                                 <Label htmlFor="trecho-valor">Valor (R$) *</Label>
                                 <CurrencyInput
@@ -362,7 +348,6 @@ const PassagemDiretrizFormDialog: React.FC<PassagemDiretrizFormDialogProps> = ({
                                     onKeyDown={handleEnterToNextField}
                                 />
                             </div>
-                            {/* Campo Tipo (1 coluna) */}
                             <div className="space-y-2 col-span-1">
                                 <Label htmlFor="trecho-tipo">Tipo *</Label>
                                 <Select
@@ -379,7 +364,6 @@ const PassagemDiretrizFormDialog: React.FC<PassagemDiretrizFormDialogProps> = ({
                                     </SelectContent>
                                 </Select>
                             </div>
-                            {/* Switch para Ida/Volta (1 coluna) */}
                             <div className="col-span-1 flex items-center pt-6">
                                 <Switch
                                     id="trecho-ida-volta"
@@ -390,7 +374,6 @@ const PassagemDiretrizFormDialog: React.FC<PassagemDiretrizFormDialogProps> = ({
                                     {trechoForm.is_ida_volta ? "Ida e Volta" : "Somente Ida"}
                                 </Label>
                             </div>
-                            {/* Botão Adicionar (1 coluna) */}
                             <div className="space-y-2 col-span-1 flex flex-col justify-end">
                                 <Button 
                                     type="button" 
@@ -403,7 +386,6 @@ const PassagemDiretrizFormDialog: React.FC<PassagemDiretrizFormDialogProps> = ({
                             </div>
                         </div>
                         
-                        {/* Tabela de Trechos */}
                         {passagemForm.trechos.length > 0 ? (
                             <Table>
                                 <TableHeader>
@@ -419,7 +401,9 @@ const PassagemDiretrizFormDialog: React.FC<PassagemDiretrizFormDialogProps> = ({
                                     {passagemForm.trechos.map(trecho => (
                                         <TableRow key={trecho.id}>
                                             <TableCell className="font-medium">{trecho.origem} &rarr; {trecho.destino}</TableCell>
-                                            <TableCell className="text-center">{trecho.tipo_transporte}</TableCell>
+                                            <TableCell className="text-center">
+                                                {trecho.tipo_transporte === 'AEREO' ? 'AÉREO' : trecho.tipo_transporte}
+                                            </TableCell>
                                             <TableCell className="text-right font-semibold">{formatCurrency(trecho.valor)}</TableCell>
                                             <TableCell className="text-center">
                                                 {trecho.is_ida_volta ? "Ida e Volta" : "Somente Ida"}
