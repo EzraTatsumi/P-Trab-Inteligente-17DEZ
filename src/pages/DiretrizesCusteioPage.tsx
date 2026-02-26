@@ -164,6 +164,7 @@ const DiretrizesCusteioPage = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }, []);
 
+  // --- 1. Busca os anos disponíveis com Cache Inteligente ---
   const { data: availableYearsData, isLoading: isLoadingYears } = useQuery({
     queryKey: ["availableYears_custeio", user?.id],
     queryFn: async () => {
@@ -182,6 +183,7 @@ const DiretrizesCusteioPage = () => {
     enabled: !!user?.id
   });
 
+  // Efeito para processar os anos e definir o ano inicial
   useEffect(() => {
     if (!isLoadingDefaultYear && defaultYearData && availableYearsData !== undefined) {
       const yearsToInclude = new Set(availableYearsData);
@@ -203,6 +205,7 @@ const DiretrizesCusteioPage = () => {
     }
   }, [isLoadingDefaultYear, defaultYearData, availableYearsData]);
 
+  // --- 2. Busca todos os dados simultaneamente (Paralelismo MÁXIMO) ---
   const { data: fetchedData, isLoading: isFetchingDiretrizes } = useQuery({
     queryKey: ["diretrizes_custeio_all", selectedYear, user?.id],
     queryFn: async () => {
@@ -239,6 +242,7 @@ const DiretrizesCusteioPage = () => {
     staleTime: 5 * 60 * 1000,
   });
 
+  // --- 3. Atualiza os inputs quando os dados chegam ---
   useEffect(() => {
     if (fetchedData) {
       setLoading(true);
@@ -375,7 +379,7 @@ const DiretrizesCusteioPage = () => {
           if (c9Error) throw c9Error;
       }
 
-      // Invalida o status de onboarding para atualizar o Dashboard
+      // INVALIDAÇÃO DO STATUS DE ONBOARDING
       queryClient.invalidateQueries({ queryKey: ["onboardingStatus"] });
       
       queryClient.invalidateQueries({ queryKey: ["availableYears_custeio", authUser.id] });
@@ -401,7 +405,7 @@ const DiretrizesCusteioPage = () => {
       if (error) throw error;
       
       queryClient.invalidateQueries({ queryKey: ["defaultLogisticaYear", authUser.id] });
-      // Invalida o status de onboarding para atualizar o Dashboard
+      // INVALIDAÇÃO DO STATUS DE ONBOARDING
       queryClient.invalidateQueries({ queryKey: ["onboardingStatus"] });
       
       toast.success(`Ano ${diretrizes.ano_referencia} definido como padrão para cálculos!`);
@@ -449,7 +453,7 @@ const DiretrizesCusteioPage = () => {
       setSelectedYear(targetYear);
       queryClient.invalidateQueries({ queryKey: ["availableYears_custeio", authUser.id] });
       queryClient.invalidateQueries({ queryKey: ["diretrizes_custeio_all", targetYear, authUser.id] });
-      // Invalida o status de onboarding para atualizar o Dashboard
+      // INVALIDAÇÃO DO STATUS DE ONBOARDING
       queryClient.invalidateQueries({ queryKey: ["onboardingStatus"] });
     } catch (error: any) {
       console.error("Erro ao copiar diretrizes:", error);
@@ -480,7 +484,7 @@ const DiretrizesCusteioPage = () => {
       setIsYearManagementDialogOpen(false);
       queryClient.invalidateQueries({ queryKey: ["availableYears_custeio", authUser.id] });
       queryClient.invalidateQueries({ queryKey: ["diretrizes_custeio_all", year, authUser.id] });
-      // Invalida o status de onboarding para atualizar o Dashboard
+      // INVALIDAÇÃO DO STATUS DE ONBOARDING
       queryClient.invalidateQueries({ queryKey: ["onboardingStatus"] });
     } catch (error: any) {
       console.error("Erro ao excluir diretrizes:", error);

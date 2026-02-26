@@ -107,7 +107,7 @@ const OmConfigPage = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["organizacoesMilitares"] });
-      // Invalida o status de onboarding para atualizar o Dashboard
+      // INVALIDAÇÃO DO STATUS DE ONBOARDING
       queryClient.invalidateQueries({ queryKey: ["onboardingStatus"] });
       
       toast.success(`OM ${editingId ? "atualizada" : "adicionada"} com sucesso!`);
@@ -129,7 +129,7 @@ const OmConfigPage = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["organizacoesMilitares"] });
-      // Invalida o status de onboarding para atualizar o Dashboard
+      // INVALIDAÇÃO DO STATUS DE ONBOARDING
       queryClient.invalidateQueries({ queryKey: ["onboardingStatus"] });
       
       toast.success("OM excluída com sucesso!");

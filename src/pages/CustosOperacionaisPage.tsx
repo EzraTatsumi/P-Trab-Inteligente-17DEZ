@@ -397,7 +397,7 @@ const CustosOperacionaisPage = () => {
           }
           
           queryClient.invalidateQueries({ queryKey: ['diretrizesMaterialConsumo', selectedYear, authUser.id] });
-          // Invalida o status de onboarding para atualizar o Dashboard
+          // INVALIDAÇÃO DO STATUS DE ONBOARDING
           queryClient.invalidateQueries({ queryKey: ["onboardingStatus"] });
           
           setDiretrizMaterialConsumoToEdit(null);
@@ -434,7 +434,7 @@ const CustosOperacionaisPage = () => {
           }
           
           queryClient.invalidateQueries({ queryKey: ['diretrizesServicosTerceiros', selectedYear, authUser.id] });
-          // Invalida o status de onboarding para atualizar o Dashboard
+          // INVALIDAÇÃO DO STATUS DE ONBOARDING
           queryClient.invalidateQueries({ queryKey: ["onboardingStatus"] });
           
           setDiretrizServicosTerceirosToEdit(null);
@@ -471,7 +471,7 @@ const CustosOperacionaisPage = () => {
           }
           
           queryClient.invalidateQueries({ queryKey: ['diretrizesMaterialPermanente', selectedYear, authUser.id] });
-          // Invalida o status de onboarding para atualizar o Dashboard
+          // INVALIDAÇÃO DO STATUS DE ONBOARDING
           queryClient.invalidateQueries({ queryKey: ["onboardingStatus"] });
           
           setDiretrizMaterialPermanenteToEdit(null);
@@ -500,7 +500,7 @@ const CustosOperacionaisPage = () => {
           toast.error(sanitizeError(error));
       } finally {
           queryClient.invalidateQueries({ queryKey: ['diretrizesMaterialConsumo', selectedYear, user?.id] });
-          // Invalida o status de onboarding para atualizar o Dashboard
+          // INVALIDAÇÃO DO STATUS DE ONBOARDING
           queryClient.invalidateQueries({ queryKey: ["onboardingStatus"] });
       }
   };
@@ -515,7 +515,7 @@ const CustosOperacionaisPage = () => {
           toast.error(sanitizeError(error));
       } finally {
           queryClient.invalidateQueries({ queryKey: ['diretrizesServicosTerceiros', selectedYear, user?.id] });
-          // Invalida o status de onboarding para atualizar o Dashboard
+          // INVALIDAÇÃO DO STATUS DE ONBOARDING
           queryClient.invalidateQueries({ queryKey: ["onboardingStatus"] });
       }
   };
@@ -530,7 +530,7 @@ const CustosOperacionaisPage = () => {
           toast.error(sanitizeError(error));
       } finally {
           queryClient.invalidateQueries({ queryKey: ['diretrizesMaterialPermanente', selectedYear, user?.id] });
-          // Invalida o status de onboarding para atualizar o Dashboard
+          // INVALIDAÇÃO DO STATUS DE ONBOARDING
           queryClient.invalidateQueries({ queryKey: ["onboardingStatus"] });
       }
   };
@@ -562,7 +562,7 @@ const CustosOperacionaisPage = () => {
           }
           
           queryClient.invalidateQueries({ queryKey: ['diretrizesCustosOperacionais', selectedYear, authUser.id] });
-          // Invalida o status de onboarding para atualizar o Dashboard
+          // INVALIDAÇÃO DO STATUS DE ONBOARDING
           queryClient.invalidateQueries({ queryKey: ["onboardingStatus"] });
           
           setDiretrizToEdit(null);
@@ -591,7 +591,7 @@ const CustosOperacionaisPage = () => {
           await supabase.from('diretrizes_passagens').delete().eq('id', id);
           toast.success("Contrato de Passagens excluído!");
           queryClient.invalidateQueries({ queryKey: ['diretrizesCustosOperacionais', selectedYear, user?.id] });
-          // Invalida o status de onboarding para atualizar o Dashboard
+          // INVALIDAÇÃO DO STATUS DE ONBOARDING
           queryClient.invalidateQueries({ queryKey: ["onboardingStatus"] });
       } catch (error) {
           toast.error(sanitizeError(error));
@@ -618,7 +618,7 @@ const CustosOperacionaisPage = () => {
           }
           
           queryClient.invalidateQueries({ queryKey: ['diretrizesCustosOperacionais', selectedYear, authUser.id] });
-          // Invalida o status de onboarding para atualizar o Dashboard
+          // INVALIDAÇÃO DO STATUS DE ONBOARDING
           queryClient.invalidateQueries({ queryKey: ["onboardingStatus"] });
           
           setDiretrizConcessionariaToEdit(null);
@@ -648,7 +648,7 @@ const CustosOperacionaisPage = () => {
           await supabase.from('diretrizes_concessionaria').delete().eq('id', id);
           toast.success("Diretriz de Concessionária excluída!");
           queryClient.invalidateQueries({ queryKey: ['diretrizesCustosOperacionais', selectedYear, user?.id] });
-          // Invalida o status de onboarding para atualizar o Dashboard
+          // INVALIDAÇÃO DO STATUS DE ONBOARDING
           queryClient.invalidateQueries({ queryKey: ["onboardingStatus"] });
       } catch (error) {
           toast.error(sanitizeError(error));
@@ -1031,7 +1031,7 @@ const CustosOperacionaisPage = () => {
   const handleMaterialConsumoImportSuccess = () => {
       if (user?.id && selectedYear > 0) {
           queryClient.invalidateQueries({ queryKey: ['diretrizesMaterialConsumo', selectedYear, user.id] });
-          // Invalida o status de onboarding para atualizar o Dashboard
+          // INVALIDAÇÃO DO STATUS DE ONBOARDING
           queryClient.invalidateQueries({ queryKey: ["onboardingStatus"] });
       }
   };
@@ -1046,7 +1046,7 @@ const CustosOperacionaisPage = () => {
       }
       if (user?.id && selectedYear > 0) {
           queryClient.invalidateQueries({ queryKey: ['diretrizesServicosTerceiros', selectedYear, user.id] });
-          // Invalida o status de onboarding para atualizar o Dashboard
+          // INVALIDAÇÃO DO STATUS DE ONBOARDING
           queryClient.invalidateQueries({ queryKey: ["onboardingStatus"] });
       }
   };
@@ -1061,7 +1061,7 @@ const CustosOperacionaisPage = () => {
       }
       if (user?.id && selectedYear > 0) {
           queryClient.invalidateQueries({ queryKey: ['diretrizesMaterialPermanente', selectedYear, user.id] });
-          // Invalida o status de onboarding para atualizar o Dashboard
+          // INVALIDAÇÃO DO STATUS DE ONBOARDING
           queryClient.invalidateQueries({ queryKey: ["onboardingStatus"] });
       }
   };
@@ -1132,7 +1132,7 @@ const CustosOperacionaisPage = () => {
       toast.success("Diretrizes Operacionais salvas com sucesso!");
       
       queryClient.invalidateQueries({ queryKey: ['diretrizesCustosOperacionais', selectedYear, authUser.id] });
-      // Invalida o status de onboarding para atualizar o Dashboard
+      // INVALIDAÇÃO DO STATUS DE ONBOARDING
       queryClient.invalidateQueries({ queryKey: ["onboardingStatus"] });
       
       await loadAvailableYears(defaultYear);
@@ -1168,7 +1168,7 @@ const CustosOperacionaisPage = () => {
       if (error) throw error;
       
       queryClient.invalidateQueries({ queryKey: ["defaultOperacionalYear", authUser.id] });
-      // Invalida o status de onboarding para atualizar o Dashboard
+      // INVALIDAÇÃO DO STATUS DE ONBOARDING
       queryClient.invalidateQueries({ queryKey: ["onboardingStatus"] });
       
       toast.success(`Ano ${selectedYear} definido como padrão para cálculos!`);
@@ -1332,7 +1332,7 @@ const CustosOperacionaisPage = () => {
       setSelectedYear(targetYear);
       
       queryClient.invalidateQueries({ queryKey: ['diretrizesCustosOperacionais', targetYear, authUser.id] });
-      // Invalida o status de onboarding para atualizar o Dashboard
+      // INVALIDAÇÃO DO STATUS DE ONBOARDING
       queryClient.invalidateQueries({ queryKey: ["onboardingStatus"] });
       
       await loadAvailableYears(defaultYear);
@@ -1372,7 +1372,7 @@ const CustosOperacionaisPage = () => {
       setIsYearManagementDialogOpen(false);
       
       queryClient.invalidateQueries({ queryKey: ['diretrizesCustosOperacionais', year, authUser.id] });
-      // Invalida o status de onboarding para atualizar o Dashboard
+      // INVALIDAÇÃO DO STATUS DE ONBOARDING
       queryClient.invalidateQueries({ queryKey: ["onboardingStatus"] });
       
       await loadAvailableYears(defaultYear);
