@@ -87,7 +87,7 @@ const ArpUasgSearchForm: React.FC<ArpUasgSearchFormProps> = ({
             if (!searchedOmName) setSearchedOmName(`UASG ${values.uasg}`);
             
             const results = await fetchArpsByUasg({ 
-                codigoUnidadeGerenciadora: values.uasg, 
+                ...( { codigoUnidadeGerenciadora: values.uasg } as any ), 
                 dataVigenciaInicialMin: values.dataInicio, 
                 dataVigenciaInicialMax: values.dataFim 
             });
