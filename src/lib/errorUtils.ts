@@ -7,15 +7,19 @@ const isDev = import.meta.env.DEV;
 
 export const sanitizeError = (error: any): string => {
   // Log full error for debugging (visible in browser console)
-  console.error('Error details:', error?.code, error?.message, error);
+  console.error('Error details:', error?.code, error?.message, error?.status, error);
 
   // In development, show full errors for debugging
   if (isDev) {
+    // Se for erro 409 (Conflict) vindo do status HTTP
+    if (error?.status === 409 || error?.code === '23505') {
+        return 'Este registro já existe (conflito de dados duplicados)';
+    }
     return error?.message || 'Ocorreu um erro inesperado';
   }
 
   // PostgreSQL error codes
-  if (error?.code === '23505') return 'Este registro já existe para o ano selecionado';
+  if (error?.code === '23505' || error?.status === 409) return 'Este registro já existe para o ano/referência selecionado';
   if (error?.code === '23503') return 'Dados relacionados não encontrados';
   if (error?.code === '23502') return 'Campos obrigatórios não preenchidos no banco';
   if (error?.code === '42501') return 'Acesso negado pelas políticas de segurança (RLS)';
