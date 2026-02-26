@@ -470,40 +470,67 @@ const CustosOperacionaisPage = () => {
   };
 
   const handleSaveMaterialPermanente = async (data: Partial<DiretrizMaterialPermanente> & { ano_referencia: number }) => {
-      try {
+      if (isGhostMode()) {
           setIsSaving(true);
-          const { data: { user: authUser } } = await supabase.auth.getUser();
-          if (!authUser) throw new Error("Usuário não autenticado");
-          
-          const dbData = {
-              user_id: authUser.id,
-              ano_referencia: data.ano_referencia,
-              nr_subitem: data.nr_subitem!,
-              nome_subitem: data.nome_subitem!,
-              descricao_subitem: data.descricao_subitem || null,
-              itens_aquisicao: data.itens_aquisicao as unknown as Json,
-              ativo: data.ativo ?? true,
-          };
-          
-          if (data.id) {
-              await supabase.from('diretrizes_material_permanente' as any).update(dbData).eq('id', data.id);
-              toast.success("Subitem de Material Permanente atualizado!");
-          } else {
-              await supabase.from('diretrizes_material_permanente' as any).insert([dbData]);
-              toast.success("Novo Subitem de Material Permanente cadastrado!");
-          }
-          
-          queryClient.invalidateQueries({ queryKey: ['diretrizesMaterialPermanente', selectedYear, authUser.id] });
-          queryClient.invalidateQueries({ queryKey: ["onboardingStatus"] });
-          
-          setDiretrizMaterialPermanenteToEdit(null);
-          setIsMaterialPermanenteFormOpen(false);
-      } catch (error: any) {
-          toast.error(sanitizeError(error));
-      } finally {
-          setIsSaving(false);
+          setTimeout(() => {
+              const newItem = {
+                  ...data,
+                  id: data.id || `ghost-subitem-${data.nr_subitem}`, 
+                  user_id: 'ghost-user',
+                  ativo: data.ativo ?? true,
+              } as DiretrizMaterialPermanente;
+              
+              setDiretrizesMaterialPermanente(prev => {
+                  const filtered = prev.filter(p => p.id !== newItem.id);
+                  return [...filtered, newItem].sort((a, b) => a.nr_subitem.localeCompare(b.nr_subitem));
+              });
+              
+              setIsSaving(false);
+              setDiretrizMaterialPermanenteToEdit(null);
+              setIsMaterialPermanenteFormOpen(false);
+              toast.success("Simulação: Subitem salvo localmente!");
+          }, 500);
+          return;
       }
-  };
+  try {
+      setIsSaving(true);
+      const { data: { user: authUser } } = await supabase.auth.getUser();
+      if (!authUser) throw new Error("Usuário não autenticado");
+      
+      const dbData = {
+          user_id: authUser.id,
+          ano_referencia: data.ano_referencia,
+          nr_subitem: data.nr_subitem!,
+          nome_subitem: data.nome_subitem!,
+          descricao_subitem: data.descricao_subitem || null,
+          itens_aquisicao: data.itens_aquisicao as unknown as Json,
+          ativo: data.ativo ?? true,
+      };
+      
+      if (data.id) {
+          await supabase.from('diretrizes_material_permanente' as any).update(dbData).eq('id', data.id);
+          setDiretrizesMaterialPermanente(prev => prev.map(d => d.id === data.id ? { ...d, ...dbData } as any : d));
+          toast.success("Subitem de Material Permanente atualizado!");
+      } else {
+          const { data: insertedData, error } = await supabase.from('diretrizes_material_permanente' as any).insert([dbData]).select().single();
+          if (error) throw error;
+          if (insertedData) {
+              setDiretrizesMaterialPermanente(prev => [...prev, insertedData as any].sort((a, b) => a.nr_subitem.localeCompare(b.nr_subitem)));
+          }
+          toast.success("Novo Subitem de Material Permanente cadastrado!");
+      }
+      
+      queryClient.invalidateQueries({ queryKey: ['diretrizesMaterialPermanente', selectedYear, authUser.id] });
+      queryClient.invalidateQueries({ queryKey: ["onboardingStatus"] });
+      
+      setDiretrizMaterialPermanenteToEdit(null);
+      setIsMaterialPermanenteFormOpen(false);
+  } catch (error: any) {
+      toast.error(sanitizeError(error));
+  } finally {
+      setIsSaving(false);
+  }
+};
 
   const handleDeleteMaterialConsumo = async (id: string, nome: string) => {
       if (!confirm(`Tem certeza que deseja excluir o Subitem da ND "${nome}"?`)) return;
@@ -542,17 +569,24 @@ const CustosOperacionaisPage = () => {
 
   const handleDeleteMaterialPermanente = async (id: string, nome: string) => {
       if (!confirm(`Tem certeza que deseja excluir o Subitem da ND "${nome}"?`)) return;
-      try {
-          const { error } = await supabase.from('diretrizes_material_permanente' as any).delete().eq('id', id);
-          if (error) throw error;
-          toast.success("Subitem da ND excluído!");
-      } catch (error) {
-          toast.error(sanitizeError(error));
-      } finally {
-          queryClient.invalidateQueries({ queryKey: ['diretrizesMaterialPermanente', selectedYear, user?.id] });
-          queryClient.invalidateQueries({ queryKey: ["onboardingStatus"] });
+      
+      if (isGhostMode()) {
+          setDiretrizesMaterialPermanente(current => current.filter(d => d.id !== id));
+          toast.success("Simulação: Subitem removido localmente!");
+          return;
       }
-  };
+  try {
+      setDiretrizesMaterialPermanente(current => current.filter(d => d.id !== id));
+      const { error } = await supabase.from('diretrizes_material_permanente' as any).delete().eq('id', id);
+      if (error) throw error;
+      toast.success("Subitem da ND excluído!");
+  } catch (error) {
+      toast.error(sanitizeError(error));
+  } finally {
+      queryClient.invalidateQueries({ queryKey: ['diretrizesMaterialPermanente', selectedYear, user?.id] });
+      queryClient.invalidateQueries({ queryKey: ["onboardingStatus"] });
+  }
+};
 
   const handleSavePassagem = async (data: Partial<DiretrizPassagem> & { ano_referencia: number, om_referencia: string, ug_referencia: string }) => {
       try {
@@ -924,7 +958,7 @@ const CustosOperacionaisPage = () => {
   const renderMaterialPermanenteSection = () => {
       const isDataLoading = isLoadingMaterialPermanente || isMovingMaterialPermanente;
       return (
-          <div className="space-y-4"><Card className="p-4"><div className="flex justify-between items-center mb-4"><CardTitle className="text-base font-semibold">Subitens da ND Cadastrados</CardTitle><Button type="button" variant="outline" size="sm" onClick={() => setIsExportImportPermanenteDialogOpen(true)} disabled={isSaving || isDataLoading}><FileSpreadsheet className="h-4 w-4 mr-2" />Exportar/Importar</Button></div><div className="mb-4 relative"><Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" /><Input placeholder="Buscar item permanente (nome, CATMAT, pregão, subitem...)" value={searchTermPermanente} onChange={(e) => setSearchTermPermanente(e.target.value)} disabled={isDataLoading} className="pl-10" /></div>{searchTermPermanente ? renderSearchResultsPermanente() : ((diretrizesMaterialPermanente?.length || 0) > 0 ? (<Table><TableHeader><TableRow><TableHead className="w-[150px] text-center">Nr Subitem</TableHead><TableHead>Nome do Subitem</TableHead><TableHead className="w-[100px] text-center">Ações</TableHead></TableRow></TableHeader><TableBody>{diretrizesMaterialPermanente.map(d => (<MaterialPermanenteDiretrizRow key={d.id} diretriz={d} onEdit={handleStartEditMaterialPermanente} onDelete={handleDeleteMaterialPermanente} loading={isSaving || isDataLoading} id={`diretriz-material-permanente-${d.id}`} forceOpen={subitemPermanenteToOpenId === d.id} isExpanded={subitemPermanenteToOpenId === d.id} onToggleExpand={() => setSubitemPermanenteToOpenId(subitemPermanenteToOpenId === d.id ? null : d.id)} />))}</TableBody></Table>) : (<Card className="p-4 text-center text-muted-foreground">Nenhum subitem da ND cadastrado para o ano de referência.</Card>))}</Card><div className="flex justify-end"><Button type="button" onClick={handleOpenNewMaterialPermanente} disabled={isSaving || isDataLoading || !!searchTermPermanente} variant="outline" size="sm" className="w-full"><Plus className="mr-2 h-4 w-4" />Adicionar Novo Subitem da ND</Button></div>{(isLoadingMaterialPermanente || isMovingMaterialPermanente) && (<div className="text-center py-2"><Loader2 className="h-5 w-5 animate-spin text-primary mx-auto" /><p className="text-xs text-muted-foreground mt-1">{isMovingMaterialPermanente ? "Movendo item..." : "Carregando subitens..."}</p></div>)}</div>
+          <div className="space-y-4"><Card className="p-4"><div className="flex justify-between items-center mb-4"><CardTitle className="text-base font-semibold">Subitens da ND Cadastrados</CardTitle><Button type="button" variant="outline" size="sm" onClick={() => setIsExportImportPermanenteDialogOpen(true)} disabled={isSaving || isDataLoading}><FileSpreadsheet className="h-4 w-4 mr-2" />Exportar/Importar</Button></div><div className="mb-4 relative"><Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" /><Input placeholder="Buscar item permanente (nome, CATMAT, pregão, subitem...)" value={searchTermPermanente} onChange={(e) => setSearchTermPermanente(e.target.value)} disabled={isDataLoading} className="pl-10" /></div>{searchTermPermanente ? renderSearchResultsPermanente() : ((diretrizesMaterialPermanente?.length || 0) > 0 ? (<Table><TableHeader><TableRow><TableHead className="w-[150px] text-center">Nr Subitem</TableHead><TableHead>Nome do Subitem</TableHead><TableHead className="w-[100px] text-center">Ações</TableHead></TableRow></TableHeader><TableBody>{diretrizesMaterialPermanente.map(d => (<MaterialPermanenteDiretrizRow key={d.id} diretriz={d} onEdit={handleStartEditMaterialPermanente} onDelete={handleDeleteMaterialPermanente} loading={isSaving || isDataLoading} onMoveItem={handleMoveItemPermanente} id={`diretriz-material-permanente-${d.id}`} forceOpen={subitemPermanenteToOpenId === d.id} />))}</TableBody></Table>) : (<Card className="p-4 text-center text-muted-foreground">Nenhum subitem da ND cadastrado para o ano de referência.</Card>))}</Card><div className="flex justify-end"><Button type="button" onClick={handleOpenNewMaterialPermanente} disabled={isSaving || isDataLoading || !!searchTermPermanente} variant="outline" size="sm" className="w-full"><Plus className="mr-2 h-4 w-4" />Adicionar Novo Subitem da ND</Button></div>{(isLoadingMaterialPermanente || isMovingMaterialPermanente) && (<div className="text-center py-2"><Loader2 className="h-5 w-5 animate-spin text-primary mx-auto" /><p className="text-xs text-muted-foreground mt-1">{isMovingMaterialPermanente ? "Movendo item..." : "Carregando subitens..."}</p></div>)}</div>
       );
   };
 
