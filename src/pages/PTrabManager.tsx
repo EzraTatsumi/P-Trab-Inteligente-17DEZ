@@ -59,7 +59,6 @@ import PageMetadata from "@/components/PageMetadata";
 import { fetchBatchPTrabTotals, PTrabLinkedTableName } from "@/lib/ptrabUtils";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { PTrabTableSkeleton } from "@/components/PTrabTableSkeleton";
-import { useOnboardingStatus } from "@/hooks/useOnboardingStatus";
 import { WelcomeModal } from "@/components/WelcomeModal";
 import { RequirementsAlert } from "@/components/RequirementsAlert";
 import { InstructionHub } from "@/components/InstructionHub";
@@ -84,9 +83,6 @@ export interface PTrab extends PTrabDB {
   hasPendingRequests: boolean;
 }
 
-/**
- * Interface simples para exibição e seleção de P Trabs em diálogos de consolidação/clonagem.
- */
 export interface SimplePTrab {
   id: string;
   numero_ptrab: string;
@@ -186,10 +182,41 @@ const PTrabManager = () => {
   const [showInstructionHub, setShowInstructionHub] = useState(false);
   const [showVictory, setShowVictory] = useState(false);
 
-  // Detecta o modo fantasma de forma reativa para a query
   const ghostActive = isGhostMode();
 
-  const { data: onboardingStatus, isLoading: isLoadingOnboarding } = useOnboardingStatus();
+  // Query otimizada para o checklist de onboarding (user-status)
+  // Polling de 1s para feedback instantâneo até que todos os requisitos estejam prontos.
+  const { data: onboardingStatus, isLoading: isLoadingOnboarding } = useQuery({
+    queryKey: ['user-status', user?.id],
+    queryFn: async () => {
+      if (!user?.id) return null;
+      
+      if (ghostActive) {
+        return { isReady: true, hasOm: true, hasOp: true, hasLog: true };
+      }
+
+      const [oms, op, log] = await Promise.all([
+        supabase.from('organizacoes_militares').select('id', { count: 'exact', head: true }).eq('user_id', user.id),
+        supabase.from('diretrizes_operacionais').select('id', { count: 'exact', head: true }).eq('user_id', user.id),
+        supabase.from('diretrizes_custeio').select('id', { count: 'exact', head: true }).eq('user_id', user.id),
+      ]);
+
+      const hasOm = (oms.count ?? 0) > 0;
+      const hasOp = (op.count ?? 0) > 0;
+      const hasLog = (log.count ?? 0) > 0;
+
+      return {
+        hasOm,
+        hasOp,
+        hasLog,
+        isReady: hasOm && hasOp && hasLog
+      };
+    },
+    enabled: !!user?.id,
+    refetchInterval: (query) => (query.state.data?.isReady ? false : 1000),
+    staleTime: 0,
+  });
+
   const [showWelcomeModal, setShowWelcomeModal] = useState(false);
   const [showRequirementsAlert, setShowRequirementsAlert] = useState(false);
   const hasShownWelcome = useRef(false);
@@ -258,7 +285,6 @@ const PTrabManager = () => {
   }, [isLoadingOnboarding, onboardingStatus]);
 
   const { data: pTrabs = [], isLoading: loading, refetch: loadPTrabs } = useQuery({
-    // Adicionamos ghostActive na chave para que o React Query invalide o cache real e use o simulado
     queryKey: ['pTrabs', user?.id, ghostActive],
     queryFn: async () => {
       if (!user?.id) return [];
@@ -326,8 +352,6 @@ const PTrabManager = () => {
     enabled: !!user?.id,
     staleTime: 1000 * 60 * 5,
   });
-
-  // ... (restante do componente mantido sem alterações nas funções auxiliares)
 
   useEffect(() => {
     (window as any).openSettings = () => setSettingsOpen(true);
