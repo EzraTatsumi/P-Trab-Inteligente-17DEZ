@@ -25,34 +25,56 @@ const CatmatCatalogDialog: React.FC<CatmatCatalogDialogProps> = ({ open, onOpenC
     const [entries, setEntries] = useState<CatmatEntry[]>([]);
     const [loading, setLoading] = useState(false);
 
-    useEffect(() => {
-        if (open) {
-            fetchEntries();
-        }
-    }, [open]);
-
-    const fetchEntries = async () => {
+    /**
+     * Função de Busca Inteligente:
+     * Trata o termo de busca para evitar erros de tipagem no PostgreSQL
+     * e otimiza a recuperação dos itens do catálogo.
+     */
+    const fetchCatalogItems = async (searchTerm: string) => {
         setLoading(true);
         try {
-            const { data, error } = await supabase
+            let query = supabase
                 .from('catalogo_catmat')
-                .select('code, description, short_description')
-                .order('description', { ascending: true });
+                .select('*')
+                .order('code', { ascending: true })
+                .limit(500);
 
-            if (error) throw error;
-            setEntries(data || []);
+            const search = searchTerm.trim();
+            if (search) {
+                // Busca Inteligente: Verifica se o termo contém apenas números
+                const isNumeric = /^\d+$/.test(search);
+                
+                if (isNumeric) {
+                    // Se for número, busca exata no código ou parcial nas descrições
+                    query = query.or(`code.eq.${search},description.ilike.%${search}%,short_description.ilike.%${search}%`);
+                } else {
+                    // Se for texto, busca apenas nas descrições para evitar erro de tipo na coluna 'code' (numérica)
+                    query = query.or(`description.ilike.%${search}%,short_description.ilike.%${search}%`);
+                }
+            }
+
+            const { data, error } = await query;
+            if (error) {
+                console.error("Erro ao buscar catálogo CATMAT:", error);
+                throw new Error("Falha ao carregar o catálogo CATMAT.");
+            }
+            setEntries((data as CatmatEntry[]) || []);
         } catch (error) {
-            console.error("Erro ao carregar catálogo CATMAT:", error);
+            console.error(error);
         } finally {
             setLoading(false);
         }
     };
 
-    const filteredEntries = entries.filter(entry => 
-        entry.code.includes(searchTerm) || 
-        entry.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (entry.short_description && entry.short_description.toLowerCase().includes(searchTerm.toLowerCase()))
-    );
+    // Gatilho de busca com debounce simples
+    useEffect(() => {
+        if (open) {
+            const timeoutId = setTimeout(() => {
+                fetchCatalogItems(searchTerm);
+            }, 300);
+            return () => clearTimeout(timeoutId);
+        }
+    }, [open, searchTerm]);
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
@@ -75,7 +97,7 @@ const CatmatCatalogDialog: React.FC<CatmatCatalogDialogProps> = ({ open, onOpenC
                 </div>
 
                 <div className="flex-1 overflow-y-auto border rounded-md">
-                    {loading ? (
+                    {loading && entries.length === 0 ? (
                         <div className="flex items-center justify-center py-12">
                             <Loader2 className="h-8 w-8 animate-spin text-primary" />
                         </div>
@@ -90,7 +112,7 @@ const CatmatCatalogDialog: React.FC<CatmatCatalogDialogProps> = ({ open, onOpenC
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
-                                {filteredEntries.map((entry) => (
+                                {entries.map((entry) => (
                                     <TableRow key={entry.code}>
                                         <TableCell className="font-semibold text-center">{entry.code}</TableCell>
                                         <TableCell className="font-medium">{entry.short_description || 'N/A'}</TableCell>
@@ -102,10 +124,10 @@ const CatmatCatalogDialog: React.FC<CatmatCatalogDialogProps> = ({ open, onOpenC
                                         </TableCell>
                                     </TableRow>
                                 ))}
-                                {filteredEntries.length === 0 && (
+                                {!loading && entries.length === 0 && (
                                     <TableRow>
                                         <TableCell colSpan={4} className="text-center py-8 text-muted-foreground">
-                                            Nenhum item encontrado no catálogo local.
+                                            Nenhum item encontrado no catálogo.
                                         </TableCell>
                                     </TableRow>
                                 )}
