@@ -12,8 +12,8 @@ import { DetailedArpItem } from '@/types/pncp';
 import { ItemAquisicao } from '@/types/diretrizesMaterialConsumo';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { isGhostMode } from '@/lib/ghostStore';
-import PNCPInspectionDialog from '@src/components/pncp/PNCPInspectionDialog';
-import ServicoUnitMeasureDialog from '@src/components/pncp/ServicoUnitMeasureDialog';
+import PNCPInspectionDialog from '@/src/components/pncp/PNCPInspectionDialog';
+import ServicoUnitMeasureDialog from '@/src/components/pncp/ServicoUnitMeasureDialog';
 import { InspectionItem } from '@/types/pncpInspection';
 
 interface ItemAquisicaoPNCPDialogProps {
