@@ -253,8 +253,7 @@ const ArpSearchResultsList: React.FC<ArpSearchResultsListProps> = ({ results, on
                 </h3>
             </div>
             
-            {/* Aumentando a altura máxima para 60vh */}
-            <div className="max-h-[60vh] overflow-y-auto border rounded-md">
+            <div className="border rounded-md">
                 <Table>
                     <TableHeader className="sticky top-0 bg-background z-10">
                         <TableRow>
