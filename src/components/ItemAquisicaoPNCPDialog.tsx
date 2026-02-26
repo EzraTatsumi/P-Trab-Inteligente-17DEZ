@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Search, CheckCircle } from "lucide-react";
+import { Search, CheckCircle, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import ArpUasgSearchForm from './pncp/ArpUasgSearchForm';
 import ArpCatmatSearchForm from './pncp/ArpCatmatSearchForm';
@@ -12,9 +12,10 @@ import { DetailedArpItem } from '@/types/pncp';
 import { ItemAquisicao } from '@/types/diretrizesMaterialConsumo';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { isGhostMode } from '@/lib/ghostStore';
-import PNCPInspectionDialog from '@/components/pncp/PNCPInspectionDialog';
-import ServicoUnitMeasureDialog from '@/components/pncp/ServicoUnitMeasureDialog';
+import PNCPInspectionDialog from './PNCPInspectionDialog';
+import ServicoUnitMeasureDialog from './ServicoUnitMeasureDialog';
 import { InspectionItem } from '@/types/pncpInspection';
+import { supabase } from "@/integrations/supabase/client";
 
 interface ItemAquisicaoPNCPDialogProps {
     open: boolean;
@@ -43,6 +44,7 @@ const ItemAquisicaoPNCPDialog: React.FC<ItemAquisicaoPNCPDialogProps> = ({
     const [inspectionList, setInspectionList] = useState<InspectionItem[]>([]);
     const [isUnitMeasureOpen, setIsUnitMeasureOpen] = useState(false);
     const [itemsForUnitMeasure, setItemsForUnitMeasure] = useState<ItemAquisicao[]>([]);
+    const [isCheckingDB, setIsCheckingDB] = useState(false);
 
     const handleItemPreSelect = (item: DetailedArpItem, pregao: string, uasg: string) => {
         const isAlreadySelected = preSelectedItems.some(i => i.id === item.id);
@@ -67,30 +69,65 @@ const ItemAquisicaoPNCPDialog: React.FC<ItemAquisicaoPNCPDialogProps> = ({
         setPreSelectedItems(prev => [...prev, newItem]);
     };
 
-    // PASSO 1: Intercepta a importação e prepara a Inspeção
-    const handleConfirmImport = () => {
+    // PASSO 1: Intercepta a importação, varre o BD e prepara a Inspeção
+    const handleConfirmImport = async () => {
         if (preSelectedItems.length === 0) return;
         
-        const listToInspect: InspectionItem[] = preSelectedItems.map(item => {
-            const isDuplicate = existingItemsInDiretriz.some(existing => 
-                existing.numero_pregao === item.numero_pregao && 
-                existing.codigo_catmat === item.codigo_catmat &&
-                existing.uasg === item.uasg
-            );
-            // Se a descrição reduzida for apenas um corte da grande, manda para revisão
-            const needsInfo = item.descricao_item.startsWith(item.descricao_reduzida);
-            return {
-                originalPncpItem: { id: item.id } as any, 
-                mappedItem: item,
-                fullPncpDescription: item.descricao_item,
-                userShortDescription: '',
-                status: isDuplicate ? 'duplicate' : (needsInfo ? 'needs_catmat_info' : 'valid'),
-                messages: isDuplicate ? ['Chave de contrato duplicada'] : [],
-                isCatmatCataloged: false,
-            };
-        });
-        setInspectionList(listToInspect);
-        setIsInspectionOpen(true);
+        setIsCheckingDB(true);
+        try {
+            const tableName = mode === 'material' ? 'catalogo_catmat' : 'catalogo_catser';
+            const itemCodes = preSelectedItems.map(i => i.codigo_catmat);
+            
+            // Varredura no Banco de Dados
+            const { data: catalogData, error } = await supabase
+                .from(tableName as any)
+                .select('code, short_description')
+                .in('code', itemCodes);
+            
+            if (error) throw error;
+            
+            const listToInspect: InspectionItem[] = preSelectedItems.map(item => {
+                const isDuplicate = existingItemsInDiretriz.some(existing => 
+                    existing.numero_pregao === item.numero_pregao && 
+                    existing.codigo_catmat === item.codigo_catmat &&
+                    existing.uasg === item.uasg
+                );
+
+                // Cruza com o resultado do Banco
+                const catalogEntry = catalogData?.find(c => c.code === item.codigo_catmat);
+                const hasCatalogShortDesc = !!(catalogEntry && catalogEntry.short_description && catalogEntry.short_description.trim() !== '');
+                
+                let finalShortDesc = '';
+                let isCataloged = false;
+                let needsInfo = false;
+                
+                if (hasCatalogShortDesc) {
+                    finalShortDesc = catalogEntry.short_description;
+                    isCataloged = true;
+                    needsInfo = false; // Vai direto para PRONTOS
+                } else {
+                    finalShortDesc = item.descricao_item.substring(0, 50);
+                    needsInfo = true;  // Vai para REQUER REVISÃO
+                }
+
+                return {
+                    originalPncpItem: { id: item.id } as any, 
+                    mappedItem: { ...item, descricao_reduzida: finalShortDesc },
+                    fullPncpDescription: item.descricao_item,
+                    userShortDescription: hasCatalogShortDesc ? finalShortDesc : '',
+                    status: isDuplicate ? 'duplicate' : (needsInfo ? 'needs_catmat_info' : 'valid'),
+                    messages: isDuplicate ? ['Chave de contrato duplicada'] : [],
+                    isCatmatCataloged: isCataloged,
+                };
+            });
+            setInspectionList(listToInspect);
+            setIsInspectionOpen(true);
+        } catch (error) {
+            console.error("Erro ao verificar catálogo:", error);
+            toast.error("Erro ao verificar catálogo no banco de dados.");
+        } finally {
+            setIsCheckingDB(false);
+        }
     };
 
     // PASSO 2: Retorno da Inspeção (Joga para Unidade de Medida ou Finaliza)
@@ -178,11 +215,11 @@ const ItemAquisicaoPNCPDialog: React.FC<ItemAquisicaoPNCPDialogProps> = ({
                             <Button variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
                             <Button 
                                 onClick={handleConfirmImport} 
-                                disabled={preSelectedItems.length === 0}
+                                disabled={preSelectedItems.length === 0 || isCheckingDB}
                                 className="btn-confirmar-importacao-pncp"
                             >
-                                <CheckCircle className="mr-2 h-4 w-4" />
-                                Preparar Importação
+                                {isCheckingDB ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <CheckCircle className="mr-2 h-4 w-4" />}
+                                {isCheckingDB ? "Verificando BD..." : "Preparar Importação"}
                             </Button>
                         </div>
                     </div>
