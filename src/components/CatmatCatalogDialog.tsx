@@ -83,22 +83,19 @@ const CatmatCatalogDialog: React.FC<CatmatCatalogDialogProps> = ({ open, onOpenC
                         <Table>
                             <TableHeader>
                                 <TableRow>
-                                    <TableHead className="w-[120px]">Código</TableHead>
-                                    <TableHead>Descrição</TableHead>
+                                    <TableHead className="w-[120px] text-center">Código</TableHead>
+                                    <TableHead className="w-[200px] text-center">Nome Reduzido</TableHead>
+                                    <TableHead className="text-center">Descrição Completa</TableHead>
                                     <TableHead className="text-right">Ação</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
                                 {filteredEntries.map((entry) => (
                                     <TableRow key={entry.code}>
-                                        <TableCell className="font-mono text-xs">{entry.code}</TableCell>
-                                        <TableCell>
-                                            <div className="font-medium text-sm">{entry.description}</div>
-                                            {entry.short_description && (
-                                                <div className="text-xs text-muted-foreground">
-                                                    Reduzido: {entry.short_description}
-                                                </div>
-                                            )}
+                                        <TableCell className="font-semibold text-center">{entry.code}</TableCell>
+                                        <TableCell className="font-medium">{entry.short_description || 'N/A'}</TableCell>
+                                        <TableCell className="text-sm text-muted-foreground max-w-lg whitespace-normal">
+                                            <span className="block">{entry.description || 'N/A'}</span>
                                         </TableCell>
                                         <TableCell className="text-right">
                                             <Button size="sm" onClick={() => onSelect(entry)}>Selecionar</Button>
@@ -107,7 +104,7 @@ const CatmatCatalogDialog: React.FC<CatmatCatalogDialogProps> = ({ open, onOpenC
                                 ))}
                                 {filteredEntries.length === 0 && (
                                     <TableRow>
-                                        <TableCell colSpan={3} className="text-center py-8 text-muted-foreground">
+                                        <TableCell colSpan={4} className="text-center py-8 text-muted-foreground">
                                             Nenhum item encontrado no catálogo local.
                                         </TableCell>
                                     </TableRow>
