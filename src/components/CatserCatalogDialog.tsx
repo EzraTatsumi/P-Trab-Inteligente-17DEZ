@@ -92,18 +92,18 @@ const CatserCatalogDialog: React.FC<CatserCatalogDialogProps> = ({
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="max-w-6xl max-h-[90vh] overflow-hidden flex flex-col">
+            <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
                     <DialogTitle>Catálogo de Serviços (CATSER)</DialogTitle>
                     <DialogDescription>
                         Selecione um item do catálogo para preencher o código e a descrição.
                     </DialogDescription>
                 </DialogHeader>
-                <div className="flex flex-col flex-1 overflow-hidden space-y-4 py-2">
+                <div className="space-y-4 py-2">
                     <div className="relative">
                         <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                         <Input
-                            placeholder="Buscar por código, descrição ou nome reduzido..."
+                            placeholder="Buscar por código, description ou nome reduzido..."
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
                             className="pl-10"
@@ -124,13 +124,13 @@ const CatserCatalogDialog: React.FC<CatserCatalogDialogProps> = ({
                             <p className="text-sm text-muted-foreground">
                                 Exibindo {filteredItems.length} resultados. Refine sua busca se não encontrar o item desejado.
                             </p>
-                            <div className="flex-1 overflow-y-auto overflow-x-hidden border rounded-md">
-                                <Table className="w-full table-fixed">
+                            <div className="max-h-[50vh] overflow-y-auto border rounded-md">
+                                <Table>
                                     <TableHeader className="sticky top-0 bg-background z-10">
                                         <TableRow>
                                             <TableHead className="w-[120px] text-center">Código</TableHead>
                                             <TableHead className="w-[200px] text-center">Nome Reduzido</TableHead>
-                                            <TableHead className="text-center">Descrição Completa</TableHead>
+                                            <TableHead className="text-left">Descrição Completa</TableHead>
                                             <TableHead className="w-[120px] text-center">Ação</TableHead>
                                         </TableRow>
                                     </TableHeader>
@@ -145,7 +145,7 @@ const CatserCatalogDialog: React.FC<CatserCatalogDialogProps> = ({
                                                 >
                                                     <TableCell className="font-semibold text-center">{item.code}</TableCell>
                                                     <TableCell className="font-medium">{item.short_description || 'N/A'}</TableCell>
-                                                    <TableCell className="text-sm text-muted-foreground whitespace-normal break-words">
+                                                    <TableCell className="text-sm text-muted-foreground max-w-md whitespace-normal break-words">
                                                         <span className="block">{item.description || 'N/A'}</span>
                                                     </TableCell>
                                                     <TableCell className="text-center">
