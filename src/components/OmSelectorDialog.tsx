@@ -1,3 +1,5 @@
+"use client";
+
 import React, { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -16,7 +18,7 @@ type OmItem = Tables<'organizacoes_militares'>;
 interface OmSelectorDialogProps {
     open: boolean;
     onOpenChange: (open: boolean) => void;
-    onSelect: (om: OmItem) => void; // Alterado para passar o objeto completo
+    onSelect: (om: OmItem) => void;
 }
 
 const fetchOmItems = async (): Promise<OmItem[]> => {
@@ -67,7 +69,7 @@ const OmSelectorDialog: React.FC<OmSelectorDialogProps> = ({
 
     const handleConfirmImport = () => {
         if (selectedItem) {
-            onSelect(selectedItem); // Passa o objeto completo
+            onSelect(selectedItem);
             onOpenChange(false);
             toast.success(`UASG ${formatCodug(selectedItem.codug_om)} selecionada.`);
         }
