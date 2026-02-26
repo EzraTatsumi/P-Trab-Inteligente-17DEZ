@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * Página de Configuração de Custos Operacionais - Layout Restaurado v1.0.4
+ * Página de Configuração de Custos Operacionais - Layout Restaurado v1.0.5
  * Gerencia os parâmetros de diárias, passagens, concessionárias e materiais.
  */
 
@@ -196,8 +196,8 @@ const CustosOperacionaisPage = () => {
 
       return {
         operacional: opRes.data || defaultDiretrizes(selectedYear),
-        passagens: passRes.data || [],
-        concessionaria: concRes.data || []
+        passagens: (passRes.data as DiretrizPassagem[]) || [],
+        concessionaria: (concRes.data as DiretrizConcessionaria[]) || []
       };
     },
     enabled: !!user?.id && !!selectedYear,
@@ -229,11 +229,12 @@ const CustosOperacionaisPage = () => {
   
   const { handleEnterToNextField } = useFormNavigation();
   
-  const [diretrizesPassagens, setDiretrizesPassagens] = useState<DiretrizPassagem[]>([]);
+  const diretrizesPassagens = useMemo(() => pageData?.passagens || [], [pageData]);
+  const diretrizesConcessionaria = useMemo(() => pageData?.concessionaria || [], [pageData]);
+
   const [isPassagemFormOpen, setIsPassagemFormOpen] = useState(false);
   const [diretrizToEdit, setDiretrizToEdit] = useState<DiretrizPassagem | null>(null);
   
-  const [diretrizesConcessionaria, setDiretrizesConcessionaria] = useState<DiretrizConcessionaria[]>([]);
   const [isConcessionariaFormOpen, setIsConcessionariaFormOpen] = useState(false);
   const [diretrizConcessionariaToEdit, setDiretrizConcessionariaToEdit] = useState<DiretrizConcessionaria | null>(null);
   const [selectedConcessionariaTab, setSelectedConcessionariaTab] = useState<CategoriaConcessionaria>(CATEGORIAS_CONCESSIONARIA[0]);
@@ -397,7 +398,6 @@ const CustosOperacionaisPage = () => {
           }
           
           queryClient.invalidateQueries({ queryKey: ['diretrizesMaterialConsumo', selectedYear, authUser.id] });
-          // INVALIDAÇÃO DO STATUS DE ONBOARDING
           queryClient.invalidateQueries({ queryKey: ["onboardingStatus"] });
           
           setDiretrizMaterialConsumoToEdit(null);
@@ -434,7 +434,6 @@ const CustosOperacionaisPage = () => {
           }
           
           queryClient.invalidateQueries({ queryKey: ['diretrizesServicosTerceiros', selectedYear, authUser.id] });
-          // INVALIDAÇÃO DO STATUS DE ONBOARDING
           queryClient.invalidateQueries({ queryKey: ["onboardingStatus"] });
           
           setDiretrizServicosTerceirosToEdit(null);
@@ -471,7 +470,6 @@ const CustosOperacionaisPage = () => {
           }
           
           queryClient.invalidateQueries({ queryKey: ['diretrizesMaterialPermanente', selectedYear, authUser.id] });
-          // INVALIDAÇÃO DO STATUS DE ONBOARDING
           queryClient.invalidateQueries({ queryKey: ["onboardingStatus"] });
           
           setDiretrizMaterialPermanenteToEdit(null);
@@ -500,7 +498,6 @@ const CustosOperacionaisPage = () => {
           toast.error(sanitizeError(error));
       } finally {
           queryClient.invalidateQueries({ queryKey: ['diretrizesMaterialConsumo', selectedYear, user?.id] });
-          // INVALIDAÇÃO DO STATUS DE ONBOARDING
           queryClient.invalidateQueries({ queryKey: ["onboardingStatus"] });
       }
   };
@@ -515,7 +512,6 @@ const CustosOperacionaisPage = () => {
           toast.error(sanitizeError(error));
       } finally {
           queryClient.invalidateQueries({ queryKey: ['diretrizesServicosTerceiros', selectedYear, user?.id] });
-          // INVALIDAÇÃO DO STATUS DE ONBOARDING
           queryClient.invalidateQueries({ queryKey: ["onboardingStatus"] });
       }
   };
@@ -530,7 +526,6 @@ const CustosOperacionaisPage = () => {
           toast.error(sanitizeError(error));
       } finally {
           queryClient.invalidateQueries({ queryKey: ['diretrizesMaterialPermanente', selectedYear, user?.id] });
-          // INVALIDAÇÃO DO STATUS DE ONBOARDING
           queryClient.invalidateQueries({ queryKey: ["onboardingStatus"] });
       }
   };
@@ -540,6 +535,18 @@ const CustosOperacionaisPage = () => {
           setIsSaving(true);
           const { data: { user: authUser } } = await supabase.auth.getUser();
           if (!authUser) throw new Error("Usuário não autenticado");
+
+          // Validação local de duplicidade para evitar o erro 409
+          if (!data.id) {
+              const alreadyExists = diretrizesPassagens.some(p => 
+                  p.om_referencia.trim().toUpperCase() === data.om_referencia.trim().toUpperCase()
+              );
+              if (alreadyExists) {
+                  toast.error(`Já existe um contrato cadastrado para a OM ${data.om_referencia} no ano de ${selectedYear}.`);
+                  setIsSaving(false);
+                  return;
+              }
+          }
           
           const dbData: TablesInsert<'diretrizes_passagens'> = {
               user_id: authUser.id,
@@ -554,15 +561,16 @@ const CustosOperacionaisPage = () => {
           };
           
           if (data.id) {
-              await supabase.from('diretrizes_passagens').update(dbData as TablesUpdate<'diretrizes_passagens'>).eq('id', data.id);
+              const { error } = await supabase.from('diretrizes_passagens').update(dbData as TablesUpdate<'diretrizes_passagens'>).eq('id', data.id);
+              if (error) throw error;
               toast.success("Contrato de Passagens atualizado!");
           } else {
-              await supabase.from('diretrizes_passagens').insert([dbData]);
+              const { error } = await supabase.from('diretrizes_passagens').insert([dbData]);
+              if (error) throw error;
               toast.success("Novo Contrato de Passagens cadastrado!");
           }
           
           queryClient.invalidateQueries({ queryKey: ['diretrizesCustosOperacionais', selectedYear, authUser.id] });
-          // INVALIDAÇÃO DO STATUS DE ONBOARDING
           queryClient.invalidateQueries({ queryKey: ["onboardingStatus"] });
           
           setDiretrizToEdit(null);
@@ -591,7 +599,6 @@ const CustosOperacionaisPage = () => {
           await supabase.from('diretrizes_passagens').delete().eq('id', id);
           toast.success("Contrato de Passagens excluído!");
           queryClient.invalidateQueries({ queryKey: ['diretrizesCustosOperacionais', selectedYear, user?.id] });
-          // INVALIDAÇÃO DO STATUS DE ONBOARDING
           queryClient.invalidateQueries({ queryKey: ["onboardingStatus"] });
       } catch (error) {
           toast.error(sanitizeError(error));
@@ -605,20 +612,34 @@ const CustosOperacionaisPage = () => {
           setIsSaving(true);
           const { data: { user: authUser } } = await supabase.auth.getUser();
           if (!authUser) throw new Error("Usuário não autenticado");
+
+          // Validação local de duplicidade para evitar o erro 409
+          if (!data.id) {
+              const alreadyExists = diretrizesConcessionaria.some(c => 
+                  c.categoria === data.categoria && 
+                  c.nome_concessionaria.trim().toUpperCase() === data.nome_concessionaria.trim().toUpperCase()
+              );
+              if (alreadyExists) {
+                  toast.error(`Já existe uma diretriz para "${data.nome_concessionaria}" na categoria ${data.categoria} para o ano ${selectedYear}.`);
+                  setIsSaving(false);
+                  return;
+              }
+          }
           
           const consumoValue = typeof data.consumo_pessoa_dia === 'string' ? parseFloat(data.consumo_pessoa_dia.replace(',', '.')) || 0 : data.consumo_pessoa_dia;
           const dbData: TablesInsert<'diretrizes_concessionaria'> = { user_id: authUser.id, ano_referencia: selectedYear, categoria: data.categoria, nome_concessionaria: data.nome_concessionaria, consumo_pessoa_dia: consumoValue, fonte_consumo: data.fonte_consumo || null, custo_unitario: data.custo_unitario, fonte_custo: data.fonte_custo || null, unidade_custo: data.unidade_custo };
 
           if (data.id) {
-              await supabase.from('diretrizes_concessionaria').update(dbData as TablesUpdate<'diretrizes_concessionaria'>).eq('id', data.id);
+              const { error } = await supabase.from('diretrizes_concessionaria').update(dbData as TablesUpdate<'diretrizes_concessionaria'>).eq('id', data.id);
+              if (error) throw error;
               toast.success("Diretriz de Concessionária atualizada!");
           } else {
-              await supabase.from('diretrizes_concessionaria').insert([dbData]);
+              const { error } = await supabase.from('diretrizes_concessionaria').insert([dbData]);
+              if (error) throw error;
               toast.success("Nova Diretriz de Concessionária cadastrada!");
           }
           
           queryClient.invalidateQueries({ queryKey: ['diretrizesCustosOperacionais', selectedYear, authUser.id] });
-          // INVALIDAÇÃO DO STATUS DE ONBOARDING
           queryClient.invalidateQueries({ queryKey: ["onboardingStatus"] });
           
           setDiretrizConcessionariaToEdit(null);
@@ -648,7 +669,6 @@ const CustosOperacionaisPage = () => {
           await supabase.from('diretrizes_concessionaria').delete().eq('id', id);
           toast.success("Diretriz de Concessionária excluída!");
           queryClient.invalidateQueries({ queryKey: ['diretrizesCustosOperacionais', selectedYear, user?.id] });
-          // INVALIDAÇÃO DO STATUS DE ONBOARDING
           queryClient.invalidateQueries({ queryKey: ["onboardingStatus"] });
       } catch (error) {
           toast.error(sanitizeError(error));
@@ -752,7 +772,7 @@ const CustosOperacionaisPage = () => {
   };
 
   const renderDiretrizField = (field: { key: string, label: string, type: 'currency' | 'factor', placeholder: string }) => {
-    const value = diretrizes[field.key as keyof DiretrizOperacional] as number;
+    const value = (diretrizes[field.key as keyof DiretrizOperacional] as number) || 0;
     
     if (field.type === 'currency') {
       const rawDigits = rawInputs[field.key] || numberToRawDigits(value);
@@ -803,7 +823,7 @@ const CustosOperacionaisPage = () => {
     
     const getDiariaProps = (rankKey: string, destination: 'bsb' | 'capitais' | 'demais') => {
       const fieldKey = `${DIARIA_RANKS_CONFIG.find(r => r.key === rankKey)?.fieldPrefix}_${destination}` as keyof DiretrizOperacional;
-      const value = diretrizes[fieldKey] as number;
+      const value = (diretrizes[fieldKey] as number) || 0;
       const rawDigits = rawInputs[fieldKey as string] || numberToRawDigits(value);
       
       return {
@@ -849,7 +869,7 @@ const CustosOperacionaisPage = () => {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {DIARIA_RANKS_CONFIG.map((rank, index) => (
+            {DIARIA_RANKS_CONFIG.map((rank) => (
               <TableRow key={rank.key}>
                 <TableCell className="font-medium whitespace-nowrap">{rank.label}</TableCell>
                 <TableCell><CurrencyInput {...getDiariaProps(rank.key, 'bsb')} /></TableCell>
@@ -937,7 +957,6 @@ const CustosOperacionaisPage = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }, []);
   
-  // Lógica do Tour
   useEffect(() => {
     if (isLoadingDefaultYear || isLoadingPageData || isFetchingPageData || hasStartedTour.current) return;
 
@@ -978,6 +997,18 @@ const CustosOperacionaisPage = () => {
         checkAuthAndLoadYears();
     }
   }, [isLoadingDefaultYear, defaultYearData?.year, defaultYearData?.defaultYear]);
+
+  useEffect(() => {
+      if (pageData?.operacional) {
+          setDiretrizes(pageData.operacional);
+      }
+  }, [pageData]);
+
+  useEffect(() => {
+      if (diretrizesMaterialConsumoHook) setDiretrizesMaterialConsumo(diretrizesMaterialConsumoHook);
+      if (diretrizesServicosTerceirosHook) setDiretrizesServicosTerceiros(diretrizesServicosTerceirosHook);
+      if (diretrizesMaterialPermanenteHook) setDiretrizesMaterialPermanente(diretrizesMaterialPermanenteHook);
+  }, [diretrizesMaterialConsumoHook, diretrizesServicosTerceirosHook, diretrizesMaterialPermanenteHook]);
 
   const loadAvailableYears = async (defaultYearId: number | null) => {
     try {
@@ -1031,7 +1062,6 @@ const CustosOperacionaisPage = () => {
   const handleMaterialConsumoImportSuccess = () => {
       if (user?.id && selectedYear > 0) {
           queryClient.invalidateQueries({ queryKey: ['diretrizesMaterialConsumo', selectedYear, user.id] });
-          // INVALIDAÇÃO DO STATUS DE ONBOARDING
           queryClient.invalidateQueries({ queryKey: ["onboardingStatus"] });
       }
   };
@@ -1039,14 +1069,13 @@ const CustosOperacionaisPage = () => {
   const handleServicosTerceirosImportSuccess = (newItems?: DiretrizServicosTerceiros[]) => {
       if (newItems && newItems.length > 0) {
           setDiretrizesServicosTerceiros(prev => {
-              const filtered = prev.filter(p => !newItems.find(n => n.id === p.id));
-              return [...filtered, ...newItems].sort((a, b) => a.nr_subitem.localeCompare(b.nr_subitem));
+              const filtered = prev.filter(p => !newItems!.find(n => n.id === p.id));
+              return [...filtered, ...newItems!].sort((a, b) => a.nr_subitem.localeCompare(b.nr_subitem));
           });
           toast.success(`${newItems.length} subitens de serviços atualizados!`);
       }
       if (user?.id && selectedYear > 0) {
           queryClient.invalidateQueries({ queryKey: ['diretrizesServicosTerceiros', selectedYear, user.id] });
-          // INVALIDAÇÃO DO STATUS DE ONBOARDING
           queryClient.invalidateQueries({ queryKey: ["onboardingStatus"] });
       }
   };
@@ -1054,14 +1083,13 @@ const CustosOperacionaisPage = () => {
   const handleMaterialPermanenteImportSuccess = (newItems?: DiretrizMaterialPermanente[]) => {
       if (newItems && newItems.length > 0) {
           setDiretrizesMaterialPermanente(prev => {
-              const filtered = prev.filter(p => !newItems.find(n => n.id === p.id));
-              return [...filtered, ...newItems].sort((a, b) => a.nr_subitem.localeCompare(b.nr_subitem));
+              const filtered = prev.filter(p => !newItems!.find(n => n.id === p.id));
+              return [...filtered, ...newItems!].sort((a, b) => a.nr_subitem.localeCompare(b.nr_subitem));
           });
           toast.success(`${newItems.length} subitens permanentes atualizados!`);
       }
       if (user?.id && selectedYear > 0) {
           queryClient.invalidateQueries({ queryKey: ['diretrizesMaterialPermanente', selectedYear, user.id] });
-          // INVALIDAÇÃO DO STATUS DE ONBOARDING
           queryClient.invalidateQueries({ queryKey: ["onboardingStatus"] });
       }
   };
@@ -1132,7 +1160,6 @@ const CustosOperacionaisPage = () => {
       toast.success("Diretrizes Operacionais salvas com sucesso!");
       
       queryClient.invalidateQueries({ queryKey: ['diretrizesCustosOperacionais', selectedYear, authUser.id] });
-      // INVALIDAÇÃO DO STATUS DE ONBOARDING
       queryClient.invalidateQueries({ queryKey: ["onboardingStatus"] });
       
       await loadAvailableYears(defaultYear);
@@ -1168,7 +1195,6 @@ const CustosOperacionaisPage = () => {
       if (error) throw error;
       
       queryClient.invalidateQueries({ queryKey: ["defaultOperacionalYear", authUser.id] });
-      // INVALIDAÇÃO DO STATUS DE ONBOARDING
       queryClient.invalidateQueries({ queryKey: ["onboardingStatus"] });
       
       toast.success(`Ano ${selectedYear} definido como padrão para cálculos!`);
@@ -1332,7 +1358,6 @@ const CustosOperacionaisPage = () => {
       setSelectedYear(targetYear);
       
       queryClient.invalidateQueries({ queryKey: ['diretrizesCustosOperacionais', targetYear, authUser.id] });
-      // INVALIDAÇÃO DO STATUS DE ONBOARDING
       queryClient.invalidateQueries({ queryKey: ["onboardingStatus"] });
       
       await loadAvailableYears(defaultYear);
@@ -1372,7 +1397,6 @@ const CustosOperacionaisPage = () => {
       setIsYearManagementDialogOpen(false);
       
       queryClient.invalidateQueries({ queryKey: ['diretrizesCustosOperacionais', year, authUser.id] });
-      // INVALIDAÇÃO DO STATUS DE ONBOARDING
       queryClient.invalidateQueries({ queryKey: ["onboardingStatus"] });
       
       await loadAvailableYears(defaultYear);
