@@ -26,7 +26,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import * as z from "zod";
-import { formatCodug } from "@/lib/formatUtils"; // Importar formatCodug (usado para strings de CODUG)
+import { formatCodug } from "@/lib/formatUtils"; 
 
 const fetchOMs = async (): Promise<OMData[]> => {
   const { data, error } = await supabase
@@ -43,23 +43,21 @@ const OmConfigPage = () => {
   const queryClient = useQueryClient();
   const { handleEnterToNextField } = useFormNavigation();
   
-  // 1. Criar a referência para o formulário
   const formRef = useRef<HTMLFormElement>(null);
 
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [isFormOpen, setIsFormOpen] = useState(false); // Estado para controlar o colapso do formulário
+  const [isFormOpen, setIsFormOpen] = useState(false); 
   const [formData, setFormData] = useState<z.infer<typeof omSchema>>({
     nome_om: "",
     codug_om: "",
     rm_vinculacao: "",
     codug_rm_vinculacao: "",
-    cidade: "", // Adicionado cidade
+    cidade: "", 
     ativo: true,
   });
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [omToDelete, setOmToDelete] = useState<OMData | null>(null);
   
-  // NOVO ESTADO: Filtro de pesquisa
   const [searchTerm, setSearchTerm] = useState("");
 
   const { data: oms, isLoading, error } = useQuery({
@@ -67,7 +65,6 @@ const OmConfigPage = () => {
     queryFn: fetchOMs,
   });
   
-  // Lógica de Filtragem
   const filteredOms = useMemo(() => {
     if (!oms) return [];
     if (!searchTerm) return oms;
@@ -84,20 +81,17 @@ const OmConfigPage = () => {
   }, [oms, searchTerm]);
 
 
-  // Efeito para abrir o formulário se estiver em modo de edição
   useEffect(() => {
     if (editingId) {
       setIsFormOpen(true);
     }
   }, [editingId]);
 
-  // Tipo de dados para a mutação (inclui o ID opcional)
   type OmMutationData = (TablesInsert<'organizacoes_militares'> | TablesUpdate<'organizacoes_militares'>) & { id?: string };
 
   const mutation = useMutation({
     mutationFn: async (data: OmMutationData) => {
       if (data.id) {
-        // Modo Edição
         const { id, ...updateData } = data;
         const { error } = await supabase
           .from("organizacoes_militares")
@@ -105,7 +99,6 @@ const OmConfigPage = () => {
           .eq("id", id);
         if (error) throw error;
       } else {
-        // Modo Inserção
         const { error } = await supabase
           .from("organizacoes_militares")
           .insert(data as TablesInsert<'organizacoes_militares'>[]);
@@ -114,9 +107,12 @@ const OmConfigPage = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["organizacoesMilitares"] });
+      // Invalida o status de onboarding para atualizar o Dashboard
+      queryClient.invalidateQueries({ queryKey: ["onboardingStatus"] });
+      
       toast.success(`OM ${editingId ? "atualizada" : "adicionada"} com sucesso!`);
       resetForm();
-      setIsFormOpen(false); // Fechar o formulário após o sucesso
+      setIsFormOpen(false); 
     },
     onError: (err) => {
       toast.error(sanitizeError(err));
@@ -133,6 +129,9 @@ const OmConfigPage = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["organizacoesMilitares"] });
+      // Invalida o status de onboarding para atualizar o Dashboard
+      queryClient.invalidateQueries({ queryKey: ["onboardingStatus"] });
+      
       toast.success("OM excluída com sucesso!");
       setOmToDelete(null);
       setShowDeleteDialog(false);
@@ -149,7 +148,7 @@ const OmConfigPage = () => {
       codug_om: "",
       rm_vinculacao: "",
       codug_rm_vinculacao: "",
-      cidade: "", // Resetar cidade
+      cidade: "", 
       ativo: true,
     });
   };
@@ -161,12 +160,10 @@ const OmConfigPage = () => {
       codug_om: om.codug_om,
       rm_vinculacao: om.rm_vinculacao,
       codug_rm_vinculacao: om.codug_rm_vinculacao,
-      cidade: om.cidade || "", // Carregar cidade
+      cidade: om.cidade || "", 
       ativo: om.ativo,
     });
     
-    // 4. Rolar para o formulário após definir o estado
-    // Usamos setTimeout para garantir que o Collapsible tenha tempo de abrir (se estiver fechado)
     setTimeout(() => {
       formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }, 100);
@@ -182,7 +179,6 @@ const OmConfigPage = () => {
     try {
       omSchema.parse(formData);
       
-      // Adiciona o ID ao objeto de dados se estiver em modo de edição
       const dataToMutate: OmMutationData = editingId 
         ? { ...formData, id: editingId } 
         : formData;
@@ -198,16 +194,13 @@ const OmConfigPage = () => {
   };
 
   const handleToggleActive = (om: OMData) => {
-    // Usamos o ID da OM para a mutação de toggle
     mutation.mutate({ ...om, id: om.id, ativo: !om.ativo });
   };
 
-  // Função para alternar o formulário e resetar se estiver fechando
   const handleToggleForm = () => {
     if (isFormOpen) {
       resetForm();
     } else {
-      // Rolar para o formulário ao abrir
       setTimeout(() => {
         formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
       }, 100);
@@ -215,7 +208,6 @@ const OmConfigPage = () => {
     setIsFormOpen(!isFormOpen);
   };
   
-  // Função para fechar o formulário e resetar o estado (usada pelo botão Cancelar interno)
   const handleCancelForm = () => {
     resetForm();
     setIsFormOpen(false);
@@ -246,7 +238,6 @@ const OmConfigPage = () => {
           </CardHeader>
           <CardContent className="space-y-6">
             
-            {/* Controles de Ação (Nova OM e Importação) */}
             <div className="flex justify-end items-center">
               <div className="flex gap-2">
                 <Button 
@@ -276,7 +267,6 @@ const OmConfigPage = () => {
               </div>
             </div>
 
-            {/* Formulário de Cadastro/Edição (Colapsável) */}
             <Collapsible
               open={isFormOpen}
               onOpenChange={setIsFormOpen}
@@ -286,7 +276,6 @@ const OmConfigPage = () => {
                 <h3 className="text-lg font-semibold mb-4">
                   {editingId ? "Editar OM" : "Cadastro de Nova OM"}
                 </h3>
-                {/* 3. Anexar a referência ao formulário */}
                 <form ref={formRef} onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-4 border p-4 rounded-lg bg-muted/50">
                   
                   <div className="space-y-2">
@@ -314,7 +303,6 @@ const OmConfigPage = () => {
                     />
                   </div>
                   
-                  {/* CAMPO: CIDADE */}
                   <div className="space-y-2">
                     <Label htmlFor="cidade">Cidade da OM *</Label>
                     <Input
@@ -358,7 +346,6 @@ const OmConfigPage = () => {
                       {mutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
                       {editingId ? "Atualizar OM" : "Adicionar OM"}
                     </Button>
-                    {/* Botão Cancelar (substitui o antigo 'Cancelar Edição' e fecha o formulário) */}
                     <Button 
                       type="button" 
                       variant="outline" 
@@ -372,11 +359,9 @@ const OmConfigPage = () => {
               </CollapsibleContent>
             </Collapsible>
 
-            {/* Tabela de OMs Cadastradas */}
             <div className="mt-4">
               <h3 className="text-lg font-semibold mb-4">OMs Cadastradas ({oms?.length || 0})</h3>
               
-              {/* NOVO: Campo de Pesquisa */}
               <div className="relative mb-4">
                 <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                 <Input
@@ -459,7 +444,6 @@ const OmConfigPage = () => {
         </Card>
       </div>
 
-      {/* Diálogo de Confirmação de Exclusão */}
       <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
         <AlertDialogContent>
           <AlertDialogHeader>
