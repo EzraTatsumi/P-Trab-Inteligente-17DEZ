@@ -155,24 +155,16 @@ const CustosOperacionaisPage = () => {
 
   const ghostActive = isGhostMode();
 
-  // 1. Sincroniza o Estado para a URL (Protegido contra loops)
+  // Sincronização robusta de Ano e URL
   useEffect(() => {
     const yearInUrl = searchParams.get('year');
-    if (selectedYear && yearInUrl !== selectedYear.toString()) {
+    const yearNum = yearInUrl ? parseInt(yearInUrl) : null;
+    if (yearNum && !isNaN(yearNum) && yearNum !== selectedYear) {
+      setSelectedYear(yearNum);
+    } else if (selectedYear && yearInUrl !== selectedYear.toString()) {
       setSearchParams({ year: selectedYear.toString() }, { replace: true });
     }
-  }, [selectedYear]);
-
-  // 2. Sincroniza a URL para o Estado (Roda no carregamento inicial)
-  useEffect(() => {
-    const yearInUrl = searchParams.get('year');
-    if (yearInUrl) {
-      const yearNum = parseInt(yearInUrl);
-      if (!isNaN(yearNum) && yearNum !== selectedYear) {
-        setSelectedYear(yearNum);
-      }
-    }
-  }, [searchParams]);
+  }, [searchParams, selectedYear, setSearchParams]);
 
   const { data: pageData, isLoading: isLoadingPageData, isFetching: isFetchingPageData } = useQuery({
     queryKey: ['diretrizesCustosOperacionais', selectedYear, user?.id, ghostActive],
@@ -623,7 +615,7 @@ const CustosOperacionaisPage = () => {
               if (error) throw error;
               toast.success("Contrato de Passagens atualizado!");
           } else {
-              const { error } = await supabase.from('diretrizes_passagens').insert([dbData]);
+              const { error = null } = await supabase.from('diretrizes_passagens').insert([dbData]);
               if (error) throw error;
               toast.success("Novo Contrato de Passagens cadastrado!");
           }
@@ -1054,19 +1046,25 @@ const CustosOperacionaisPage = () => {
         };
         checkAuthAndLoadYears();
     }
-  }, [isLoadingDefaultYear, defaultYearData?.year, defaultYearData?.defaultYear]);
+  }, [isLoadingDefaultYear, defaultYearData?.year, defaultYearData?.defaultYear, selectedYear, currentYear, navigate]);
 
   useEffect(() => {
-      if (pageData?.operacional) {
+      if (pageData?.operacional && JSON.stringify(pageData.operacional) !== JSON.stringify(diretrizes)) {
           setDiretrizes(pageData.operacional);
       }
-  }, [pageData]);
+  }, [pageData, diretrizes]);
 
   useEffect(() => {
-      if (diretrizesMaterialConsumoHook) setDiretrizesMaterialConsumo(diretrizesMaterialConsumoHook);
-      if (diretrizesServicosTerceirosHook) setDiretrizesServicosTerceiros(diretrizesServicosTerceirosHook);
-      if (diretrizesMaterialPermanenteHook) setDiretrizesMaterialPermanente(diretrizesMaterialPermanenteHook);
-  }, [diretrizesMaterialConsumoHook, diretrizesServicosTerceirosHook, diretrizesMaterialPermanenteHook]);
+      if (diretrizesMaterialConsumoHook && JSON.stringify(diretrizesMaterialConsumoHook) !== JSON.stringify(diretrizesMaterialConsumo)) {
+          setDiretrizesMaterialConsumo(diretrizesMaterialConsumoHook);
+      }
+      if (diretrizesServicosTerceirosHook && JSON.stringify(diretrizesServicosTerceirosHook) !== JSON.stringify(diretrizesServicosTerceiros)) {
+          setDiretrizesServicosTerceiros(diretrizesServicosTerceirosHook);
+      }
+      if (diretrizesMaterialPermanenteHook && JSON.stringify(diretrizesMaterialPermanenteHook) !== JSON.stringify(diretrizesMaterialPermanente)) {
+          setDiretrizesMaterialPermanente(diretrizesMaterialPermanenteHook);
+      }
+  }, [diretrizesMaterialConsumoHook, diretrizesServicosTerceirosHook, diretrizesMaterialPermanenteHook, diretrizesMaterialConsumo, diretrizesServicosTerceiros, diretrizesMaterialPermanente]);
 
   const loadAvailableYears = async (defaultYearId: number | null) => {
     try {
