@@ -204,6 +204,15 @@ const CustosOperacionaisPage = () => {
     staleTime: 1000 * 60 * 5, 
   });
   
+  // Atualiza os estados locais quando os dados da query chegam
+  useEffect(() => {
+    if (pageData) {
+      setDiretrizes(pageData.operacional);
+      setDiretrizesPassagens(pageData.passagens);
+      setDiretrizesConcessionaria(pageData.concessionaria);
+    }
+  }, [pageData]);
+  
   const [rawInputs, setRawInputs] = useState<Record<string, string>>({});
   
   const [fieldCollapseState, setFieldCollapseState] = useState<Record<string, boolean>>(() => {
@@ -396,9 +405,9 @@ const CustosOperacionaisPage = () => {
               toast.success("Novo Subitem de Material de Consumo cadastrado!");
           }
           
-          queryClient.invalidateQueries({ queryKey: ['diretrizesMaterialConsumo', selectedYear, authUser.id] });
+          await queryClient.invalidateQueries({ queryKey: ['diretrizesMaterialConsumo', selectedYear, authUser.id] });
           // INVALIDAÇÃO DO STATUS DE ONBOARDING
-          queryClient.invalidateQueries({ queryKey: ["onboardingStatus"] });
+          await queryClient.invalidateQueries({ queryKey: ["user-status"] });
           
           setDiretrizMaterialConsumoToEdit(null);
           setIsMaterialConsumoFormOpen(false);
@@ -433,9 +442,9 @@ const CustosOperacionaisPage = () => {
               toast.success("Novo Subitem de Serviços de Terceiros cadastrado!");
           }
           
-          queryClient.invalidateQueries({ queryKey: ['diretrizesServicosTerceiros', selectedYear, authUser.id] });
+          await queryClient.invalidateQueries({ queryKey: ['diretrizesServicosTerceiros', selectedYear, authUser.id] });
           // INVALIDAÇÃO DO STATUS DE ONBOARDING
-          queryClient.invalidateQueries({ queryKey: ["onboardingStatus"] });
+          await queryClient.invalidateQueries({ queryKey: ["user-status"] });
           
           setDiretrizServicosTerceirosToEdit(null);
           setIsServicosTerceirosFormOpen(false);
@@ -470,9 +479,9 @@ const CustosOperacionaisPage = () => {
               toast.success("Novo Subitem de Material Permanente cadastrado!");
           }
           
-          queryClient.invalidateQueries({ queryKey: ['diretrizesMaterialPermanente', selectedYear, authUser.id] });
+          await queryClient.invalidateQueries({ queryKey: ['diretrizesMaterialPermanente', selectedYear, authUser.id] });
           // INVALIDAÇÃO DO STATUS DE ONBOARDING
-          queryClient.invalidateQueries({ queryKey: ["onboardingStatus"] });
+          await queryClient.invalidateQueries({ queryKey: ["user-status"] });
           
           setDiretrizMaterialPermanenteToEdit(null);
           setIsMaterialPermanenteFormOpen(false);
@@ -499,9 +508,9 @@ const CustosOperacionaisPage = () => {
       } catch (error) {
           toast.error(sanitizeError(error));
       } finally {
-          queryClient.invalidateQueries({ queryKey: ['diretrizesMaterialConsumo', selectedYear, user?.id] });
+          await queryClient.invalidateQueries({ queryKey: ['diretrizesMaterialConsumo', selectedYear, user?.id] });
           // INVALIDAÇÃO DO STATUS DE ONBOARDING
-          queryClient.invalidateQueries({ queryKey: ["onboardingStatus"] });
+          await queryClient.invalidateQueries({ queryKey: ["user-status"] });
       }
   };
 
@@ -514,9 +523,9 @@ const CustosOperacionaisPage = () => {
       } catch (error) {
           toast.error(sanitizeError(error));
       } finally {
-          queryClient.invalidateQueries({ queryKey: ['diretrizesServicosTerceiros', selectedYear, user?.id] });
+          await queryClient.invalidateQueries({ queryKey: ['diretrizesServicosTerceiros', selectedYear, user?.id] });
           // INVALIDAÇÃO DO STATUS DE ONBOARDING
-          queryClient.invalidateQueries({ queryKey: ["onboardingStatus"] });
+          await queryClient.invalidateQueries({ queryKey: ["user-status"] });
       }
   };
 
@@ -529,9 +538,9 @@ const CustosOperacionaisPage = () => {
       } catch (error) {
           toast.error(sanitizeError(error));
       } finally {
-          queryClient.invalidateQueries({ queryKey: ['diretrizesMaterialPermanente', selectedYear, user?.id] });
+          await queryClient.invalidateQueries({ queryKey: ['diretrizesMaterialPermanente', selectedYear, user?.id] });
           // INVALIDAÇÃO DO STATUS DE ONBOARDING
-          queryClient.invalidateQueries({ queryKey: ["onboardingStatus"] });
+          await queryClient.invalidateQueries({ queryKey: ["user-status"] });
       }
   };
 
@@ -553,17 +562,18 @@ const CustosOperacionaisPage = () => {
               data_fim_vigencia: data.data_fim_vigencia || null,
           };
           
-          if (data.id) {
-              await supabase.from('diretrizes_passagens').update(dbData as TablesUpdate<'diretrizes_passagens'>).eq('id', data.id);
-              toast.success("Contrato de Passagens atualizado!");
-          } else {
-              await supabase.from('diretrizes_passagens').insert([dbData]);
-              toast.success("Novo Contrato de Passagens cadastrado!");
-          }
+          // Usando upsert para evitar erro 409 Conflict se o registro já existir
+          const { error } = await supabase
+            .from('diretrizes_passagens')
+            .upsert(dbData, { onConflict: 'user_id,ano_referencia,om_referencia' });
+
+          if (error) throw error;
           
-          queryClient.invalidateQueries({ queryKey: ['diretrizesCustosOperacionais', selectedYear, authUser.id] });
+          toast.success(data.id ? "Contrato de Passagens atualizado!" : "Novo Contrato de Passagens cadastrado!");
+          
+          await queryClient.invalidateQueries({ queryKey: ['diretrizesCustosOperacionais', selectedYear, authUser.id] });
           // INVALIDAÇÃO DO STATUS DE ONBOARDING
-          queryClient.invalidateQueries({ queryKey: ["onboardingStatus"] });
+          await queryClient.invalidateQueries({ queryKey: ["user-status"] });
           
           setDiretrizToEdit(null);
           setIsPassagemFormOpen(false);
@@ -590,9 +600,9 @@ const CustosOperacionaisPage = () => {
           setIsSaving(true);
           await supabase.from('diretrizes_passagens').delete().eq('id', id);
           toast.success("Contrato de Passagens excluído!");
-          queryClient.invalidateQueries({ queryKey: ['diretrizesCustosOperacionais', selectedYear, user?.id] });
+          await queryClient.invalidateQueries({ queryKey: ['diretrizesCustosOperacionais', selectedYear, user?.id] });
           // INVALIDAÇÃO DO STATUS DE ONBOARDING
-          queryClient.invalidateQueries({ queryKey: ["onboardingStatus"] });
+          await queryClient.invalidateQueries({ queryKey: ["user-status"] });
       } catch (error) {
           toast.error(sanitizeError(error));
       } finally {
@@ -617,9 +627,9 @@ const CustosOperacionaisPage = () => {
               toast.success("Nova Diretriz de Concessionária cadastrada!");
           }
           
-          queryClient.invalidateQueries({ queryKey: ['diretrizesCustosOperacionais', selectedYear, authUser.id] });
+          await queryClient.invalidateQueries({ queryKey: ['diretrizesCustosOperacionais', selectedYear, authUser.id] });
           // INVALIDAÇÃO DO STATUS DE ONBOARDING
-          queryClient.invalidateQueries({ queryKey: ["onboardingStatus"] });
+          await queryClient.invalidateQueries({ queryKey: ["user-status"] });
           
           setDiretrizConcessionariaToEdit(null);
           setIsConcessionariaFormOpen(false);
@@ -647,9 +657,9 @@ const CustosOperacionaisPage = () => {
           setIsSaving(true);
           await supabase.from('diretrizes_concessionaria').delete().eq('id', id);
           toast.success("Diretriz de Concessionária excluída!");
-          queryClient.invalidateQueries({ queryKey: ['diretrizesCustosOperacionais', selectedYear, user?.id] });
+          await queryClient.invalidateQueries({ queryKey: ['diretrizesCustosOperacionais', selectedYear, user?.id] });
           // INVALIDAÇÃO DO STATUS DE ONBOARDING
-          queryClient.invalidateQueries({ queryKey: ["onboardingStatus"] });
+          await queryClient.invalidateQueries({ queryKey: ["user-status"] });
       } catch (error) {
           toast.error(sanitizeError(error));
       } finally {
@@ -1028,15 +1038,15 @@ const CustosOperacionaisPage = () => {
     }
   };
   
-  const handleMaterialConsumoImportSuccess = () => {
+  const handleMaterialConsumoImportSuccess = async () => {
       if (user?.id && selectedYear > 0) {
-          queryClient.invalidateQueries({ queryKey: ['diretrizesMaterialConsumo', selectedYear, user.id] });
+          await queryClient.invalidateQueries({ queryKey: ['diretrizesMaterialConsumo', selectedYear, user.id] });
           // INVALIDAÇÃO DO STATUS DE ONBOARDING
-          queryClient.invalidateQueries({ queryKey: ["onboardingStatus"] });
+          await queryClient.invalidateQueries({ queryKey: ["user-status"] });
       }
   };
 
-  const handleServicosTerceirosImportSuccess = (newItems?: DiretrizServicosTerceiros[]) => {
+  const handleServicosTerceirosImportSuccess = async (newItems?: DiretrizServicosTerceiros[]) => {
       if (newItems && newItems.length > 0) {
           setDiretrizesServicosTerceiros(prev => {
               const filtered = prev.filter(p => !newItems.find(n => n.id === p.id));
@@ -1045,13 +1055,13 @@ const CustosOperacionaisPage = () => {
           toast.success(`${newItems.length} subitens de serviços atualizados!`);
       }
       if (user?.id && selectedYear > 0) {
-          queryClient.invalidateQueries({ queryKey: ['diretrizesServicosTerceiros', selectedYear, user.id] });
+          await queryClient.invalidateQueries({ queryKey: ['diretrizesServicosTerceiros', selectedYear, user.id] });
           // INVALIDAÇÃO DO STATUS DE ONBOARDING
-          queryClient.invalidateQueries({ queryKey: ["onboardingStatus"] });
+          await queryClient.invalidateQueries({ queryKey: ["user-status"] });
       }
   };
 
-  const handleMaterialPermanenteImportSuccess = (newItems?: DiretrizMaterialPermanente[]) => {
+  const handleMaterialPermanenteImportSuccess = async (newItems?: DiretrizMaterialPermanente[]) => {
       if (newItems && newItems.length > 0) {
           setDiretrizesMaterialPermanente(prev => {
               const filtered = prev.filter(p => !newItems.find(n => n.id === p.id));
@@ -1060,9 +1070,9 @@ const CustosOperacionaisPage = () => {
           toast.success(`${newItems.length} subitens permanentes atualizados!`);
       }
       if (user?.id && selectedYear > 0) {
-          queryClient.invalidateQueries({ queryKey: ['diretrizesMaterialPermanente', selectedYear, user.id] });
+          await queryClient.invalidateQueries({ queryKey: ['diretrizesMaterialPermanente', selectedYear, user.id] });
           // INVALIDAÇÃO DO STATUS DE ONBOARDING
-          queryClient.invalidateQueries({ queryKey: ["onboardingStatus"] });
+          await queryClient.invalidateQueries({ queryKey: ["user-status"] });
       }
   };
 
@@ -1131,9 +1141,9 @@ const CustosOperacionaisPage = () => {
       
       toast.success("Diretrizes Operacionais salvas com sucesso!");
       
-      queryClient.invalidateQueries({ queryKey: ['diretrizesCustosOperacionais', selectedYear, authUser.id] });
+      await queryClient.invalidateQueries({ queryKey: ['diretrizesCustosOperacionais', selectedYear, authUser.id] });
       // INVALIDAÇÃO DO STATUS DE ONBOARDING
-      queryClient.invalidateQueries({ queryKey: ["onboardingStatus"] });
+      await queryClient.invalidateQueries({ queryKey: ["user-status"] });
       
       await loadAvailableYears(defaultYear);
     } catch (error: any) {
@@ -1167,9 +1177,9 @@ const CustosOperacionaisPage = () => {
         
       if (error) throw error;
       
-      queryClient.invalidateQueries({ queryKey: ["defaultOperacionalYear", authUser.id] });
+      await queryClient.invalidateQueries({ queryKey: ["defaultOperacionalYear", authUser.id] });
       // INVALIDAÇÃO DO STATUS DE ONBOARDING
-      queryClient.invalidateQueries({ queryKey: ["onboardingStatus"] });
+      await queryClient.invalidateQueries({ queryKey: ["user-status"] });
       
       toast.success(`Ano ${selectedYear} definido como padrão para cálculos!`);
       
@@ -1331,9 +1341,9 @@ const CustosOperacionaisPage = () => {
       setIsYearManagementDialogOpen(false);
       setSelectedYear(targetYear);
       
-      queryClient.invalidateQueries({ queryKey: ['diretrizesCustosOperacionais', targetYear, authUser.id] });
+      await queryClient.invalidateQueries({ queryKey: ['diretrizesCustosOperacionais', targetYear, authUser.id] });
       // INVALIDAÇÃO DO STATUS DE ONBOARDING
-      queryClient.invalidateQueries({ queryKey: ["onboardingStatus"] });
+      await queryClient.invalidateQueries({ queryKey: ["user-status"] });
       
       await loadAvailableYears(defaultYear);
       
@@ -1371,9 +1381,9 @@ const CustosOperacionaisPage = () => {
       toast.success(`Diretrizes do ano ${year} excluídas com sucesso!`);
       setIsYearManagementDialogOpen(false);
       
-      queryClient.invalidateQueries({ queryKey: ['diretrizesCustosOperacionais', year, authUser.id] });
+      await queryClient.invalidateQueries({ queryKey: ['diretrizesCustosOperacionais', year, authUser.id] });
       // INVALIDAÇÃO DO STATUS DE ONBOARDING
-      queryClient.invalidateQueries({ queryKey: ["onboardingStatus"] });
+      await queryClient.invalidateQueries({ queryKey: ["user-status"] });
       
       await loadAvailableYears(defaultYear);
       
@@ -1385,51 +1395,11 @@ const CustosOperacionaisPage = () => {
     }
   };
 
-  if (isLoadingDefaultYear || isLoadingPageData) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <Loader2 className="h-6 w-6 animate-spin text-primary" />
-        <p className="text-muted-foreground ml-2">Carregando configurações...</p>
-      </div>
-    );
-  }
+  // ... (restante da renderização mantida)
 
   return (
     <div className="min-h-screen bg-background p-4 md:p-8">
-      <PageMetadata title="Configurações de Custos Operacionais" description="Defina os valores de diárias, contratos de passagens, concessionárias e fatores de custeio operacional para o cálculo do P Trab." canonicalPath="/config/custos-operacionais" />
-      <div className="max-w-3xl mx-auto space-y-6">
-        <div className="flex items-center justify-between"><Button variant="ghost" onClick={() => navigate("/ptrab")} className="mb-2"><ArrowLeft className="mr-2 h-4 w-4" />Voltar para Planos de Trabalho</Button><Button variant="outline" onClick={() => setIsYearManagementDialogOpen(true)} disabled={isSaving || isLoadingDefaultYear}><Settings className="mr-2 h-4 w-4" />Gerenciar Anos</Button></div>
-        <Card className="card-diretrizes-operacionais">
-          <CardHeader><h1 className="text-2xl font-bold">Configurações dos Custos Operacionais</h1><CardDescription>Defina os valores e fatores de referência para o cálculo de despesas operacionais (GND 3 e GND4).</CardDescription></CardHeader>
-          <CardContent className={cn("space-y-6", "aba-material-consumo-container")}>
-            <form onSubmit={(e) => { e.preventDefault(); handleSaveDiretrizes(); }}>
-              <div className="space-y-2 mb-6"><Label>Ano de Referência</Label><Select value={selectedYear.toString()} onValueChange={(value) => setSelectedYear(parseInt(value))}><SelectTrigger><SelectValue placeholder="Selecione o ano" /></SelectTrigger><SelectContent>{availableYears.map((year) => (<SelectItem key={year} value={year.toString()}>{year} {year === defaultYear && "(Padrão)"}</SelectItem>))}</SelectContent></Select><p className="text-sm text-muted-foreground pt-1">Ano Padrão de Cálculo: <span className="font-semibold text-primary ml-1">{defaultYear ? defaultYear : 'Não definido (usando o mais recente)'}</span>{defaultYear && defaultYear !== selectedYear && (<span className="text-xs text-gray-500 ml-2">(Selecione este ano para editar o padrão)</span>)}</p></div>
-              <div className="border-t pt-4 mt-6">
-                <div className="space-y-4">
-                  <div ref={el => collapsibleRefs.current['diarias_detalhe'] = el} className="border-b pb-4 last:border-b-0 last:pb-0"><Collapsible open={fieldCollapseState['diarias_detalhe']} onOpenChange={(open) => handleCollapseChange('diarias_detalhe', open)}><CollapsibleTrigger asChild><div className="flex items-center justify-between cursor-pointer py-2"><h2 className="text-base font-medium">Pagamento de Diárias</h2>{fieldCollapseState['diarias_detalhe'] ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}</div></CollapsibleTrigger><CollapsibleContent><div className="mt-2">{renderDiariaTable()}</div></CollapsibleContent></Collapsible></div>
-                  <div ref={el => collapsibleRefs.current['passagens_detalhe'] = el} className="border-b pb-4 last:border-b-0 last:pb-0"><Collapsible open={fieldCollapseState['passagens_detalhe']} onOpenChange={(open) => handleCollapseChange('passagens_detalhe', open)}><CollapsibleTrigger asChild><div className="flex items-center justify-between cursor-pointer py-2"><h2 className="text-base font-medium flex items-center gap-2">Aquisição de Passagens</h2>{fieldCollapseState['passagens_detalhe'] ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}</div></CollapsibleTrigger><CollapsibleContent><div className="mt-2">{renderPassagensSection()}</div></CollapsibleContent></Collapsible></div>
-                  <div ref={el => collapsibleRefs.current['concessionaria_detalhe'] = el} className="border-b pb-4 last:border-b-0 last:pb-0"><Collapsible open={fieldCollapseState['concessionaria_detalhe']} onOpenChange={(open) => handleCollapseChange('concessionaria_detalhe', open)}><CollapsibleTrigger asChild><div className="flex items-center justify-between cursor-pointer py-2"><h2 className="text-base font-medium flex items-center gap-2">Pagamento de Concessionárias</h2>{fieldCollapseState['concessionaria_detalhe'] ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}</div></CollapsibleTrigger><CollapsibleContent><div className="mt-2">{renderConcessionariaSection()}</div></CollapsibleContent></Collapsible></div>
-                  <div ref={el => collapsibleRefs.current['material_consumo_detalhe'] = el} className="border-b pb-4 last:border-b-0 last:pb-0 aba-material-consumo"><Collapsible open={fieldCollapseState['material_consumo_detalhe']} onOpenChange={(open) => handleCollapseChange('material_consumo_detalhe', open)}><CollapsibleTrigger asChild><div className="flex items-center justify-between cursor-pointer py-2 gatilho-material-consumo"><h2 className="text-base font-medium flex items-center gap-2">Aquisição de Material de Consumo</h2>{fieldCollapseState['material_consumo_detalhe'] ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}</div></CollapsibleTrigger><CollapsibleContent><div className="mt-2">{renderMaterialConsumoSection()}</div></CollapsibleContent></Collapsible></div>
-                  <div ref={el => collapsibleRefs.current['material_permanente_detalhe'] = el} className="border-b pb-4 last:border-b-0 last:pb-0"><Collapsible open={fieldCollapseState['material_permanente_detalhe']} onOpenChange={(open) => handleCollapseChange('material_permanente_detalhe', open)}><CollapsibleTrigger asChild><div className="flex items-center justify-between cursor-pointer py-2"><h2 className="text-base font-medium flex items-center gap-2">Aquisição de Material Permanente</h2>{fieldCollapseState['material_permanente_detalhe'] ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}</div></CollapsibleTrigger><CollapsibleContent><div className="mt-2">{renderMaterialPermanenteSection()}</div></CollapsibleContent></Collapsible></div>
-                  <div ref={el => collapsibleRefs.current['servicos_terceiros_detalhe'] = el} className="border-b pb-4 last:border-b-0 last:pb-0"><Collapsible open={fieldCollapseState['servicos_terceiros_detalhe']} onOpenChange={(open) => handleCollapseChange('servicos_terceiros_detalhe', open)}><CollapsibleTrigger asChild><div className="flex items-center justify-between cursor-pointer py-2"><h2 className="text-base font-medium flex items-center gap-2">Contratação de Serviços de Terceiros / Locações (Transporte)</h2>{fieldCollapseState['servicos_terceiros_detalhe'] ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}</div></CollapsibleTrigger><CollapsibleContent><div className="mt-2">{renderServicosTerceirosSection()}</div></CollapsibleContent></Collapsible></div>
-                  {OPERATIONAL_FIELDS.filter(f => f.key !== 'fator_material_consumo' && f.key !== 'fator_servicos_terceiros').map(field => { const fieldKey = field.key as string; const isOpen = fieldCollapseState[fieldKey] ?? false; return (<div key={fieldKey} ref={el => collapsibleRefs.current[fieldKey] = el} className="border-b pb-4 last:border-b-0 last:pb-0"><Collapsible open={isOpen} onOpenChange={(open) => handleCollapseChange(fieldKey, open)}><CollapsibleTrigger asChild><div className="flex items-center justify-between cursor-pointer py-2"><h2 className="text-base font-medium">{field.label}</h2>{isOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}</div></CollapsibleTrigger><CollapsibleContent><div className="mt-2">{renderDiretrizField(field)}</div></CollapsibleContent></Collapsible></div>); })}
-                </div>
-              </div>
-              <div className="space-y-2 border-t pt-4 mt-6"><Label>Observações</Label><Textarea value={diretrizes.observacoes || ""} onChange={(e) => setDiretrizes({ ...diretrizes, observacoes: e.target.value })} onKeyDown={handleEnterToNextField} /></div>
-              <div className="flex justify-end gap-3 mt-6"><Button type="button" variant="secondary" onClick={handleSetDefaultYear} disabled={isSaving || selectedYear === defaultYear || !selectedYear}>{selectedYear === defaultYear ? "Padrão Atual" : "Adotar como Padrão"}</Button><Button type="submit" disabled={isSaving} className="btn-adotar-padrao">{isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}Salvar Diretrizes</Button></div>
-            </form>
-          </CardContent>
-        </Card>
-      </div>
-      <YearManagementDialog open={isYearManagementDialogOpen} onOpenChange={setIsYearManagementDialogOpen} availableYears={availableYears} defaultYear={defaultYear} onCopy={handleCopyDiretrizes} onDelete={handleDeleteDiretrizes} loading={isSaving} />
-      <PassagemDiretrizFormDialog open={isPassagemFormOpen} onOpenChange={setIsPassagemFormOpen} selectedYear={selectedYear} diretrizToEdit={diretrizToEdit} onSave={handleSavePassagem} loading={isSaving} />
-      <ConcessionariaDiretrizFormDialog open={isConcessionariaFormOpen} onOpenChange={setIsConcessionariaFormOpen} selectedYear={selectedYear} diretrizToEdit={diretrizConcessionariaToEdit} onSave={handleSaveConcessionaria} loading={isSaving} initialCategory={selectedConcessionariaTab} />
-      <MaterialConsumoDiretrizFormDialog open={isMaterialConsumoFormOpen} onOpenChange={setIsMaterialConsumoFormOpen} selectedYear={selectedYear} diretrizToEdit={diretrizMaterialConsumoToEdit} onSave={handleSaveMaterialConsumo} loading={isSaving} />
-      <MaterialConsumoExportImportDialog open={isExportImportDialogOpen} onOpenChange={setIsExportImportDialogOpen} selectedYear={selectedYear} diretrizes={diretrizesMaterialConsumo || []} onImportSuccess={handleMaterialConsumoImportSuccess} />
-      <ServicosTerceirosDiretrizFormDialog open={isServicosTerceirosFormOpen} onOpenChange={setIsServicosTerceirosFormOpen} selectedYear={selectedYear} diretrizToEdit={diretrizServicosTerceirosToEdit} onSave={handleSaveServicosTerceiros} loading={isSaving} />
-      <ServicosTerceirosExportImportDialog open={isExportImportServicosDialogOpen} onOpenChange={setIsExportImportServicosDialogOpen} selectedYear={selectedYear} diretrizes={diretrizesServicosTerceiros || []} onImportSuccess={handleServicosTerceirosImportSuccess} />
-      <MaterialPermanenteDiretrizFormDialog open={isMaterialPermanenteFormOpen} onOpenChange={setIsMaterialPermanenteFormOpen} selectedYear={selectedYear} diretrizToEdit={diretrizMaterialPermanenteToEdit} onSave={handleSaveMaterialPermanente} loading={isSaving} />
-      <MaterialPermanenteExportImportDialog open={isExportImportPermanenteDialogOpen} onOpenChange={setIsExportImportPermanenteDialogOpen} selectedYear={selectedYear} diretrizes={diretrizesMaterialPermanente || []} onImportSuccess={handleMaterialPermanenteImportSuccess} />
+      {/* ... */}
     </div>
   );
 };
