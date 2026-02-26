@@ -1,8 +1,8 @@
 "use client";
 
 /**
- * Página de Configuração de Custos Operacionais - Layout Restaurado v1.0.6
- * Correção: Removido loop infinito de sincronização de estados.
+ * Página de Configuração de Custos Operacionais - Layout Restaurado v1.0.5
+ * Gerencia os parâmetros de diárias, passagens, concessionárias e materiais.
  */
 
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
@@ -14,22 +14,26 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
-import { ArrowLeft, Loader2, Save, Settings, ChevronDown, ChevronUp, Plus, Search, FileSpreadsheet, Package } from "lucide-react";
+import { ArrowLeft, Activity, Loader2, Save, Settings, ChevronDown, ChevronUp, Plus, Trash2, Pencil, Plane, Package, Search, FileSpreadsheet, HardDrive } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { sanitizeError } from "@/lib/errorUtils";
 import { useFormNavigation } from "@/hooks/useFormNavigation";
 import { YearManagementDialog } from "@/components/YearManagementDialog";
-import { formatCurrencyInput, numberToRawDigits, formatCodug } from "@/lib/formatUtils";
+import { formatCurrencyInput, numberToRawDigits, formatCurrency, formatCodug } from "@/lib/formatUtils";
 import { useSession } from "@/components/SessionContextProvider";
-import { Tables, TablesInsert, TablesUpdate, Json } from "@/integrations/supabase/types";
+import { Tables, TablesInsert, TablesUpdate, Json, TableName } from "@/integrations/supabase/types";
 import { diretrizOperacionalSchema } from "@/lib/validationSchemas";
 import * as z from "zod";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useDefaultDiretrizYear } from "@/hooks/useDefaultDiretrizYear";
-import { useQueryClient, useQuery } from "@tanstack/react-query";
-import { DiretrizPassagem } from "@/types/diretrizesPassagens";
+import { useQueryClient, useQuery, useMutation } from "@tanstack/react-query";
+import { OmSelector } from "@/components/OmSelector";
+import { OMData } from "@/lib/omUtils";
+import { DiretrizPassagem, TrechoPassagem, TipoTransporte, DiretrizPassagemForm } from "@/types/diretrizesPassagens";
 import CurrencyInput from "@/components/CurrencyInput";
+import { Switch } from "@/components/ui/switch";
+import { useMilitaryOrganizations } from "@/hooks/useMilitaryOrganizations";
 import PassagemDiretrizFormDialog from "@/components/PassagemDiretrizFormDialog";
 import PassagemDiretrizRow from "@/components/PassagemDiretrizRow"; 
 import ConcessionariaDiretrizFormDialog from "@/components/ConcessionariaDiretrizFormDialog";
@@ -63,8 +67,9 @@ import MaterialPermanenteDiretrizRow from "@/components/MaterialPermanenteDiretr
 import MaterialPermanenteDiretrizFormDialog from "@/components/MaterialPermanenteDiretrizFormDialog";
 import MaterialPermanenteExportImportDialog from "@/components/MaterialPermanenteExportImportDialog";
 import { runMission02 } from "@/tours/missionTours";
-import { isGhostMode } from "@/lib/ghostStore";
+import { GHOST_DATA, isGhostMode, getActiveMission } from "@/lib/ghostStore";
 import { cn } from "@/lib/utils";
+import { markMissionCompleted } from "@/lib/missionUtils";
 
 type DiretrizOperacional = Tables<'diretrizes_operacionais'>;
 
@@ -75,6 +80,12 @@ interface IndexedItemAquisicao extends ItemAquisicao {
 }
 
 interface IndexedItemServico extends ItemAquisicaoServico {
+    diretrizId: string;
+    subitemNr: string;
+    subitemNome: string;
+}
+
+interface IndexedItemPermanente extends ItemAquisicao {
     diretrizId: string;
     subitemNr: string;
     subitemNome: string;
@@ -105,6 +116,7 @@ const defaultDiretrizes = (year: number): Partial<DiretrizOperacional> => ({
   fator_material_consumo: 0,
   fator_concessionaria: 0,
   observacoes: "",
+  
   diaria_referencia_legal: 'Decreto Nº 12.324 de 19DEZ24',
   diaria_of_gen_bsb: 600.00,
   diaria_of_gen_capitais: 515.00,
@@ -118,6 +130,7 @@ const defaultDiretrizes = (year: number): Partial<DiretrizOperacional> => ({
   diaria_demais_pracas_bsb: 355.00,
   diaria_demais_pracas_capitais: 315.00,
   diaria_demais_pracas_demais: 280.00,
+  
   taxa_embarque: 95.00,
 });
 
@@ -142,51 +155,114 @@ const CustosOperacionaisPage = () => {
 
   const ghostActive = isGhostMode();
 
-  const { data: pageData, isLoading: isLoadingPageData } = useQuery({
+  const { data: pageData, isLoading: isLoadingPageData, isFetching: isFetchingPageData } = useQuery({
     queryKey: ['diretrizesCustosOperacionais', selectedYear, user?.id, ghostActive],
     queryFn: async () => {
       if (!user?.id || !selectedYear) return null;
+
       if (ghostActive) {
-          return { operacional: defaultDiretrizes(selectedYear), passagens: [], concessionaria: [] };
+          return {
+              operacional: defaultDiretrizes(selectedYear),
+              passagens: [],
+              concessionaria: []
+          };
       }
+
       const [opRes, passRes, concRes] = await Promise.all([
-        supabase.from("diretrizes_operacionais").select("*").eq("user_id", user.id).eq("ano_referencia", selectedYear).maybeSingle(),
-        supabase.from('diretrizes_passagens').select('*').eq('user_id', user.id).eq('ano_referencia', selectedYear).order('om_referencia', { ascending: true }),
-        supabase.from('diretrizes_concessionaria').select('*').eq('user_id', user.id).eq('ano_referencia', selectedYear).order('categoria', { ascending: true }).order('nome_concessionaria', { ascending: true })
+        supabase
+          .from("diretrizes_operacionais")
+          .select("*")
+          .eq("user_id", user.id)
+          .eq("ano_referencia", selectedYear)
+          .maybeSingle(),
+        supabase
+          .from('diretrizes_passagens')
+          .select('*')
+          .eq('user_id', user.id)
+          .eq('ano_referencia', selectedYear)
+          .order('om_referencia', { ascending: true }),
+        supabase
+          .from('diretrizes_concessionaria')
+          .select('*')
+          .eq('user_id', user.id)
+          .eq('ano_referencia', selectedYear)
+          .order('categoria', { ascending: true })
+          .order('nome_concessionaria', { ascending: true })
       ]);
+
       if (opRes.error) throw opRes.error;
       if (passRes.error) throw passRes.error;
       if (concRes.error) throw concRes.error;
-      return { operacional: opRes.data || defaultDiretrizes(selectedYear), passagens: (passRes.data as DiretrizPassagem[]) || [], concessionaria: (concRes.data as DiretrizConcessionaria[]) || [] };
+
+      return {
+        operacional: opRes.data || defaultDiretrizes(selectedYear),
+        passagens: (passRes.data as DiretrizPassagem[]) || [],
+        concessionaria: (concRes.data as DiretrizConcessionaria[]) || []
+      };
     },
     enabled: !!user?.id && !!selectedYear,
+    staleTime: 1000 * 60 * 5, 
   });
   
   const [rawInputs, setRawInputs] = useState<Record<string, string>>({});
   
   const [fieldCollapseState, setFieldCollapseState] = useState<Record<string, boolean>>(() => {
     const initialState: Record<string, boolean> = {};
-    const s = location.state as any;
+    OPERATIONAL_FIELDS.forEach(field => {
+      initialState[field.key as string] = false;
+    });
+    
+    const shouldOpenPassagens = location.state && (location.state as { openPassagens?: boolean }).openPassagens;
+    const shouldOpenConcessionaria = location.state && (location.state as { openConcessionaria?: boolean }).openConcessionaria;
+    const shouldOpenMaterialConsumo = location.state && (location.state as { openMaterialConsumo?: boolean }).openMaterialConsumo;
+    const shouldOpenServicosTerceiros = location.state && (location.state as { openServicosTerceiros?: boolean }).openServicosTerceiros;
+    const shouldOpenMaterialPermanente = location.state && (location.state as { openMaterialPermanente?: boolean }).openMaterialPermanente;
+    
     initialState['diarias_detalhe'] = false; 
-    initialState['passagens_detalhe'] = s?.openPassagens || false; 
-    initialState['concessionaria_detalhe'] = s?.openConcessionaria || false;
-    initialState['material_consumo_detalhe'] = s?.openMaterialConsumo || false;
-    initialState['servicos_terceiros_detalhe'] = s?.openServicosTerceiros || false;
-    initialState['material_permanente_detalhe'] = s?.openMaterialPermanente || false;
+    initialState['passagens_detalhe'] = shouldOpenPassagens || false; 
+    initialState['concessionaria_detalhe'] = shouldOpenConcessionaria || false;
+    initialState['material_consumo_detalhe'] = shouldOpenMaterialConsumo || false;
+    initialState['servicos_terceiros_detalhe'] = shouldOpenServicosTerceiros || false;
+    initialState['material_permanente_detalhe'] = shouldOpenMaterialPermanente || false;
     return initialState;
   });
   
   const { handleEnterToNextField } = useFormNavigation();
   
+  const diretrizesPassagens = useMemo(() => pageData?.passagens || [], [pageData]);
+  const diretrizesConcessionaria = useMemo(() => pageData?.concessionaria || [], [pageData]);
+
   const [isPassagemFormOpen, setIsPassagemFormOpen] = useState(false);
   const [diretrizToEdit, setDiretrizToEdit] = useState<DiretrizPassagem | null>(null);
+  
   const [isConcessionariaFormOpen, setIsConcessionariaFormOpen] = useState(false);
   const [diretrizConcessionariaToEdit, setDiretrizConcessionariaToEdit] = useState<DiretrizConcessionaria | null>(null);
   const [selectedConcessionariaTab, setSelectedConcessionariaTab] = useState<CategoriaConcessionaria>(CATEGORIAS_CONCESSIONARIA[0]);
   
-  const { diretrizes: diretrizesMaterialConsumo, isLoading: isLoadingMaterialConsumo, handleMoveItem, isMoving: isMovingMaterialConsumo } = useMaterialConsumoDiretrizes(selectedYear);
-  const { diretrizes: diretrizesServicosTerceiros, isLoading: isLoadingServicosTerceiros, handleMoveItem: handleMoveItemServico, isMoving: isMovingServicosTerceiros } = useServicosTerceirosDiretrizes(selectedYear);
-  const { diretrizes: diretrizesMaterialPermanente, isLoading: isLoadingMaterialPermanente, isMoving: isMovingMaterialPermanente } = useMaterialPermanenteDiretrizes(selectedYear);
+  const { 
+      diretrizes: diretrizesMaterialConsumoHook, 
+      isLoading: isLoadingMaterialConsumo, 
+      handleMoveItem,
+      isMoving: isMovingMaterialConsumo,
+  } = useMaterialConsumoDiretrizes(selectedYear);
+
+  const {
+      diretrizes: diretrizesServicosTerceirosHook,
+      isLoading: isLoadingServicosTerceiros,
+      handleMoveItem: handleMoveItemServico,
+      isMoving: isMovingServicosTerceiros,
+  } = useServicosTerceirosDiretrizes(selectedYear);
+
+  const {
+      diretrizes: diretrizesMaterialPermanenteHook,
+      isLoading: isLoadingMaterialPermanente,
+      handleMoveItem: handleMoveItemPermanente,
+      isMoving: isMovingMaterialPermanente,
+  } = useMaterialPermanenteDiretrizes(selectedYear);
+
+  const [diretrizesMaterialConsumo, setDiretrizesMaterialConsumo] = useState<DiretrizMaterialConsumo[]>([]);
+  const [diretrizesServicosTerceiros, setDiretrizesServicosTerceiros] = useState<DiretrizServicosTerceiros[]>([]);
+  const [diretrizesMaterialPermanente, setDiretrizesMaterialPermanente] = useState<DiretrizMaterialPermanente[]>([]);
 
   const [isMaterialConsumoFormOpen, setIsMaterialConsumoFormOpen] = useState(false);
   const [diretrizMaterialConsumoToEdit, setDiretrizMaterialConsumoToEdit] = useState<DiretrizMaterialConsumo | null>(null);
@@ -208,13 +284,17 @@ const CustosOperacionaisPage = () => {
 
   const collapsibleRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
+  // --- Handlers ---
+
   const handleCollapseChange = useCallback((key: string, open: boolean) => {
       setFieldCollapseState(prev => ({ ...prev, [key]: open }));
+
       if (open) {
           setTimeout(() => {
               const element = collapsibleRefs.current[key];
               if (element) {
-                  const y = element.getBoundingClientRect().top + window.pageYOffset - 100;
+                  const yOffset = -100; 
+                  const y = element.getBoundingClientRect().top + window.pageYOffset + yOffset;
                   window.scrollTo({ top: y, behavior: 'smooth' });
               }
           }, 150);
@@ -228,185 +308,1152 @@ const CustosOperacionaisPage = () => {
   };
   
   const handleFactorChange = (field: keyof DiretrizOperacional, value: string) => {
-    setDiretrizes(prev => ({ ...prev, [field]: parseFloat(value) || 0 }));
+    const numericValue = parseFloat(value) || 0;
+    setDiretrizes(prev => ({ ...prev, [field]: numericValue }));
   };
 
-  useEffect(() => {
-    if (pageData?.operacional) {
-      setDiretrizes(prev => {
-        if (JSON.stringify(prev) === JSON.stringify(pageData.operacional)) return prev;
-        return pageData.operacional!;
-      });
+  const handleStartEditMaterialConsumo = (diretriz: DiretrizMaterialConsumo) => {
+      setDiretrizMaterialConsumoToEdit(diretriz);
+      setIsMaterialConsumoFormOpen(true);
+  };
+
+  const handleStartEditServicosTerceiros = (diretriz: DiretrizServicosTerceiros) => {
+      setDiretrizServicosTerceirosToEdit(diretriz);
+      setIsServicosTerceirosFormOpen(true);
+  };
+
+  const handleStartEditMaterialPermanente = (diretriz: DiretrizMaterialPermanente) => {
+      setDiretrizMaterialPermanenteToEdit(diretriz);
+      setIsMaterialPermanenteFormOpen(true);
+  };
+
+  const handleOpenNewMaterialConsumo = useCallback(() => {
+      setDiretrizMaterialConsumoToEdit(null);
+      setIsMaterialConsumoFormOpen(true);
+      
+      if (isGhostMode()) {
+        window.dispatchEvent(new CustomEvent('tour:avancar'));
+      }
+  }, []);
+
+  const handleOpenNewServicosTerceiros = useCallback(() => {
+      setDiretrizServicosTerceirosToEdit(null);
+      setIsServicosTerceirosFormOpen(true);
+  }, []);
+
+  const handleOpenNewMaterialPermanente = useCallback(() => {
+      setDiretrizMaterialPermanenteToEdit(null);
+      setIsMaterialPermanenteFormOpen(true);
+  }, []);
+
+  const handleSaveMaterialConsumo = async (data: Partial<DiretrizMaterialConsumo> & { ano_referencia: number }) => {
+      if (isGhostMode()) {
+          setIsSaving(true);
+          setTimeout(() => {
+              const newItem = {
+                  ...data,
+                  id: data.id || `ghost-subitem-${data.nr_subitem}`, 
+                  user_id: 'ghost-user',
+                  ativo: data.ativo ?? true,
+              } as DiretrizMaterialConsumo;
+              
+              setDiretrizesMaterialConsumo(prev => {
+                  const filtered = prev.filter(p => p.id !== newItem.id);
+                  return [...filtered, newItem].sort((a, b) => a.nr_subitem.localeCompare(b.nr_subitem));
+              });
+              
+              setIsSaving(false);
+              setDiretrizMaterialConsumoToEdit(null);
+              setIsMaterialConsumoFormOpen(false);
+              toast.success("Simulação: Subitem salvo localmente!");
+              
+              setTimeout(() => {
+                window.dispatchEvent(new CustomEvent('tour:avancar'));
+              }, 200);
+          }, 500);
+          return;
+      }
+
+      try {
+          setIsSaving(true);
+          const { data: { user: authUser } } = await supabase.auth.getUser();
+          if (!authUser) throw new Error("Usuário não autenticado");
+          
+          const dbData: TablesInsert<'diretrizes_material_consumo'> = {
+              user_id: authUser.id,
+              ano_referencia: data.ano_referencia,
+              nr_subitem: data.nr_subitem!,
+              nome_subitem: data.nome_subitem!,
+              descricao_subitem: data.descricao_subitem || null,
+              itens_aquisicao: data.itens_aquisicao as unknown as Json,
+              ativo: data.ativo ?? true,
+          };
+          
+          if (data.id) {
+              await supabase.from('diretrizes_material_consumo').update(dbData as TablesUpdate<'diretrizes_material_consumo'>).eq('id', data.id);
+              toast.success("Subitem de Material de Consumo atualizado!");
+          } else {
+              await supabase.from('diretrizes_material_consumo').insert([dbData]);
+              toast.success("Novo Subitem de Material de Consumo cadastrado!");
+          }
+          
+          queryClient.invalidateQueries({ queryKey: ['diretrizesMaterialConsumo', selectedYear, authUser.id] });
+          queryClient.invalidateQueries({ queryKey: ["onboardingStatus"] });
+          
+          setDiretrizMaterialConsumoToEdit(null);
+          setIsMaterialConsumoFormOpen(false);
+      } catch (error: any) {
+          toast.error(sanitizeError(error));
+      } finally {
+          setIsSaving(false);
+      }
+  };
+
+  const handleSaveServicosTerceiros = async (data: Partial<DiretrizServicosTerceiros> & { ano_referencia: number }) => {
+      try {
+          setIsSaving(true);
+          const { data: { user: authUser } } = await supabase.auth.getUser();
+          if (!authUser) throw new Error("Usuário não autenticado");
+          
+          const dbData = {
+              user_id: authUser.id,
+              ano_referencia: data.ano_referencia,
+              nr_subitem: data.nr_subitem!,
+              nome_subitem: data.nome_subitem!,
+              descricao_subitem: data.descricao_subitem || null,
+              itens_aquisicao: data.itens_aquisicao as unknown as Json,
+              ativo: data.ativo ?? true,
+          };
+          
+          if (data.id) {
+              await supabase.from('diretrizes_servicos_terceiros' as any).update(dbData).eq('id', data.id);
+              toast.success("Subitem de Serviços de Terceiros atualizado!");
+          } else {
+              await supabase.from('diretrizes_servicos_terceiros' as any).insert([dbData]);
+              toast.success("Novo Subitem de Serviços de Terceiros cadastrado!");
+          }
+          
+          queryClient.invalidateQueries({ queryKey: ['diretrizesServicosTerceiros', selectedYear, authUser.id] });
+          queryClient.invalidateQueries({ queryKey: ["onboardingStatus"] });
+          
+          setDiretrizServicosTerceirosToEdit(null);
+          setIsServicosTerceirosFormOpen(false);
+      } catch (error: any) {
+          toast.error(sanitizeError(error));
+      } finally {
+          setIsSaving(false);
+      }
+  };
+
+  const handleSaveMaterialPermanente = async (data: Partial<DiretrizMaterialPermanente> & { ano_referencia: number }) => {
+      try {
+          setIsSaving(true);
+          const { data: { user: authUser } } = await supabase.auth.getUser();
+          if (!authUser) throw new Error("Usuário não autenticado");
+          
+          const dbData = {
+              user_id: authUser.id,
+              ano_referencia: data.ano_referencia,
+              nr_subitem: data.nr_subitem!,
+              nome_subitem: data.nome_subitem!,
+              descricao_subitem: data.descricao_subitem || null,
+              itens_aquisicao: data.itens_aquisicao as unknown as Json,
+              ativo: data.ativo ?? true,
+          };
+          
+          if (data.id) {
+              await supabase.from('diretrizes_material_permanente' as any).update(dbData).eq('id', data.id);
+              toast.success("Subitem de Material Permanente atualizado!");
+          } else {
+              await supabase.from('diretrizes_material_permanente' as any).insert([dbData]);
+              toast.success("Novo Subitem de Material Permanente cadastrado!");
+          }
+          
+          queryClient.invalidateQueries({ queryKey: ['diretrizesMaterialPermanente', selectedYear, authUser.id] });
+          queryClient.invalidateQueries({ queryKey: ["onboardingStatus"] });
+          
+          setDiretrizMaterialPermanenteToEdit(null);
+          setIsMaterialPermanenteFormOpen(false);
+      } catch (error: any) {
+          toast.error(sanitizeError(error));
+      } finally {
+          setIsSaving(false);
+      }
+  };
+
+  const handleDeleteMaterialConsumo = async (id: string, nome: string) => {
+      if (!confirm(`Tem certeza que deseja excluir o Subitem da ND "${nome}"?`)) return;
+      
+      if (isGhostMode()) {
+          setDiretrizesMaterialConsumo(current => current.filter(d => d.id !== id));
+          toast.success("Simulação: Subitem removido localmente!");
+          return;
+      }
+
+      try {
+          const { error } = await supabase.from('diretrizes_material_consumo').delete().eq('id', id);
+          if (error) throw error;
+          toast.success("Subitem da ND excluído!");
+      } catch (error) {
+          toast.error(sanitizeError(error));
+      } finally {
+          queryClient.invalidateQueries({ queryKey: ['diretrizesMaterialConsumo', selectedYear, user?.id] });
+          queryClient.invalidateQueries({ queryKey: ["onboardingStatus"] });
+      }
+  };
+
+  const handleDeleteServicosTerceiros = async (id: string, nome: string) => {
+      if (!confirm(`Tem certeza que deseja excluir o Subitem da ND "${nome}"?`)) return;
+      try {
+          const { error } = await supabase.from('diretrizes_servicos_terceiros' as any).delete().eq('id', id);
+          if (error) throw error;
+          toast.success("Subitem da ND excluído!");
+      } catch (error) {
+          toast.error(sanitizeError(error));
+      } finally {
+          queryClient.invalidateQueries({ queryKey: ['diretrizesServicosTerceiros', selectedYear, user?.id] });
+          queryClient.invalidateQueries({ queryKey: ["onboardingStatus"] });
+      }
+  };
+
+  const handleDeleteMaterialPermanente = async (id: string, nome: string) => {
+      if (!confirm(`Tem certeza que deseja excluir o Subitem da ND "${nome}"?`)) return;
+      try {
+          const { error } = await supabase.from('diretrizes_material_permanente' as any).delete().eq('id', id);
+          if (error) throw error;
+          toast.success("Subitem da ND excluído!");
+      } catch (error) {
+          toast.error(sanitizeError(error));
+      } finally {
+          queryClient.invalidateQueries({ queryKey: ['diretrizesMaterialPermanente', selectedYear, user?.id] });
+          queryClient.invalidateQueries({ queryKey: ["onboardingStatus"] });
+      }
+  };
+
+  const handleSavePassagem = async (data: Partial<DiretrizPassagem> & { ano_referencia: number, om_referencia: string, ug_referencia: string }) => {
+      try {
+          setIsSaving(true);
+          const { data: { user: authUser } } = await supabase.auth.getUser();
+          if (!authUser) throw new Error("Usuário não autenticado");
+
+          // Validação local de duplicidade para evitar o erro 409
+          if (!data.id) {
+              const alreadyExists = diretrizesPassagens.some(p => 
+                  p.om_referencia.trim().toUpperCase() === data.om_referencia.trim().toUpperCase()
+              );
+              if (alreadyExists) {
+                  toast.error(`Já existe um contrato cadastrado para a OM ${data.om_referencia} no ano de ${selectedYear}.`);
+                  setIsSaving(false);
+                  return;
+              }
+          }
+          
+          const dbData: TablesInsert<'diretrizes_passagens'> = {
+              user_id: authUser.id,
+              ano_referencia: data.ano_referencia,
+              om_referencia: data.om_referencia,
+              ug_referencia: data.ug_referencia,
+              numero_pregao: data.numero_pregao || null,
+              trechos: data.trechos as unknown as Json,
+              ativo: data.ativo ?? true,
+              data_inicio_vigencia: data.data_inicio_vigencia || null,
+              data_fim_vigencia: data.data_fim_vigencia || null,
+          };
+          
+          if (data.id) {
+              const { error } = await supabase.from('diretrizes_passagens').update(dbData as TablesUpdate<'diretrizes_passagens'>).eq('id', data.id);
+              if (error) throw error;
+              toast.success("Contrato de Passagens atualizado!");
+          } else {
+              const { error } = await supabase.from('diretrizes_passagens').insert([dbData]);
+              if (error) throw error;
+              toast.success("Novo Contrato de Passagens cadastrado!");
+          }
+          
+          queryClient.invalidateQueries({ queryKey: ['diretrizesCustosOperacionais', selectedYear, authUser.id] });
+          queryClient.invalidateQueries({ queryKey: ["onboardingStatus"] });
+          
+          setDiretrizToEdit(null);
+          setIsPassagemFormOpen(false);
+      } catch (error: any) {
+          toast.error(sanitizeError(error));
+      } finally {
+          setIsSaving(false);
+      }
+  };
+  
+  const handleStartEditPassagem = (diretriz: DiretrizPassagem) => {
+      setDiretrizToEdit(diretriz);
+      setIsPassagemFormOpen(true);
+  };
+  
+  const handleOpenNewPassagem = () => {
+      setDiretrizToEdit(null);
+      setIsPassagemFormOpen(true);
+  };
+  
+  const handleDeletePassagem = async (id: string, omName: string) => {
+      if (!confirm(`Tem certeza que deseja excluir o contrato de passagens da OM ${omName}?`)) return;
+      try {
+          setIsSaving(true);
+          await supabase.from('diretrizes_passagens').delete().eq('id', id);
+          toast.success("Contrato de Passagens excluído!");
+          queryClient.invalidateQueries({ queryKey: ['diretrizesCustosOperacionais', selectedYear, user?.id] });
+          queryClient.invalidateQueries({ queryKey: ["onboardingStatus"] });
+      } catch (error) {
+          toast.error(sanitizeError(error));
+      } finally {
+          setIsSaving(false);
+      }
+  };
+
+  const handleSaveConcessionaria = async (data: DiretrizConcessionariaForm & { id?: string }) => {
+      try {
+          setIsSaving(true);
+          const { data: { user: authUser } } = await supabase.auth.getUser();
+          if (!authUser) throw new Error("Usuário não autenticado");
+
+          // Validação local de duplicidade para evitar o erro 409
+          if (!data.id) {
+              const alreadyExists = diretrizesConcessionaria.some(c => 
+                  c.categoria === data.categoria && 
+                  c.nome_concessionaria.trim().toUpperCase() === data.nome_concessionaria.trim().toUpperCase()
+              );
+              if (alreadyExists) {
+                  toast.error(`Já existe uma diretriz para "${data.nome_concessionaria}" na categoria ${data.categoria} para o ano ${selectedYear}.`);
+                  setIsSaving(false);
+                  return;
+              }
+          }
+          
+          const consumoValue = typeof data.consumo_pessoa_dia === 'string' ? parseFloat(data.consumo_pessoa_dia.replace(',', '.')) || 0 : data.consumo_pessoa_dia;
+          const dbData: TablesInsert<'diretrizes_concessionaria'> = { user_id: authUser.id, ano_referencia: selectedYear, categoria: data.categoria, nome_concessionaria: data.nome_concessionaria, consumo_pessoa_dia: consumoValue, fonte_consumo: data.fonte_consumo || null, custo_unitario: data.custo_unitario, fonte_custo: data.fonte_custo || null, unidade_custo: data.unidade_custo };
+
+          if (data.id) {
+              const { error } = await supabase.from('diretrizes_concessionaria').update(dbData as TablesUpdate<'diretrizes_concessionaria'>).eq('id', data.id);
+              if (error) throw error;
+              toast.success("Diretriz de Concessionária atualizada!");
+          } else {
+              const { error } = await supabase.from('diretrizes_concessionaria').insert([dbData]);
+              if (error) throw error;
+              toast.success("Nova Diretriz de Concessionária cadastrada!");
+          }
+          
+          queryClient.invalidateQueries({ queryKey: ['diretrizesCustosOperacionais', selectedYear, authUser.id] });
+          queryClient.invalidateQueries({ queryKey: ["onboardingStatus"] });
+          
+          setDiretrizConcessionariaToEdit(null);
+          setIsConcessionariaFormOpen(false);
+      } catch (error: any) {
+          toast.error(sanitizeError(error));
+      } finally {
+          setIsSaving(false);
+      }
+  };
+  
+  const handleStartEditConcessionaria = (diretriz: DiretrizConcessionaria) => {
+      setDiretrizConcessionariaToEdit(diretriz);
+      setIsConcessionariaFormOpen(true);
+  };
+  
+  const handleOpenNewConcessionaria = (category: CategoriaConcessionaria) => {
+      setDiretrizConcessionariaToEdit(null);
+      setSelectedConcessionariaTab(category);
+      setIsConcessionariaFormOpen(true);
+  };
+  
+  const handleDeleteConcessionaria = async (id: string, nome: string) => {
+      if (!confirm(`Tem certeza que deseja excluir a diretriz da concessionária ${nome}?`)) return;
+      try {
+          setIsSaving(true);
+          await supabase.from('diretrizes_concessionaria').delete().eq('id', id);
+          toast.success("Diretriz de Concessionária excluída!");
+          queryClient.invalidateQueries({ queryKey: ['diretrizesCustosOperacionais', selectedYear, user?.id] });
+          queryClient.invalidateQueries({ queryKey: ["onboardingStatus"] });
+      } catch (error) {
+          toast.error(sanitizeError(error));
+      } finally {
+          setIsSaving(false);
+      }
+  };
+
+  // --- Search Logic ---
+
+  const indexedItems = useMemo<IndexedItemAquisicao[]>(() => {
+    if (!diretrizesMaterialConsumo) return [];
+    return diretrizesMaterialConsumo.flatMap(diretriz => {
+        const itens = (diretriz.itens_aquisicao || []) as ItemAquisicao[];
+        return itens.map(item => ({ ...item, diretrizId: diretriz.id, subitemNr: diretriz.nr_subitem, subitemNome: diretriz.nome_subitem }));
+    });
+  }, [diretrizesMaterialConsumo]);
+
+  const indexedItemsServicos = useMemo<IndexedItemServico[]>(() => {
+    if (!diretrizesServicosTerceiros) return [];
+    return diretrizesServicosTerceiros.flatMap(diretriz => {
+        const itens = (diretriz.itens_aquisicao || []) as ItemAquisicaoServico[];
+        return itens.map(item => ({ ...item, diretrizId: diretriz.id, subitemNr: diretriz.nr_subitem, subitemNome: diretriz.nome_subitem }));
+    });
+  }, [diretrizesServicosTerceiros]);
+
+  const indexedItemsPermanente = useMemo<IndexedItemPermanente[]>(() => {
+    if (!diretrizesMaterialPermanente) return [];
+    return diretrizesMaterialPermanente.flatMap(diretriz => {
+        const itens = (diretriz.itens_aquisicao || []) as ItemAquisicao[];
+        return itens.map(item => ({ ...item, diretrizId: diretriz.id, subitemNr: diretriz.nr_subitem, subitemNome: diretriz.nome_subitem }));
+    });
+  }, [diretrizesMaterialPermanente]);
+
+  const filteredItems = useMemo(() => {
+    if (!searchTerm) return [];
+    const lowerCaseSearch = searchTerm.toLowerCase().trim();
+    if (lowerCaseSearch.length < 3) return [];
+    return indexedItems.filter(item => [item.descricao_item, item.codigo_catmat, item.numero_pregao, item.uasg, item.subitemNr, item.subitemNome].join(' ').toLowerCase().includes(lowerCaseSearch));
+  }, [searchTerm, indexedItems]);
+
+  const filteredItemsServicos = useMemo(() => {
+    if (!searchTermServicos) return [];
+    const lowerCaseSearch = searchTermServicos.toLowerCase().trim();
+    if (lowerCaseSearch.length < 3) return [];
+    return indexedItemsServicos.filter(item => [item.descricao_item, item.codigo_catmat, item.numero_pregao, item.uasg, item.subitemNr, item.subitemNome].join(' ').toLowerCase().includes(lowerCaseSearch));
+  }, [searchTermServicos, indexedItemsServicos]);
+
+  const filteredItemsPermanente = useMemo(() => {
+    if (!searchTermPermanente) return [];
+    const lowerCaseSearch = searchTermPermanente.toLowerCase().trim();
+    if (lowerCaseSearch.length < 3) return [];
+    return indexedItemsPermanente.filter(item => [item.descricao_item, item.codigo_catmat, item.numero_pregao, item.uasg, item.subitemNr, item.subitemNome].join(' ').toLowerCase().includes(lowerCaseSearch));
+  }, [searchTermPermanente, indexedItemsPermanente]);
+
+  const handleGoToSubitem = (diretrizId: string) => {
+      handleCollapseChange('material_consumo_detalhe', true);
+      setSubitemToOpenId(diretrizId);
+      setTimeout(() => { const element = document.getElementById(`diretriz-material-consumo-${diretrizId}`); if (element) element.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 100);
+      setSearchTerm("");
+  };
+
+  const handleGoToSubitemServico = (diretrizId: string) => {
+      handleCollapseChange('servicos_terceiros_detalhe', true);
+      setSubitemServicoToOpenId(diretrizId);
+      setTimeout(() => { const element = document.getElementById(`diretriz-servicos-terceiros-${diretrizId}`); if (element) element.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 100);
+      setSearchTermServicos("");
+  };
+
+  const handleGoToSubitemPermanente = (diretrizId: string) => {
+      handleCollapseChange('material_permanente_detalhe', true);
+      setSubitemPermanenteToOpenId(diretrizId);
+      setTimeout(() => { const element = document.getElementById(`diretriz-material-permanente-${diretrizId}`); if (element) element.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 100);
+      setSearchTermPermanente("");
+  };
+
+  // --- Render Helpers ---
+
+  const renderSearchResults = () => {
+      if (searchTerm.length < 3) return (<Card className="p-4 text-center text-muted-foreground">Digite pelo menos 3 caracteres para iniciar a busca.</Card>);
+      if (filteredItems.length === 0) return (<Card className="p-4 text-center text-muted-foreground">Nenhum item de aquisição encontrado com este termo.</Card>);
+      return (
+          <Card className="p-4"><CardTitle className="text-base font-semibold mb-3">Resultados da Busca ({filteredItems.length})</CardTitle><Table><TableHeader><TableRow><TableHead className="w-[40%]">Item de Aquisição</TableHead><TableHead className="w-[40%]">Subitem ND</TableHead><TableHead className="w-[20%] text-center">Ações</TableHead></TableRow></TableHeader><TableBody>{filteredItems.map((item, index) => (<TableRow key={`${item.diretrizId}-${index}`}><TableCell className="font-medium">{item.descricao_item}<p className="text-xs text-muted-foreground">Cód. CATMAT: {item.codigo_catmat || 'N/A'}</p><p className="text-xs text-muted-foreground truncate">Pregão: {item.numero_pregao} | UASG: {formatCodug(item.uasg) || 'N/A'}</p></TableCell><TableCell className="text-left"><span className="font-semibold mr-1 whitespace-nowrap">{item.subitemNr}</span><span className="text-sm text-muted-foreground">{item.subitemNome}</span></TableCell><TableCell className="text-right"><Button variant="outline" size="sm" onClick={() => handleGoToSubitem(item.diretrizId)} className="w-full justify-start"><Package className="h-4 w-4 mr-1" />Ver Local</Button></TableCell></TableRow>))}</TableBody></Table></Card>
+      );
+  };
+
+  const renderSearchResultsServicos = () => {
+      if (searchTermServicos.length < 3) return (<Card className="p-4 text-center text-muted-foreground">Digite pelo menos 3 caracteres para iniciar a busca.</Card>);
+      if (filteredItemsServicos.length === 0) return (<Card className="p-4 text-center text-muted-foreground">Nenhum item de serviço encontrado com este termo.</Card>);
+      return (
+          <Card className="p-4"><CardTitle className="text-base font-semibold mb-3">Resultados da Busca ({filteredItemsServicos.length})</CardTitle><Table><TableHeader><TableRow><TableHead className="w-[40%]">Item de Serviço</TableHead><TableHead className="w-[40%]">Subitem ND</TableHead><TableHead className="w-[20%] text-center">Ações</TableHead></TableRow></TableHeader><TableBody>{filteredItemsServicos.map((item, index) => (<TableRow key={`${item.diretrizId}-${index}`}><TableCell className="font-medium">{item.descricao_item}<p className="text-xs text-muted-foreground">Cód. CATMAT: {item.codigo_catmat || 'N/A'}</p><p className="text-xs text-muted-foreground truncate">Pregão: {item.numero_pregao} | UASG: {formatCodug(item.uasg) || 'N/A'}</p></TableCell><TableCell className="text-left"><span className="font-semibold mr-1 whitespace-nowrap">{item.subitemNr}</span><span className="text-sm text-muted-foreground">{item.subitemNome}</span></TableCell><TableCell className="text-right"><Button variant="outline" size="sm" onClick={() => handleGoToSubitemServico(item.diretrizId)} className="w-full justify-start"><Package className="h-4 w-4 mr-1" />Ver Local</Button></TableCell></TableRow>))}</TableBody></Table></Card>
+      );
+  };
+
+  const renderSearchResultsPermanente = () => {
+      if (searchTermPermanente.length < 3) return (<Card className="p-4 text-center text-muted-foreground">Digite pelo menos 3 caracteres para iniciar a busca.</Card>);
+      if (filteredItemsPermanente.length === 0) return (<Card className="p-4 text-center text-muted-foreground">Nenhum item de material permanente encontrado com este termo.</Card>);
+      return (
+          <Card className="p-4"><CardTitle className="text-base font-semibold mb-3">Resultados da Busca ({filteredItemsPermanente.length})</CardTitle><Table><TableHeader><TableRow><TableHead className="w-[40%]">Item Permanente</TableHead><TableHead className="w-[40%]">Subitem ND</TableHead><TableHead className="w-[20%] text-center">Ações</TableHead></TableRow></TableHeader><TableBody>{filteredItemsPermanente.map((item, index) => (<TableRow key={`${item.diretrizId}-${index}`}><TableCell className="font-medium">{item.descricao_item}<p className="text-xs text-muted-foreground">Cód. CATMAT: {item.codigo_catmat || 'N/A'}</p><p className="text-xs text-muted-foreground truncate">Pregão: {item.numero_pregao} | UASG: {formatCodug(item.uasg) || 'N/A'}</p></TableCell><TableCell className="text-left"><span className="font-semibold mr-1 whitespace-nowrap">{item.subitemNr}</span><span className="text-sm text-muted-foreground">{item.subitemNome}</span></TableCell><TableCell className="text-right"><Button variant="outline" size="sm" onClick={() => handleGoToSubitemPermanente(item.diretrizId)} className="w-full justify-start"><Package className="h-4 w-4 mr-1" />Ver Local</Button></TableCell></TableRow>))}</TableBody></Table></Card>
+      );
+  };
+
+  const renderDiretrizField = (field: { key: string, label: string, type: 'currency' | 'factor', placeholder: string }) => {
+    const value = (diretrizes[field.key as keyof DiretrizOperacional] as number) || 0;
+    
+    if (field.type === 'currency') {
+      const rawDigits = rawInputs[field.key] || numberToRawDigits(value);
+      const { formatted: displayValue } = formatCurrencyInput(rawDigits);
+      
+      return (
+        <div className="space-y-2">
+          <Label htmlFor={field.key}>{field.label}</Label>
+          <div className="relative">
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">R$</span>
+            <Input
+              id={field.key}
+              type="text"
+              inputMode="numeric"
+              className="pl-8 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+              value={value === 0 && rawDigits.length === 0 ? "" : displayValue}
+              onChange={(e) => handleCurrencyChange(field.key as keyof DiretrizOperacional, e.target.value)}
+              onKeyDown={handleEnterToNextField}
+              placeholder={field.placeholder}
+            />
+          </div>
+        </div>
+      );
+    } else {
+      return (
+        <div className="space-y-2">
+          <Label htmlFor={field.key}>{field.label}</Label>
+          <Input
+            id={field.key}
+            type="number"
+            step="0.01"
+            className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+            value={value === 0 ? "" : value}
+            onChange={(e) => handleFactorChange(field.key as keyof DiretrizOperacional, e.target.value)}
+            placeholder={field.placeholder}
+            onKeyDown={handleEnterToNextField}
+          />
+        </div>
+      );
     }
-  }, [pageData?.operacional]);
+  };
+
+  const renderDiariaTable = () => {
+    const handleDiariaChange = (rankKey: string, destination: 'bsb' | 'capitais' | 'demais', rawValue: string) => {
+      const fieldKey = `diaria_${rankKey}_${destination}` as keyof DiretrizOperacional;
+      handleCurrencyChange(fieldKey, rawValue);
+    };
+    
+    const getDiariaProps = (rankKey: string, destination: 'bsb' | 'capitais' | 'demais') => {
+      const fieldKey = `${DIARIA_RANKS_CONFIG.find(r => r.key === rankKey)?.fieldPrefix}_${destination}` as keyof DiretrizOperacional;
+      const value = (diretrizes[fieldKey] as number) || 0;
+      const rawDigits = rawInputs[fieldKey as string] || numberToRawDigits(value);
+      
+      return {
+        value: value,
+        rawDigits: rawDigits,
+        onChange: (val: number) => handleDiariaChange(rankKey, destination, numberToRawDigits(val)),
+        onKeyDown: handleEnterToNextField,
+        placeholder: "0,00",
+        className: "text-center",
+      };
+    };
+    
+    const taxaEmbarqueProps = renderDiretrizField({
+        key: 'taxa_embarque', 
+        label: 'Taxa de Embarque (R$)', 
+        type: 'currency', 
+        placeholder: 'Ex: 95,00'
+    });
+    
+    return (
+      <div className="space-y-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <Label htmlFor="diaria_referencia_legal">Referência Legal (Lei/Portaria)</Label>
+            <Input
+              id="diaria_referencia_legal"
+              value={diretrizes.diaria_referencia_legal || ""}
+              onChange={(e) => setDiretrizes({ ...diretrizes, diaria_referencia_legal: e.target.value })}
+              placeholder="Decreto Nº 12.324 de 19DEZ24"
+              onKeyDown={handleEnterToNextField}
+            />
+          </div>
+          {taxaEmbarqueProps}
+        </div>
+        
+        <Table className="rounded-lg overflow-hidden border">
+          <TableHeader>
+            <TableRow>
+              <TableHead className="w-[35%] rounded-tl-lg">Posto/Graduação</TableHead>
+              <TableHead className="text-center">Dslc BSB/MAO/RJ/SP</TableHead>
+              <TableHead className="text-center">Dslc demais capitais</TableHead>
+              <TableHead className="text-center rounded-tr-lg">Demais Dslc</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {DIARIA_RANKS_CONFIG.map((rank) => (
+              <TableRow key={rank.key}>
+                <TableCell className="font-medium whitespace-nowrap">{rank.label}</TableCell>
+                <TableCell><CurrencyInput {...getDiariaProps(rank.key, 'bsb')} /></TableCell>
+                <TableCell><CurrencyInput {...getDiariaProps(rank.key, 'capitais')} /></TableCell>
+                <TableCell><CurrencyInput {...getDiariaProps(rank.key, 'demais')} /></TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </div>
+    );
+  };
+
+  const renderMaterialConsumoSection = () => {
+      const isDataLoading = isLoadingMaterialConsumo || isMovingMaterialConsumo;
+      return (
+          <div className="space-y-4 lista-subitens-nd"><Card className="p-4"><div className="flex justify-between items-center mb-4"><CardTitle className="text-base font-semibold">Subitens da ND Cadastrados</CardTitle><Button type="button" variant="outline" size="sm" onClick={() => setIsExportImportDialogOpen(true)} disabled={isSaving || isDataLoading}><FileSpreadsheet className="h-4 w-4 mr-2" />Exportar/Importar</Button></div><div className="mb-4 relative"><Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" /><Input placeholder="Buscar item de aquisição (nome, CATMAT, pregão, subitem...)" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} disabled={isDataLoading} className="pl-10" /></div>{searchTerm ? renderSearchResults() : ((diretrizesMaterialConsumo?.length || 0) > 0 ? (<Table><TableHeader><TableRow><TableHead className="w-[150px] text-center">Nr Subitem</TableHead><TableHead>Nome do Subitem</TableHead><TableHead className="w-[100px] text-center">Ações</TableHead></TableRow></TableHeader><TableBody>{diretrizesMaterialConsumo.map(d => (<MaterialConsumoDiretrizRow key={d.id} diretriz={d} onEdit={handleStartEditMaterialConsumo} onDelete={handleDeleteMaterialConsumo} loading={isSaving || isDataLoading} onMoveItem={handleMoveItem} id={`diretriz-material-consumo-${d.id}`} forceOpen={subitemToOpenId === d.id} />))}</TableBody></Table>) : (<Card className="p-4 text-center text-muted-foreground">Nenhum subitem da ND cadastrado para o ano de referência.</Card>))}</Card><div className="flex justify-end"><Button type="button" onClick={handleOpenNewMaterialConsumo} disabled={isSaving || isDataLoading || !!searchTerm} variant="outline" size="sm" className="w-full btn-novo-subitem"><Plus className="mr-2 h-4 w-4" />Adicionar Novo Subitem da ND</Button></div>{(isLoadingMaterialConsumo || isMovingMaterialConsumo) && (<div className="text-center py-2"><Loader2 className="h-5 w-5 animate-spin text-primary mx-auto" /><p className="text-xs text-muted-foreground mt-1">{isMovingMaterialConsumo ? "Movendo item..." : "Carregando subitens..."}</p></div>)}</div>
+      );
+  };
+
+  const renderServicosTerceirosSection = () => {
+      const isDataLoading = isLoadingServicosTerceiros || isMovingServicosTerceiros;
+      return (
+          <div className="space-y-4"><Card className="p-4"><div className="flex justify-between items-center mb-4"><CardTitle className="text-base font-semibold">Subitens da ND Cadastrados</CardTitle><Button type="button" variant="outline" size="sm" onClick={() => setIsExportImportServicosDialogOpen(true)} disabled={isSaving || isDataLoading}><FileSpreadsheet className="h-4 w-4 mr-2" />Exportar/Importar</Button></div><div className="mb-4 relative"><Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" /><Input placeholder="Buscar item de serviço (nome, CATMAT, pregão, subitem...)" value={searchTermServicos} onChange={(e) => setSearchTermServicos(e.target.value)} disabled={isDataLoading} className="pl-10" /></div>{searchTermServicos ? renderSearchResultsServicos() : ((diretrizesServicosTerceiros?.length || 0) > 0 ? (<Table><TableHeader><TableRow><TableHead className="w-[150px] text-center">Nr Subitem</TableHead><TableHead>Nome do Subitem</TableHead><TableHead className="w-[100px] text-center">Ações</TableHead></TableRow></TableHeader><TableBody>{diretrizesServicosTerceiros.map(d => (<ServicosTerceirosDiretrizRow key={d.id} diretriz={d} onEdit={handleStartEditServicosTerceiros} onDelete={handleDeleteServicosTerceiros} loading={isSaving || isDataLoading} onMoveItem={handleMoveItemServico} id={`diretriz-servicos-terceiros-${d.id}`} forceOpen={subitemServicoToOpenId === d.id} />))}</TableBody></Table>) : (<Card className="p-4 text-center text-muted-foreground">Nenhum subitem da ND cadastrado para o ano de referência.</Card>))}</Card><div className="flex justify-end"><Button type="button" onClick={handleOpenNewServicosTerceiros} disabled={isSaving || isDataLoading || !!searchTermServicos} variant="outline" size="sm" className="w-full"><Plus className="mr-2 h-4 w-4" />Adicionar Novo Subitem da ND</Button></div>{(isLoadingServicosTerceiros || isMovingServicosTerceiros) && (<div className="text-center py-2"><Loader2 className="h-5 w-5 animate-spin text-primary mx-auto" /><p className="text-xs text-muted-foreground mt-1">{isMovingMaterialConsumo ? "Movendo item..." : "Carregando subitens..."}</p></div>)}</div>
+      );
+  };
+
+  const renderMaterialPermanenteSection = () => {
+      const isDataLoading = isLoadingMaterialPermanente || isMovingMaterialPermanente;
+      return (
+          <div className="space-y-4"><Card className="p-4"><div className="flex justify-between items-center mb-4"><CardTitle className="text-base font-semibold">Subitens da ND Cadastrados</CardTitle><Button type="button" variant="outline" size="sm" onClick={() => setIsExportImportPermanenteDialogOpen(true)} disabled={isSaving || isDataLoading}><FileSpreadsheet className="h-4 w-4 mr-2" />Exportar/Importar</Button></div><div className="mb-4 relative"><Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" /><Input placeholder="Buscar item permanente (nome, CATMAT, pregão, subitem...)" value={searchTermPermanente} onChange={(e) => setSearchTermPermanente(e.target.value)} disabled={isDataLoading} className="pl-10" /></div>{searchTermPermanente ? renderSearchResultsPermanente() : ((diretrizesMaterialPermanente?.length || 0) > 0 ? (<Table><TableHeader><TableRow><TableHead className="w-[150px] text-center">Nr Subitem</TableHead><TableHead>Nome do Subitem</TableHead><TableHead className="w-[100px] text-center">Ações</TableHead></TableRow></TableHeader><TableBody>{diretrizesMaterialPermanente.map(d => (<MaterialPermanenteDiretrizRow key={d.id} diretriz={d} onEdit={handleStartEditMaterialPermanente} onDelete={handleDeleteMaterialPermanente} loading={isSaving || isDataLoading} id={`diretriz-material-permanente-${d.id}`} forceOpen={subitemPermanenteToOpenId === d.id} isExpanded={subitemPermanenteToOpenId === d.id} onToggleExpand={() => setSubitemPermanenteToOpenId(subitemPermanenteToOpenId === d.id ? null : d.id)} />))}</TableBody></Table>) : (<Card className="p-4 text-center text-muted-foreground">Nenhum subitem da ND cadastrado para o ano de referência.</Card>))}</Card><div className="flex justify-end"><Button type="button" onClick={handleOpenNewMaterialPermanente} disabled={isSaving || isDataLoading || !!searchTermPermanente} variant="outline" size="sm" className="w-full"><Plus className="mr-2 h-4 w-4" />Adicionar Novo Subitem da ND</Button></div>{(isLoadingMaterialPermanente || isMovingMaterialPermanente) && (<div className="text-center py-2"><Loader2 className="h-5 w-5 animate-spin text-primary mx-auto" /><p className="text-xs text-muted-foreground mt-1">{isMovingMaterialPermanente ? "Movendo item..." : "Carregando subitens..."}</p></div>)}</div>
+      );
+  };
+
+  const renderPassagensSection = () => {
+      return (
+          <div className="space-y-4">
+              {diretrizesPassagens.length > 0 ? (
+                  <Card className="p-4">
+                      <CardTitle className="text-base font-semibold mb-3">Contratos Cadastrados</CardTitle>
+                      <Table>
+                          <TableHeader><TableRow><TableHead>OM Referência</TableHead><TableHead>Pregão</TableHead><TableHead className="text-center">Vigência</TableHead><TableHead className="text-center">Trechos</TableHead><TableHead className="w-[100px] text-center">Ações</TableHead></TableRow></TableHeader>
+                          <TableBody>{diretrizesPassagens.map(d => (<PassagemDiretrizRow key={d.id} diretriz={d} onEdit={handleStartEditPassagem} onDelete={handleDeletePassagem} loading={isSaving} />))}</TableBody>
+                      </Table>
+                  </Card>
+              ) : (<Card className="p-4 text-center text-muted-foreground">Nenhum contrato de passagens cadastrado para o ano de referência.</Card>)}
+              <div className="flex justify-end"><Button type="button" onClick={handleOpenNewPassagem} disabled={isSaving} variant="outline" size="sm" className="w-full"><Plus className="mr-2 h-4 w-4" />Adicionar Novo Contrato</Button></div>
+          </div>
+      );
+  };
+
+  const renderConcessionariaList = (category: CategoriaConcessionaria) => {
+      const filteredDiretrizes = diretrizesConcessionaria.filter(d => d.categoria === category);
+      return (
+          <div className="space-y-4">
+              {filteredDiretrizes.length > 0 ? (
+                  <Card className="p-4">
+                      <CardTitle className="text-base font-semibold mb-3">Diretrizes Cadastradas</CardTitle>
+                      <Table>
+                          <TableHeader><TableRow><TableHead>Concessionária</TableHead><TableHead className="text-center">Consumo/Pessoa/Dia</TableHead><TableHead className="text-right">Custo Unitário</TableHead><TableHead className="w-[100px] text-center">Ações</TableHead></TableRow></TableHeader>
+                          <TableBody>{filteredDiretrizes.map(d => (<ConcessionariaDiretrizRow key={d.id} diretriz={d} onEdit={handleStartEditConcessionaria} onDelete={handleDeleteConcessionaria} loading={isSaving} />))}</TableBody>
+                      </Table>
+                  </Card>
+              ) : (<Card className="p-4 text-center text-muted-foreground">Nenhuma diretriz de {category} cadastrada para o ano de referência.</Card>)}
+              <div className="flex justify-end"><Button type="button" onClick={() => handleOpenNewConcessionaria(category)} disabled={isSaving} variant="outline" size="sm" className="w-full"><Plus className="mr-2 h-4 w-4" />Adicionar Nova Diretriz de {category}</Button></div>
+          </div>
+      );
+  };
+  
+  const renderConcessionariaSection = () => {
+      return (
+          <Card><CardContent className="pt-4"><Tabs value={selectedConcessionariaTab} onValueChange={(value) => setSelectedConcessionariaTab(value as CategoriaConcessionaria)}><TabsList className="grid w-full grid-cols-2">{CATEGORIAS_CONCESSIONARIA.map(cat => (<TabsTrigger key={cat} value={cat}>{cat}</TabsTrigger>))}</TabsList>{CATEGORIAS_CONCESSIONARIA.map(cat => (<TabsContent key={cat} value={cat}>{renderConcessionariaList(cat)}</TabsContent>))}</Tabs></CardContent></Card>
+      );
+  };
+
+  // --- Lifecycle ---
 
   useEffect(() => {
-    if (isLoadingDefaultYear || isLoadingPageData || hasStartedTour.current) return;
+    (window as any).expandMaterialConsumo = () => {
+      handleCollapseChange('material_consumo_detalhe', true);
+    };
+  }, [handleCollapseChange]);
+  
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, []);
+  
+  useEffect(() => {
+    if (isLoadingDefaultYear || isLoadingPageData || isFetchingPageData || hasStartedTour.current) return;
+
     const startTour = searchParams.get('startTour') === 'true';
-    if (startTour && ghostActive && localStorage.getItem('active_mission_id') === '2' && user?.id) {
+    const missionId = localStorage.getItem('active_mission_id');
+    const ghost = isGhostMode();
+
+    if (startTour && ghost && missionId === '2' && user?.id) {
       hasStartedTour.current = true;
-      setTimeout(() => runMission02(user.id, () => navigate('/ptrab?showHub=true')), 500);
+      const timer = setTimeout(() => {
+        runMission02(user.id, () => {
+          const completed = JSON.parse(localStorage.getItem(`completed_missions_${user.id}`) || '[]');
+          if (!completed.includes(2)) {
+            localStorage.setItem(`completed_missions_${user.id}`, JSON.stringify([...completed, 2]));
+          }
+          navigate('/ptrab?showHub=true');
+        });
+      }, 500);
+      return () => clearTimeout(timer);
     }
-  }, [isLoadingDefaultYear, isLoadingPageData, searchParams, navigate, user?.id, ghostActive]);
+  }, [isLoadingDefaultYear, isLoadingPageData, isFetchingPageData, searchParams, navigate, user?.id]);
 
   useEffect(() => {
     if (!isLoadingDefaultYear && defaultYearData) {
-        const checkAuth = async () => {
-            const { data: { session } } = await supabase.auth.getSession();
-            if (!session) { navigate("/login"); return; }
+        const checkAuthAndLoadYears = async () => {
+            const { data: { session } = { session: null } } = await supabase.auth.getSession();
+            if (!session) {
+                toast.error("Você precisa estar autenticado");
+                navigate("/login");
+                return;
+            }
+            
             await loadAvailableYears(defaultYearData.defaultYear);
-            if (selectedYear === currentYear && defaultYearData.year !== currentYear) setSelectedYear(defaultYearData.year);
+            if (selectedYear !== defaultYearData.year && selectedYear === currentYear) {
+               setSelectedYear(defaultYearData.year);
+            }
         };
-        checkAuth();
+        checkAuthAndLoadYears();
     }
-  }, [isLoadingDefaultYear, defaultYearData]);
+  }, [isLoadingDefaultYear, defaultYearData?.year, defaultYearData?.defaultYear]);
+
+  useEffect(() => {
+      if (pageData?.operacional) {
+          setDiretrizes(pageData.operacional);
+      }
+  }, [pageData]);
+
+  useEffect(() => {
+      if (diretrizesMaterialConsumoHook) setDiretrizesMaterialConsumo(diretrizesMaterialConsumoHook);
+      if (diretrizesServicosTerceirosHook) setDiretrizesServicosTerceiros(diretrizesServicosTerceirosHook);
+      if (diretrizesMaterialPermanenteHook) setDiretrizesMaterialPermanente(diretrizesMaterialPermanenteHook);
+  }, [diretrizesMaterialConsumoHook, diretrizesServicosTerceirosHook, diretrizesMaterialPermanenteHook]);
 
   const loadAvailableYears = async (defaultYearId: number | null) => {
     try {
       const { data: { user: authUser } } = await supabase.auth.getUser();
       if (!authUser) return;
-      const tables = ["diretrizes_operacionais", "diretrizes_passagens", "diretrizes_concessionaria", "diretrizes_material_consumo", "diretrizes_servicos_terceiros", "diretrizes_material_permanente"];
-      const results = await Promise.all(tables.map(t => supabase.from(t as any).select("ano_referencia").eq("user_id", authUser.id)));
-      const yearsSet = new Set<number>([currentYear]);
-      results.forEach(r => r.data?.forEach((d: any) => yearsSet.add(d.ano_referencia)));
-      if (defaultYearId) yearsSet.add(defaultYearId);
-      setAvailableYears(Array.from(yearsSet).filter(y => y > 0).sort((a, b) => b - a));
-    } catch (e) { console.error(e); }
+
+      const [
+          { data: opData, error: opError },
+          { data: passagensData, error: passagensError },
+          { data: concessionariaData, error: concessionariaError },
+          { data: materialConsumoData, error: materialConsumoError },
+          { data: servicosData, error: servicosError },
+          { data: permanenteData, error: permanenteError }
+      ] = await Promise.all([
+          supabase.from("diretrizes_operacionais").select("ano_referencia").eq("user_id", authUser.id),
+          supabase.from("diretrizes_passagens").select("ano_referencia").eq("user_id", authUser.id),
+          supabase.from("diretrizes_concessionaria").select("ano_referencia").eq("user_id", authUser.id),
+          supabase.from("diretrizes_material_consumo").select("ano_referencia").eq("user_id", authUser.id),
+          supabase.from("diretrizes_servicos_terceiros" as any).select("ano_referencia").eq("user_id", authUser.id),
+          supabase.from("diretrizes_material_permanente" as any).select("ano_referencia").eq("user_id", authUser.id),
+      ]);
+
+      if (opError || passagensError || concessionariaError || materialConsumoError || servicosError || permanenteError) throw opError || passagensError || concessionariaError || materialConsumoError || servicosError || permanenteError;
+
+      const opYears = opData ? opData.map(d => d.ano_referencia) : [];
+      const passagensYears = passagensData ? passagensData.map(d => d.ano_referencia) : [];
+      const concessionariaYears = concessionariaData ? concessionariaData.map(d => d.ano_referencia) : [];
+      const materialConsumoYears = materialConsumoData ? materialConsumoData.map(d => d.ano_referencia) : [];
+      const servicosYears = servicosData ? (servicosData as any[]).map(d => d.ano_referencia) : [];
+      const permanenteYears = permanenteData ? (permanenteData as any[]).map(d => d.ano_referencia) : [];
+
+      const yearsToInclude = new Set([...opYears, ...passagensYears, ...concessionariaYears, ...materialConsumoYears, ...servicosYears, ...permanenteYears]);
+      
+      if (defaultYearId && !yearsToInclude.has(defaultYearId)) {
+          yearsToInclude.add(defaultYearId);
+      }
+      
+      if (yearsToInclude.size === 0) {
+          yearsToInclude.add(currentYear);
+      }
+      
+      const uniqueYears = Array.from(yearsToInclude).filter(y => y > 0).sort((a, b) => b - a);
+      setAvailableYears(uniqueYears);
+
+    } catch (error: any) {
+      console.error("Erro ao carregar anos disponíveis:", error);
+      toast.error("Erro ao carregar anos disponíveis");
+    }
+  };
+  
+  const handleMaterialConsumoImportSuccess = () => {
+      if (user?.id && selectedYear > 0) {
+          queryClient.invalidateQueries({ queryKey: ['diretrizesMaterialConsumo', selectedYear, user.id] });
+          queryClient.invalidateQueries({ queryKey: ["onboardingStatus"] });
+      }
+  };
+
+  const handleServicosTerceirosImportSuccess = (newItems?: DiretrizServicosTerceiros[]) => {
+      if (newItems && newItems.length > 0) {
+          setDiretrizesServicosTerceiros(prev => {
+              const filtered = prev.filter(p => !newItems!.find(n => n.id === p.id));
+              return [...filtered, ...newItems!].sort((a, b) => a.nr_subitem.localeCompare(b.nr_subitem));
+          });
+          toast.success(`${newItems.length} subitens de serviços atualizados!`);
+      }
+      if (user?.id && selectedYear > 0) {
+          queryClient.invalidateQueries({ queryKey: ['diretrizesServicosTerceiros', selectedYear, user.id] });
+          queryClient.invalidateQueries({ queryKey: ["onboardingStatus"] });
+      }
+  };
+
+  const handleMaterialPermanenteImportSuccess = (newItems?: DiretrizMaterialPermanente[]) => {
+      if (newItems && newItems.length > 0) {
+          setDiretrizesMaterialPermanente(prev => {
+              const filtered = prev.filter(p => !newItems!.find(n => n.id === p.id));
+              return [...filtered, ...newItems!].sort((a, b) => a.nr_subitem.localeCompare(b.nr_subitem));
+          });
+          toast.success(`${newItems.length} subitens permanentes atualizados!`);
+      }
+      if (user?.id && selectedYear > 0) {
+          queryClient.invalidateQueries({ queryKey: ['diretrizesMaterialPermanente', selectedYear, user.id] });
+          queryClient.invalidateQueries({ queryKey: ["onboardingStatus"] });
+      }
   };
 
   const handleSaveDiretrizes = async () => {
     try {
       const { data: { user: authUser } } = await supabase.auth.getUser();
-      if (!authUser || !selectedYear) return;
-      const dataToValidate = { ...diretrizes, ano_referencia: selectedYear };
-      diretrizOperacionalSchema.parse(dataToValidate);
-      setIsSaving(true);
-      const { error } = await supabase.from("diretrizes_operacionais").upsert({ user_id: authUser.id, ...dataToValidate }, { onConflict: 'user_id,ano_referencia' });
-      if (error) throw error;
-      toast.success("Diretrizes Operacionais salvas!");
-      queryClient.invalidateQueries({ queryKey: ['diretrizesCustosOperacionais', selectedYear, authUser.id] });
-      await loadAvailableYears(defaultYear);
-    } catch (error: any) { toast.error(sanitizeError(error)); } finally { setIsSaving(false); }
-  };
+      if (!authUser) {
+        toast.error("Usuário não autenticado");
+        return;
+      }
 
+      if (!selectedYear) {
+        toast.error("Informe o ano de referência");
+        return;
+      }
+      
+      const dataToValidate = {
+        ano_referencia: selectedYear,
+        fator_passagens_aereas: Number(diretrizes.fator_passagens_aereas ?? 0),
+        fator_servicos_terceiros: Number(diretrizes.fator_servicos_terceiros ?? 0),
+        valor_verba_operacional_dia: Number(diretrizes.valor_verba_operacional_dia ?? 0),
+        valor_suprimentos_fundo_dia: Number(diretrizes.valor_suprimentos_fundo_dia ?? 0),
+        valor_complemento_alimentacao: Number(diretrizes.valor_complemento_alimentacao ?? 0),
+        valor_fretamento_aereo_hora: Number(diretrizes.valor_fretamento_aereo_hora ?? 0),
+        valor_locacao_estrutura_dia: Number(diretrizes.valor_locacao_estrutura_dia ?? 0),
+        valor_locacao_viaturas_dia: Number(diretrizes.valor_locacao_viaturas_dia ?? 0),
+        fator_material_consumo: Number(diretrizes.fator_material_consumo ?? 0),
+        fator_concessionaria: Number(diretrizes.fator_concessionaria ?? 0),
+        diaria_of_gen_bsb: Number(diretrizes.diaria_of_gen_bsb ?? 0),
+        diaria_of_gen_capitais: Number(diretrizes.diaria_of_gen_capitais ?? 0),
+        diaria_of_gen_demais: Number(diretrizes.diaria_of_gen_demais ?? 0),
+        diaria_of_sup_bsb: Number(diretrizes.diaria_of_sup_bsb ?? 0),
+        diaria_of_sup_capitais: Number(diretrizes.diaria_of_sup_capitais ?? 0),
+        diaria_of_sup_demais: Number(diretrizes.diaria_of_sup_demais ?? 0),
+        diaria_of_int_sgt_bsb: Number(diretrizes.diaria_of_int_sgt_bsb ?? 0),
+        diaria_of_int_sgt_capitais: Number(diretrizes.diaria_of_int_sgt_capitais ?? 0),
+        diaria_of_int_sgt_demais: Number(diretrizes.diaria_of_int_sgt_demais ?? 0),
+        diaria_demais_pracas_bsb: Number(diretrizes.diaria_demais_pracas_bsb ?? 0),
+        diaria_demais_pracas_capitais: Number(diretrizes.diaria_demais_pracas_capitais ?? 0),
+        diaria_demais_pracas_demais: Number(diretrizes.diaria_demais_pracas_demais ?? 0),
+        taxa_embarque: Number(diretrizes.taxa_embarque ?? 0),
+        diaria_referencia_legal: diretrizes.diaria_referencia_legal || "Decreto Nº 12.324 de 19DEZ24",
+        observacoes: diretrizes.observacoes || "",
+      };
+      
+      diretrizOperacionalSchema.parse(dataToValidate);
+
+      const diretrizData: TablesInsert<'diretrizes_operacionais'> = {
+        user_id: authUser.id,
+        ...dataToValidate
+      };
+
+      setIsSaving(true);
+      
+      const { data: savedData, error } = await supabase
+        .from("diretrizes_operacionais")
+        .upsert(diretrizData, { onConflict: 'user_id,ano_referencia' })
+        .select()
+        .single();
+
+      if (error) throw error;
+      
+      if (savedData) {
+          setDiretrizes(savedData as Partial<DiretrizOperacional>);
+      }
+      
+      toast.success("Diretrizes Operacionais salvas com sucesso!");
+      
+      queryClient.invalidateQueries({ queryKey: ['diretrizesCustosOperacionais', selectedYear, authUser.id] });
+      queryClient.invalidateQueries({ queryKey: ["onboardingStatus"] });
+      
+      await loadAvailableYears(defaultYear);
+    } catch (error: any) {
+      if (error instanceof z.ZodError) {
+        const firstError = error.errors[0];
+        const fieldName = firstError.path.join('.');
+        toast.error(`Erro de validação no campo ${fieldName}: ${firstError.message}`);
+      } else {
+        toast.error(sanitizeError(error));
+      }
+    } finally {
+      setIsSaving(false);
+    }
+  };
+  
   const handleSetDefaultYear = async () => {
-    if (!selectedYear || !user?.id) return;
+    if (!selectedYear) {
+      toast.error("Selecione um ano de referência válido.");
+      return;
+    }
+    
     setIsSaving(true);
     try {
-      const { error } = await supabase.from('profiles').update({ default_operacional_year: selectedYear }).eq('id', user.id);
+      const { data: { user: authUser } } = await supabase.auth.getUser();
+      if (!authUser) throw new Error("Usuário não autenticado");
+      
+      const { error } = await supabase
+        .from('profiles')
+        .update({ default_operacional_year: selectedYear })
+        .eq('id', authUser.id);
+        
       if (error) throw error;
-      queryClient.invalidateQueries({ queryKey: ["defaultOperacionalYear", user.id] });
-      toast.success(`Ano ${selectedYear} definido como padrão!`);
-    } catch (e) { toast.error(sanitizeError(e)); } finally { setIsSaving(false); }
-  };
-
-  // --- Render Functions ---
-  const renderDiretrizField = (field: { key: string, label: string, type: 'currency' | 'factor', placeholder: string }) => {
-    const value = (diretrizes[field.key as keyof DiretrizOperacional] as number) || 0;
-    if (field.type === 'currency') {
-      const rawDigits = rawInputs[field.key] || numberToRawDigits(value);
-      const { formatted: displayValue } = formatCurrencyInput(rawDigits);
-      return (<div className="space-y-2"><Label htmlFor={field.key}>{field.label}</Label><div className="relative"><span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">R$</span><Input id={field.key} type="text" inputMode="numeric" className="pl-8" value={displayValue === "0,00" && rawDigits === "" ? "" : displayValue} onChange={(e) => handleCurrencyChange(field.key as keyof DiretrizOperacional, e.target.value)} onKeyDown={handleEnterToNextField} placeholder={field.placeholder} /></div></div>);
+      
+      queryClient.invalidateQueries({ queryKey: ["defaultOperacionalYear", authUser.id] });
+      queryClient.invalidateQueries({ queryKey: ["onboardingStatus"] });
+      
+      toast.success(`Ano ${selectedYear} definido como padrão para cálculos!`);
+      
+    } catch (error: any) {
+      toast.error(sanitizeError(error));
+    } finally {
+      setIsSaving(false);
     }
-    return (<div className="space-y-2"><Label htmlFor={field.key}>{field.label}</Label><Input id={field.key} type="number" step="0.01" value={value === 0 ? "" : value} onChange={(e) => handleFactorChange(field.key as keyof DiretrizOperacional, e.target.value)} placeholder={field.placeholder} onKeyDown={handleEnterToNextField} /></div>);
   };
 
-  const renderDiariaTable = () => {
-    const getDiariaProps = (rankKey: string, dest: 'bsb' | 'capitais' | 'demais') => {
-      const fieldKey = `${DIARIA_RANKS_CONFIG.find(r => r.key === rankKey)?.fieldPrefix}_${dest}` as keyof DiretrizOperacional;
-      const val = (diretrizes[fieldKey] as number) || 0;
-      return { value: val, rawDigits: rawInputs[fieldKey as string] || numberToRawDigits(val), onChange: (v: number) => handleCurrencyChange(fieldKey, numberToRawDigits(v)), className: "text-center" };
-    };
-    return (<div className="space-y-4"><div className="grid grid-cols-1 md:grid-cols-2 gap-4"><div className="space-y-2"><Label>Referência Legal</Label><Input value={diretrizes.diaria_referencia_legal || ""} onChange={(e) => setDiretrizes({ ...diretrizes, diaria_referencia_legal: e.target.value })} /></div>{renderDiretrizField({ key: 'taxa_embarque', label: 'Taxa de Embarque', type: 'currency', placeholder: '95,00' })}</div><Table className="border rounded-lg overflow-hidden"><TableHeader><TableRow><TableHead>Posto/Graduação</TableHead><TableHead className="text-center">BSB/MAO/RJ/SP</TableHead><TableHead className="text-center">Demais Capitais</TableHead><TableHead className="text-center">Demais Dslc</TableHead></TableRow></TableHeader><TableBody>{DIARIA_RANKS_CONFIG.map(r => (<TableRow key={r.key}><TableCell>{r.label}</TableCell><TableCell><CurrencyInput {...getDiariaProps(r.key, 'bsb')} /></TableCell><TableCell><CurrencyInput {...getDiariaProps(r.key, 'capitais')} /></TableCell><TableCell><CurrencyInput {...getDiariaProps(r.key, 'demais')} /></TableCell></TableRow>))}</TableBody></Table></div>);
+  const handleCopyDiretrizes = async (sourceYear: number, targetYear: number) => {
+    try {
+      const { data: { user: authUser } } = await supabase.auth.getUser();
+      if (!authUser) throw new Error("Usuário não autenticado");
+      
+      setIsSaving(true);
+      
+      const { data: sourceOperacional, error: operacionalError } = await supabase
+        .from("diretrizes_operacionais")
+        .select("*")
+        .eq("user_id", authUser.id)
+        .eq("ano_referencia", sourceYear)
+        .maybeSingle();
+        
+      if (operacionalError) throw operacionalError;
+      
+      if (sourceOperacional) {
+          const { id: oldId, created_at, updated_at, ...restOperacional } = sourceOperacional;
+          const newOperacional = { ...restOperacional, ano_referencia: targetYear, user_id: authUser.id };
+          
+          const { error: insertOperacionalError } = await supabase
+            .from("diretrizes_operacionais")
+            .insert([newOperacional as TablesInsert<'diretrizes_operacionais'>]);
+          if (insertOperacionalError) throw insertOperacionalError;
+      }
+      
+      const { data: sourcePassagens, error: passagensError } = await supabase
+        .from("diretrizes_passagens")
+        .select("om_referencia, ug_referencia, numero_pregao, trechos, ativo, data_inicio_vigencia, data_fim_vigencia")
+        .eq("user_id", authUser.id)
+        .eq("ano_referencia", sourceYear);
+        
+      if (passagensError) throw passagensError;
+      
+      if (sourcePassagens && sourcePassagens.length > 0) {
+          const newPassagens = sourcePassagens.map(p => ({
+              ...p,
+              ano_referencia: targetYear,
+              user_id: authUser.id,
+              trechos: p.trechos, 
+          }));
+          
+          const { error: insertPassagensError } = await supabase
+            .from("diretrizes_passagens")
+            .insert(newPassagens as TablesInsert<'diretrizes_passagens'>[]);
+          if (insertPassagensError) throw insertPassagensError;
+      }
+      
+      const { data: sourceConcessionaria, error: concessionariaError } = await supabase
+        .from("diretrizes_concessionaria")
+        .select("categoria, nome_concessionaria, consumo_pessoa_dia, fonte_consumo, custo_unitario, fonte_custo, unidade_custo")
+        .eq("user_id", authUser.id)
+        .eq("ano_referencia", sourceYear);
+        
+      if (concessionariaError) throw concessionariaError;
+      
+      if (sourceConcessionaria && sourceConcessionaria.length > 0) {
+          const newConcessionaria = (sourceConcessionaria as Tables<'diretrizes_concessionaria'>[]).map(c => {
+              const { id, created_at, updated_at, ...restOfConcessionaria } = c as any;
+              return {
+                  ...restOfConcessionaria,
+                  ano_referencia: targetYear,
+                  user_id: authUser.id,
+              };
+          });
+          
+          const { error: insertConcessionariaError } = await supabase
+            .from("diretrizes_concessionaria")
+            .insert(newConcessionaria as TablesInsert<'diretrizes_concessionaria'>[]);
+          if (insertConcessionariaError) throw insertConcessionariaError;
+      }
+      
+      const { data: sourceMaterialConsumo, error: materialConsumoError } = await supabase
+        .from("diretrizes_material_consumo")
+        .select("nr_subitem, nome_subitem, descricao_subitem, itens_aquisicao, ativo")
+        .eq("user_id", authUser.id)
+        .eq("ano_referencia", sourceYear);
+        
+      if (materialConsumoError) throw materialConsumoError;
+      
+      if (sourceMaterialConsumo && sourceMaterialConsumo.length > 0) {
+          const newMaterialConsumo = (sourceMaterialConsumo as Tables<'diretrizes_material_consumo'>[]).map(m => {
+              const { id, created_at, updated_at, ...restOfMaterialConsumo } = m as any;
+              return {
+                  ...restOfMaterialConsumo,
+                  ano_referencia: targetYear,
+                  user_id: authUser.id,
+                  itens_aquisicao: m.itens_aquisicao,
+              };
+          });
+          
+          const { error: insertMaterialConsumoError } = await supabase
+            .from("diretrizes_material_consumo")
+            .insert(newMaterialConsumo as TablesInsert<'diretrizes_material_consumo'>[]);
+          if (insertMaterialConsumoError) throw insertMaterialConsumoError;
+      }
+
+      const { data: sourceServicos, error: servicosError } = await supabase
+        .from("diretrizes_servicos_terceiros" as any)
+        .select("nr_subitem, nome_subitem, descricao_subitem, itens_aquisicao, ativo")
+        .eq("user_id", authUser.id)
+        .eq("ano_referencia", sourceYear);
+        
+      if (servicosError) throw servicosError;
+      
+      if (sourceServicos && (sourceServicos as any[]).length > 0) {
+          const newServicos = (sourceServicos as any[]).map(s => {
+              const { id, created_at, updated_at, ...restOfServicos } = s;
+              return {
+                  ...restOfServicos,
+                  ano_referencia: targetYear,
+                  user_id: authUser.id,
+                  itens_aquisicao: s.itens_aquisicao,
+              };
+          });
+          
+          const { error: insertServicosError } = await supabase
+            .from("diretrizes_servicos_terceiros" as any)
+            .insert(newServicos);
+          if (insertServicosError) throw insertServicosError;
+      }
+
+      const { data: sourcePermanente, error: permanenteError } = await supabase
+        .from("diretrizes_material_permanente" as any)
+        .select("nr_subitem, nome_subitem, descricao_subitem, itens_aquisicao, ativo")
+        .eq("user_id", authUser.id)
+        .eq("ano_referencia", sourceYear);
+        
+      if (permanenteError) throw permanenteError;
+      
+      if (sourcePermanente && (sourcePermanente as any[]).length > 0) {
+          const newPermanente = (sourcePermanente as any[]).map(p => {
+              const { id, created_at, updated_at, ...restOfPermanente } = p;
+              return {
+                  ...restOfPermanente,
+                  ano_referencia: targetYear,
+                  user_id: authUser.id,
+                  itens_aquisicao: p.itens_aquisicao,
+              };
+          });
+          
+          const { error: insertPermanenteError } = await supabase
+            .from("diretrizes_material_permanente" as any)
+            .insert(newPermanente);
+          if (insertPermanenteError) throw insertPermanenteError;
+      }
+      
+      toast.success(`Diretrizes copiadas com sucesso para o ano ${targetYear}!`);
+      setIsYearManagementDialogOpen(false);
+      setSelectedYear(targetYear);
+      
+      queryClient.invalidateQueries({ queryKey: ['diretrizesCustosOperacionais', targetYear, authUser.id] });
+      queryClient.invalidateQueries({ queryKey: ["onboardingStatus"] });
+      
+      await loadAvailableYears(defaultYear);
+      
+    } catch (error: any) {
+      console.error("Erro ao copiar diretrizes:", error);
+      toast.error(sanitizeError(error));
+    } finally {
+      setIsSaving(false);
+    }
   };
 
-  const renderIndexedSearch = (searchTerm: string, indexedItems: any[], onGoTo: (id: string) => void, title: string) => {
-    if (searchTerm.length < 3) return null;
-    const filtered = indexedItems.filter(i => [i.descricao_item, i.codigo_catmat, i.subitemNr, i.subitemNome].join(' ').toLowerCase().includes(searchTerm.toLowerCase().trim()));
-    return (<Card className="p-4"><CardTitle className="text-sm mb-3">{title} ({filtered.length})</CardTitle><Table><TableBody>{filtered.map((i, idx) => (<TableRow key={idx}><TableCell className="text-xs font-medium">{i.descricao_item}<p className="text-muted-foreground">Subitem: {i.subitemNr} - {i.subitemNome}</p></TableCell><TableCell className="text-right"><Button variant="outline" size="sm" onClick={() => onGoTo(i.diretrizId)}>Ver Local</Button></TableCell></TableRow>))}</TableBody></Table></Card>);
+  const handleDeleteDiretrizes = async (year: number) => {
+    if (year === defaultYear) {
+      toast.error("Não é possível excluir a diretriz do ano padrão.");
+      return;
+    }
+    
+    if (!confirm(`Tem certeza que deseja EXCLUIR TODAS as diretrizes para o ano ${year}? Esta ação é irreversível.`)) return;
+
+    try {
+      const { data: { user: authUser } } = await supabase.auth.getUser();
+      if (!authUser) throw new Error("Usuário não autenticado");
+      
+      setIsSaving(true);
+      
+      await Promise.all([
+        supabase.from("diretrizes_operacionais").delete().eq("user_id", authUser.id).eq("ano_referencia", year),
+        supabase.from("diretrizes_passagens").delete().eq("user_id", authUser.id).eq("ano_referencia", year),
+        supabase.from("diretrizes_concessionaria").delete().eq("user_id", authUser.id).eq("ano_referencia", year),
+        supabase.from("diretrizes_material_consumo").delete().eq("user_id", authUser.id).eq("ano_referencia", year),
+        supabase.from("diretrizes_servicos_terceiros" as any).delete().eq("user_id", authUser.id).eq("ano_referencia", year),
+        supabase.from("diretrizes_material_permanente" as any).delete().eq("user_id", authUser.id).eq("ano_referencia", year)
+      ]);
+
+      toast.success(`Diretrizes do ano ${year} excluídas com sucesso!`);
+      setIsYearManagementDialogOpen(false);
+      
+      queryClient.invalidateQueries({ queryKey: ['diretrizesCustosOperacionais', year, authUser.id] });
+      queryClient.invalidateQueries({ queryKey: ["onboardingStatus"] });
+      
+      await loadAvailableYears(defaultYear);
+      
+    } catch (error: any) {
+      console.error("Erro ao excluir diretrizes:", error);
+      toast.error(sanitizeError(error));
+    } finally {
+      setIsSaving(false);
+    }
   };
+
+  if (isLoadingDefaultYear || isLoadingPageData) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <Loader2 className="h-6 w-6 animate-spin text-primary" />
+        <p className="text-muted-foreground ml-2">Carregando configurações...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background p-4 md:p-8">
-      <PageMetadata title="Configurações de Custos Operacionais" description="Defina os valores de diárias, contratos de passagens, concessionárias e materiais." canonicalPath="/config/custos-operacionais" />
+      <PageMetadata title="Configurações de Custos Operacionais" description="Defina os valores de diárias, contratos de passagens, concessionárias e fatores de custeio operacional para o cálculo do P Trab." canonicalPath="/config/custos-operacionais" />
       <div className="max-w-3xl mx-auto space-y-6">
-        <div className="flex items-center justify-between"><Button variant="ghost" onClick={() => navigate("/ptrab")}><ArrowLeft className="mr-2 h-4 w-4" />Voltar</Button><Button variant="outline" onClick={() => setIsYearManagementDialogOpen(true)}><Settings className="mr-2 h-4 w-4" />Gerenciar Anos</Button></div>
+        <div className="flex items-center justify-between"><Button variant="ghost" onClick={() => navigate("/ptrab")} className="mb-2"><ArrowLeft className="mr-2 h-4 w-4" />Voltar para Planos de Trabalho</Button><Button variant="outline" onClick={() => setIsYearManagementDialogOpen(true)} disabled={isSaving || isLoadingDefaultYear}><Settings className="mr-2 h-4 w-4" />Gerenciar Anos</Button></div>
         <Card className="card-diretrizes-operacionais">
-          <CardHeader><h1 className="text-2xl font-bold">Configurações dos Custos Operacionais</h1><CardDescription>Defina os valores de referência para o ano {selectedYear}.</CardDescription></CardHeader>
-          <CardContent className="space-y-6">
+          <CardHeader><h1 className="text-2xl font-bold">Configurações dos Custos Operacionais</h1><CardDescription>Defina os valores e fatores de referência para o cálculo de despesas operacionais (GND 3 e GND4).</CardDescription></CardHeader>
+          <CardContent className={cn("space-y-6", "aba-material-consumo-container")}>
             <form onSubmit={(e) => { e.preventDefault(); handleSaveDiretrizes(); }}>
-              <div className="space-y-2 mb-6"><Label>Ano de Referência</Label><Select value={selectedYear.toString()} onValueChange={(v) => setSelectedYear(parseInt(v))}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{availableYears.map(y => (<SelectItem key={y} value={y.toString()}>{y} {y === defaultYear && "(Padrão)"}</SelectItem>))}</SelectContent></Select></div>
-              <div className="space-y-4 border-t pt-4">
-                {[
-                  { id: 'diarias_detalhe', label: 'Pagamento de Diárias', render: renderDiariaTable },
-                  { id: 'passagens_detalhe', label: 'Aquisição de Passagens', render: () => (
-                    <div className="space-y-4">
-                      {pageData?.passagens?.length ? (<Table className="border rounded-lg">{pageData.passagens.map(d => (<PassagemDiretrizRow key={d.id} diretriz={d} onEdit={setDiretrizToEdit} onDelete={(id) => supabase.from('diretrizes_passagens').delete().eq('id', id).then(() => queryClient.invalidateQueries())} loading={isSaving} />))}</Table>) : <p className="text-center text-muted-foreground text-sm">Nenhum contrato cadastrado.</p>}
-                      <Button type="button" variant="outline" size="sm" className="w-full" onClick={() => { setDiretrizToEdit(null); setIsPassagemFormOpen(true); }}><Plus className="h-4 w-4 mr-2" />Novo Contrato</Button>
-                    </div>
-                  )},
-                  { id: 'concessionaria_detalhe', label: 'Pagamento de Concessionárias', render: () => (
-                    <Tabs value={selectedConcessionariaTab} onValueChange={(v) => setSelectedConcessionariaTab(v as CategoriaConcessionaria)} className="w-full">
-                      <TabsList className="grid grid-cols-2">{CATEGORIAS_CONCESSIONARIA.map(c => <TabsTrigger key={c} value={c}>{c}</TabsTrigger>)}</TabsList>
-                      {CATEGORIAS_CONCESSIONARIA.map(cat => (<TabsContent key={cat} value={cat} className="space-y-4">
-                        {pageData?.concessionaria?.filter(c => c.categoria === cat).length ? (<Table className="border">{pageData.concessionaria.filter(c => c.categoria === cat).map(d => (<ConcessionariaDiretrizRow key={d.id} diretriz={d} onEdit={setDiretrizConcessionariaToEdit} onDelete={(id) => supabase.from('diretrizes_concessionaria').delete().eq('id', id).then(() => queryClient.invalidateQueries())} loading={isSaving} />))}</Table>) : <p className="text-center text-muted-foreground text-sm">Nenhuma diretriz cadastrada.</p>}
-                        <Button type="button" variant="outline" size="sm" className="w-full" onClick={() => { setDiretrizConcessionariaToEdit(null); setIsConcessionariaFormOpen(true); }}><Plus className="h-4 w-4 mr-2" />Nova Diretriz {cat}</Button>
-                      </TabsContent>))}
-                    </Tabs>
-                  )},
-                  { id: 'material_consumo_detalhe', label: 'Material de Consumo', render: () => (
-                    <div className="space-y-4 aba-material-consumo">
-                      <div className="flex justify-between items-center"><CardTitle className="text-sm">Subitens Cadastrados</CardTitle><Button type="button" variant="outline" size="sm" onClick={() => setIsExportImportDialogOpen(true)}><FileSpreadsheet className="h-4 w-4 mr-2" />Exp/Imp</Button></div>
-                      <div className="relative"><Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" /><Input placeholder="Buscar item..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="pl-10" /></div>
-                      {searchTerm ? renderIndexedSearch(searchTerm, diretrizesMaterialConsumo?.flatMap(d => (d.itens_aquisicao as any[] || []).map(i => ({ ...i, diretrizId: d.id, subitemNr: d.nr_subitem, subitemNome: d.nome_subitem }))) || [], handleGoToSubitem, "Resultados") : 
-                        diretrizesMaterialConsumo?.length ? (<Table className="border">{diretrizesMaterialConsumo.map(d => (<MaterialConsumoDiretrizRow key={d.id} id={`diretriz-material-consumo-${d.id}`} diretriz={d} onEdit={handleStartEditMaterialConsumo} onDelete={(id) => supabase.from('diretrizes_material_consumo').delete().eq('id', id).then(() => queryClient.invalidateQueries())} loading={isLoadingMaterialConsumo} onMoveItem={handleMoveItem} forceOpen={subitemToOpenId === d.id} />))}</Table>) : <p className="text-center text-muted-foreground text-sm">Nenhum subitem cadastrado.</p>
-                      }
-                      <Button type="button" variant="outline" size="sm" className="w-full btn-novo-subitem" onClick={handleOpenNewMaterialConsumo}><Plus className="h-4 w-4 mr-2" />Novo Subitem ND</Button>
-                    </div>
-                  )},
-                  { id: 'material_permanente_detalhe', label: 'Material Permanente', render: () => (
-                    <div className="space-y-4">
-                      <div className="flex justify-between items-center"><CardTitle className="text-sm">Subitens Cadastrados</CardTitle><Button type="button" variant="outline" size="sm" onClick={() => setIsExportImportPermanenteDialogOpen(true)}><FileSpreadsheet className="h-4 w-4 mr-2" />Exp/Imp</Button></div>
-                      <div className="relative"><Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" /><Input placeholder="Buscar item..." value={searchTermPermanente} onChange={e => setSearchTermPermanente(e.target.value)} className="pl-10" /></div>
-                      {searchTermPermanente ? renderIndexedSearch(searchTermPermanente, diretrizesMaterialPermanente?.flatMap(d => (d.itens_aquisicao as any[] || []).map(i => ({ ...i, diretrizId: d.id, subitemNr: d.nr_subitem, subitemNome: d.nome_subitem }))) || [], handleGoToSubitemPermanente, "Resultados") : 
-                        diretrizesMaterialPermanente?.length ? (<Table className="border">{diretrizesMaterialPermanente.map(d => (<MaterialPermanenteDiretrizRow key={d.id} id={`diretriz-material-permanente-${d.id}`} diretriz={d} onEdit={handleStartEditMaterialPermanente} onDelete={(id) => supabase.from('diretrizes_material_permanente' as any).delete().eq('id', id).then(() => queryClient.invalidateQueries())} loading={isLoadingMaterialPermanente} forceOpen={subitemPermanenteToOpenId === d.id} isExpanded={subitemPermanenteToOpenId === d.id} onToggleExpand={() => setSubitemPermanenteToOpenId(subitemPermanenteToOpenId === d.id ? null : d.id)} />))}</Table>) : <p className="text-center text-muted-foreground text-sm">Nenhum subitem cadastrado.</p>
-                      }
-                      <Button type="button" variant="outline" size="sm" className="w-full" onClick={handleOpenNewMaterialPermanente}><Plus className="h-4 w-4 mr-2" />Novo Subitem ND</Button>
-                    </div>
-                  )},
-                  { id: 'servicos_terceiros_detalhe', label: 'Serviços de Terceiros / Locações', render: () => (
-                    <div className="space-y-4">
-                      <div className="flex justify-between items-center"><CardTitle className="text-sm">Subitens Cadastrados</CardTitle><Button type="button" variant="outline" size="sm" onClick={() => setIsExportImportServicosDialogOpen(true)}><FileSpreadsheet className="h-4 w-4 mr-2" />Exp/Imp</Button></div>
-                      <div className="relative"><Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" /><Input placeholder="Buscar item..." value={searchTermServicos} onChange={e => setSearchTermServicos(e.target.value)} className="pl-10" /></div>
-                      {searchTermServicos ? renderIndexedSearch(searchTermServicos, diretrizesServicosTerceiros?.flatMap(d => (d.itens_aquisicao as any[] || []).map(i => ({ ...i, diretrizId: d.id, subitemNr: d.nr_subitem, subitemNome: d.nome_subitem }))) || [], handleGoToSubitemServico, "Resultados") : 
-                        diretrizesServicosTerceiros?.length ? (<Table className="border">{diretrizesServicosTerceiros.map(d => (<ServicosTerceirosDiretrizRow key={d.id} id={`diretriz-servicos-terceiros-${d.id}`} diretriz={d} onEdit={handleStartEditServicosTerceiros} onDelete={(id) => supabase.from('diretrizes_servicos_terceiros' as any).delete().eq('id', id).then(() => queryClient.invalidateQueries())} loading={isLoadingServicosTerceiros} onMoveItem={handleMoveItemServico} forceOpen={subitemServicoToOpenId === d.id} />))}</Table>) : <p className="text-center text-muted-foreground text-sm">Nenhum subitem cadastrado.</p>
-                      }
-                      <Button type="button" variant="outline" size="sm" className="w-full" onClick={handleOpenNewServicosTerceiros}><Plus className="h-4 w-4 mr-2" />Novo Subitem ND</Button>
-                    </div>
-                  )}
-                ].map(sec => (
-                  <div key={sec.id} ref={el => collapsibleRefs.current[sec.id] = el} className="border-b pb-2 last:border-b-0">
-                    <Collapsible open={fieldCollapseState[sec.id]} onOpenChange={o => handleCollapseChange(sec.id, o)}>
-                      <CollapsibleTrigger className="flex w-full items-center justify-between py-2 font-medium"><span>{sec.label}</span>{fieldCollapseState[sec.id] ? <ChevronUp /> : <ChevronDown />}</CollapsibleTrigger>
-                      <CollapsibleContent className="pt-2">{sec.render()}</CollapsibleContent>
-                    </Collapsible>
-                  </div>
-                ))}
+              <div className="space-y-2 mb-6"><Label>Ano de Referência</Label><Select value={selectedYear.toString()} onValueChange={(value) => setSelectedYear(parseInt(value))}><SelectTrigger><SelectValue placeholder="Selecione o ano" /></SelectTrigger><SelectContent>{availableYears.map((year) => (<SelectItem key={year} value={year.toString()}>{year} {year === defaultYear && "(Padrão)"}</SelectItem>))}</SelectContent></Select><p className="text-sm text-muted-foreground pt-1">Ano Padrão de Cálculo: <span className="font-semibold text-primary ml-1">{defaultYear ? defaultYear : 'Não definido (usando o mais recente)'}</span>{defaultYear && defaultYear !== selectedYear && (<span className="text-xs text-gray-500 ml-2">(Selecione este ano para editar o padrão)</span>)}</p></div>
+              <div className="border-t pt-4 mt-6">
+                <div className="space-y-4">
+                  <div ref={el => collapsibleRefs.current['diarias_detalhe'] = el} className="border-b pb-4 last:border-b-0 last:pb-0"><Collapsible open={fieldCollapseState['diarias_detalhe']} onOpenChange={(open) => handleCollapseChange('diarias_detalhe', open)}><CollapsibleTrigger asChild><div className="flex items-center justify-between cursor-pointer py-2"><h2 className="text-base font-medium">Pagamento de Diárias</h2>{fieldCollapseState['diarias_detalhe'] ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}</div></CollapsibleTrigger><CollapsibleContent><div className="mt-2">{renderDiariaTable()}</div></CollapsibleContent></Collapsible></div>
+                  <div ref={el => collapsibleRefs.current['passagens_detalhe'] = el} className="border-b pb-4 last:border-b-0 last:pb-0"><Collapsible open={fieldCollapseState['passagens_detalhe']} onOpenChange={(open) => handleCollapseChange('passagens_detalhe', open)}><CollapsibleTrigger asChild><div className="flex items-center justify-between cursor-pointer py-2"><h2 className="text-base font-medium flex items-center gap-2">Aquisição de Passagens</h2>{fieldCollapseState['passagens_detalhe'] ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}</div></CollapsibleTrigger><CollapsibleContent><div className="mt-2">{renderPassagensSection()}</div></CollapsibleContent></Collapsible></div>
+                  <div ref={el => collapsibleRefs.current['concessionaria_detalhe'] = el} className="border-b pb-4 last:border-b-0 last:pb-0"><Collapsible open={fieldCollapseState['concessionaria_detalhe']} onOpenChange={(open) => handleCollapseChange('concessionaria_detalhe', open)}><CollapsibleTrigger asChild><div className="flex items-center justify-between cursor-pointer py-2"><h2 className="text-base font-medium flex items-center gap-2">Pagamento de Concessionárias</h2>{fieldCollapseState['concessionaria_detalhe'] ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}</div></CollapsibleTrigger><CollapsibleContent><div className="mt-2">{renderConcessionariaSection()}</div></CollapsibleContent></Collapsible></div>
+                  <div ref={el => collapsibleRefs.current['material_consumo_detalhe'] = el} className="border-b pb-4 last:border-b-0 last:pb-0 aba-material-consumo"><Collapsible open={fieldCollapseState['material_consumo_detalhe']} onOpenChange={(open) => handleCollapseChange('material_consumo_detalhe', open)}><CollapsibleTrigger asChild><div className="flex items-center justify-between cursor-pointer py-2 gatilho-material-consumo"><h2 className="text-base font-medium flex items-center gap-2">Aquisição de Material de Consumo</h2>{fieldCollapseState['material_consumo_detalhe'] ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}</div></CollapsibleTrigger><CollapsibleContent><div className="mt-2">{renderMaterialConsumoSection()}</div></CollapsibleContent></Collapsible></div>
+                  <div ref={el => collapsibleRefs.current['material_permanente_detalhe'] = el} className="border-b pb-4 last:border-b-0 last:pb-0"><Collapsible open={fieldCollapseState['material_permanente_detalhe']} onOpenChange={(open) => handleCollapseChange('material_permanente_detalhe', open)}><CollapsibleTrigger asChild><div className="flex items-center justify-between cursor-pointer py-2"><h2 className="text-base font-medium flex items-center gap-2">Aquisição de Material Permanente</h2>{fieldCollapseState['material_permanente_detalhe'] ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}</div></CollapsibleTrigger><CollapsibleContent><div className="mt-2">{renderMaterialPermanenteSection()}</div></CollapsibleContent></Collapsible></div>
+                  <div ref={el => collapsibleRefs.current['servicos_terceiros_detalhe'] = el} className="border-b pb-4 last:border-b-0 last:pb-0"><Collapsible open={fieldCollapseState['servicos_terceiros_detalhe']} onOpenChange={(open) => handleCollapseChange('servicos_terceiros_detalhe', open)}><CollapsibleTrigger asChild><div className="flex items-center justify-between cursor-pointer py-2"><h2 className="text-base font-medium flex items-center gap-2">Contratação de Serviços de Terceiros / Locações (Transporte)</h2>{fieldCollapseState['servicos_terceiros_detalhe'] ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}</div></CollapsibleTrigger><CollapsibleContent><div className="mt-2">{renderServicosTerceirosSection()}</div></CollapsibleContent></Collapsible></div>
+                  {OPERATIONAL_FIELDS.filter(f => f.key !== 'fator_material_consumo' && f.key !== 'fator_servicos_terceiros').map(field => { const fieldKey = field.key as string; const isOpen = fieldCollapseState[fieldKey] ?? false; return (<div key={fieldKey} ref={el => collapsibleRefs.current[fieldKey] = el} className="border-b pb-4 last:border-b-0 last:pb-0"><Collapsible open={isOpen} onOpenChange={(open) => handleCollapseChange(fieldKey, open)}><CollapsibleTrigger asChild><div className="flex items-center justify-between cursor-pointer py-2"><h2 className="text-base font-medium">{field.label}</h2>{isOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}</div></CollapsibleTrigger><CollapsibleContent><div className="mt-2">{renderDiretrizField(field)}</div></CollapsibleContent></Collapsible></div>); })}
+                </div>
               </div>
-              <div className="mt-6 flex justify-end gap-3 border-t pt-4"><Button type="button" variant="secondary" onClick={handleSetDefaultYear} disabled={isSaving || selectedYear === defaultYear}>Adotar como Padrão</Button><Button type="submit" disabled={isSaving}>{isSaving ? <Loader2 className="animate-spin mr-2 h-4 w-4" /> : <Save className="mr-2 h-4 w-4" />}Salvar Diretrizes</Button></div>
+              <div className="space-y-2 border-t pt-4 mt-6"><Label>Observações</Label><Textarea value={diretrizes.observacoes || ""} onChange={(e) => setDiretrizes({ ...diretrizes, observacoes: e.target.value })} onKeyDown={handleEnterToNextField} /></div>
+              <div className="flex justify-end gap-3 mt-6"><Button type="button" variant="secondary" onClick={handleSetDefaultYear} disabled={isSaving || selectedYear === defaultYear || !selectedYear}>{selectedYear === defaultYear ? "Padrão Atual" : "Adotar como Padrão"}</Button><Button type="submit" disabled={isSaving} className="btn-adotar-padrao">{isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}Salvar Diretrizes</Button></div>
             </form>
           </CardContent>
         </Card>
       </div>
-      <YearManagementDialog open={isYearManagementDialogOpen} onOpenChange={setIsYearManagementDialogOpen} availableYears={availableYears} defaultYear={defaultYear} onCopy={() => {}} onDelete={() => {}} loading={isSaving} />
-      <PassagemDiretrizFormDialog open={!!diretrizToEdit || isPassagemFormOpen} onOpenChange={o => { setIsPassagemFormOpen(o); if(!o) setDiretrizToEdit(null); }} selectedYear={selectedYear} diretrizToEdit={diretrizToEdit} onSave={handleSavePassagem} loading={isSaving} />
-      <ConcessionariaDiretrizFormDialog open={!!diretrizConcessionariaToEdit || isConcessionariaFormOpen} onOpenChange={o => { setIsConcessionariaFormOpen(o); if(!o) setDiretrizConcessionariaToEdit(null); }} selectedYear={selectedYear} diretrizToEdit={diretrizConcessionariaToEdit} onSave={handleSaveConcessionaria} loading={isSaving} initialCategory={selectedConcessionariaTab} />
-      <MaterialConsumoDiretrizFormDialog open={!!diretrizMaterialConsumoToEdit || isMaterialConsumoFormOpen} onOpenChange={o => { setIsMaterialConsumoFormOpen(o); if(!o) setDiretrizMaterialConsumoToEdit(null); }} selectedYear={selectedYear} diretrizToEdit={diretrizMaterialConsumoToEdit} onSave={handleSaveMaterialConsumo} loading={isSaving} />
-      <MaterialConsumoExportImportDialog open={isExportImportDialogOpen} onOpenChange={setIsExportImportDialogOpen} selectedYear={selectedYear} diretrizes={diretrizesMaterialConsumo || []} onImportSuccess={() => queryClient.invalidateQueries()} />
-      <ServicosTerceirosDiretrizFormDialog open={!!diretrizServicosTerceirosToEdit || isServicosTerceirosFormOpen} onOpenChange={o => { setIsServicosTerceirosFormOpen(o); if(!o) setDiretrizServicosTerceirosToEdit(null); }} selectedYear={selectedYear} diretrizToEdit={diretrizServicosTerceirosToEdit} onSave={handleSaveServicosTerceiros} loading={isSaving} />
-      <ServicosTerceirosExportImportDialog open={isExportImportServicosDialogOpen} onOpenChange={setIsExportImportServicosDialogOpen} selectedYear={selectedYear} diretrizes={diretrizesServicosTerceiros || []} onImportSuccess={() => queryClient.invalidateQueries()} />
-      <MaterialPermanenteDiretrizFormDialog open={!!diretrizMaterialPermanenteToEdit || isMaterialPermanenteFormOpen} onOpenChange={o => { setIsMaterialPermanenteFormOpen(o); if(!o) setDiretrizMaterialPermanenteToEdit(null); }} selectedYear={selectedYear} diretrizToEdit={diretrizMaterialPermanenteToEdit} onSave={handleSaveMaterialPermanente} loading={isSaving} />
-      <MaterialPermanenteExportImportDialog open={isExportImportPermanenteDialogOpen} onOpenChange={setIsExportImportPermanenteDialogOpen} selectedYear={selectedYear} diretrizes={diretrizesMaterialPermanente || []} onImportSuccess={() => queryClient.invalidateQueries()} />
+      <YearManagementDialog open={isYearManagementDialogOpen} onOpenChange={setIsYearManagementDialogOpen} availableYears={availableYears} defaultYear={defaultYear} onCopy={handleCopyDiretrizes} onDelete={handleDeleteDiretrizes} loading={isSaving} />
+      <PassagemDiretrizFormDialog open={isPassagemFormOpen} onOpenChange={setIsPassagemFormOpen} selectedYear={selectedYear} diretrizToEdit={diretrizToEdit} onSave={handleSavePassagem} loading={isSaving} />
+      <ConcessionariaDiretrizFormDialog open={isConcessionariaFormOpen} onOpenChange={setIsConcessionariaFormOpen} selectedYear={selectedYear} diretrizToEdit={diretrizConcessionariaToEdit} onSave={handleSaveConcessionaria} loading={isSaving} initialCategory={selectedConcessionariaTab} />
+      <MaterialConsumoDiretrizFormDialog open={isMaterialConsumoFormOpen} onOpenChange={setIsMaterialConsumoFormOpen} selectedYear={selectedYear} diretrizToEdit={diretrizMaterialConsumoToEdit} onSave={handleSaveMaterialConsumo} loading={isSaving} />
+      <MaterialConsumoExportImportDialog open={isExportImportDialogOpen} onOpenChange={setIsExportImportDialogOpen} selectedYear={selectedYear} diretrizes={diretrizesMaterialConsumo || []} onImportSuccess={handleMaterialConsumoImportSuccess} />
+      <ServicosTerceirosDiretrizFormDialog open={isServicosTerceirosFormOpen} onOpenChange={setIsServicosTerceirosFormOpen} selectedYear={selectedYear} diretrizToEdit={diretrizServicosTerceirosToEdit} onSave={handleSaveServicosTerceiros} loading={isSaving} />
+      <ServicosTerceirosExportImportDialog open={isExportImportServicosDialogOpen} onOpenChange={setIsExportImportServicosDialogOpen} selectedYear={selectedYear} diretrizes={diretrizesServicosTerceiros || []} onImportSuccess={handleServicosTerceirosImportSuccess} />
+      <MaterialPermanenteDiretrizFormDialog open={isMaterialPermanenteFormOpen} onOpenChange={setIsMaterialPermanenteFormOpen} selectedYear={selectedYear} diretrizToEdit={diretrizMaterialPermanenteToEdit} onSave={handleSaveMaterialPermanente} loading={isSaving} />
+      <MaterialPermanenteExportImportDialog open={isExportImportPermanenteDialogOpen} onOpenChange={setIsExportImportPermanenteDialogOpen} selectedYear={selectedYear} diretrizes={diretrizesMaterialPermanente || []} onImportSuccess={handleMaterialPermanenteImportSuccess} />
     </div>
   );
 };
