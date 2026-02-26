@@ -1,3 +1,5 @@
+"use client";
+
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -147,6 +149,10 @@ const PNCPInspectionDialog: React.FC<PNCPInspectionDialogProps> = ({
             await Promise.all(persistencePromises);
             queryClient.invalidateQueries({ queryKey: [mode === 'material' ? 'catmatCatalog' : 'catserCatalog'] });
             onFinalImport(finalItems);
+            
+            // Avança o tour se estiver ativo
+            window.dispatchEvent(new CustomEvent('tour:avancar'));
+            
             toast.success(`Importação de ${formatItemCount(finalItems.length)} concluída.`);
         } catch (error: any) {
             console.error("Erro durante a importação final:", error);
@@ -220,7 +226,7 @@ const PNCPInspectionDialog: React.FC<PNCPInspectionDialogProps> = ({
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="max-w-7xl">
+            <DialogContent className="max-w-7xl tour-inspection-dialog">
                 <DialogHeader>
                     <DialogTitle>Inspeção de Itens PNCP ({mode === 'material' ? 'Materiais' : 'Serviços'})</DialogTitle>
                     <DialogDescription>Revise os {formatItemCount(initialInspectionList.length)} selecionados. Itens duplicados serão descartados.</DialogDescription>

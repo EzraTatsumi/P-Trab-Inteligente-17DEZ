@@ -257,7 +257,17 @@ export const runMission02 = (userId: string, onComplete: () => void) => {
         element: '.modal-importar-pncp',
         popover: {
           title: 'Navegação de Resultados',
-          description: 'O sistema encontrou os resultados! Agora, clique em "Expandir" no Pregão, depois em "Ver Itens" na ARP, selecione o "Cimento Portland" e clique em "Importar Selecionados".',
+          description: 'O sistema encontrou os resultados! Agora, clique na seta para expandir o Pregão, selecione o item desejado e clique em "Preparar Importação" no rodapé.',
+          side: 'top', 
+          align: 'center',
+          showButtons: []
+        }
+      },
+      {
+        element: '.tour-inspection-dialog',
+        popover: {
+          title: 'Esteira de Inspeção',
+          description: 'Este é o cérebro do sistema. Aqui verificamos se o item é novo ou duplicado. Se o item estiver "Pronto", clique em "Importar" para levá-lo à sua grade.',
           side: 'top', 
           align: 'center',
           showButtons: []
@@ -266,8 +276,8 @@ export const runMission02 = (userId: string, onComplete: () => void) => {
       {
         element: '.tabela-itens-aquisicao',
         popover: {
-          title: 'Item Importado com Sucesso',
-          description: 'Veja! O item foi importado com todos os dados técnicos e valores atualizados do PNCP diretamente para sua lista.',
+          title: 'Item na Grade',
+          description: 'Excelente! O item foi validado e importado. Agora ele faz parte do seu planejamento.',
           side: 'top', 
           align: 'center'
         }
