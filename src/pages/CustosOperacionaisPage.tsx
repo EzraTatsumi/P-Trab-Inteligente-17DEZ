@@ -137,7 +137,7 @@ const defaultDiretrizes = (year: number): Partial<DiretrizOperacional> => ({
 const CustosOperacionaisPage = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { user } = useSession();
   const queryClient = useQueryClient();
   const [isSaving, setIsSaving] = useState(false); 
@@ -154,6 +154,25 @@ const CustosOperacionaisPage = () => {
   const defaultYear = defaultYearData?.defaultYear || null;
 
   const ghostActive = isGhostMode();
+
+  // 1. Sincroniza o Estado para a URL (Protegido contra loops)
+  useEffect(() => {
+    const yearInUrl = searchParams.get('year');
+    if (selectedYear && yearInUrl !== selectedYear.toString()) {
+      setSearchParams({ year: selectedYear.toString() }, { replace: true });
+    }
+  }, [selectedYear]);
+
+  // 2. Sincroniza a URL para o Estado (Roda no carregamento inicial)
+  useEffect(() => {
+    const yearInUrl = searchParams.get('year');
+    if (yearInUrl) {
+      const yearNum = parseInt(yearInUrl);
+      if (!isNaN(yearNum) && yearNum !== selectedYear) {
+        setSelectedYear(yearNum);
+      }
+    }
+  }, [searchParams]);
 
   const { data: pageData, isLoading: isLoadingPageData, isFetching: isFetchingPageData } = useQuery({
     queryKey: ['diretrizesCustosOperacionais', selectedYear, user?.id, ghostActive],
