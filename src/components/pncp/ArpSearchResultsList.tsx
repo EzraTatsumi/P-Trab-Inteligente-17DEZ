@@ -240,7 +240,7 @@ const ArpSearchResultsList: React.FC<ArpSearchResultsListProps> = ({ results, on
     const totalArpItems = results.length; 
 
     return (
-        <div className="p-4 space-y-4">
+        <div className="p-4 space-y-4 flex flex-col h-full">
             {/* CABEÇALHO DA PESQUISA (ÂNCORA DE SCROLL) */}
             <div ref={resultHeaderRef}>
                 <h3 className="text-lg font-semibold flex flex-col">
@@ -253,9 +253,10 @@ const ArpSearchResultsList: React.FC<ArpSearchResultsListProps> = ({ results, on
                 </h3>
             </div>
             
-            <div className="border rounded-md">
+            {/* Contêiner com altura fixa e rolagem garantida para evitar que itens sumam no Dialog */}
+            <div className="h-[450px] overflow-y-auto overflow-x-hidden border rounded-md bg-background">
                 <Table>
-                    <TableHeader className="sticky top-0 bg-background z-10">
+                    <TableHeader className="sticky top-0 bg-background z-10 shadow-sm">
                         <TableRow>
                             <TableHead className="w-[150px]">Pregão</TableHead>
                             <TableHead>Objeto</TableHead>
