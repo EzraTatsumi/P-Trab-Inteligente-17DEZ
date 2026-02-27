@@ -65,7 +65,7 @@ import { RequirementsAlert } from "@/components/RequirementsAlert";
 import { InstructionHub } from "@/components/InstructionHub";
 import { runMission01 } from "@/tours/missionTours";
 import { GHOST_DATA, isGhostMode, getActiveMission } from "@/lib/ghostStore";
-import { shouldShowVictory, markVictoryAsShown, exitGhostMode } from "@/lib/missionUtils";
+import { shouldShowVictory, markVictoryAsShown, exitGhostMode, fetchCompletedMissions } from "@/lib/missionUtils";
 import confetti from "canvas-confetti";
 
 export type PTrabDB = Tables<'p_trab'> & {
@@ -214,6 +214,19 @@ const PTrabManager = () => {
   };
 
   useEffect(() => {
+    if (user?.id) {
+      // Sincroniza o LocalStorage com o Banco de Dados
+      fetchCompletedMissions(user.id).then((missionIds) => {
+        console.log("Sincronia de Missões concluída:", missionIds.length);
+        // Se o banco retornar vazio, força o refresh para limpar o estado visual
+        if (missionIds.length === 0) {
+          queryClient.invalidateQueries({ queryKey: ['user-status', user.id] });
+        }
+      });
+    }
+  }, [user?.id, queryClient]);
+
+  useEffect(() => {
     if (!user?.id) return;
 
     if (shouldShowVictory(user.id)) {
@@ -245,15 +258,18 @@ const PTrabManager = () => {
   }, [user?.id]);
 
   useEffect(() => {
-    if (isGhostMode()) {
-      setShowWelcomeModal(false);
-      setShowRequirementsAlert(false);
-      return;
-    }
+    // Se não está carregando e o status existe
+    if (!isLoadingOnboarding && onboardingStatus) {
+      // Se o banco diz que não tem missões, desativa o ghost mode residual e abre o modal
+      if (!onboardingStatus.hasMissions && isGhostMode()) {
+        localStorage.removeItem('is_ghost_mode');
+        localStorage.removeItem('active_mission_id');
+      }
 
-    if (!isLoadingOnboarding && onboardingStatus && !onboardingStatus.isReady && !hasShownWelcome.current) {
-      setShowWelcomeModal(true);
-      hasShownWelcome.current = true;
+      if (!onboardingStatus.isReady && !hasShownWelcome.current) {
+        setShowWelcomeModal(true);
+        hasShownWelcome.current = true;
+      }
     }
   }, [isLoadingOnboarding, onboardingStatus]);
 
