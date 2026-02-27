@@ -23,51 +23,7 @@ export const GHOST_DATA = {
     comentario: "P Trab em fase final de revisão técnica.",
   } as any,
 
-  // Missão 02: Configuração de Diretrizes (Estado Inicial)
-  missao_02: {
-    subitens_lista: [
-      {
-        id: "ghost-subitem-22",
-        nr_subitem: "22",
-        nome_subitem: "Material de Limpeza",
-        descricao_subitem: "Itens para higiene e conservação das instalações",
-        ativo: true,
-        itens_aquisicao: [
-          {
-            id: "ghost-item-detergente",
-            descricao_item: "Detergente Líquido Neutro 500ml",
-            descricao_reduzida: "Detergente Neutro 500ml",
-            valor_unitario: 2.45,
-            numero_pregao: "010/2025",
-            uasg: "160222",
-            codigo_catmat: "445566",
-            quantidade: 0,
-            valor_total: 0,
-            nd: "30"
-          }
-        ]
-      },
-      {
-        id: "ghost-subitem-16",
-        nr_subitem: "16",
-        nome_subitem: "Material de Expediente",
-        descricao_subitem: "Suprimentos para atividades administrativas",
-        ativo: true,
-        itens_aquisicao: [
-          {
-            id: "ghost-item-papel",
-            descricao_item: "Papel A4 Branco - Resma 500 folhas",
-            descricao_reduzida: "Papel A4 Resma",
-            valor_unitario: 28.90,
-            numero_pregao: "005/2025",
-            uasg: "160222",
-            codigo_catmat: "150544",
-            quantidade: 0,
-            valor_total: 0,
-            nd: "30"
-          }
-        ]
-      }
+ , 
     ],
     // Resultado da busca por UASG no PNCP (Simulação de Importação)
     arp_search_results: [
