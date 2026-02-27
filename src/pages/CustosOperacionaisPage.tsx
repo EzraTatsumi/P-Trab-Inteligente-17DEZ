@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
-import { ArrowLeft, Activity, Loader2, Save, Settings, ChevronDown, ChevronUp, Plus, Trash2, Pencil, Plane, Package, Search, FileSpreadsheet, HardDrive } from "lucide-center";
+import { ArrowLeft, Activity, Loader2, Save, Settings, ChevronDown, ChevronUp, Plus, Trash2, Pencil, Plane, Package, Search, FileSpreadsheet, HardDrive } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { sanitizeError } from "@/lib/errorUtils";
 import { useFormNavigation } from "@/hooks/useFormNavigation";
@@ -294,7 +294,7 @@ const CustosOperacionaisPage = () => {
   const [subitemPermanenteToOpenId, setSubitemPermanenteToOpenId] = useState<string | null>(null);
   const [isExportImportPermanenteDialogOpen, setIsExportImportPermanenteDialogOpen] = useState(false);
 
-  const collapsibleRefs = useRef<Record<string, HTMLDivCenterElement | null>>({});
+  const collapsibleRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
   const handleCollapseChange = useCallback((key: string, open: boolean) => {
       setFieldCollapseState(prev => ({ ...prev, [key]: open }));
@@ -1496,9 +1496,9 @@ const CustosOperacionaisPage = () => {
       <ConcessionariaDiretrizFormDialog open={isConcessionariaFormOpen} onOpenChange={setIsConcessionariaFormOpen} selectedYear={selectedYear} diretrizToEdit={diretrizConcessionariaToEdit} onSave={handleSaveConcessionaria} loading={isSaving} initialCategory={selectedConcessionariaTab} />
       <MaterialConsumoDiretrizFormDialog open={isMaterialConsumoFormOpen} onOpenChange={setIsMaterialConsumoFormOpen} selectedYear={selectedYear} diretrizToEdit={diretrizMaterialConsumoToEdit} onSave={handleSaveMaterialConsumo} loading={isSaving} />
       <MaterialConsumoExportImportDialog open={isExportImportDialogOpen} onOpenChange={setIsExportImportDialogOpen} selectedYear={selectedYear} diretrizes={diretrizesMaterialConsumo || []} onImportSuccess={handleMaterialConsumoImportSuccess} />
-      <ServicosTerceirosDiretrizFormDialog open={isServicosTerceirosFormOpen} onOpenChange={setIsServicosTerceirosFormOpen} selectedYear={selectedYear} diretrizToEdit={diretrizServicosTerceirosToEdit} onSave={handleSaveServicosTerceiros} loading={isSaving} />
+      <ServicosTerceirosDiretrizFormDialog open={isServicosTerceirosFormOpen} onOpenChange={setIsServicosTerceirosFormOpen} selectedYear={selectedYear} diretrizToEdit={diretrizToEdit} onSave={handleSaveServicosTerceiros} loading={isSaving} />
       <ServicosTerceirosExportImportDialog open={isExportImportServicosDialogOpen} onOpenChange={setIsExportImportServicosDialogOpen} selectedYear={selectedYear} diretrizes={diretrizesServicosTerceiros || []} onImportSuccess={handleServicosTerceirosImportSuccess} />
-      <MaterialPermanenteDiretrizFormDialog open={isMaterialPermanenteFormOpen} onOpenChange={setIsMaterialPermanenteFormOpen} selectedYear={selectedYear} diretrizToEdit={diretrizMaterialPermanenteToEdit} onSave={handleSaveMaterialPermanente} loading={isSaving} />
+      <MaterialPermanenteDiretrizFormDialog open={isMaterialPermanenteFormOpen} onOpenChange={setIsMaterialPermanenteFormOpen} selectedYear={selectedYear} diretrizToEdit={diretrizToEdit} onSave={handleSaveMaterialPermanente} loading={isSaving} />
       <MaterialPermanenteExportImportDialog open={isExportImportPermanenteDialogOpen} onOpenChange={setIsExportImportPermanenteDialogOpen} selectedYear={selectedYear} diretrizes={diretrizesMaterialPermanente || []} onImportSuccess={handleMaterialPermanenteImportSuccess} />
     </div>
   );
