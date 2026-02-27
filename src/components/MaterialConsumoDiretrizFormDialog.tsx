@@ -120,6 +120,10 @@ const MaterialConsumoDiretrizFormDialog: React.FC<MaterialConsumoDiretrizFormDia
         setSubitemForm(prev => ({ ...prev, itens_aquisicao: updatedItens }));
         setEditingItemId(null);
         setItemForm(initialItemForm);
+
+        if (isGhostMode()) {
+            setTimeout(() => window.dispatchEvent(new CustomEvent('tour:avancar')), 300);
+        }
     };
 
     const handleEditItem = (item: ItemAquisicao) => {
@@ -137,8 +141,9 @@ const MaterialConsumoDiretrizFormDialog: React.FC<MaterialConsumoDiretrizFormDia
         }
         await onSave({ ...subitemForm, ano_referencia: selectedYear });
         onOpenChange(false);
-        if (isGhostMode()) {
-            window.dispatchEvent(new CustomEvent('tour:avancar'));
+
+        if (isGhostMode() && (subitemForm.nr_subitem === '33903004' || subitemForm.nr_subitem === '24')) { 
+            setTimeout(() => window.dispatchEvent(new CustomEvent('tour:avancar')), 300);
         }
     };
 
@@ -150,68 +155,76 @@ const MaterialConsumoDiretrizFormDialog: React.FC<MaterialConsumoDiretrizFormDia
     };
 
     return (
-        <div className="space-y-6">
-            <Card className="p-4 tour-dados-subitem">
-                <div className="flex justify-between items-center mb-4">
-                    <CardTitle className="text-base">Dados do Subitem da ND</CardTitle>
-                    <Button type="button" variant="outline" size="sm" onClick={() => setIsCatalogOpen(true)} disabled={loading}><BookOpen className="h-4 w-4 mr-2" />Catálogo ND 30</Button>
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div className="space-y-2"><Label>Número do Subitem *</Label><Input value={subitemForm.nr_subitem} onChange={(e) => setSubitemForm({ ...subitemForm, nr_subitem: e.target.value })} placeholder="Ex: 01" disabled={loading} /></div>
-                    <div className="space-y-2 col-span-2"><Label>Nome do Subitem *</Label><Input value={subitemForm.nome_subitem} onChange={(e) => setSubitemForm({ ...subitemForm, nome_subitem: e.target.value })} placeholder="Ex: Material de Expediente" disabled={loading} /></div>
-                </div>
-            </Card>
-            <Card className="p-4 space-y-4">
-                <div className="flex justify-between items-center">
-                    <CardTitle className="text-base font-semibold">{editingItemId ? "Editar Item" : "Adicionar Novo Item"}</CardTitle>
-                    <div className="flex gap-2">
-                        <Button type="button" variant="secondary" size="sm" onClick={handleOpenPNCPSearch} disabled={loading} className="btn-importar-pncp"><Search className="h-4 w-4 mr-2" />Importar API PNCP</Button>
-                        <Button type="button" variant="secondary" size="sm" onClick={() => setIsBulkUploadOpen(true)} disabled={loading}><FileSpreadsheet className="h-4 w-4 mr-2" />Importar Excel</Button>
-                    </div>
-                </div>
-                <div className="border p-3 rounded-lg bg-muted/50 space-y-4" ref={itemFormRef}>
-                    <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-                        <div className="space-y-2 col-span-1">
-                            <Label>Cód. Item</Label>
-                            <Input value={itemForm.codigo_catmat} onChange={(e) => setItemForm({ ...itemForm, codigo_catmat: e.target.value })} placeholder="Ex: 123456" />
-                            <Button type="button" variant="outline" size="sm" onClick={() => setIsCatmatCatalogOpen(true)} className="w-full mt-2"><BookOpen className="h-4 w-4 mr-2" />CATMAT</Button>
+        <Dialog open={open} onOpenChange={onOpenChange}>
+            <DialogContent className="max-w-7xl max-h-[90vh] overflow-y-auto">
+                <DialogHeader>
+                    <DialogTitle>{subitemForm.id ? `Editar Subitem ND: ${subitemForm.nr_subitem}` : "Novo Subitem da Natureza da Despesa"}</DialogTitle>
+                    <DialogDescription>Cadastre o subitem da ND e os itens de aquisição associados.</DialogDescription>
+                </DialogHeader>
+                <div className="space-y-6 py-2">
+                    <Card className="p-4 tour-dados-subitem">
+                        <div className="flex justify-between items-center mb-4">
+                            <CardTitle className="text-base">Dados do Subitem da ND</CardTitle>
+                            <Button type="button" variant="outline" size="sm" onClick={() => setIsCatalogOpen(true)} disabled={loading}><BookOpen className="h-4 w-4 mr-2" />Catálogo ND 30</Button>
                         </div>
-                        <div className="space-y-2 col-span-4"><Label>Descrição Completa *</Label><Textarea value={itemForm.descricao_item} onChange={(e) => setItemForm({ ...itemForm, descricao_item: e.target.value })} rows={2} /></div>
-                    </div>
-                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                        <div className="space-y-2"><Label>Nome Reduzido</Label><Input value={itemForm.descricao_reduzida} onChange={(e) => setItemForm({ ...itemForm, descricao_reduzida: e.target.value })} /></div>
-                        <div className="space-y-2"><Label>Valor Unitário *</Label><CurrencyInput rawDigits={itemForm.rawValor} onChange={handleItemCurrencyChange} /></div>
-                        <div className="space-y-2"><Label>Pregão/Ref. *</Label><Input value={itemForm.numero_pregao} onChange={(e) => setItemForm({ ...itemForm, numero_pregao: e.target.value })} /></div>
-                        <div className="space-y-2"><Label>UASG *</Label><Input value={itemForm.uasg} onChange={handleUasgChange} maxLength={6} /></div>
-                    </div>
-                    <Button type="button" className="w-full" onClick={handleAddItem}>{editingItemId ? "Atualizar Item" : "Adicionar Item"}</Button>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div className="space-y-2"><Label>Número do Subitem *</Label><Input value={subitemForm.nr_subitem} onChange={(e) => setSubitemForm({ ...subitemForm, nr_subitem: e.target.value })} placeholder="Ex: 01" disabled={loading} /></div>
+                            <div className="space-y-2 col-span-2"><Label>Nome do Subitem *</Label><Input value={subitemForm.nome_subitem} onChange={(e) => setSubitemForm({ ...subitemForm, nome_subitem: e.target.value })} placeholder="Ex: Material de Expediente" disabled={loading} /></div>
+                        </div>
+                    </Card>
+                    <Card className="p-4 space-y-4">
+                        <div className="flex justify-between items-center">
+                            <CardTitle className="text-base font-semibold">{editingItemId ? "Editar Item" : "Adicionar Novo Item"}</CardTitle>
+                            <div className="flex gap-2">
+                                <Button type="button" variant="secondary" size="sm" onClick={handleOpenPNCPSearch} disabled={loading} className="btn-importar-pncp"><Search className="h-4 w-4 mr-2" />Importar API PNCP</Button>
+                                <Button type="button" variant="secondary" size="sm" onClick={() => setIsBulkUploadOpen(true)} disabled={loading}><FileSpreadsheet className="h-4 w-4 mr-2" />Importar Excel</Button>
+                            </div>
+                        </div>
+                        <div className="border p-3 rounded-lg bg-muted/50 space-y-4" ref={itemFormRef}>
+                            <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+                                <div className="space-y-2 col-span-1">
+                                    <Label>Cód. Item</Label>
+                                    <Input value={itemForm.codigo_catmat} onChange={(e) => setItemForm({ ...itemForm, codigo_catmat: e.target.value })} placeholder="Ex: 123456" />
+                                    <Button type="button" variant="outline" size="sm" onClick={() => setIsCatmatCatalogOpen(true)} className="w-full mt-2"><BookOpen className="h-4 w-4 mr-2" />CATMAT</Button>
+                                </div>
+                                <div className="space-y-2 col-span-4"><Label>Descrição Completa *</Label><Textarea value={itemForm.descricao_item} onChange={(e) => setItemForm({ ...itemForm, descricao_item: e.target.value })} rows={2} /></div>
+                            </div>
+                            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                                <div className="space-y-2"><Label>Nome Reduzido</Label><Input value={itemForm.descricao_reduzida} onChange={(e) => setItemForm({ ...itemForm, descricao_reduzida: e.target.value })} /></div>
+                                <div className="space-y-2"><Label>Valor Unitário *</Label><CurrencyInput rawDigits={itemForm.rawValor} onChange={handleItemCurrencyChange} /></div>
+                                <div className="space-y-2"><Label>Pregão/Ref. *</Label><Input value={itemForm.numero_pregao} onChange={(e) => setItemForm({ ...itemForm, numero_pregao: e.target.value })} /></div>
+                                <div className="space-y-2"><Label>UASG *</Label><Input value={itemForm.uasg} onChange={handleUasgChange} maxLength={6} /></div>
+                            </div>
+                            <Button type="button" className="w-full" onClick={handleAddItem}>{editingItemId ? "Atualizar Item" : "Adicionar Item"}</Button>
+                        </div>
+                        {subitemForm.itens_aquisicao.length > 0 && (
+                            <Table className="tabela-itens-aquisicao">
+                                <TableHeader><TableRow><TableHead>Nome Reduzido</TableHead><TableHead>Descrição</TableHead><TableHead className="text-center">Cód.</TableHead><TableHead className="text-center">Pregão</TableHead><TableHead className="text-center">UASG</TableHead><TableHead className="text-right">Valor</TableHead><TableHead className="text-right">Ações</TableHead></TableRow></TableHeader>
+                                <TableBody>{subitemForm.itens_aquisicao.map(item => (
+                                    <TableRow key={item.id}>
+                                        <TableCell className="text-sm">{item.descricao_reduzida || 'N/A'}</TableCell>
+                                        <TableCell className="text-xs">{item.descricao_item}</TableCell>
+                                        <TableCell className="text-center text-sm">{item.codigo_catmat || 'N/A'}</TableCell>
+                                        <TableCell className="text-center text-sm">{formatPregao(item.numero_pregao)}</TableCell>
+                                        <TableCell className="text-center text-sm">{formatCodug(item.uasg)}</TableCell>
+                                        <TableCell className="text-right font-bold text-sm">{formatCurrency(item.valor_unitario)}</TableCell>
+                                        <TableCell className="text-right"><div className="flex justify-end gap-1"><Button variant="ghost" size="icon" onClick={() => handleEditItem(item)}><Pencil className="h-4 w-4" /></Button><Button variant="ghost" size="icon" onClick={() => setSubitemForm(p => ({ ...p, itens_aquisicao: p.itens_aquisicao.filter(i => i.id !== item.id) }))} className="text-destructive"><Trash2 className="h-4 w-4" /></Button></div></TableCell>
+                                    </TableRow>
+                                ))}</TableBody>
+                            </Table>
+                        )}
+                    </Card>
                 </div>
-                {subitemForm.itens_aquisicao.length > 0 && (
-                    <Table className="tabela-itens-aquisicao">
-                        <TableHeader><TableRow><TableHead>Nome Reduzido</TableHead><TableHead>Descrição</TableHead><TableHead className="text-center">Cód.</TableHead><TableHead className="text-center">Pregão</TableHead><TableHead className="text-center">UASG</TableHead><TableHead className="text-right">Valor</TableHead><TableHead className="text-right">Ações</TableHead></TableRow></TableHeader>
-                        <TableBody>{subitemForm.itens_aquisicao.map(item => (
-                            <TableRow key={item.id}>
-                                <TableCell className="text-sm">{item.descricao_reduzida || 'N/A'}</TableCell>
-                                <TableCell className="text-xs">{item.descricao_item}</TableCell>
-                                <TableCell className="text-center text-sm">{item.codigo_catmat || 'N/A'}</TableCell>
-                                <TableCell className="text-center text-sm">{formatPregao(item.numero_pregao)}</TableCell>
-                                <TableCell className="text-center text-sm">{formatCodug(item.uasg)}</TableCell>
-                                <TableCell className="text-right font-bold text-sm">{formatCurrency(item.valor_unitario)}</TableCell>
-                                <TableCell className="text-right"><div className="flex justify-end gap-1"><Button variant="ghost" size="icon" onClick={() => handleEditItem(item)}><Pencil className="h-4 w-4" /></Button><Button variant="ghost" size="icon" onClick={() => setSubitemForm(p => ({ ...p, itens_aquisicao: p.itens_aquisicao.filter(i => i.id !== item.id) }))} className="text-destructive"><Trash2 className="h-4 w-4" /></Button></div></TableCell>
-                            </TableRow>
-                        ))}</TableBody>
-                    </Table>
-                )}
-            </Card>
-            <div className="flex justify-end gap-2 pt-4 border-t">
-                <Button type="button" onClick={handleSave} disabled={loading || subitemForm.itens_aquisicao.length === 0} className="btn-salvar-subitem">{loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}{subitemForm.id ? "Salvar Alterações" : "Cadastrar Subitem"}</Button>
-                <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
-            </div>
+                <div className="flex justify-end gap-2 pt-4 border-t">
+                    <Button type="button" onClick={handleSave} disabled={loading || subitemForm.itens_aquisicao.length === 0} className="btn-salvar-subitem">{loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}{subitemForm.id ? "Salvar Alterações" : "Cadastrar Subitem"}</Button>
+                    <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
+                </div>
+            </DialogContent>
             <SubitemCatalogDialog open={isCatalogOpen} onOpenChange={setIsCatalogOpen} onSelect={(c) => setSubitemForm(p => ({ ...p, nr_subitem: c.nr_subitem, nome_subitem: c.nome_subitem, descricao_subitem: c.descricao_subitem }))} />
             <CatmatCatalogDialog open={isCatmatCatalogOpen} onOpenChange={setIsCatmatCatalogOpen} onSelect={(c) => setItemForm(p => ({ ...p, codigo_catmat: c.code, descricao_item: c.description, descricao_reduzida: c.short_description || '' }))} />
             <ItemAquisicaoBulkUploadDialog open={isBulkUploadOpen} onOpenChange={setIsBulkUploadOpen} onImport={(items) => setSubitemForm(p => ({ ...p, itens_aquisicao: [...p.itens_aquisicao, ...items] }))} existingItemsInDiretriz={subitemForm.itens_aquisicao} mode="material" />
             <ItemAquisicaoPNCPDialog open={isPNCPSearchOpen} onOpenChange={setIsPNCPSearchOpen} onImport={(items) => setSubitemForm(p => ({ ...p, itens_aquisicao: [...p.itens_aquisicao, ...items] }))} existingItemsInDiretriz={subitemForm.itens_aquisicao} onReviewItem={handleReviewItem} selectedYear={selectedYear} mode="material" />
-        </div>
+        </Dialog>
     );
 };
 

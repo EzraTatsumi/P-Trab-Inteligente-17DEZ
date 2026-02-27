@@ -318,16 +318,14 @@ const ArpSearchResultsList: React.FC<ArpSearchResultsListProps> = ({ results, on
                 </Table>
             </div>
 
-            {/* BOTÃO PREPARAR IMPORTAÇÃO - GATILHO TOUR (CHAMADA DIRETA GLOBAL) */}
+            {/* BOTÃO PREPARAR IMPORTAÇÃO - GATILHO TOUR */}
             {selectedItemIds.length > 0 && (
                 <div className="flex justify-end pt-4 border-t">
                     <Button 
                         onClick={() => {
-                            if (isGhostMode()) {
-                                (window as any).avancaTourGeral?.();
-                            }
+                            if (isGhostMode()) window.dispatchEvent(new CustomEvent('tour:avancar'));
                         }}
-                        className="bg-primary text-primary-foreground modal-importar-pncp"
+                        className="bg-primary text-primary-foreground"
                     >
                         <Import className="h-4 w-4 mr-2" />
                         Preparar Importação ({selectedItemIds.length})

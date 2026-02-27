@@ -7,43 +7,38 @@ import { markMissionCompleted } from "@/lib/missionUtils";
 
 let activeMissionDriver: any = null;
 
-// O "Controle Remoto" Global - A Marretada Técnica para sincronia infalível
 if (typeof window !== 'undefined') {
-  (window as any).avancaTourGeral = () => {
-    if (activeMissionDriver && activeMissionDriver.hasNextStep()) {
-      // Delay de segurança para garantir que modais fechem e elementos apareçam
-      setTimeout(() => {
-        activeMissionDriver.moveNext();
-      }, 300);
-    }
-  };
-
-  // Ouvinte de Eventos Robusto: Aguarda o elemento do próximo passo existir no DOM
   window.addEventListener('tour:avancar', () => {
-    if (!activeMissionDriver) return;
-    
-    const currentIndex = activeMissionDriver.getActiveIndex();
-    const steps = activeMissionDriver.getConfig().steps;
-    const nextStep = steps[currentIndex + 1];
+    if (activeMissionDriver) {
+      const popover = document.querySelector('.driver-popover') as HTMLElement;
+      if (popover) {
+        popover.style.opacity = '0';
+        popover.style.transition = 'none';
+      }
 
-    if (nextStep && nextStep.element) {
-      let attempts = 0;
-      const checkInterval = setInterval(() => {
-        const el = document.querySelector(nextStep.element as string);
-        attempts++;
+      const currentIndex = activeMissionDriver.getActiveIndex();
+      const steps = activeMissionDriver.getConfig().steps;
+      const nextStep = steps[currentIndex + 1];
 
-        if (el || attempts > 50) { // Espera até 5 segundos
-          clearInterval(checkInterval);
-          setTimeout(() => {
-            if (activeMissionDriver.hasNextStep()) {
-              activeMissionDriver.moveNext();
-            }
-          }, 200);
-        }
-      }, 100);
-    } else {
-      if (activeMissionDriver.hasNextStep()) {
-        activeMissionDriver.moveNext();
+      if (nextStep && nextStep.element) {
+        let attempts = 0;
+        const checkInterval = setInterval(() => {
+          const el = document.querySelector(nextStep.element as string);
+          attempts++;
+
+          if (el || attempts > 30) {
+            clearInterval(checkInterval);
+            setTimeout(() => {
+              if (activeMissionDriver.hasNextStep()) {
+                activeMissionDriver.moveNext();
+              }
+            }, 100);
+          }
+        }, 100);
+      } else {
+        setTimeout(() => {
+          if (activeMissionDriver.hasNextStep()) activeMissionDriver.moveNext();
+        }, 300);
       }
     }
   });
@@ -223,7 +218,7 @@ export const runMission02 = (userId: string, onComplete: () => void) => {
       {
         element: '.btn-novo-subitem', 
         popover: { 
-          title: 'Mão na Massa!', 
+          title: 'Sua Vez: Mão na Massa!', 
           description: 'Clique neste botão para abrir a janela de criação de Subitem. Eu espero por você!', 
           side: 'top', 
           align: 'center',
@@ -305,23 +300,20 @@ export const runMission02 = (userId: string, onComplete: () => void) => {
         element: '#diretriz-material-consumo-ghost-subitem-24',
         popover: {
           title: 'Missão Cumprida!',
-          description: 'Parabéns! O novo Subitem da ND (24) foi criado e já aparece na sua lista. Clique em "Finalizar Missão" para concluir.',
+          description: 'Parabéns! O novo Subitem da ND (24) foi criado e já aparece na sua lista. Agora ele está disponível para uso!',
           side: 'top',
           align: 'center',
-          showButtons: ['next'],
-          nextBtnText: 'Finalizar Missão',
         },
-        onHighlighted: (el) => {
-          // A MARRETADA: Força o brilho e garante que a aba de consumo esteja aberta
-          (window as any).expandMaterialConsumo?.(); 
-          el.style.zIndex = "1000001"; 
-          el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        onHighlighted: (element) => {
+          element.classList.add('z-tour-portal'); 
+          element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          if ((window as any).expandMaterialConsumo) {
+            (window as any).expandMaterialConsumo();
+          }
         }
       }
     ],
     onDestroyed: () => {
-      // Blindagem: Não forçamos navegação aqui para evitar expulsar o usuário em caso de re-render
-      console.log("[runMission02] Tour encerrado.");
       markMissionCompleted(2, userId);
       if (onComplete) onComplete();
     }
