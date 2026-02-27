@@ -14,6 +14,15 @@ const GHOST_MODE_KEY = 'is_ghost_mode';
 const ACTIVE_MISSION_KEY = 'active_mission_id';
 
 /**
+ * Reseta o cache local de missões e recarrega a página.
+ */
+export const resetMissionCache = (userId: string) => {
+  localStorage.removeItem(`completed_missions_${userId}`);
+  localStorage.removeItem(`victory_shown_${userId}`);
+  window.location.reload(); // Força o refresh para limpar o estado do React
+};
+
+/**
  * Inicia uma missão específica, ativando o modo fantasma e redirecionando o usuário.
  */
 export const startMission = (missionId: number, userId?: string) => {
@@ -56,6 +65,12 @@ export const fetchCompletedMissions = async (userId: string): Promise<number[]> 
     if (error) throw error;
 
     const missionIds = (data as any[] || []).map(m => m.mission_id);
+    
+    // Proteção contra cache local "sujo" após reset de banco
+    if (missionIds.length === 0 && getCompletedMissions(userId).length > 0) {
+      resetMissionCache(userId);
+      return [];
+    }
     
     // Atualiza o cache local para consistência síncrona
     if (typeof window !== 'undefined') {
