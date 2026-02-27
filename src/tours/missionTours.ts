@@ -306,7 +306,7 @@ export const runMission02 = (userId: string, onComplete: () => void) => {
         }
       },
       {
-        element: '[id*="ghost-subitem-24"]',
+        element: '#diretriz-material-consumo-ghost-subitem-24',
         popover: {
           title: 'Missão Cumprida!',
           description: 'Parabéns, Maj! O Subitem 24 (Cimento) agora é uma diretriz oficial. Clique em "Concluir Missão" para retornar.',
@@ -316,12 +316,8 @@ export const runMission02 = (userId: string, onComplete: () => void) => {
           nextBtnText: 'Concluir Missão'
         },
         onHighlighted: (el) => {
-          el.style.zIndex = "1000000"; 
-          el.classList.add('animate-pulse', 'border-primary', 'border-4');
+          el.style.zIndex = "9999999"; 
           el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-          if ((window as any).expandMaterialConsumo) {
-            (window as any).expandMaterialConsumo();
-          }
         }
       }
     ],
@@ -674,7 +670,7 @@ export const runMission05 = (userId: string, onComplete: () => void) => {
         element: '.btn-importar-dados-dor',
         popover: {
           title: 'Importação de Dados',
-          description: 'Clique no botão para abrir o assistente de importação e agrupar os custos do seu P Trab.',
+          description: 'Clique no botão para abrir a sessão de importação e agrupar os custos do seu P Trab.',
           side: 'top',
           align: 'center',
           showButtons: []

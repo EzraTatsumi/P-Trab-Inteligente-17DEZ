@@ -971,7 +971,7 @@ const CustosOperacionaisPage = () => {
                   <Card className="p-4">
                       <CardTitle className="text-base font-semibold mb-3">Diretrizes Cadastradas</CardTitle>
                       <Table>
-                          <TableHeader><TableRow><TableHead>Concessionária</TableHead><TableHead className="text-center">Consumo/Pessoa/Dia</TableHead><TableHead className="text-right">Custo Unitário</TableHead><TableHead className="w-[100px] text-center">Ações</TableHead></TableRow></TableHeader>
+                          <TableHeader><TableRow><TableHead>Concessionária</TableHead><TableHead className="text-center">Consumo/Pessoa/Dia</TableHead><TableHead className="text-right">Custo Unitário</TableHead><TableHead className="w-[100px] text-center">Ações</TableHead></TableHeader>
                           <TableBody>{filteredDiretrizes.map(d => (<ConcessionariaDiretrizRow key={d.id} diretriz={d} onEdit={handleStartEditConcessionaria} onDelete={handleDeleteConcessionaria} loading={isSaving} />))}</TableBody>
                       </Table>
                   </Card>
@@ -1046,13 +1046,20 @@ const CustosOperacionaisPage = () => {
 
   useEffect(() => {
     if (isGhostMode() && getActiveMission() === '2') {
-      const scenarioItems = GHOST_DATA.missao_02.subitens_lista;
-      if (JSON.stringify(diretrizesMaterialConsumo) !== JSON.stringify(scenarioItems)) {
-        setDiretrizesMaterialConsumo(scenarioItems as any);
+      const scenarioInitial = GHOST_DATA.missao_02.subitens_lista;
+      
+      const item24JaExiste = diretrizesMaterialConsumo.some(d => d.id === 'ghost-subitem-24');
+      
+      if (item24JaExiste) {
+        return; 
+      }
+
+      if (JSON.stringify(diretrizesMaterialConsumo) !== JSON.stringify(scenarioInitial)) {
+        setDiretrizesMaterialConsumo(scenarioInitial as any);
       }
       return; 
     }
-    if (diretrizesMaterialConsumoHook && JSON.stringify(diretrizesMaterialConsumoHook) !== JSON.stringify(diretrizesMaterialConsumo)) {
+    if (diretrizesMaterialConsumoHook && !isGhostMode()) {
       setDiretrizesMaterialConsumo(diretrizesMaterialConsumoHook);
     }
   }, [diretrizesMaterialConsumoHook, ghostActive, diretrizesMaterialConsumo]);
