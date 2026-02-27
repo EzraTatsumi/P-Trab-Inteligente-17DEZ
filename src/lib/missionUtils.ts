@@ -53,6 +53,7 @@ export const startMission = (missionId: number, userId?: string) => {
 
 /**
  * Busca as missões concluídas do banco de dados e atualiza o cache local.
+ * Se o banco estiver vazio, limpa agressivamente todo o estado local do onboarding.
  * @returns Array de IDs de missões concluídas.
  */
 export const fetchCompletedMissions = async (userId: string): Promise<number[]> => {
@@ -68,9 +69,14 @@ export const fetchCompletedMissions = async (userId: string): Promise<number[]> 
     
     if (typeof window !== 'undefined') {
       const key = getBaseKey(userId);
-      // Se o banco está vazio, o local também deve estar
+      const victoryKey = VICTORY_SHOWN_KEY(userId);
+      
+      // RESET TOTAL LOCAL se o banco estiver zerado (Agressivo)
       if (missionIds.length === 0) {
         localStorage.removeItem(key);
+        localStorage.removeItem(victoryKey);
+        localStorage.removeItem(GHOST_MODE_KEY);
+        localStorage.removeItem(ACTIVE_MISSION_KEY);
       } else {
         localStorage.setItem(key, JSON.stringify(missionIds));
       }
@@ -78,8 +84,9 @@ export const fetchCompletedMissions = async (userId: string): Promise<number[]> 
     
     return missionIds;
   } catch (error) {
-    console.error("Erro ao sincronizar:", error);
-    return []; // Em caso de erro, não assuma que as missões foram feitas
+    console.error("Erro ao sincronizar missões:", error);
+    // Em caso de erro, tenta retornar o estado local atual
+    return getCompletedMissions(userId);
   }
 };
 
