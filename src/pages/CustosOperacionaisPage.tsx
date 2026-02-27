@@ -367,30 +367,26 @@ const CustosOperacionaisPage = () => {
 
   const handleSaveMaterialConsumo = async (data: Partial<DiretrizMaterialConsumo> & { ano_referencia: number }) => {
       if (isGhostMode()) {
-          setIsSaving(true);
-          setTimeout(() => {
-              const newItem = {
-                  ...data,
-                  id: data.id || `ghost-subitem-${data.nr_subitem}`, 
-                  user_id: 'ghost-user',
-                  ativo: data.ativo ?? true,
-              } as DiretrizMaterialConsumo;
-              
-              setDiretrizesMaterialConsumo(prev => {
-                  const filtered = prev.filter(p => p.id !== newItem.id);
-                  return [...filtered, newItem].sort((a, b) => a.nr_subitem.localeCompare(b.nr_subitem));
-              });
-              
-              setIsSaving(false);
-              setDiretrizMaterialConsumoToEdit(null);
-              setIsMaterialConsumoFormOpen(false);
-              toast.success("Simulação: Subitem salvo localmente!");
-              
-              setTimeout(() => {
-                window.dispatchEvent(new CustomEvent('tour:avancar'));
-              }, 200);
-          }, 500);
-          return;
+        setIsSaving(true);
+        setTimeout(() => {
+          const newItem = {
+            ...data,
+            id: 'ghost-subitem-24', // ID FUNDAMENTAL para a Row encontrar o highlight
+            user_id: 'ghost-user',
+            nr_subitem: data.nr_subitem || '24',
+            ativo: true,
+          } as DiretrizMaterialConsumo;
+          
+          setDiretrizesMaterialConsumo(prev => {
+            const filtered = prev.filter(p => p.id !== 'ghost-subitem-24');
+            return [...filtered, newItem].sort((a, b) => a.nr_subitem.localeCompare(b.nr_subitem));
+          });
+          setIsSaving(false);
+          setDiretrizMaterialConsumoToEdit(null);
+          setIsMaterialConsumoFormOpen(false);
+          window.dispatchEvent(new CustomEvent('tour:avancar'));
+        }, 500);
+        return;
       }
 
       try {
@@ -1060,16 +1056,28 @@ const CustosOperacionaisPage = () => {
   }, [pageData, diretrizes]);
 
   useEffect(() => {
-      if (diretrizesMaterialConsumoHook && JSON.stringify(diretrizesMaterialConsumoHook) !== JSON.stringify(diretrizesMaterialConsumo)) {
-          setDiretrizesMaterialConsumo(diretrizesMaterialConsumoHook);
+    // Prioridade 1: Se estiver na Missão 02, usa APENAS o Ghost Data
+    if (isGhostMode() && getActiveMission() === '2') {
+      const scenarioItems = GHOST_DATA.missao_02.subitens_lista;
+      if (JSON.stringify(diretrizesMaterialConsumo) !== JSON.stringify(scenarioItems)) {
+        setDiretrizesMaterialConsumo(scenarioItems as any);
       }
+      return; // Bloqueia a entrada de dados reais
+    }
+    // Sincronização normal (Dados Reais)
+    if (diretrizesMaterialConsumoHook && JSON.stringify(diretrizesMaterialConsumoHook) !== JSON.stringify(diretrizesMaterialConsumo)) {
+      setDiretrizesMaterialConsumo(diretrizesMaterialConsumoHook);
+    }
+  }, [diretrizesMaterialConsumoHook, ghostActive, diretrizesMaterialConsumo]);
+
+  useEffect(() => {
       if (diretrizesServicosTerceirosHook && JSON.stringify(diretrizesServicosTerceirosHook) !== JSON.stringify(diretrizesServicosTerceiros)) {
           setDiretrizesServicosTerceiros(diretrizesServicosTerceirosHook);
       }
       if (diretrizesMaterialPermanenteHook && JSON.stringify(diretrizesMaterialPermanenteHook) !== JSON.stringify(diretrizesMaterialPermanente)) {
           setDiretrizesMaterialPermanente(diretrizesMaterialPermanenteHook);
       }
-  }, [diretrizesMaterialConsumoHook, diretrizesServicosTerceirosHook, diretrizesMaterialPermanenteHook, diretrizesMaterialConsumo, diretrizesServicosTerceiros, diretrizesMaterialPermanente]);
+  }, [diretrizesServicosTerceirosHook, diretrizesMaterialPermanenteHook, diretrizesServicosTerceiros, diretrizesMaterialPermanente]);
 
   const loadAvailableYears = async (defaultYearId: number | null) => {
     try {
