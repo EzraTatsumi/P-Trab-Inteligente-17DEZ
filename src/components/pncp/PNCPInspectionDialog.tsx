@@ -15,6 +15,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { cn } from '@/lib/utils';
 import { formatCodug, formatCurrency } from '@/lib/formatUtils';
 import { Textarea } from "@/components/ui/textarea";
+import { isGhostMode } from '@/lib/ghostStore';
 
 interface PNCPInspectionDialogProps {
     open: boolean;
@@ -150,7 +151,12 @@ const PNCPInspectionDialog: React.FC<PNCPInspectionDialogProps> = ({
             queryClient.invalidateQueries({ queryKey: [mode === 'material' ? 'catmatCatalog' : 'catserCatalog'] });
             onFinalImport(finalItems);
             
-            window.dispatchEvent(new CustomEvent('tour:avancar'));
+            // Avança o tour com um pequeno delay para permitir a limpeza da tela (fechamento do modal)
+            if (isGhostMode()) {
+                setTimeout(() => {
+                    window.dispatchEvent(new CustomEvent('tour:avancar'));
+                }, 600);
+            }
             
             toast.success(`Importação de ${formatItemCount(finalItems.length)} concluída.`);
         } catch (error: any) {

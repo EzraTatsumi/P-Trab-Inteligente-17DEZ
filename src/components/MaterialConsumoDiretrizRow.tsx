@@ -15,11 +15,8 @@ interface MaterialConsumoDiretrizRowProps {
     onEdit: (diretriz: DiretrizMaterialConsumo) => void;
     onDelete: (id: string, nome: string) => Promise<void>;
     loading: boolean;
-    // NOVO: Função de movimentação injetada pelo hook
     onMoveItem: (item: ItemAquisicao, sourceDiretrizId: string, targetDiretrizId: string) => void;
-    // NOVO: ID para rolagem
     id: string;
-    // NOVO: Propriedade para forçar a abertura (usada pela busca)
     forceOpen: boolean;
 }
 
@@ -28,17 +25,15 @@ const MaterialConsumoDiretrizRow: React.FC<MaterialConsumoDiretrizRowProps> = ({
     onEdit,
     onDelete,
     loading,
-    onMoveItem, // NOVO
-    id, // NOVO
-    forceOpen, // NOVO
+    onMoveItem,
+    id,
+    forceOpen,
 }) => {
     const [isOpen, setIsOpen] = useState(false);
     const [isDragOver, setIsDragOver] = useState(false);
     
-    // Ref para o temporizador de expansão automática
     const expandTimerRef = useRef<number | null>(null); 
     
-    // Efeito para forçar a abertura quando a prop forceOpen muda para true
     useEffect(() => {
         if (forceOpen && !isOpen) {
             setIsOpen(true);
@@ -48,11 +43,10 @@ const MaterialConsumoDiretrizRow: React.FC<MaterialConsumoDiretrizRowProps> = ({
     const itensAquisicao = diretriz.itens_aquisicao || [];
     
     const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
-        e.preventDefault(); // Necessário para permitir o drop
+        e.preventDefault(); 
         e.dataTransfer.dropEffect = "move";
         setIsDragOver(true);
         
-        // Se estiver arrastando sobre o alvo de drop (o div interno), cancela o temporizador de expansão
         if (expandTimerRef.current) {
             clearTimeout(expandTimerRef.current);
             expandTimerRef.current = null;
@@ -73,15 +67,11 @@ const MaterialConsumoDiretrizRow: React.FC<MaterialConsumoDiretrizRowProps> = ({
         try {
             const { item, sourceDiretrizId } = JSON.parse(data) as { item: ItemAquisicao, sourceDiretrizId: string };
             
-            // Previne o drop na mesma diretriz
             if (sourceDiretrizId === diretriz.id) {
                 return;
             }
             
-            // Garante que o alvo permaneça aberto após o drop
             setIsOpen(true); 
-            
-            // Chama a função de movimentação centralizada
             onMoveItem(item, sourceDiretrizId, diretriz.id);
             
         } catch (error) {
@@ -89,28 +79,21 @@ const MaterialConsumoDiretrizRow: React.FC<MaterialConsumoDiretrizRowProps> = ({
         }
     };
     
-    // Handler para Drag Enter na linha principal (trigger)
     const handleDragEnterTrigger = (e: React.DragEvent<HTMLTableRowElement>) => {
-        // Verifica se o item arrastado é um item de aquisição (heurística)
         const data = e.dataTransfer.types.includes("application/json");
         if (!data) return;
         
-        // Se já estiver aberto, não faz nada
         if (isOpen) return;
         
-        // Se já houver um timer, não cria outro
         if (expandTimerRef.current) return;
         
-        // Inicia o temporizador para abrir após 300ms
         expandTimerRef.current = setTimeout(() => {
             setIsOpen(true);
             expandTimerRef.current = null;
-        }, 300) as unknown as number; // Casting para number para compatibilidade com window.setTimeout
+        }, 300) as unknown as number; 
     };
     
-    // Handler para Drag Leave na linha principal (trigger)
     const handleDragLeaveTrigger = (e: React.DragEvent<HTMLTableRowElement>) => {
-        // Cancela o temporizador se o mouse sair da área do trigger
         if (expandTimerRef.current) {
             clearTimeout(expandTimerRef.current);
             expandTimerRef.current = null;
@@ -119,7 +102,6 @@ const MaterialConsumoDiretrizRow: React.FC<MaterialConsumoDiretrizRowProps> = ({
 
     return (
         <React.Fragment>
-            {/* A linha principal (TableRow) agora é o elemento que contém o CollapsibleTrigger */}
             <TableRow 
                 id={diretriz.id === 'ghost-subitem-24' ? 'diretriz-material-consumo-ghost-subitem-24' : id}
                 className={cn(
@@ -128,11 +110,9 @@ const MaterialConsumoDiretrizRow: React.FC<MaterialConsumoDiretrizRowProps> = ({
                     diretriz.id === 'ghost-subitem-24' && isGhostMode() ? "z-tour-portal border-primary border-2" : ""
                 )}
                 onClick={() => setIsOpen(!isOpen)}
-                // Adiciona os handlers de Drag Enter/Leave para o trigger
                 onDragEnter={handleDragEnterTrigger}
                 onDragLeave={handleDragLeaveTrigger}
             >
-                {/* Coluna Nr Subitem */}
                 <TableCell className="font-semibold w-[150px] text-center">
                     <div className="flex items-center justify-center gap-2">
                         {diretriz.nr_subitem}
@@ -140,13 +120,11 @@ const MaterialConsumoDiretrizRow: React.FC<MaterialConsumoDiretrizRowProps> = ({
                     </div>
                 </TableCell>
                 
-                {/* Coluna Nome do Subitem */}
                 <TableCell className="font-medium">
                     {diretriz.nome_subitem}
                     {!diretriz.ativo && <Badge variant="destructive" className="ml-2">Inativo</Badge>}
                 </TableCell>
                 
-                {/* Coluna Ações */}
                 <TableCell className="text-right w-[100px]" onClick={(e) => e.stopPropagation()}>
                     <div className="flex justify-end gap-1">
                         <Button
@@ -170,7 +148,6 @@ const MaterialConsumoDiretrizRow: React.FC<MaterialConsumoDiretrizRowProps> = ({
                 </TableCell>
             </TableRow>
             
-            {/* Linha de Conteúdo Colapsável */}
             <TableRow className="p-0">
                 <TableCell colSpan={3} className="p-0">
                     <Collapsible open={isOpen}>
@@ -186,10 +163,10 @@ const MaterialConsumoDiretrizRow: React.FC<MaterialConsumoDiretrizRowProps> = ({
                             >
                                 
                                 {itensAquisicao.length > 0 ? (
-                                    <Table className="bg-background border rounded-md overflow-hidden">
+                                    <Table className="bg-background border rounded-md overflow-hidden tabela-itens-aquisicao">
                                         <thead>
                                             <TableRow className="text-xs text-muted-foreground hover:bg-background">
-                                                <th className="px-4 py-2 text-left font-normal w-[20px]"></th> {/* Coluna para o ícone de arrastar */}
+                                                <th className="px-4 py-2 text-left font-normal w-[20px]"></th> 
                                                 <th className="px-4 py-2 text-left font-normal w-[35%]">Descrição Reduzida</th>
                                                 <th className="px-4 py-2 text-center font-normal w-[10%]">Cód. CATMAT</th>
                                                 <th className="px-4 py-2 text-center font-normal w-[10%]">Pregão</th>

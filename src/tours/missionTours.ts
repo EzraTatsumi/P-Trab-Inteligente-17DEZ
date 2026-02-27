@@ -283,6 +283,7 @@ export const runMission02 = (userId: string, onComplete: () => void) => {
           align: 'center'
         },
         onHighlighted: (el) => {
+          // Força o scroll para a tabela, garantindo visibilidade e evitando pulo de passo
           el.scrollIntoView({ behavior: 'smooth', block: 'center' });
         }
       },
@@ -790,18 +791,15 @@ export const runMission06 = (userId: string, onComplete: () => void) => {
           align: 'start'
         },
         onHighlighted: () => {
-          // Segue a lógica da Missão 1: Abre o menu e garante o foco
           if ((window as any).openReportMenu) {
             (window as any).openReportMenu();
           }
-          // Pequeno delay para garantir que o DOM renderizou o portal
           setTimeout(() => {
             const portal = document.querySelector('.z-tour-portal');
             if (portal) portal.classList.add('driver-active-element');
           }, 100);
         },
         onDeselected: () => {
-          // Fecha o menu ao sair do passo
           if ((window as any).closeReportMenu) {
             (window as any).closeReportMenu();
           }
