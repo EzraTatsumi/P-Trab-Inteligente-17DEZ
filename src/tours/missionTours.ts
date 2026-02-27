@@ -11,14 +11,6 @@ if (typeof window !== 'undefined') {
   window.addEventListener('tour:avancar', () => {
     if (activeMissionDriver) {
       const currentIndex = activeMissionDriver.getActiveIndex();
-      const steps = activeMissionDriver.getConfig().steps;
-      const totalSteps = steps.length;
-
-      // PROTEÇÃO DE TRANSBORDAMENTO: 
-      // Se já estivermos no último passo, ignoramos qualquer evento automático de avanço
-      if (currentIndex >= totalSteps - 1) {
-        return; 
-      }
       
       // TRAVA MANUAL: Se estiver no Passo 09 (índice 8), ignore avanços automáticos
       // Isso força o usuário a clicar em "Próximo" após revisar a tabela
@@ -33,6 +25,7 @@ if (typeof window !== 'undefined') {
         popover.style.transition = 'none';
       }
 
+      const steps = activeMissionDriver.getConfig().steps;
       const nextStep = steps[currentIndex + 1];
 
       if (nextStep && nextStep.element) {
@@ -202,8 +195,7 @@ export const runMission01 = (userId: string, onComplete: () => void) => {
 export const runMission02 = (userId: string, onComplete: () => void) => {
   const d = driver({
     ...commonConfig,
-    allowClose: false, // Impede fechar ao clicar no 'X'
-    overlayClickAction: 'none', // Impede fechar ou avançar ao clicar na sombra
+    allowClose: false, 
     steps: [
       {
         element: '.card-diretrizes-operacionais',
@@ -317,18 +309,15 @@ export const runMission02 = (userId: string, onComplete: () => void) => {
         element: '#diretriz-material-consumo-ghost-subitem-24',
         popover: {
           title: 'Missão Cumprida!',
-          description: 'Excelente trabalho! O Subitem 24 foi registrado. Clique no botão abaixo para concluir formalmente esta missão.',
+          description: 'Parabéns, Maj! O Subitem 24 (Cimento) agora é uma diretriz oficial. Clique em "Concluir Missão" para retornar.',
           side: 'top',
           align: 'center',
-          showButtons: ['next'], 
-          nextBtnText: 'Concluir Missão',
-          doneBtnText: 'Concluir Missão'
+          showButtons: ['next', 'previous'],
+          nextBtnText: 'Concluir Missão'
         },
         onHighlighted: (el) => {
-          el.style.zIndex = "1000001"; 
+          el.style.zIndex = "9999999"; 
           el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-          // Impede que o tour feche ao clicar no elemento iluminado (proteção extra)
-          el.addEventListener('click', (e) => e.stopPropagation(), { capture: true });
         }
       }
     ],
