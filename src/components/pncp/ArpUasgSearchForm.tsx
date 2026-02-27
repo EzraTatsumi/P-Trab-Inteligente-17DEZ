@@ -15,7 +15,7 @@ import { format, subDays } from 'date-fns';
 import { fetchArpsByUasg } from '@/integrations/supabase/api';
 import { ArpItemResult, DetailedArpItem } from '@/types/pncp';
 import ArpSearchResultsList from './ArpSearchResultsList';
-import { isGhostMode } from '@/lib/ghostStore';
+import { isGhostMode, GHOST_DATA } from '@/lib/ghostStore';
 
 const formSchema = z.object({
     uasg: z.string()
@@ -81,33 +81,42 @@ const ArpUasgSearchForm: React.FC<ArpUasgSearchFormProps> = ({
     const onSubmit = async (values: ArpUasgFormValues) => {
         setIsSearching(true);
         setArpResults([]);
-        onClearSelection();
+        onClearSelection(); 
+        
         try {
-            toast.info(`Buscando ARPs para UASG ${formatCodug(values.uasg)}...`);
-            if (!searchedOmName) setSearchedOmName(`UASG ${values.uasg}`);
-           
-            const results = await fetchArpsByUasg({
-                ...( { codigoUnidadeGerenciadora: values.uasg } as any ),
-                dataVigenciaInicialMin: values.dataInicio,
-                dataVigenciaInicialMax: values.dataFim
-            });
-           
+            let results: ArpItemResult[] = [];
+            // INTERCEPTOR GHOST MODE
+            if (isGhostMode() && values.uasg === '160222') {
+                toast.info("Modo Simulação: Carregando dados de treinamento...");
+                // Simula um pequeno atraso de rede para realismo
+                await new Promise(resolve => setTimeout(resolve, 800));
+                results = GHOST_DATA.missao_02.arp_search_results as unknown as ArpItemResult[];
+                setSearchedOmName("1º BIS (OM Simulada)");
+            } else {
+                // BUSCA REAL
+                toast.info(`Buscando ARPs reais para UASG ${formatCodug(values.uasg)}...`);
+                if (!searchedOmName) setSearchedOmName(`UASG ${values.uasg}`);
+                
+                results = await fetchArpsByUasg({ 
+                    ...( { codigoUnidadeGerenciadora: values.uasg } as any ), 
+                    dataVigenciaInicialMin: values.dataInicio, 
+                    dataVigenciaInicialMax: values.dataFim 
+                });
+            }
+            
             if (results.length === 0) {
                 toast.warning("Nenhuma ARP encontrada.");
             } else {
-                toast.success(`${results.length} ARPs encontradas!`);
-            }
-           
-            setArpResults(results);
-
-            if (isGhostMode() && values.uasg === '160222' && results.length > 0) {
-                setTimeout(() => {
+                toast.success(`${results.length} item(ns) encontrado(s)!`);
+                setArpResults(results);
+                
+                // Avança o tour se estiver no modo fantasma
+                if (isGhostMode() && values.uasg === '160222') {
                     window.dispatchEvent(new CustomEvent('tour:avancar'));
-                }, 300);
-            }
-
-            if (results.length > 0 && resultsRef.current) {
-                setTimeout(() => resultsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100);
+                }
+                if (resultsRef.current) {
+                    setTimeout(() => resultsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100); 
+                }
             }
         } catch (error: any) {
             toast.error(error.message || "Falha ao buscar ARPs.");
