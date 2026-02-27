@@ -187,6 +187,7 @@ export const runMission01 = (userId: string, onComplete: () => void) => {
 export const runMission02 = (userId: string, onComplete: () => void) => {
   const d = driver({
     ...commonConfig,
+    allowClose: false, 
     steps: [
       {
         element: '.card-diretrizes-operacionais',
@@ -281,10 +282,8 @@ export const runMission02 = (userId: string, onComplete: () => void) => {
           side: 'top', 
           align: 'center'
         },
-        onHighlighted: () => {
-          // Garante que o scroll suba para mostrar o item novo na tabela
-          const el = document.querySelector('.tabela-itens-aquisicao');
-          if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        onHighlighted: (el) => {
+          el.scrollIntoView({ behavior: 'smooth', block: 'center' });
         }
       },
       {
@@ -306,8 +305,11 @@ export const runMission02 = (userId: string, onComplete: () => void) => {
           align: 'center',
         },
         onHighlighted: (element) => {
-          element.classList.add('animate-pulse', 'border-primary', 'border-2');
+          element.classList.add('z-tour-portal'); 
           element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          if ((window as any).expandMaterialConsumo) {
+            (window as any).expandMaterialConsumo();
+          }
         }
       }
     ],

@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { useQueries, useQuery } from '@tanstack/react-query';
 import { fetchArpItemsById } from '@/integrations/supabase/api';
+import { isGhostMode } from '@/lib/ghostStore';
 
 // NOVO TIPO: Referência de uma ARP dentro de um Pregão
 interface ArpReference {
@@ -316,6 +317,21 @@ const ArpSearchResultsList: React.FC<ArpSearchResultsListProps> = ({ results, on
                     </TableBody>
                 </Table>
             </div>
+
+            {/* BOTÃO PREPARAR IMPORTAÇÃO - GATILHO TOUR */}
+            {selectedItemIds.length > 0 && (
+                <div className="flex justify-end pt-4 border-t">
+                    <Button 
+                        onClick={() => {
+                            if (isGhostMode()) window.dispatchEvent(new CustomEvent('tour:avancar'));
+                        }}
+                        className="bg-primary text-primary-foreground"
+                    >
+                        <Import className="h-4 w-4 mr-2" />
+                        Preparar Importação ({selectedItemIds.length})
+                    </Button>
+                </div>
+            )}
         </div>
     );
 };

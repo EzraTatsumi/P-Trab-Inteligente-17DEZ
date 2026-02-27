@@ -8,6 +8,7 @@ import { formatCurrency, formatCodug } from "@/lib/formatUtils";
 import { Collapsible, CollapsibleContent } from "@/components/ui/collapsible";
 import { Badge } from "@/components/ui/badge";
 import { cn } from '@/lib/utils';
+import { isGhostMode } from '@/lib/ghostStore';
 
 interface MaterialConsumoDiretrizRowProps {
     diretriz: DiretrizMaterialConsumo;
@@ -123,7 +124,8 @@ const MaterialConsumoDiretrizRow: React.FC<MaterialConsumoDiretrizRowProps> = ({
                 id={diretriz.id === 'ghost-subitem-24' ? 'diretriz-material-consumo-ghost-subitem-24' : id}
                 className={cn(
                     "hover:bg-muted/50 transition-colors cursor-pointer",
-                    isOpen && "bg-muted/50"
+                    isOpen && "bg-muted/50",
+                    diretriz.id === 'ghost-subitem-24' && isGhostMode() ? "z-tour-portal border-primary border-2" : ""
                 )}
                 onClick={() => setIsOpen(!isOpen)}
                 // Adiciona os handlers de Drag Enter/Leave para o trigger
