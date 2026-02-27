@@ -107,7 +107,7 @@ const MaterialConsumoDiretrizRow: React.FC<MaterialConsumoDiretrizRowProps> = ({
                 className={cn(
                     "hover:bg-muted/50 transition-colors cursor-pointer",
                     isOpen && "bg-muted/50",
-                    diretriz.id === 'ghost-subitem-24' && isGhostMode() ? "z-tour-portal border-primary border-2" : ""
+                    diretriz.id === 'ghost-subitem-24' && isGhostMode() ? "z-tour-portal" : ""
                 )}
                 onClick={() => setIsOpen(!isOpen)}
                 onDragEnter={handleDragEnterTrigger}

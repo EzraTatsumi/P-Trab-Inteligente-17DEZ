@@ -278,12 +278,12 @@ export const runMission02 = (userId: string, onComplete: () => void) => {
         element: '.tabela-itens-aquisicao',
         popover: {
           title: 'Item na Grade',
-          description: 'Excelente! O item foi validado e importado. Agora ele faz parte do seu planejamento.',
+          description: 'Excelente! O item foi validado e importado. Revise as informações na tabela e, quando estiver pronto, clique em "Próximo" para finalizar o cadastro do Subitem.',
           side: 'top', 
-          align: 'center'
+          align: 'center',
+          showButtons: ['next', 'previous']
         },
         onHighlighted: (el) => {
-          // Força o scroll para a tabela, garantindo visibilidade e evitando pulo de passo
           el.scrollIntoView({ behavior: 'smooth', block: 'center' });
         }
       },
@@ -301,13 +301,17 @@ export const runMission02 = (userId: string, onComplete: () => void) => {
         element: '#diretriz-material-consumo-ghost-subitem-24',
         popover: {
           title: 'Missão Cumprida!',
-          description: 'Parabéns! O novo Subitem da ND (24) foi criado e já aparece na sua lista. Agora ele está disponível para uso!',
+          description: 'Parabéns, Maj! O Subitem 24 (Cimento) agora é uma diretriz oficial. Clique em "Concluir Missão" para retornar.',
           side: 'top',
           align: 'center',
+          showButtons: ['next', 'previous'],
+          nextBtnText: 'Concluir Missão'
         },
-        onHighlighted: (element) => {
-          element.classList.add('z-tour-portal'); 
-          element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        onHighlighted: (el) => {
+          // Garante que o item 24 "fure" a camada de sombra do tour
+          el.style.zIndex = "10000"; 
+          el.classList.add('animate-pulse', 'border-primary', 'border-4');
+          el.scrollIntoView({ behavior: 'smooth', block: 'center' });
           if ((window as any).expandMaterialConsumo) {
             (window as any).expandMaterialConsumo();
           }
