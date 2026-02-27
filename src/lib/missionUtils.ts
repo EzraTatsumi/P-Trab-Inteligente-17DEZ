@@ -66,21 +66,20 @@ export const fetchCompletedMissions = async (userId: string): Promise<number[]> 
 
     const missionIds = (data as any[] || []).map(m => m.mission_id);
     
-    // Proteção contra cache local "sujo" após reset de banco
-    if (missionIds.length === 0 && getCompletedMissions(userId).length > 0) {
-      resetMissionCache(userId);
-      return [];
-    }
-    
-    // Atualiza o cache local para consistência síncrona
     if (typeof window !== 'undefined') {
-      localStorage.setItem(getBaseKey(userId), JSON.stringify(missionIds));
+      const key = getBaseKey(userId);
+      // Se o banco está vazio, o local também deve estar
+      if (missionIds.length === 0) {
+        localStorage.removeItem(key);
+      } else {
+        localStorage.setItem(key, JSON.stringify(missionIds));
+      }
     }
     
     return missionIds;
   } catch (error) {
-    console.error("Erro ao buscar missões do banco:", error);
-    return getCompletedMissions(userId); // Fallback para o cache
+    console.error("Erro ao sincronizar:", error);
+    return []; // Em caso de erro, não assuma que as missões foram feitas
   }
 };
 
