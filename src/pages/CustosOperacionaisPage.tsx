@@ -69,7 +69,6 @@ import MaterialPermanenteExportImportDialog from "@/components/MaterialPermanent
 import { runMission02 } from "@/tours/missionTours";
 import { GHOST_DATA, isGhostMode, getActiveMission } from "@/lib/ghostStore";
 import { cn } from "@/lib/utils";
-import { markMissionCompleted } from "@/lib/missionUtils";
 
 type DiretrizOperacional = Tables<'diretrizes_operacionais'>;
 
@@ -141,7 +140,6 @@ const CustosOperacionaisPage = () => {
   const { user } = useSession();
   const queryClient = useQueryClient();
   const [isSaving, setIsSaving] = useState(false); 
-  const hasStartedTour = useRef(false);
   
   const currentYear = new Date().getFullYear();
   const [diretrizes, setDiretrizes] = useState<Partial<DiretrizOperacional>>(defaultDiretrizes(currentYear));
@@ -153,34 +151,20 @@ const CustosOperacionaisPage = () => {
   const { data: defaultYearData, isLoading: isLoadingDefaultYear } = useDefaultDiretrizYear();
   const defaultYear = defaultYearData?.defaultYear || null;
 
-  const ghostActive = isGhostMode();
-
-  // Sincronização robusta de Ano e URL - Ajustada para preservar parâmetros como startTour
   useEffect(() => {
     const yearInUrl = searchParams.get('year');
-    const yearNum = yearInUrl ? parseInt(yearInUrl) : null;
-    if (yearNum && !isNaN(yearNum) && yearNum !== selectedYear) {
-      setSelectedYear(yearNum);
-    } else if (selectedYear && yearInUrl !== selectedYear.toString()) {
-      // Criamos uma nova instância para preservar os outros parâmetros (como startTour)
-      const newParams = new URLSearchParams(searchParams);
-      newParams.set('year', selectedYear.toString());
-      setSearchParams(newParams, { replace: true });
+    if (yearInUrl) {
+      const yearNum = parseInt(yearInUrl);
+      if (!isNaN(yearNum) && yearNum !== selectedYear) {
+        setSelectedYear(yearNum);
+      }
     }
-  }, [searchParams, selectedYear, setSearchParams]);
+  }, [searchParams]);
 
-  const { data: pageData, isLoading: isLoadingPageData, isFetching: isFetchingPageData } = useQuery({
-    queryKey: ['diretrizesCustosOperacionais', selectedYear, user?.id, ghostActive],
+  const { data: pageData, isLoading: isLoadingPageData } = useQuery({
+    queryKey: ['diretrizesCustosOperacionais', selectedYear, user?.id],
     queryFn: async () => {
       if (!user?.id || !selectedYear) return null;
-
-      if (ghostActive) {
-          return {
-              operacional: defaultDiretrizes(selectedYear),
-              passagens: [],
-              concessionaria: []
-          };
-      }
 
       const [opRes, passRes, concRes] = await Promise.all([
         supabase
@@ -346,24 +330,20 @@ const CustosOperacionaisPage = () => {
       setIsMaterialPermanenteFormOpen(true);
   };
 
-  const handleOpenNewMaterialConsumo = useCallback(() => {
+  const handleOpenNewMaterialConsumo = () => {
       setDiretrizMaterialConsumoToEdit(null);
       setIsMaterialConsumoFormOpen(true);
-      
-      if (isGhostMode()) {
-        window.dispatchEvent(new CustomEvent('tour:avancar'));
-      }
-  }, []);
+  };
 
-  const handleOpenNewServicosTerceiros = useCallback(() => {
+  const handleOpenNewServicosTerceiros = () => {
       setDiretrizServicosTerceirosToEdit(null);
       setIsServicosTerceirosFormOpen(true);
-  }, []);
+  };
 
-  const handleOpenNewMaterialPermanente = useCallback(() => {
+  const handleOpenNewMaterialPermanente = () => {
       setDiretrizMaterialPermanenteToEdit(null);
       setIsMaterialPermanenteFormOpen(true);
-  }, []);
+  };
 
   const handleSaveMaterialConsumo = async (data: Partial<DiretrizMaterialConsumo> & { ano_referencia: number }) => {
       if (isGhostMode()) {
@@ -371,13 +351,14 @@ const CustosOperacionaisPage = () => {
           setTimeout(() => {
               const newItem = {
                   ...data,
-                  id: data.id || `ghost-subitem-${data.nr_subitem}`, 
+                  id: 'ghost-subitem-24', // ID FUNDAMENTAL PARA O TOUR ENCONTRAR NA GRADE
                   user_id: 'ghost-user',
-                  ativo: data.ativo ?? true,
+                  nr_subitem: '24',
+                  ativo: true,
               } as DiretrizMaterialConsumo;
               
               setDiretrizesMaterialConsumo(prev => {
-                  const filtered = prev.filter(p => p.id !== newItem.id);
+                  const filtered = prev.filter(p => p.id !== 'ghost-subitem-24');
                   return [...filtered, newItem].sort((a, b) => a.nr_subitem.localeCompare(b.nr_subitem));
               });
               
@@ -1011,16 +992,13 @@ const CustosOperacionaisPage = () => {
   }, []);
   
   useEffect(() => {
-    // Removido isFetchingPageData para evitar que o tour trave se houver re-fetch em background
-    if (isLoadingDefaultYear || isLoadingPageData || hasStartedTour.current) return;
+    if (isLoadingDefaultYear || isLoadingPageData) return;
 
     const startTour = searchParams.get('startTour') === 'true';
     const missionId = localStorage.getItem('active_mission_id');
     const ghost = isGhostMode();
 
     if (startTour && ghost && missionId === '2' && user?.id) {
-      hasStartedTour.current = true;
-      console.log("Iniciando Missão 02..."); // Log para debug no console
       const timer = setTimeout(() => {
         runMission02(user.id, () => {
           const completed = JSON.parse(localStorage.getItem(`completed_missions_${user.id}`) || '[]');
@@ -1029,7 +1007,7 @@ const CustosOperacionaisPage = () => {
           }
           navigate('/ptrab?showHub=true');
         });
-      }, 800); // Aumento leve no delay para garantir renderização
+      }, 500);
       return () => clearTimeout(timer);
     }
   }, [isLoadingDefaultYear, isLoadingPageData, searchParams, navigate, user?.id]);

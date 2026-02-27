@@ -18,9 +18,34 @@ if (typeof window !== 'undefined') {
     }
   };
 
-  // Mantemos o listener para compatibilidade legada
+  // Ouvinte de Eventos Robusto: Aguarda o elemento do próximo passo existir no DOM
   window.addEventListener('tour:avancar', () => {
-    (window as any).avancaTourGeral();
+    if (!activeMissionDriver) return;
+    
+    const currentIndex = activeMissionDriver.getActiveIndex();
+    const steps = activeMissionDriver.getConfig().steps;
+    const nextStep = steps[currentIndex + 1];
+
+    if (nextStep && nextStep.element) {
+      let attempts = 0;
+      const checkInterval = setInterval(() => {
+        const el = document.querySelector(nextStep.element as string);
+        attempts++;
+
+        if (el || attempts > 50) { // Espera até 5 segundos
+          clearInterval(checkInterval);
+          setTimeout(() => {
+            if (activeMissionDriver.hasNextStep()) {
+              activeMissionDriver.moveNext();
+            }
+          }, 200);
+        }
+      }, 100);
+    } else {
+      if (activeMissionDriver.hasNextStep()) {
+        activeMissionDriver.moveNext();
+      }
+    }
   });
 }
 
