@@ -21,8 +21,8 @@ interface PNCPInspectionDialogProps {
     onOpenChange: (open: boolean) => void;
     inspectionList: InspectionItem[];
     onFinalImport: (items: ItemAquisicao[]) => void;
-    onReviewItem: (item: ItemAquisicao) => void; 
-    mode?: 'material' | 'servico'; 
+    onReviewItem: (item: ItemAquisicao) => void;
+    mode?: 'material' | 'servico';
 }
 
 const formatItemCount = (count: number) => {
@@ -45,13 +45,13 @@ const AutoResizeTextarea: React.FC<{
         }
     }, [value]);
     return (
-        <Textarea
-            ref={textareaRef}
-            value={value}
-            onChange={onChange}
-            className={cn("text-center text-sm overflow-hidden resize-none", className)}
-            disabled={disabled}
-            rows={1}
+        <Textarea 
+            ref={textareaRef} 
+            value={value} 
+            onChange={onChange} 
+            className={cn("text-center text-sm overflow-hidden resize-none", className)} 
+            disabled={disabled} 
+            rows={1} 
         />
     );
 };
@@ -82,19 +82,19 @@ const PNCPInspectionDialog: React.FC<PNCPInspectionDialogProps> = ({
             return acc;
         }, {} as Record<InspectionStatus, InspectionItem[]>);
     }, [inspectionList]);
-    
+
     const totalValid = groupedItems.valid?.length || 0;
     const totalNeedsInfo = groupedItems.needs_catmat_info?.length || 0;
     const totalDuplicates = groupedItems.duplicate?.length || 0;
-    
+
     const handleUpdateShortDescription = (itemId: string, value: string) => {
         setInspectionList(prev => prev.map(item => item.originalPncpItem.id === itemId ? { ...item, userShortDescription: value } : item));
     };
-    
+
     const handleUpdateFullDescription = (itemId: string, value: string) => {
         setInspectionList(prev => prev.map(item => item.originalPncpItem.id === itemId ? { ...item, mappedItem: { ...item.mappedItem, descricao_item: value } } : item));
     };
-    
+
     const handleMarkAsValid = (item: InspectionItem) => {
         const shortDescription = (item.userShortDescription || '').trim();
         if (!shortDescription) {
@@ -113,7 +113,7 @@ const PNCPInspectionDialog: React.FC<PNCPInspectionDialogProps> = ({
     const handleRemoveItem = (itemId: string) => {
         setInspectionList(prev => prev.filter(item => item.originalPncpItem.id !== itemId));
     };
-    
+
     const handleReviewItemLocal = (item: InspectionItem) => {
         if (item.status === 'valid') {
             setInspectionList(prev => prev.map(i => i.originalPncpItem.id === item.originalPncpItem.id ? {
@@ -150,7 +150,6 @@ const PNCPInspectionDialog: React.FC<PNCPInspectionDialogProps> = ({
             queryClient.invalidateQueries({ queryKey: [mode === 'material' ? 'catmatCatalog' : 'catserCatalog'] });
             onFinalImport(finalItems);
             
-            // Avança o tour se estiver ativo
             window.dispatchEvent(new CustomEvent('tour:avancar'));
             
             toast.success(`Importação de ${formatItemCount(finalItems.length)} concluída.`);
@@ -161,7 +160,7 @@ const PNCPInspectionDialog: React.FC<PNCPInspectionDialogProps> = ({
             setIsSaving(false);
         }
     };
-    
+
     const renderInspectionTable = (status: InspectionStatus) => {
         const items = groupedItems[status] || [];
         if (items.length === 0) return <div className="text-center py-8 text-muted-foreground">Nenhum item nesta categoria.</div>;

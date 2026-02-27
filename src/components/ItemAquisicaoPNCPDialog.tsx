@@ -28,14 +28,14 @@ interface ItemAquisicaoPNCPDialogProps {
     mode?: 'material' | 'servico';
 }
 
-const ItemAquisicaoPNCPDialog: React.FC<ItemAquisicaoPNCPDialogProps> = ({
-    open,
-    onOpenChange,
-    onImport,
-    existingItemsInDiretriz,
-    onReviewItem,
-    selectedYear,
-    mode = 'material'
+const ItemAquisicaoPNCPDialog: React.FC<ItemAquisicaoPNCPDialogProps> = ({ 
+    open, 
+    onOpenChange, 
+    onImport, 
+    existingItemsInDiretriz, 
+    onReviewItem, 
+    selectedYear, 
+    mode = 'material' 
 }) => {
     const [preSelectedItems, setPreSelectedItems] = useState<ItemAquisicao[]>([]);
     const scrollRef = React.useRef(null);
@@ -73,6 +73,11 @@ const ItemAquisicaoPNCPDialog: React.FC<ItemAquisicaoPNCPDialogProps> = ({
     // PASSO 1: Intercepta a importação, varre o BD e prepara a Inspeção
     const handleConfirmImport = async () => {
         if (preSelectedItems.length === 0) return;
+
+        // Dispara o avanço do tour para o diálogo de inspeção
+        if (isGhostMode()) {
+            window.dispatchEvent(new CustomEvent('tour:avancar'));
+        }
         
         setIsCheckingDB(true);
         try {
@@ -94,7 +99,6 @@ const ItemAquisicaoPNCPDialog: React.FC<ItemAquisicaoPNCPDialogProps> = ({
                     existing.uasg === item.uasg
                 );
 
-                // Força a tipagem do retorno para evitar erros de SelectQueryError
                 const entries = (catalogData as any[]) || [];
                 const catalogEntry = entries.find(c => c.code === item.codigo_catmat);
                 const hasCatalogShortDesc = !!(catalogEntry && catalogEntry.short_description && catalogEntry.short_description.trim() !== '');
@@ -120,7 +124,7 @@ const ItemAquisicaoPNCPDialog: React.FC<ItemAquisicaoPNCPDialogProps> = ({
                     status: isDuplicate ? 'duplicate' : (needsInfo ? 'needs_catmat_info' : 'valid'),
                     messages: isDuplicate ? ['Chave de contrato duplicada'] : [],
                     isCatmatCataloged: isCataloged,
-                    nomePdm: item.descricao_item.substring(0, 30), // Adicionado para cumprir a interface
+                    nomePdm: item.descricao_item.substring(0, 30),
                 };
             });
             setInspectionList(listToInspect);
@@ -133,7 +137,6 @@ const ItemAquisicaoPNCPDialog: React.FC<ItemAquisicaoPNCPDialogProps> = ({
         }
     };
 
-    // PASSO 2: Retorno da Inspeção (Joga para Unidade de Medida ou Finaliza)
     const handleInspectionFinalImport = (items: ItemAquisicao[]) => {
         setIsInspectionOpen(false);
         if (mode === 'servico') {
@@ -144,7 +147,6 @@ const ItemAquisicaoPNCPDialog: React.FC<ItemAquisicaoPNCPDialogProps> = ({
         }
     };
 
-    // PASSO 3: Finaliza e envia para a Diretriz
     const finishImport = (items: ItemAquisicao[]) => {
         onImport(items);
         setPreSelectedItems([]);
@@ -228,7 +230,6 @@ const ItemAquisicaoPNCPDialog: React.FC<ItemAquisicaoPNCPDialogProps> = ({
                     </div>
                 </DialogContent>
             </Dialog>
-            {/* Modais da Esteira de Produção */}
             {isInspectionOpen && (
                 <PNCPInspectionDialog 
                     open={isInspectionOpen}
