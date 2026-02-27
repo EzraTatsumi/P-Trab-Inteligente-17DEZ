@@ -120,7 +120,7 @@ const MaterialConsumoDiretrizRow: React.FC<MaterialConsumoDiretrizRowProps> = ({
         <React.Fragment>
             {/* A linha principal (TableRow) agora é o elemento que contém o CollapsibleTrigger */}
             <TableRow 
-                id={id} // NOVO: Adiciona o ID para rolagem
+                id={diretriz.id === 'ghost-subitem-24' ? 'diretriz-material-consumo-ghost-subitem-24' : id}
                 className={cn(
                     "hover:bg-muted/50 transition-colors cursor-pointer",
                     isOpen && "bg-muted/50"

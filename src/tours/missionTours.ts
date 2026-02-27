@@ -280,6 +280,11 @@ export const runMission02 = (userId: string, onComplete: () => void) => {
           description: 'Excelente! O item foi validado e importado. Agora ele faz parte do seu planejamento.',
           side: 'top', 
           align: 'center'
+        },
+        onHighlighted: () => {
+          // Garante que o scroll suba para mostrar o item novo na tabela
+          const el = document.querySelector('.tabela-itens-aquisicao');
+          if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
         }
       },
       {
@@ -296,10 +301,13 @@ export const runMission02 = (userId: string, onComplete: () => void) => {
         element: '#diretriz-material-consumo-ghost-subitem-24',
         popover: {
           title: 'Missão Cumprida!',
-          description: 'Parabéns! O novo Subitem da ND (24) foi criado e já aparece na sua lista de referências. Agora ele está disponível para ser usado em qualquer P Trab deste ano.',
+          description: 'Parabéns! O novo Subitem da ND (24) foi criado e já aparece na sua lista. Agora ele está disponível para uso!',
           side: 'top',
           align: 'center',
-          showButtons: ['next', 'previous']
+        },
+        onHighlighted: (element) => {
+          element.classList.add('animate-pulse', 'border-primary', 'border-2');
+          element.scrollIntoView({ behavior: 'smooth', block: 'center' });
         }
       }
     ],

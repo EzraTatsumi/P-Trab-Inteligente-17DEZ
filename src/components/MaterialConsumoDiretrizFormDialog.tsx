@@ -134,13 +134,6 @@ const MaterialConsumoDiretrizFormDialog: React.FC<MaterialConsumoDiretrizFormDia
 
     const handleReviewItem = (item: ItemAquisicao) => setItemToReview(item);
 
-    const handleOpenPNCPSearch = () => {
-        setIsPNCPSearchOpen(true);
-        if (isGhostMode()) {
-            window.dispatchEvent(new CustomEvent('tour:avancar'));
-        }
-    };
-
     const handleSave = async () => {
         if (!subitemForm.nr_subitem || !subitemForm.nome_subitem || subitemForm.itens_aquisicao.length === 0) {
             toast.error("Preencha os dados do subitem e adicione itens.");
@@ -151,6 +144,13 @@ const MaterialConsumoDiretrizFormDialog: React.FC<MaterialConsumoDiretrizFormDia
 
         if (isGhostMode() && (subitemForm.nr_subitem === '33903004' || subitemForm.nr_subitem === '24')) { 
             setTimeout(() => window.dispatchEvent(new CustomEvent('tour:avancar')), 300);
+        }
+    };
+
+    const handleOpenPNCPSearch = () => {
+        setIsPNCPSearchOpen(true);
+        if (isGhostMode()) {
+            window.dispatchEvent(new CustomEvent('tour:avancar'));
         }
     };
 
