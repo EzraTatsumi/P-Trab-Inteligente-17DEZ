@@ -346,6 +346,16 @@ const CustosOperacionaisPage = () => {
       }
   }, []);
 
+  const handleOpenNewServicosTerceiros = useCallback(() => {
+    setDiretrizServicosTerceirosToEdit(null);
+    setIsServicosTerceirosFormOpen(true);
+  }, []);
+
+  const handleOpenNewMaterialPermanente = useCallback(() => {
+    setDiretrizMaterialPermanenteToEdit(null);
+    setIsMaterialPermanenteFormOpen(true);
+  }, []);
+
   const handleSaveMaterialConsumo = async (data: Partial<DiretrizMaterialConsumo> & { ano_referencia: number }) => {
       if (isGhostMode()) {
         setIsSaving(true);
