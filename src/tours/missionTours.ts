@@ -7,18 +7,18 @@ import { markMissionCompleted } from "@/lib/missionUtils";
 
 let activeMissionDriver: any = null;
 
-// O "Controle Remoto" Global - A Marretada Técnica
+// O "Controle Remoto" Global - A Marretada Técnica para sincronia infalível
 if (typeof window !== 'undefined') {
   (window as any).avancaTourGeral = () => {
     if (activeMissionDriver && activeMissionDriver.hasNextStep()) {
       // Delay de segurança para garantir que modais fechem e elementos apareçam
       setTimeout(() => {
         activeMissionDriver.moveNext();
-      }, 400);
+      }, 300);
     }
   };
 
-  // Mantemos o listener para compatibilidade com eventos disparados por outros componentes
+  // Mantemos o listener para compatibilidade legada
   window.addEventListener('tour:avancar', () => {
     (window as any).avancaTourGeral();
   });
@@ -280,9 +280,11 @@ export const runMission02 = (userId: string, onComplete: () => void) => {
         element: '#diretriz-material-consumo-ghost-subitem-24',
         popover: {
           title: 'Missão Cumprida!',
-          description: 'Parabéns! O novo Subitem da ND (24) foi criado e já aparece na sua lista. Agora ele está disponível para uso!',
+          description: 'Parabéns! O novo Subitem da ND (24) foi criado e já aparece na sua lista. Clique em "Finalizar Missão" para concluir.',
           side: 'top',
           align: 'center',
+          showButtons: ['next'],
+          nextBtnText: 'Finalizar Missão',
         },
         onHighlighted: (el) => {
           // A MARRETADA: Força o brilho e garante que a aba de consumo esteja aberta
@@ -293,6 +295,8 @@ export const runMission02 = (userId: string, onComplete: () => void) => {
       }
     ],
     onDestroyed: () => {
+      // Blindagem: Não forçamos navegação aqui para evitar expulsar o usuário em caso de re-render
+      console.log("[runMission02] Tour encerrado.");
       markMissionCompleted(2, userId);
       if (onComplete) onComplete();
     }

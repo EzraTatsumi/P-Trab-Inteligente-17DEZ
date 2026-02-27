@@ -213,7 +213,7 @@ const MaterialConsumoDiretrizFormDialog: React.FC<MaterialConsumoDiretrizFormDia
                         onClick={() => {
                             handleSave();
                             if (isGhostMode()) {
-                                setTimeout(() => (window as any).avancaTourGeral?.(), 600);
+                                setTimeout(() => (window as any).avancaTourGeral?.(), 1000);
                             }
                         }} 
                         disabled={loading || subitemForm.itens_aquisicao.length === 0} 

@@ -318,7 +318,7 @@ const ArpSearchResultsList: React.FC<ArpSearchResultsListProps> = ({ results, on
                 </Table>
             </div>
 
-            {/* BOTÃO PREPARAR IMPORTAÇÃO - GATILHO TOUR (MARRETADA DIRETA) */}
+            {/* BOTÃO PREPARAR IMPORTAÇÃO - GATILHO TOUR (CHAMADA DIRETA GLOBAL) */}
             {selectedItemIds.length > 0 && (
                 <div className="flex justify-end pt-4 border-t">
                     <Button 
