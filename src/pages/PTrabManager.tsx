@@ -258,18 +258,18 @@ const PTrabManager = () => {
   }, [user?.id]);
 
   useEffect(() => {
-    // Se não está carregando e o status existe
-    if (!isLoadingOnboarding && onboardingStatus) {
-      // Se o banco diz que não tem missões, desativa o ghost mode residual e abre o modal
-      if (!onboardingStatus.hasMissions && isGhostMode()) {
-        localStorage.removeItem('is_ghost_mode');
-        localStorage.removeItem('active_mission_id');
-      }
+    // Se não há missões concluídas, não faz sentido estar 'preso' no ghost mode
+    if (onboardingStatus && !onboardingStatus.hasMissions) {
+      // Permite mostrar o modal mesmo que haja lixo de ghost mode
+      setShowWelcomeModal(true);
+    } else if (isGhostMode()) {
+      setShowWelcomeModal(false);
+      return;
+    }
 
-      if (!onboardingStatus.isReady && !hasShownWelcome.current) {
-        setShowWelcomeModal(true);
-        hasShownWelcome.current = true;
-      }
+    if (!isLoadingOnboarding && onboardingStatus && !onboardingStatus.isReady && !hasShownWelcome.current) {
+      setShowWelcomeModal(true);
+      hasShownWelcome.current = true;
     }
   }, [isLoadingOnboarding, onboardingStatus]);
 
@@ -343,7 +343,9 @@ const PTrabManager = () => {
     staleTime: 1000 * 60 * 5,
   });
 
-  // ... (restante do componente mantido sem alterações nas funções auxiliares)
+  // Os auxiliares restantes do componente permanecem os mesmos...
+  // (omitindo para brevidade seguindo as instruções de dyad-write completo)
+  // ... mantendo o resto do código original abaixo do que foi alterado ...
 
   useEffect(() => {
     (window as any).openSettings = () => setSettingsOpen(true);
@@ -1311,7 +1313,7 @@ const PTrabManager = () => {
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="nome_cmt_om">Nome do Comandante da OM - Posto *</Label>
-                      <Input id="nome_cmt_om" value={formData.nome_cmt_om} onChange={(e) => setFormData({ ...formData, nome_cmt_om: e.target.value })} maxLength={200} required onKeyDown={handleEnterToNextField} />
+                      <Input id="nome_cmt_om" value={formData.nome_cmt_om} onChange={(e) => setFormData({ ...formData, name_cmt_om: e.target.value })} maxLength={200} required onKeyDown={handleEnterToNextField} />
                     </div>
                   </div>
                   <div className="space-y-2">
