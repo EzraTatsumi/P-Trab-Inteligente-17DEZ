@@ -155,14 +155,17 @@ const CustosOperacionaisPage = () => {
 
   const ghostActive = isGhostMode();
 
-  // Sincronização robusta de Ano e URL
+  // Sincronização robusta de Ano e URL - Ajustada para preservar parâmetros como startTour
   useEffect(() => {
     const yearInUrl = searchParams.get('year');
     const yearNum = yearInUrl ? parseInt(yearInUrl) : null;
     if (yearNum && !isNaN(yearNum) && yearNum !== selectedYear) {
       setSelectedYear(yearNum);
     } else if (selectedYear && yearInUrl !== selectedYear.toString()) {
-      setSearchParams({ year: selectedYear.toString() }, { replace: true });
+      // Criamos uma nova instância para preservar os outros parâmetros (como startTour)
+      const newParams = new URLSearchParams(searchParams);
+      newParams.set('year', selectedYear.toString());
+      setSearchParams(newParams, { replace: true });
     }
   }, [searchParams, selectedYear, setSearchParams]);
 
@@ -684,7 +687,7 @@ const CustosOperacionaisPage = () => {
               if (error) throw error;
               toast.success("Diretriz de Concessionária atualizada!");
           } else {
-              const { error } = await supabase.from('diretrizes_concessionaria').insert([dbData]);
+              const { error = await supabase.from('diretrizes_concessionaria').insert([dbData]) } = {};
               if (error) throw error;
               toast.success("Nova Diretriz de Concessionária cadastrada!");
           }
@@ -1008,7 +1011,8 @@ const CustosOperacionaisPage = () => {
   }, []);
   
   useEffect(() => {
-    if (isLoadingDefaultYear || isLoadingPageData || isFetchingPageData || hasStartedTour.current) return;
+    // Removido isFetchingPageData para evitar que o tour trave se houver re-fetch em background
+    if (isLoadingDefaultYear || isLoadingPageData || hasStartedTour.current) return;
 
     const startTour = searchParams.get('startTour') === 'true';
     const missionId = localStorage.getItem('active_mission_id');
@@ -1016,6 +1020,7 @@ const CustosOperacionaisPage = () => {
 
     if (startTour && ghost && missionId === '2' && user?.id) {
       hasStartedTour.current = true;
+      console.log("Iniciando Missão 02..."); // Log para debug no console
       const timer = setTimeout(() => {
         runMission02(user.id, () => {
           const completed = JSON.parse(localStorage.getItem(`completed_missions_${user.id}`) || '[]');
@@ -1024,10 +1029,10 @@ const CustosOperacionaisPage = () => {
           }
           navigate('/ptrab?showHub=true');
         });
-      }, 500);
+      }, 800); // Aumento leve no delay para garantir renderização
       return () => clearTimeout(timer);
     }
-  }, [isLoadingDefaultYear, isLoadingPageData, isFetchingPageData, searchParams, navigate, user?.id]);
+  }, [isLoadingDefaultYear, isLoadingPageData, searchParams, navigate, user?.id]);
 
   useEffect(() => {
     if (!isLoadingDefaultYear && defaultYearData) {
