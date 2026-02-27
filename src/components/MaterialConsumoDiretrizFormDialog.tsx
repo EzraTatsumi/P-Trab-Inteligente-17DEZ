@@ -120,10 +120,6 @@ const MaterialConsumoDiretrizFormDialog: React.FC<MaterialConsumoDiretrizFormDia
         setSubitemForm(prev => ({ ...prev, itens_aquisicao: updatedItens }));
         setEditingItemId(null);
         setItemForm(initialItemForm);
-
-        if (isGhostMode()) {
-            setTimeout(() => window.dispatchEvent(new CustomEvent('tour:avancar')), 300);
-        }
     };
 
     const handleEditItem = (item: ItemAquisicao) => {
@@ -141,10 +137,6 @@ const MaterialConsumoDiretrizFormDialog: React.FC<MaterialConsumoDiretrizFormDia
         }
         await onSave({ ...subitemForm, ano_referencia: selectedYear });
         onOpenChange(false);
-
-        if (isGhostMode() && (subitemForm.nr_subitem === '33903004' || subitemForm.nr_subitem === '24')) { 
-            setTimeout(() => window.dispatchEvent(new CustomEvent('tour:avancar')), 300);
-        }
     };
 
     const handleOpenPNCPSearch = () => {
@@ -216,7 +208,20 @@ const MaterialConsumoDiretrizFormDialog: React.FC<MaterialConsumoDiretrizFormDia
                     </Card>
                 </div>
                 <div className="flex justify-end gap-2 pt-4 border-t">
-                    <Button type="button" onClick={handleSave} disabled={loading || subitemForm.itens_aquisicao.length === 0} className="btn-salvar-subitem">{loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}{subitemForm.id ? "Salvar Alterações" : "Cadastrar Subitem"}</Button>
+                    <Button 
+                        type="button" 
+                        onClick={() => {
+                            handleSave();
+                            if (isGhostMode()) {
+                                setTimeout(() => (window as any).avancaTourGeral?.(), 600);
+                            }
+                        }} 
+                        disabled={loading || subitemForm.itens_aquisicao.length === 0} 
+                        className="btn-salvar-subitem"
+                    >
+                        {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+                        {subitemForm.id ? "Salvar Alterações" : "Cadastrar Subitem"}
+                    </Button>
                     <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
                 </div>
             </DialogContent>

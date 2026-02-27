@@ -7,40 +7,20 @@ import { markMissionCompleted } from "@/lib/missionUtils";
 
 let activeMissionDriver: any = null;
 
+// O "Controle Remoto" Global - A Marretada Técnica
 if (typeof window !== 'undefined') {
-  window.addEventListener('tour:avancar', () => {
-    if (activeMissionDriver) {
-      const popover = document.querySelector('.driver-popover') as HTMLElement;
-      if (popover) {
-        popover.style.opacity = '0';
-        popover.style.transition = 'none';
-      }
-
-      const currentIndex = activeMissionDriver.getActiveIndex();
-      const steps = activeMissionDriver.getConfig().steps;
-      const nextStep = steps[currentIndex + 1];
-
-      if (nextStep && nextStep.element) {
-        let attempts = 0;
-        const checkInterval = setInterval(() => {
-          const el = document.querySelector(nextStep.element as string);
-          attempts++;
-
-          if (el || attempts > 30) {
-            clearInterval(checkInterval);
-            setTimeout(() => {
-              if (activeMissionDriver.hasNextStep()) {
-                activeMissionDriver.moveNext();
-              }
-            }, 100);
-          }
-        }, 100);
-      } else {
-        setTimeout(() => {
-          if (activeMissionDriver.hasNextStep()) activeMissionDriver.moveNext();
-        }, 300);
-      }
+  (window as any).avancaTourGeral = () => {
+    if (activeMissionDriver && activeMissionDriver.hasNextStep()) {
+      // Delay de segurança para garantir que modais fechem e elementos apareçam
+      setTimeout(() => {
+        activeMissionDriver.moveNext();
+      }, 400);
     }
+  };
+
+  // Mantemos o listener para compatibilidade com eventos disparados por outros componentes
+  window.addEventListener('tour:avancar', () => {
+    (window as any).avancaTourGeral();
   });
 }
 
@@ -218,7 +198,7 @@ export const runMission02 = (userId: string, onComplete: () => void) => {
       {
         element: '.btn-novo-subitem', 
         popover: { 
-          title: 'Sua Vez: Mão na Massa!', 
+          title: 'Mão na Massa!', 
           description: 'Clique neste botão para abrir a janela de criação de Subitem. Eu espero por você!', 
           side: 'top', 
           align: 'center',
@@ -304,12 +284,11 @@ export const runMission02 = (userId: string, onComplete: () => void) => {
           side: 'top',
           align: 'center',
         },
-        onHighlighted: (element) => {
-          element.classList.add('z-tour-portal'); 
-          element.scrollIntoView({ behavior: 'smooth', block: 'center' });
-          if ((window as any).expandMaterialConsumo) {
-            (window as any).expandMaterialConsumo();
-          }
+        onHighlighted: (el) => {
+          // A MARRETADA: Força o brilho e garante que a aba de consumo esteja aberta
+          (window as any).expandMaterialConsumo?.(); 
+          el.style.zIndex = "1000001"; 
+          el.scrollIntoView({ behavior: 'smooth', block: 'center' });
         }
       }
     ],
