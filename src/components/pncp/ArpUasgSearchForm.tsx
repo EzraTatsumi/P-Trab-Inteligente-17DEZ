@@ -13,7 +13,7 @@ import { formatCodug } from '@/lib/formatUtils';
 import OmSelectorDialog from '@/components/OmSelectorDialog';
 import { format, subDays } from 'date-fns';
 import { fetchArpsByUasg } from '@/integrations/supabase/api';
-import { ArpItemResult, DetailedArpItem } from '@/types/pncp'; 
+import { ArpItemResult, DetailedArpItem } from '@/types/pncp';
 import ArpSearchResultsList from './ArpSearchResultsList';
 import { isGhostMode } from '@/lib/ghostStore';
 
@@ -44,33 +44,33 @@ const oneYearAgo = subDays(today, 365);
 const defaultDataFim = format(today, 'yyyy-MM-dd');
 const defaultDataInicio = format(oneYearAgo, 'yyyy-MM-dd');
 
-const ArpUasgSearchForm: React.FC<ArpUasgSearchFormProps> = ({ 
-    onItemPreSelect, 
-    selectedItemIds, 
-    onClearSelection, 
-    scrollContainerRef, 
-    mode = 'material' 
+const ArpUasgSearchForm: React.FC<ArpUasgSearchFormProps> = ({
+    onItemPreSelect,
+    selectedItemIds,
+    onClearSelection,
+    scrollContainerRef,
+    mode = 'material'
 }) => {
     const [isSearching, setIsSearching] = useState(false);
     const [isOmSelectorOpen, setIsOmSelectorOpen] = useState(false);
-    const [arpResults, setArpResults] = useState<ArpItemResult[]>([]); 
-    const [searchedOmName, setSearchedOmName] = useState<string>(""); 
+    const [arpResults, setArpResults] = useState<ArpItemResult[]>([]);
+    const [searchedOmName, setSearchedOmName] = useState<string>("");
     const resultsRef = useRef<HTMLDivElement>(null);
 
     const form = useForm<ArpUasgFormValues>({
         resolver: zodResolver(formSchema),
-        defaultValues: { 
-            uasg: "", 
-            dataInicio: defaultDataInicio, 
-            dataFim: defaultDataFim 
+        defaultValues: {
+            uasg: "",
+            dataInicio: defaultDataInicio,
+            dataFim: defaultDataFim
         },
     });
-    
+   
     const handleUasgChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         form.setValue('uasg', e.target.value.replace(/\D/g, '').slice(0, 6), { shouldValidate: true });
-        setSearchedOmName(""); 
+        setSearchedOmName("");
     };
-    
+   
     const handleOmSelect = (omData: any) => {
         if (omData && omData.codug_om) {
             form.setValue('uasg', omData.codug_om, { shouldValidate: true });
@@ -81,23 +81,23 @@ const ArpUasgSearchForm: React.FC<ArpUasgSearchFormProps> = ({
     const onSubmit = async (values: ArpUasgFormValues) => {
         setIsSearching(true);
         setArpResults([]);
-        onClearSelection(); 
+        onClearSelection();
         try {
             toast.info(`Buscando ARPs para UASG ${formatCodug(values.uasg)}...`);
             if (!searchedOmName) setSearchedOmName(`UASG ${values.uasg}`);
-            
-            const results = await fetchArpsByUasg({ 
-                ...( { codigoUnidadeGerenciadora: values.uasg } as any ), 
-                dataVigenciaInicialMin: values.dataInicio, 
-                dataVigenciaInicialMax: values.dataFim 
+           
+            const results = await fetchArpsByUasg({
+                ...( { codigoUnidadeGerenciadora: values.uasg } as any ),
+                dataVigenciaInicialMin: values.dataInicio,
+                dataVigenciaInicialMax: values.dataFim
             });
-            
+           
             if (results.length === 0) {
                 toast.warning("Nenhuma ARP encontrada.");
             } else {
                 toast.success(`${results.length} ARPs encontradas!`);
             }
-            
+           
             setArpResults(results);
 
             if (isGhostMode() && values.uasg === '160222' && results.length > 0) {
@@ -107,7 +107,7 @@ const ArpUasgSearchForm: React.FC<ArpUasgSearchFormProps> = ({
             }
 
             if (results.length > 0 && resultsRef.current) {
-                setTimeout(() => resultsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100); 
+                setTimeout(() => resultsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100);
             }
         } catch (error: any) {
             toast.error(error.message || "Falha ao buscar ARPs.");
@@ -115,24 +115,24 @@ const ArpUasgSearchForm: React.FC<ArpUasgSearchFormProps> = ({
             setIsSearching(false);
         }
     };
-    
+   
     return (
         <>
             <Form {...form}>
-                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 p-4">
+                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 p-4 form-busca-uasg-tour">
                     <div className="grid grid-cols-4 gap-4">
                         <FormField control={form.control} name="uasg" render={({ field }) => (
-                            <FormItem className="col-span-4 md:col-span-2 form-busca-uasg-tour">
+                            <FormItem className="col-span-4 md:col-span-2">
                                 <FormLabel>UASG (Unidade Gestora) *</FormLabel>
                                 <div className="flex gap-2 items-center">
                                     <FormControl>
                                         <Input {...field} onChange={handleUasgChange} placeholder="Ex: 160001" maxLength={6} disabled={isSearching} />
                                     </FormControl>
-                                    <Button 
-                                        type="button" 
-                                        variant="outline" 
-                                        size="sm" 
-                                        onClick={() => setIsOmSelectorOpen(true)} 
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => setIsOmSelectorOpen(true)}
                                         disabled={isSearching}
                                         className="h-8 px-2 text-[10px]"
                                     >
@@ -167,23 +167,23 @@ const ArpUasgSearchForm: React.FC<ArpUasgSearchFormProps> = ({
                     </Button>
                 </form>
             </Form>
-            
+           
             {arpResults.length > 0 && (
                 <div ref={resultsRef}>
-                    <ArpSearchResultsList 
-                        results={arpResults} 
-                        onItemPreSelect={onItemPreSelect} 
-                        searchedUasg={form.getValues('uasg')} 
-                        searchedOmName={searchedOmName} 
-                        selectedItemIds={selectedItemIds} 
+                    <ArpSearchResultsList
+                        results={arpResults}
+                        onItemPreSelect={onItemPreSelect}
+                        searchedUasg={form.getValues('uasg')}
+                        searchedOmName={searchedOmName}
+                        selectedItemIds={selectedItemIds}
                     />
                 </div>
             )}
-            
-            <OmSelectorDialog 
-                open={isOmSelectorOpen} 
-                onOpenChange={setIsOmSelectorOpen} 
-                onSelect={handleOmSelect} 
+           
+            <OmSelectorDialog
+                open={isOmSelectorOpen}
+                onOpenChange={setIsOmSelectorOpen}
+                onSelect={handleOmSelect}
             />
         </>
     );

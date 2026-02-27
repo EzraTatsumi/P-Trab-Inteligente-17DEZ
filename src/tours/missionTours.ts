@@ -247,7 +247,7 @@ export const runMission02 = (userId: string, onComplete: () => void) => {
         element: '.form-busca-uasg-tour',
         popover: {
           title: 'Busca por UASG',
-          description: 'Digite a UASG 160222 e clique em "Buscar ARPs por UASG". Vamos listar as atas vigentes desta Organização Militar.',
+          description: 'O formulário agora está liberado! Digite a UASG 160222 e clique no botão "Buscar ARPs por UASG" logo abaixo.',
           side: 'bottom',
           align: 'center',
           showButtons: []

@@ -134,6 +134,13 @@ const MaterialConsumoDiretrizFormDialog: React.FC<MaterialConsumoDiretrizFormDia
 
     const handleReviewItem = (item: ItemAquisicao) => setItemToReview(item);
 
+    const handleOpenPNCPSearch = () => {
+        setIsPNCPSearchOpen(true);
+        if (isGhostMode()) {
+            window.dispatchEvent(new CustomEvent('tour:avancar'));
+        }
+    };
+
     const handleSave = async () => {
         if (!subitemForm.nr_subitem || !subitemForm.nome_subitem || subitemForm.itens_aquisicao.length === 0) {
             toast.error("Preencha os dados do subitem e adicione itens.");
@@ -169,7 +176,7 @@ const MaterialConsumoDiretrizFormDialog: React.FC<MaterialConsumoDiretrizFormDia
                         <div className="flex justify-between items-center">
                             <CardTitle className="text-base font-semibold">{editingItemId ? "Editar Item" : "Adicionar Novo Item"}</CardTitle>
                             <div className="flex gap-2">
-                                <Button type="button" variant="secondary" size="sm" onClick={() => setIsPNCPSearchOpen(true)} disabled={loading} className="btn-importar-pncp"><Search className="h-4 w-4 mr-2" />Importar API PNCP</Button>
+                                <Button type="button" variant="secondary" size="sm" onClick={handleOpenPNCPSearch} disabled={loading} className="btn-importar-pncp"><Search className="h-4 w-4 mr-2" />Importar API PNCP</Button>
                                 <Button type="button" variant="secondary" size="sm" onClick={() => setIsBulkUploadOpen(true)} disabled={loading}><FileSpreadsheet className="h-4 w-4 mr-2" />Importar Excel</Button>
                             </div>
                         </div>
