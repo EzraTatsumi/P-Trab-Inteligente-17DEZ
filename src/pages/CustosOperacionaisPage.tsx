@@ -1,10 +1,5 @@
 "use client";
 
-/**
- * Página de Configuração de Custos Operacionais - Layout Restaurado v1.0.5
- * Gerencia os parâmetros de diárias, passagens, concessionárias e materiais.
- */
-
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useNavigate, useLocation, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -14,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
-import { ArrowLeft, Activity, Loader2, Save, Settings, ChevronDown, ChevronUp, Plus, Trash2, Pencil, Plane, Package, Search, FileSpreadsheet, HardDrive } from "lucide-react";
+import { ArrowLeft, Activity, Loader2, Save, Settings, ChevronDown, ChevronUp, Plus, Trash2, Pencil, Plane, Package, Search, FileSpreadsheet, HardDrive } from "lucide-center";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { sanitizeError } from "@/lib/errorUtils";
 import { useFormNavigation } from "@/hooks/useFormNavigation";
@@ -155,14 +150,12 @@ const CustosOperacionaisPage = () => {
 
   const ghostActive = isGhostMode();
 
-  // Sincronização robusta de Ano e URL - Ajustada para preservar parâmetros como startTour
   useEffect(() => {
     const yearInUrl = searchParams.get('year');
     const yearNum = yearInUrl ? parseInt(yearInUrl) : null;
     if (yearNum && !isNaN(yearNum) && yearNum !== selectedYear) {
       setSelectedYear(yearNum);
     } else if (selectedYear && yearInUrl !== selectedYear.toString()) {
-      // Criamos uma nova instância para preservar os outros parâmetros (como startTour)
       const newParams = new URLSearchParams(searchParams);
       newParams.set('year', selectedYear.toString());
       setSearchParams(newParams, { replace: true });
@@ -301,9 +294,7 @@ const CustosOperacionaisPage = () => {
   const [subitemPermanenteToOpenId, setSubitemPermanenteToOpenId] = useState<string | null>(null);
   const [isExportImportPermanenteDialogOpen, setIsExportImportPermanenteDialogOpen] = useState(false);
 
-  const collapsibleRefs = useRef<Record<string, HTMLDivElement | null>>({});
-
-  // --- Handlers ---
+  const collapsibleRefs = useRef<Record<string, HTMLDivCenterElement | null>>({});
 
   const handleCollapseChange = useCallback((key: string, open: boolean) => {
       setFieldCollapseState(prev => ({ ...prev, [key]: open }));
@@ -355,25 +346,17 @@ const CustosOperacionaisPage = () => {
       }
   }, []);
 
-  const handleOpenNewServicosTerceiros = useCallback(() => {
-      setDiretrizServicosTerceirosToEdit(null);
-      setIsServicosTerceirosFormOpen(true);
-  }, []);
-
-  const handleOpenNewMaterialPermanente = useCallback(() => {
-      setDiretrizMaterialPermanenteToEdit(null);
-      setIsMaterialPermanenteFormOpen(true);
-  }, []);
-
   const handleSaveMaterialConsumo = async (data: Partial<DiretrizMaterialConsumo> & { ano_referencia: number }) => {
       if (isGhostMode()) {
         setIsSaving(true);
         setTimeout(() => {
           const newItem = {
             ...data,
-            id: 'ghost-subitem-24', // ID FUNDAMENTAL para a Row encontrar o highlight
+            id: 'ghost-subitem-24', 
             user_id: 'ghost-user',
             nr_subitem: data.nr_subitem || '24',
+            nome_subitem: data.nome_subitem || 'Cimento Portland',
+            itens_aquisicao: data.itens_aquisicao,
             ativo: true,
           } as DiretrizMaterialConsumo;
           
@@ -381,10 +364,16 @@ const CustosOperacionaisPage = () => {
             const filtered = prev.filter(p => p.id !== 'ghost-subitem-24');
             return [...filtered, newItem].sort((a, b) => a.nr_subitem.localeCompare(b.nr_subitem));
           });
+
+          // IMPORTANTE: NÃO chame queryClient.invalidateQueries aqui no modo Ghost!
+          // Isso evita que a lista 'pisque' e volte para os dados reais do banco.
           setIsSaving(false);
-          setDiretrizMaterialConsumoToEdit(null);
           setIsMaterialConsumoFormOpen(false);
-          window.dispatchEvent(new CustomEvent('tour:avancar'));
+          
+          // Dá um tempo maior para o DOM renderizar a nova linha antes de mover o balão do tour
+          setTimeout(() => {
+            window.dispatchEvent(new CustomEvent('tour:avancar'));
+          }, 800);
         }, 500);
         return;
       }
@@ -585,7 +574,6 @@ const CustosOperacionaisPage = () => {
           const { data: { user: authUser } } = await supabase.auth.getUser();
           if (!authUser) throw new Error("Usuário não autenticado");
 
-          // Validação local de duplicidade para evitar o erro 409
           if (!data.id) {
               const alreadyExists = diretrizesPassagens.some(p => 
                   p.om_referencia.trim().toUpperCase() === data.om_referencia.trim().toUpperCase()
@@ -662,7 +650,6 @@ const CustosOperacionaisPage = () => {
           const { data: { user: authUser } } = await supabase.auth.getUser();
           if (!authUser) throw new Error("Usuário não autenticado");
 
-          // Validação local de duplicidade para evitar o erro 409
           if (!data.id) {
               const alreadyExists = diretrizesConcessionaria.some(c => 
                   c.categoria === data.categoria && 
@@ -725,8 +712,6 @@ const CustosOperacionaisPage = () => {
           setIsSaving(false);
       }
   };
-
-  // --- Search Logic ---
 
   const indexedItems = useMemo<IndexedItemAquisicao[]>(() => {
     if (!diretrizesMaterialConsumo) return [];
@@ -793,8 +778,6 @@ const CustosOperacionaisPage = () => {
       setTimeout(() => { const element = document.getElementById(`diretriz-material-permanente-${diretrizId}`); if (element) element.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 100);
       setSearchTermPermanente("");
   };
-
-  // --- Render Helpers ---
 
   const renderSearchResults = () => {
       if (searchTerm.length < 3) return (<Card className="p-4 text-center text-muted-foreground">Digite pelo menos 3 caracteres para iniciar a busca.</Card>);
@@ -994,8 +977,6 @@ const CustosOperacionaisPage = () => {
       );
   };
 
-  // --- Lifecycle ---
-
   useEffect(() => {
     (window as any).expandMaterialConsumo = () => {
       handleCollapseChange('material_consumo_detalhe', true);
@@ -1007,7 +988,6 @@ const CustosOperacionaisPage = () => {
   }, []);
   
   useEffect(() => {
-    // Removido isFetchingPageData para evitar que o tour trave se houver re-fetch em background
     if (isLoadingDefaultYear || isLoadingPageData || hasStartedTour.current) return;
 
     const startTour = searchParams.get('startTour') === 'true';
@@ -1016,7 +996,6 @@ const CustosOperacionaisPage = () => {
 
     if (startTour && ghost && missionId === '2' && user?.id) {
       hasStartedTour.current = true;
-      console.log("Iniciando Missão 02..."); // Log para debug no console
       const timer = setTimeout(() => {
         runMission02(user.id, () => {
           const completed = JSON.parse(localStorage.getItem(`completed_missions_${user.id}`) || '[]');
@@ -1025,7 +1004,7 @@ const CustosOperacionaisPage = () => {
           }
           navigate('/ptrab?showHub=true');
         });
-      }, 800); // Aumento leve no delay para garantir renderização
+      }, 800); 
       return () => clearTimeout(timer);
     }
   }, [isLoadingDefaultYear, isLoadingPageData, searchParams, navigate, user?.id]);
@@ -1056,15 +1035,13 @@ const CustosOperacionaisPage = () => {
   }, [pageData, diretrizes]);
 
   useEffect(() => {
-    // Prioridade 1: Se estiver na Missão 02, usa APENAS o Ghost Data
     if (isGhostMode() && getActiveMission() === '2') {
       const scenarioItems = GHOST_DATA.missao_02.subitens_lista;
       if (JSON.stringify(diretrizesMaterialConsumo) !== JSON.stringify(scenarioItems)) {
         setDiretrizesMaterialConsumo(scenarioItems as any);
       }
-      return; // Bloqueia a entrada de dados reais
+      return; 
     }
-    // Sincronização normal (Dados Reais)
     if (diretrizesMaterialConsumoHook && JSON.stringify(diretrizesMaterialConsumoHook) !== JSON.stringify(diretrizesMaterialConsumo)) {
       setDiretrizesMaterialConsumo(diretrizesMaterialConsumoHook);
     }

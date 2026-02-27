@@ -10,13 +10,21 @@ let activeMissionDriver: any = null;
 if (typeof window !== 'undefined') {
   window.addEventListener('tour:avancar', () => {
     if (activeMissionDriver) {
+      const currentIndex = activeMissionDriver.getActiveIndex();
+      
+      // TRAVA MANUAL: Se estiver no Passo 09 (índice 8), ignore avanços automáticos
+      // Isso força o usuário a clicar em "Próximo" após revisar a tabela
+      if (currentIndex === 8) {
+        console.log("[Tour] Em modo manual no Passo 09. Aguardando clique do usuário.");
+        return;
+      }
+
       const popover = document.querySelector('.driver-popover') as HTMLElement;
       if (popover) {
         popover.style.opacity = '0';
         popover.style.transition = 'none';
       }
 
-      const currentIndex = activeMissionDriver.getActiveIndex();
       const steps = activeMissionDriver.getConfig().steps;
       const nextStep = steps[currentIndex + 1];
 
@@ -298,7 +306,7 @@ export const runMission02 = (userId: string, onComplete: () => void) => {
         }
       },
       {
-        element: '#diretriz-material-consumo-ghost-subitem-24',
+        element: '[id*="ghost-subitem-24"]',
         popover: {
           title: 'Missão Cumprida!',
           description: 'Parabéns, Maj! O Subitem 24 (Cimento) agora é uma diretriz oficial. Clique em "Concluir Missão" para retornar.',
@@ -308,8 +316,7 @@ export const runMission02 = (userId: string, onComplete: () => void) => {
           nextBtnText: 'Concluir Missão'
         },
         onHighlighted: (el) => {
-          // Garante que o item 24 "fure" a camada de sombra do tour
-          el.style.zIndex = "10000"; 
+          el.style.zIndex = "1000000"; 
           el.classList.add('animate-pulse', 'border-primary', 'border-4');
           el.scrollIntoView({ behavior: 'smooth', block: 'center' });
           if ((window as any).expandMaterialConsumo) {
