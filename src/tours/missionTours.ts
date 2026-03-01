@@ -202,7 +202,6 @@ export const runMission02 = (userId: string, onComplete: () => void) => {
   const d = driver({
     ...commonConfig,
     allowClose: false, 
-    overlayClickAction: 'none',
     steps: [
       {
         element: '.card-diretrizes-operacionais',
