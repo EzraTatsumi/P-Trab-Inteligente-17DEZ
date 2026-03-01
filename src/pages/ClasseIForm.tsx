@@ -1,3 +1,5 @@
+"use client";
+
 import { useState, useMemo, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -796,7 +798,7 @@ export default function ClasseIForm() {
         categoria: "RACAO_QUENTE",
         organizacao: registro.organizacao,
         ug: registro.ug,
-        dias_operacao: registro.dias_operacao,
+        dias_operacao: registro.diasOperacao,
         efetivo: registro.efetivo || 0,
         fase_atividade: registro.faseAtividade || "",
         om_qs: registro.omQS,
@@ -822,7 +824,7 @@ export default function ClasseIForm() {
         categoria: "RACAO_OPERACIONAL",
         organizacao: registro.organizacao,
         ug: registro.ug,
-        dias_operacao: registro.dias_operacao,
+        dias_operacao: registro.diasOperacao,
         efetivo: registro.efetivo || 0,
         fase_atividade: registro.faseAtividade || "",
         quantidade_r2: Math.round(registro.quantidadeR2 || 0),
