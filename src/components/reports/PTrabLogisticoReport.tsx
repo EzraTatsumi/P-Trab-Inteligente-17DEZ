@@ -414,10 +414,10 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
             ...grupo.linhasQR,
             ...grupo.linhasClasseII,
             ...grupo.linhasClasseV,
-            ...grupo.linhasClasseVI, // INCLUÍDO
-            ...grupo.linhasClasseVII, // INCLUÍDO
-            ...grupo.linhasClasseVIII, // INCLUÍDO
-            ...grupo.linhasClasseIX, // INCLUÍDO
+            ...grupo.linhasClasseVI, 
+            ...grupo.linhasClasseVII, 
+            ...grupo.linhasClasseVIII, 
+            ...grupo.linhasClasseIX, 
             ...linhasClasseIIIOrdenadas,
         ].sort((a, b) => {
             const getClasseOrder = (linha: any) => {
@@ -428,7 +428,8 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                 if (CLASSE_V_CATEGORIES.includes(cat)) return 5;
                 if (CLASSE_VI_CATEGORIES.includes(cat)) return 6;
                 if (CLASSE_VII_CATEGORIES.includes(cat)) return 7;
-                if (CLASSE_VIII_CATEGORIES.includes(cat)) return 8;
+                // CORREÇÃO: Tratar explicitamente Remonta/Veterinária como Classe VIII
+                if (CLASSE_VIII_CATEGORIES.includes(cat) || cat === 'Remonta/Veterinária') return 8;
                 if (CLASSE_IX_CATEGORIES.includes(cat)) return 9;
                 return 2; // Classe II (default)
             };
@@ -565,7 +566,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                 let prefixoClasse = '';
                 let generateMemoriaFunc: (r: ClasseIIRegistro) => string;
 
-                // CORREÇÃO: Garantir que a ordem de verificação cubra todas as classes
+                // CORREÇÃO: Garantir que a ordem de verificação cubra todas as classes e identifique Remonta como VIII
                 if (CLASSE_V_CATEGORIES.includes(registro.categoria)) {
                     prefixoClasse = 'CLASSE V';
                     generateMemoriaFunc = generateClasseVMemoriaCalculo;
@@ -575,7 +576,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                 } else if (CLASSE_VII_CATEGORIES.includes(registro.categoria)) {
                     prefixoClasse = 'CLASSE VII';
                     generateMemoriaFunc = generateClasseVIIMemoriaCalculo;
-                } else if (CLASSE_VIII_CATEGORIES.includes(registro.categoria)) {
+                } else if (CLASSE_VIII_CATEGORIES.includes(registro.categoria) || registro.categoria === 'Remonta/Veterinária') {
                     prefixoClasse = 'CLASSE VIII';
                     generateMemoriaFunc = generateClasseVIIIMemoriaCalculo;
                 } else if (CLASSE_IX_CATEGORIES.includes(registro.categoria)) {
@@ -882,19 +883,10 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
 
   // Função auxiliar para renderizar as linhas de despesa no HTML/PDF
   const renderExpenseLines = (allExpenseLines: (LinhaTabela | LinhaClasseII | LinhaClasseIII)[], currentOMName: string) => {
-    console.log(`[PTrabLogisticoReport] Rendering ${allExpenseLines.length} expense lines for ${currentOMName}`);
-
     return allExpenseLines.map((linha, index) => {
-        console.log(`[PTrabLogisticoReport] Processing line ${index} for ${currentOMName}:`, linha);
-        
         const isClasseI = 'tipo' in linha;
         const isClasseIII = 'categoria_equipamento' in linha;
         const isClasseII_IX = !isClasseI && !isClasseIII;
-
-        if (isClasseII_IX) {
-          const registro = (linha as LinhaClasseII).registro as ClasseIIRegistro;
-          console.log(`[PTrabLogisticoReport] Line ${index} is Classe II/IX with category:`, registro.categoria);
-        }
 
         if (!linha) return null;
         
@@ -948,7 +940,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
             const isCombustivelLinha = linhaClasseIII.tipo_suprimento !== 'LUBRIFICANTE';
             
             const omDetentoraEquipamento = registro.organizacao; 
-            const omDestinoRecurso = currentOMName; // USANDO O ARGUMENTO CORRIGIDO
+            const omDestinoRecurso = currentOMName; 
             
             const tipoSuprimentoLabel = isLubrificante(registro) ? 'LUBRIFICANTE' : getTipoCombustivelLabel(linhaClasseIII.tipo_suprimento);
             const categoriaEquipamento = getTipoEquipamentoLabel(linhaClasseIII.categoria_equipamento);
@@ -1006,7 +998,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
             let prefixoClasse = '';
             let generateMemoriaFunc: (r: ClasseIIRegistro) => string;
 
-            // Lógica de identificação da classe (garantindo que todas as classes sejam cobertas)
+            // CORREÇÃO: Identificar Remonta explicitamente como Classe VIII
             if (CLASSE_V_CATEGORIES.includes(registro.categoria)) {
                 prefixoClasse = 'CLASSE V';
                 generateMemoriaFunc = generateClasseVMemoriaCalculo;
@@ -1016,7 +1008,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
             } else if (CLASSE_VII_CATEGORIES.includes(registro.categoria)) {
                 prefixoClasse = 'CLASSE VII';
                 generateMemoriaFunc = generateClasseVIIMemoriaCalculo;
-            } else if (CLASSE_VIII_CATEGORIES.includes(registro.categoria)) {
+            } else if (CLASSE_VIII_CATEGORIES.includes(registro.categoria) || registro.categoria === 'Remonta/Veterinária') {
                 prefixoClasse = 'CLASSE VIII';
                 generateMemoriaFunc = generateClasseVIIIMemoriaCalculo;
             } else if (CLASSE_IX_CATEGORIES.includes(registro.categoria)) {
@@ -1167,10 +1159,10 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                       ...grupo.linhasQR,
                       ...grupo.linhasClasseII,
                       ...grupo.linhasClasseV,
-                      ...grupo.linhasClasseVI, // INCLUÍDO
-                      ...grupo.linhasClasseVII, // INCLUÍDO
-                      ...grupo.linhasClasseVIII, // INCLUÍDO
-                      ...grupo.linhasClasseIX, // INCLUÍDO
+                      ...grupo.linhasClasseVI, 
+                      ...grupo.linhasClasseVII, 
+                      ...grupo.linhasClasseVIII, 
+                      ...grupo.linhasClasseIX, 
                       ...linhasClasseIIIOrdenadas,
                   ].sort((a, b) => {
                       const getClasseOrder = (linha: any) => {
@@ -1181,7 +1173,8 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                           if (CLASSE_V_CATEGORIES.includes(cat)) return 5;
                           if (CLASSE_VI_CATEGORIES.includes(cat)) return 6;
                           if (CLASSE_VII_CATEGORIES.includes(cat)) return 7;
-                          if (CLASSE_VIII_CATEGORIES.includes(cat)) return 8;
+                          // CORREÇÃO: Tratar explicitamente Remonta/Veterinária como Classe VIII
+                          if (CLASSE_VIII_CATEGORIES.includes(cat) || cat === 'Remonta/Veterinária') return 8;
                           if (CLASSE_IX_CATEGORIES.includes(cat)) return 9;
                           return 2;
                       };
@@ -1201,11 +1194,6 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                       return 0;
                   });
                   
-                  console.log(`[PTrabLogisticoReport] Ordered lines for ${nomeOM}:`, allExpenseLines);
-                  console.log(`[PTrabLogisticoReport] All expense lines for ${nomeOM}:`, allExpenseLines);
-                  console.log(`[PTrabLogisticoReport] Raw grupo data for ${nomeOM}:`, grupo);
-
-
                   return (
                     <React.Fragment key={`${nomeOM}-group`}>
                       {renderExpenseLines(allExpenseLines, nomeOM)}
@@ -1319,12 +1307,12 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
         /* REGRAS DE ESTILO UNIFICADAS (TELA E IMPRESSÃO) */
         .ptrab-print-container { max-width: 100%; margin: 0 auto; padding: 2rem 1rem; font-family: Arial, sans-serif; }
         .ptrab-header { text-align: center; margin-bottom: 1.5rem; line-height: 1.4; }
-        .ptrab-header p { font-size: 11pt; } /* Tamanho de fonte fixo */
+        .ptrab-header p { font-size: 11pt; } 
         .ptrab-info { margin-bottom: 0.3rem; font-size: 10pt; line-height: 1.3; }
           .info-item { margin-bottom: 0.15rem; }
         .ptrab-table-wrapper { margin-top: 0.2rem; margin-bottom: 2rem; overflow-x: auto; }
         .ptrab-table { width: 100%; border-collapse: collapse; font-size: 9pt; border: 1px solid #000; line-height: 1.1; }
-        .ptrab-table th, .ptrab-table td { border: 1px solid #000; padding: 3px 4px; vertical-align: middle; font-size: 8pt; } /* Fonte de dados reduzida para 8pt */
+        .ptrab-table th, .ptrab-table td { border: 1px solid #000; padding: 3px 4px; vertical-align: middle; font-size: 8pt; } 
         .ptrab-table thead th { background-color: #E8E8E8; font-weight: bold; text-align: center; font-size: 9pt; }
         
         /* LARGURAS DE COLUNA FIXAS */
@@ -1361,7 +1349,6 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
           .ptrab-table th, .ptrab-table td { border: 0.25pt solid #000 !important; }
           .ptrab-table { border: 0.25pt solid #000 !important; }
           
-          /* CORREÇÃO CRÍTICA: Força alinhamento vertical middle para as colunas de dados A a H */
           .expense-row td:nth-child(1),
           .expense-row td:nth-child(2),
           .expense-row td:nth-child(3),
@@ -1373,12 +1360,10 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
               vertical-align: middle !important;
           }
           
-          /* Coluna I (Detalhamento) deve ser top */
           .expense-row .col-detalhamento {
               vertical-align: top !important;
           }
           
-          /* Garante que as cores de fundo sejam impressas */
           .subtotal-row td, .total-geral-soma-row td, .total-geral-final-row td,
           .col-valor-natureza, .col-combustivel-data-filled {
               -webkit-print-color-adjust: exact;
