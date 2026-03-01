@@ -229,17 +229,13 @@ const PTrabManager = () => {
   useEffect(() => {
     if (!user?.id) return;
 
-    if (shouldShowVictory(user.id)) {
-      setShowVictory(true);
-      markVictoryAsShown(user.id);
-      dispararConfetes();
-    }
-
     const handleVictory = (e: any) => {
       if (e.detail?.userId === user.id) {
-        setShowVictory(true);
-        markVictoryAsShown(user.id);
-        dispararConfetes();
+        if (shouldShowVictory(user.id)) {
+          setShowVictory(true);
+          markVictoryAsShown(user.id);
+          dispararConfetes();
+        }
       }
     };
 
