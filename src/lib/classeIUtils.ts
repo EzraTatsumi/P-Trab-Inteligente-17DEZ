@@ -115,10 +115,10 @@ export const formatFormula = (
   const minR = Math.min(nrRefInt, 3);
 
   if (tipo === 'complemento') {
-    return `${formatNumber(efetivo)} ${militarPlural} x ${formatNumber(minR)} ref. int. x (${formatCurrency(valorEtapa)} / 3) x ${formatNumber(diasOperacao)} ${diaPlural} = ${formatCurrency(valorFinal)}`;
+    return `${formatNumber(efetivo, 0)} ${militarPlural} x ${formatNumber(minR, 0)} ref. int. x (${formatCurrency(valorEtapa)} / 3) x ${formatNumber(diasOperacao, 0)} ${diaPlural} = ${formatCurrency(valorFinal)}`;
   } else {
     const diasEtapaPlural = diasEtapaSolicitada === 1 ? 'dia' : 'dias';
-    return `${formatNumber(efetivo)} ${militarPlural} x ${formatCurrency(valorEtapa)} x ${formatNumber(diasEtapaSolicitada)} ${diasEtapaPlural} = ${formatCurrency(valorFinal)}`;
+    return `${formatNumber(efetivo, 0)} ${militarPlural} x ${formatCurrency(valorEtapa)} x ${formatNumber(diasEtapaSolicitada, 0)} ${diasEtapaPlural} = ${formatCurrency(valorFinal)}`;
   }
 };
 
@@ -135,33 +135,45 @@ export function generateRacaoQuenteMemoriaCalculo(registro: ClasseIRegistro): { 
   const diaPlural = diasOperacao === 1 ? 'dia' : 'dias';
   const diasEtapaSolicitadaPlural = calculos.diasEtapaSolicitada === 1 ? 'dia' : 'dias';
 
-  const qs = `33.90.30 - Aquisição de Gêneros Alimentícios (QS) destinados à complementação de alimentação de ${efetivo} ${militarPlural} ${preposition} ${organizacao}, durante ${diasOperacao} ${diaPlural} de ${faseFormatada}.
+  const qs = `33.90.30 - Aquisição de Gêneros Alimentícios (QS) destinados à complementação de alimentação de ${formatNumber(efetivo, 0)} ${militarPlural} ${preposition} ${organizacao}, durante ${formatNumber(diasOperacao, 0)} ${diaPlural} de ${faseFormatada}.
 
 Cálculo:
-- Valor da Etapa (QS): ${formatCurrency(valorQS)}.
-- Nr Refeições Intermediárias: ${nrRefInt}.
-- Dias de Etapa Solicitada: ${formatNumber(calculos.diasEtapaSolicitada)} ${diasEtapaSolicitadaPlural}.
-- Dias de Complemento de Etapa: ${formatNumber(diasOperacao)} ${diaPlural}.
+
+Valor da Etapa (QS): ${formatCurrency(valorQS)}.
+
+Nr Refeições Intermediárias: ${formatNumber(nrRefInt, 0)}.
+
+Dias de Etapa Solicitada: ${formatNumber(calculos.diasEtapaSolicitada, 0)} ${diasEtapaSolicitadaPlural}.
+
+Dias de Complemento de Etapa: ${formatNumber(diasOperacao, 0)} ${diaPlural}.
 
 Fórmula do Complemento: [Efetivo x Nr Ref Int (máx 3) x Valor da Etapa/3 x Dias de Complemento de Etapa]
 Fórmula da Etapa Solicitada: [Efetivo x Valor da etapa x Dias de Etapa Solicitada]
-- Complemento de Etapa: ${formatFormula(efetivo, diasOperacao, nrRefInt, valorQS, 0, 'complemento', calculos.complementoQS)}
-- Etapa Solicitada: ${formatFormula(efetivo, diasOperacao, nrRefInt, valorQS, calculos.diasEtapaSolicitada, 'etapa', calculos.etapaQS)}
+
+Complemento de Etapa: ${formatFormula(efetivo, diasOperacao, nrRefInt, valorQS, 0, 'complemento', calculos.complementoQS)}
+
+Etapa Solicitada: ${formatFormula(efetivo, diasOperacao, nrRefInt, valorQS, calculos.diasEtapaSolicitada, 'etapa', calculos.etapaQS)}
 
 Total QS: ${formatCurrency(calculos.totalQS)}.`;
 
-  const qr = `33.90.30 - Aquisição de Gêneros Alimentícios (QR) destinados à complementação de alimentação de ${efetivo} ${militarPlural} ${preposition} ${organizacao}, durante ${diasOperacao} ${diaPlural} de ${faseFormatada}.
+  const qr = `33.90.30 - Aquisição de Gêneros Alimentícios (QR) destinados à complementação de alimentação de ${formatNumber(efetivo, 0)} ${militarPlural} ${preposition} ${organizacao}, durante ${formatNumber(diasOperacao, 0)} ${diaPlural} de ${faseFormatada}.
 
 Cálculo:
-- Valor da Etapa (QR): ${formatCurrency(valorQR)}.
-- Nr Refeições Intermediárias: ${nrRefInt}.
-- Dias de Etapa Solicitada: ${formatNumber(calculos.diasEtapaSolicitada)} ${diasEtapaSolicitadaPlural}.
-- Dias de Complemento de Etapa: ${formatNumber(diasOperacao)} ${diaPlural}.
+
+Valor da Etapa (QR): ${formatCurrency(valorQR)}.
+
+Nr Refeições Intermediárias: ${formatNumber(nrRefInt, 0)}.
+
+Dias de Etapa Solicitada: ${formatNumber(calculos.diasEtapaSolicitada, 0)} ${diasEtapaSolicitadaPlural}.
+
+Dias de Complemento de Etapa: ${formatNumber(diasOperacao, 0)} ${diaPlural}.
 
 Fórmula do Complemento: [Efetivo x Nr Ref Int (máx 3) x Valor da Etapa/3 x Dias de Complemento de Etapa]
 Fórmula da Etapa Solicitada: [Efetivo x Valor da etapa x Dias de Etapa Solicitada]
-- Complemento de Etapa: ${formatFormula(efetivo, diasOperacao, nrRefInt, valorQR, 0, 'complemento', calculos.complementoQR)}
-- Etapa Solicitada: ${formatFormula(efetivo, diasOperacao, nrRefInt, valorQR, calculos.diasEtapaSolicitada, 'etapa', calculos.etapaQR)}
+
+Complemento de Etapa: ${formatFormula(efetivo, diasOperacao, nrRefInt, valorQR, 0, 'complemento', calculos.complementoQR)}
+
+Etapa Solicitada: ${formatFormula(efetivo, diasOperacao, nrRefInt, valorQR, calculos.diasEtapaSolicitada, 'etapa', calculos.etapaQR)}
 
 Total QR: ${formatCurrency(calculos.totalQR)}.`;
 
@@ -180,14 +192,14 @@ export function generateRacaoOperacionalMemoriaCalculo(registro: ClasseIRegistro
   const diaPlural = D === 1 ? 'dia' : 'dias';
   const preposition = getOmPreposition(organizacao);
 
-  const header = `33.90.30 - Fornecimento de Ração Operacional para atender ${formatNumber(E)} ${militarPlural} ${preposition} ${organizacao}, por até ${formatNumber(D)} ${diaPlural} de ${faseFormatada}, em caso de comprometimento do fluxo Cl I (QR/QS) ou de conduções de atividades descentralizadas/afastadas de instalações militares.`;
+  const header = `33.90.30 - Fornecimento de Ração Operacional para atender ${formatNumber(E, 0)} ${militarPlural} ${preposition} ${organizacao}, por até ${formatNumber(D, 0)} ${diaPlural} de ${faseFormatada}, em caso de comprometimento do fluxo Cl I (QR/QS) ou de conduções de atividades descentralizadas/afastadas de instalações militares.`;
   const racaoPlural = totalRacoes === 1 ? 'Ração Operacional' : 'Rações Operacionais';
   const unidadePlural = totalRacoes === 1 ? 'unidade' : 'unidades';
 
   return `${header}
 
-Quantitativo R2 (24h): ${formatNumber(R2)} un.
-Quantitativo R3 (12h): ${formatNumber(R3)} un.
+Quantitativo R2 (24h): ${formatNumber(R2, 0)} un.
+Quantitativo R3 (12h): ${formatNumber(R3, 0)} un.
 
-Total de ${racaoPlural}: ${formatNumber(totalRacoes)} ${unidadePlural}.`;
+Total de ${racaoPlural}: ${formatNumber(totalRacoes, 0)} ${unidadePlural}.`;
 }
