@@ -867,7 +867,7 @@ export default function ClasseIForm() {
                     <TabsTrigger value="RACAO_OPERACIONAL">Ração Operacional (R2/R3)</TabsTrigger>
                   </TabsList>
                   <TabsContent value="RACAO_QUENTE" className="mt-4">
-                    <div className="space-y-2 p-4 bg-white rounded-lg">
+                    <div className="space-y-2 p-4 bg-muted/50 rounded-lg">
                       <h4 className="font-semibold text-base">Configuração de QS/QR</h4>
                       <div className="grid md:grid-cols-3 gap-6 pt-2">
                         <div className="space-y-2">
