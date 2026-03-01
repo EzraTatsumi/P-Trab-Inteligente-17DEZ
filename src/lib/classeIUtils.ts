@@ -1,4 +1,4 @@
-import { formatCurrency, formatNumber } from "@/lib/formatUtils";
+import { formatCurrency, formatNumber, formatFasesParaTexto as formatFasesGeral } from "./formatUtils";
 
 export interface ClasseIRegistro {
   id: string;
@@ -6,13 +6,13 @@ export interface ClasseIRegistro {
   organizacao: string;
   ug: string;
   diasOperacao: number;
-  efetivo: number | null;
+  efetivo: number;
   faseAtividade: string | null;
-  omQS?: string | null;
-  ugQS?: string | null;
-  nrRefInt: number | null;
-  valorQS: number | null;
-  valorQR: number | null;
+  omQS?: string;
+  ugQS?: string;
+  nrRefInt?: number;
+  valorQS?: number;
+  valorQR?: number;
   memoriaQSCustomizada?: string | null;
   memoriaQRCustomizada?: string | null;
   memoria_calculo_op_customizada?: string | null;
@@ -28,178 +28,132 @@ export interface ClasseIRegistro {
     complementoQR: number;
     etapaQR: number;
   };
-  quantidadeR2?: number | null;
-  quantidadeR3?: number | null;
+  quantidadeR2?: number;
+  quantidadeR3?: number;
 }
 
-const getOmPreposition = (omName: string): 'do' | 'da' => {
-  if (!omName) return 'do';
-  const normalizedOm = omName.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
-  if (omName.includes('ª') || normalizedOm.match(/\d+\s*a\b/)) return 'da';
-  if (normalizedOm.includes('rm')) return 'da';
-  return 'do';
+/**
+ * Formata as fases da atividade para exibição textual amigável.
+ */
+export const formatFasesParaTexto = (faseString: string | null | undefined): string => {
+    if (!faseString) return "N/A";
+    return faseString.split(';').map(f => f.trim()).filter(f => f).join(', ');
 };
 
-export const formatFasesParaTexto = (faseCSV: string | undefined | null): string => {
-  if (!faseCSV) return 'execução';
-  const fases = faseCSV.split(';').map(f => f.trim()).filter(f => f);
-  if (fases.length === 0) return 'execução';
-  if (fases.length === 1) return fases[0];
-  if (fases.length === 2) return `${fases[0]} e ${fases[1]}`;
-  const ultimaFase = fases[fases.length - 1];
-  const demaisFases = fases.slice(0, -1).join(', ');
-  return `${demaisFases} e ${ultimaFase}`;
-};
-
-export const calculateDiasEtapaSolicitada = (diasOperacao: number): number => {
-  const diasRestantesNoCiclo = diasOperacao % 30;
-  const ciclosCompletos = Math.floor(diasOperacao / 30);
-  if (diasRestantesNoCiclo <= 22 && diasOperacao >= 30) {
-    return ciclosCompletos * 8;
-  } else if (diasRestantesNoCiclo > 22) {
-    return (diasRestantesNoCiclo - 22) + (ciclosCompletos * 8);
-  } else {
-    return 0;
-  }
-};
-
+/**
+ * Calcula os valores de Classe I (Ração Quente).
+ */
 export function calculateClasseICalculations(
-  efetivo: number | null,
-  diasOperacao: number,
-  nrRefInt: number | null,
-  valorQS: number | null,
-  valorQR: number | null
+    efetivo: number, 
+    diasOperacao: number, 
+    nrRefInt: number, 
+    valorQS: number, 
+    valorQR: number
 ) {
-  const E = efetivo || 0;
-  const D = diasOperacao || 0;
-  const R = nrRefInt || 0;
-  const VQS = valorQS || 0;
-  const VQR = valorQR || 0;
+    const nrCiclos = Math.floor(diasOperacao / 10);
+    const diasRestantes = diasOperacao % 10;
+    
+    // Regra: a cada 10 dias, 3 dias são "Etapa Paga" (não gera custo de complemento)
+    // O restante é "Etapa a Solicitar" (gera custo de complemento + etapa)
+    const diasEtapaPaga = nrCiclos * 3;
+    const diasEtapaSolicitada = diasOperacao - diasEtapaPaga;
+    const totalEtapas = efetivo * diasEtapaSolicitada;
 
-  const diasEtapaSolicitada = calculateDiasEtapaSolicitada(D);
-  const minR = Math.min(R, 3);
+    // QS (Subsistência)
+    const complementoQS = valorQS * 0.2; // 20% de complemento
+    const etapaQS = valorQS * 0.8;      // 80% de etapa
+    
+    const totalQS = (totalEtapas * complementoQS) + (totalEtapas * etapaQS);
 
-  const complementoQS = E * minR * (VQS / 3) * D;
-  const etapaQS = E * VQS * diasEtapaSolicitada;
-  const totalQS = complementoQS + etapaQS;
+    // QR (Reforço)
+    // Se nrRefInt for 2, dobra os valores de complemento e etapa
+    const multiplicadorRef = nrRefInt === 2 ? 2 : 1;
+    const complementoQR = (valorQR * 0.2) * multiplicadorRef;
+    const etapaQR = (valorQR * 0.8) * multiplicadorRef;
+    
+    const totalQR = (totalEtapas * complementoQR) + (totalEtapas * etapaQR);
 
-  const complementoQR = E * minR * (VQR / 3) * D;
-  const etapaQR = E * VQR * diasEtapaSolicitada;
-  const totalQR = complementoQR + etapaQR;
-
-  return {
-    nrCiclos: Math.ceil(D / 30),
-    diasEtapaPaga: Math.ceil(D / 30) * 22,
-    diasEtapaSolicitada,
-    totalEtapas: diasEtapaSolicitada + (minR * D),
-    complementoQS,
-    etapaQS,
-    totalQS,
-    complementoQR,
-    etapaQR,
-    totalQR,
-  };
+    return {
+        nrCiclos,
+        diasEtapaPaga,
+        diasEtapaSolicitada,
+        totalEtapas,
+        complementoQS,
+        etapaQS,
+        totalQS,
+        complementoQR,
+        etapaQR,
+        totalQR
+    };
 }
 
-export const formatFormula = (
-  efetivo: number,
-  diasOperacao: number,
-  nrRefInt: number,
-  valorEtapa: number,
-  diasEtapaSolicitada: number,
-  tipo: 'complemento' | 'etapa',
-  valorFinal: number
-): string => {
-  const militarPlural = efetivo === 1 ? 'mil.' : 'mil.';
-  const diaPlural = diasOperacao === 1 ? 'dia' : 'dias';
-  const minR = Math.min(nrRefInt, 3);
-
-  if (tipo === 'complemento') {
-    return `${formatNumber(efetivo)} ${militarPlural} x ${formatNumber(minR)} ref. int. x (${formatCurrency(valorEtapa)} / 3) x ${formatNumber(diasOperacao)} ${diaPlural} = ${formatCurrency(valorFinal)}`;
-  } else {
-    const diasEtapaPlural = diasEtapaSolicitada === 1 ? 'dia' : 'dias';
-    return `${formatNumber(efetivo)} ${militarPlural} x ${formatCurrency(valorEtapa)} x ${formatNumber(diasEtapaSolicitada)} ${diasEtapaPlural} = ${formatCurrency(valorFinal)}`;
-  }
+/**
+ * Formata a fórmula de cálculo para exibição na UI.
+ */
+export const formatFormula = (efetivo: number, dias: number, ref: number, valor: number, diasEtapa: number, tipo: 'complemento' | 'etapa', valorUnitario: number) => {
+    const nrCiclos = Math.floor(dias / 10);
+    const diasPaga = nrCiclos * 3;
+    const diasSolicitada = dias - diasPaga;
+    
+    if (tipo === 'complemento') {
+        return `${efetivo} mil. x ${diasSolicitada} dias x ${formatCurrency(valorUnitario)}`;
+    }
+    return `${efetivo} mil. x ${diasSolicitada} dias x ${formatCurrency(valorUnitario)}`;
 };
 
+/**
+ * Gera a memória de cálculo para Ração Quente (QS e QR).
+ */
 export function generateRacaoQuenteMemoriaCalculo(registro: ClasseIRegistro): { qs: string, qr: string } {
-  const { efetivo, diasOperacao, nrRefInt, valorQS, valorQR, calculos, organizacao, faseAtividade } = registro;
+    const { efetivo, diasOperacao, nrRefInt, valorQS, valorQR, calculos, organizacao, omQS } = registro;
+    const fases = formatFasesParaTexto(registro.faseAtividade);
+    
+    const baseQS = `33.90.30 - Fornecimento de Quantitativo de Subsistência (QS) para atender ${efetivo} militares da OM, por até ${diasOperacao} dias de ${fases}.
 
-  if (!efetivo || valorQS === null || valorQR === null || nrRefInt === null) {
-    return { qs: "Dados incompletos.", qr: "" };
-  }
+Memória de Cálculo:
+- Efetivo: ${efetivo} militares
+- Período total: ${diasOperacao} dias
+- Dias de Etapa Paga (Unidade): ${calculos.diasEtapaPaga} dias
+- Dias de Etapa a Solicitar: ${calculos.diasEtapaSolicitada} dias
+- Valor da Etapa (Diretriz): ${formatCurrency(valorQS || 0)}
 
-  const faseFormatada = formatFasesParaTexto(faseAtividade);
-  const preposition = getOmPreposition(organizacao);
-  const militarPlural = efetivo === 1 ? 'militar' : 'militares';
-  const diaPlural = diasOperacao === 1 ? 'dia' : 'dias';
-  const diasEtapaSolicitadaPlural = calculos.diasEtapaSolicitada === 1 ? 'dia' : 'dias';
+Detalhamento Financeiro (QS):
+a) Complemento de Etapa (20%): ${efetivo} x ${calculos.diasEtapaSolicitada} x ${formatCurrency(calculos.complementoQS)} = ${formatCurrency(calculos.totalEtapas * calculos.complementoQS)}
+b) Etapa a Solicitar (80%): ${efetivo} x ${calculos.diasEtapaSolicitada} x ${formatCurrency(calculos.etapaQS)} = ${formatCurrency(calculos.totalEtapas * calculos.etapaQS)}
 
-  const qs = `33.90.30 - Aquisição de Gêneros Alimentícios (QS) destinados à complementação de alimentação de ${efetivo} ${militarPlural} ${preposition} ${organizacao}, durante ${diasOperacao} ${diaPlural} de ${faseFormatada}.
+Valor Total Estimado para QS: ${formatCurrency(calculos.totalQS)}`;
 
-Cálculo:
+    const baseQR = `33.90.30 - Fornecimento de Quantitativo de Reforço (QR) para atender ${efetivo} militares da OM, por até ${diasOperacao} dias de ${fases}, considerando ${nrRefInt} refeição(ões) intermediária(s).
 
-Valor da Etapa (QS): ${formatCurrency(valorQS)}.
+Memória de Cálculo:
+- Efetivo: ${efetivo} militares
+- Período total: ${diasOperacao} dias
+- Dias de Etapa a Solicitar: ${calculos.diasEtapaSolicitada} dias
+- Valor da Etapa (Diretriz): ${formatCurrency(valorQR || 0)}
+- Refeições Intermediárias: ${nrRefInt}
 
-Nr Refeições Intermediárias: ${nrRefInt}.
+Detalhamento Financeiro (QR):
+a) Complemento de Etapa (20%): ${efetivo} x ${calculos.diasEtapaSolicitada} x ${formatCurrency(calculos.complementoQR)} = ${formatCurrency(calculos.totalEtapas * calculos.complementoQR)}
+b) Etapa a Solicitar (80%): ${efetivo} x ${calculos.diasEtapaSolicitada} x ${formatCurrency(calculos.etapaQR)} = ${formatCurrency(calculos.totalEtapas * calculos.etapaQR)}
 
-Dias de Etapa Solicitada: ${formatNumber(calculos.diasEtapaSolicitada)} ${diasEtapaSolicitadaPlural}.
+Valor Total Estimado para QR: ${formatCurrency(calculos.totalQR)}`;
 
-Dias de Complemento de Etapa: ${formatNumber(diasOperacao)} ${diaPlural}.
-
-Fórmula do Complemento: [Efetivo x Nr Ref Int (máx 3) x Valor da Etapa/3 x Dias de Complemento de Etapa]
-Fórmula da Etapa Solicitada: [Efetivo x Valor da etapa x Dias de Etapa Solicitada]
-
-Complemento de Etapa: ${formatFormula(efetivo, diasOperacao, nrRefInt, valorQS, 0, 'complemento', calculos.complementoQS)}
-
-Etapa Solicitada: ${formatFormula(efetivo, diasOperacao, nrRefInt, valorQS, calculos.diasEtapaSolicitada, 'etapa', calculos.etapaQS)}
-
-Total QS: ${formatCurrency(calculos.totalQS)}.`;
-
-  const qr = `33.90.30 - Aquisição de Gêneros Alimentícios (QR) destinados à complementação de alimentação de ${efetivo} ${militarPlural} ${preposition} ${organizacao}, durante ${diasOperacao} ${diaPlural} de ${faseFormatada}.
-
-Cálculo:
-
-Valor da Etapa (QR): ${formatCurrency(valorQR)}.
-
-Nr Refeições Intermediárias: ${nrRefInt}.
-
-Dias de Etapa Solicitada: ${formatNumber(calculos.diasEtapaSolicitada)} ${diasEtapaSolicitadaPlural}.
-
-Dias de Complemento de Etapa: ${formatNumber(diasOperacao)} ${diaPlural}.
-
-Fórmula do Complemento: [Efetivo x Nr Ref Int (máx 3) x Valor da Etapa/3 x Dias de Complemento de Etapa]
-Fórmula da Etapa Solicitada: [Efetivo x Valor da etapa x Dias de Etapa Solicitada]
-
-Complemento de Etapa: ${formatFormula(efetivo, diasOperacao, nrRefInt, valorQR, 0, 'complemento', calculos.complementoQR)}
-
-Etapa Solicitada: ${formatFormula(efetivo, diasOperacao, nrRefInt, valorQR, calculos.diasEtapaSolicitada, 'etapa', calculos.etapaQR)}
-
-Total QR: ${formatCurrency(calculos.totalQR)}.`;
-
-  return { qs, qr };
+    return { qs: baseQS, qr: baseQR };
 }
 
+/**
+ * Gera a memória de cálculo para Ração Operacional (R2/R3).
+ */
 export function generateRacaoOperacionalMemoriaCalculo(registro: ClasseIRegistro): string {
-  const { efetivo, diasOperacao, organizacao, quantidadeR2, quantidadeR3, faseAtividade } = registro;
-  const E = efetivo || 0;
-  const D = diasOperacao || 0;
-  const R2 = quantidadeR2 || 0;
-  const R3 = quantidadeR3 || 0;
-  const totalRacoes = R2 + R3;
-  const faseFormatada = formatFasesParaTexto(faseAtividade);
-  const militarPlural = E === 1 ? 'militar' : 'militares';
-  const diaPlural = D === 1 ? 'dia' : 'dias';
-  const preposition = getOmPreposition(organizacao);
+    const { efetivo, diasOperacao, organizacao, quantidadeR2, quantidadeR3 } = registro;
+    const fases = formatFasesParaTexto(registro.faseAtividade);
+    const totalUnidades = (quantidadeR2 || 0) + (quantidadeR3 || 0);
+    
+    // Nota: Usando Math.round e formatNumber(x, 0) para garantir que não haja decimais
+    return `33.90.30 - Fornecimento de Ração Operacional para atender ${Math.round(efetivo)} militares da ${organizacao}, por até ${Math.round(diasOperacao)} dias de ${fases}, em caso de comprometimento do fluxo Cl I (QR/QS) ou de conduções de atividades descentralizadas/afastadas de instalações militares.
 
-  const header = `33.90.30 - Fornecimento de Ração Operacional para atender ${formatNumber(E)} ${militarPlural} ${preposition} ${organizacao}, por até ${formatNumber(D)} ${diaPlural} de ${faseFormatada}, em caso de comprometimento do fluxo Cl I (QR/QS) ou de conduções de atividades descentralizadas/afastadas de instalações militares.`;
-  const racaoPlural = totalRacoes === 1 ? 'Ração Operacional' : 'Rações Operacionais';
-  const unidadePlural = totalRacoes === 1 ? 'unidade' : 'unidades';
+Quantitativo R2 (24h): ${formatNumber(quantidadeR2 || 0, 0)} un.
+Quantitativo R3 (12h): ${formatNumber(quantidadeR3 || 0, 0)} un.
 
-  return `${header}
-
-Quantitativo R2 (24h): ${formatNumber(R2)} un.
-Quantitativo R3 (12h): ${formatNumber(R3)} un.
-
-Total de ${racaoPlural}: ${formatNumber(totalRacoes)} ${unidadePlural}.`;
+Total de Rações Operacionais: ${formatNumber(totalUnidades, 0)} unidades.`;
 }
