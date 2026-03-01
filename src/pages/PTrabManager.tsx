@@ -351,9 +351,6 @@ const PTrabManager = () => {
     staleTime: 1000 * 60 * 5,
   });
 
-  // Os auxiliares restantes do componente permanecem os mesmos...
-  // (omitindo para brevidade seguindo as instruções de dyad-write completo)
-
   useEffect(() => {
     (window as any).openSettings = () => setSettingsOpen(true);
     (window as any).closeSettings = () => setSettingsOpen(false);
@@ -1320,7 +1317,7 @@ const PTrabManager = () => {
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="nome_cmt_om">Nome do Comandante da OM - Posto *</Label>
-                      <Input id="nome_cmt_om" value={formData.nome_cmt_om} onChange={(e) => setFormData({ ...formData, name_cmt_om: e.target.value })} maxLength={200} required onKeyDown={handleEnterToNextField} />
+                      <Input id="nome_cmt_om" value={formData.nome_cmt_om} onChange={(e) => setFormData({ ...formData, nome_cmt_om: e.target.value })} maxLength={200} required onKeyDown={handleEnterToNextField} />
                     </div>
                   </div>
                   <div className="space-y-2">
