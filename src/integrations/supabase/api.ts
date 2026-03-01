@@ -16,31 +16,24 @@ import { TablesInsert, TablesUpdate } from "./types";
 import { ItemAquisicao } from "@/types/diretrizesMaterialConsumo"; 
 import { GHOST_DATA, isGhostMode } from "@/lib/ghostStore";
 
-interface EdgeFunctionResponse {
+interface FuelPricesResponse {
   diesel: { price: number, source: string };
   gasolina: { price: number, source: string };
 }
 
-export async function fetchFuelPrice(fuelType: 'diesel' | 'gasolina'): Promise<{ price: number, source: string }> {
+export async function fetchFuelPrices(): Promise<FuelPricesResponse> {
   try {
     const { data, error } = await supabase.functions.invoke('fetch-fuel-prices');
     if (error) throw new Error(error.message || "Falha na execução da Edge Function.");
-    const responseData = data as EdgeFunctionResponse;
-    if (fuelType === 'diesel') {
-      if (typeof responseData.diesel?.price !== 'number' || responseData.diesel.price <= 0) throw new Error("Preço do Diesel inválido recebido.");
-      return responseData.diesel;
-    } else {
-      if (typeof responseData.gasolina?.price !== 'number' || responseData.gasolina.price <= 0) throw new Error("Preço da Gasolina inválido recebido.");
-      return responseData.gasolina;
+    
+    const responseData = data as FuelPricesResponse;
+    if (!responseData?.diesel?.price || !responseData?.gasolina?.price) {
+        throw new Error("Dados de combustível inválidos recebidos.");
     }
+    return responseData;
   } catch (error) {
-    console.error(`Erro ao buscar preço de ${fuelType} via Edge Function:`, error);
-    const errorMessage = error instanceof Error ? error.message : "Erro desconhecido.";
-    if (errorMessage.includes("Failed to fetch") || errorMessage.includes("Edge Function failed")) {
-        toast.error(`Falha ao consultar preço da ${fuelType}. Verifique a conexão ou tente novamente.`);
-    } else {
-        toast.error(`Falha ao consultar preço da ${fuelType}. Detalhes: ${errorMessage}`);
-    }
+    console.error("Erro ao buscar preços via Edge Function:", error);
+    toast.error("Falha ao consultar preços da Petrobras. Verifique a conexão.");
     throw error;
   }
 }

@@ -11,8 +11,8 @@ import { toast } from "sonner";
 import { sanitizeError } from "@/lib/errorUtils";
 import { useFormNavigation } from "@/hooks/useFormNavigation";
 import { RefLPC, RefLPCForm } from "@/types/refLPC";
-import { getPreviousWeekRange, formatDateDDMMMAA, formatCurrencyInput, numberToRawDigits } from "@/lib/formatUtils";
-import { fetchFuelPrice } from "@/integrations/supabase/api";
+import { formatDateDDMMMAA, formatCurrencyInput, numberToRawDigits } from "@/lib/formatUtils";
+import { fetchFuelPrices } from "@/integrations/supabase/api";
 
 interface RefLPCFormSectionProps {
   ptrabId: string;
@@ -25,8 +25,8 @@ const initialFormState: RefLPCForm = {
   data_fim_consulta: "",
   ambito: "Nacional",
   nome_local: "",
-  preco_diesel: "0", // Armazenar como string de dígitos brutos
-  preco_gasolina: "0", // Armazenar como string de dígitos brutos
+  preco_diesel: "0", 
+  preco_gasolina: "0", 
   source: "Manual",
 };
 
@@ -38,9 +38,7 @@ export const RefLPCFormSection = ({ ptrabId, refLPC, onUpdate }: RefLPCFormSecti
   const { handleEnterToNextField } = useFormNavigation();
   const contentRef = useRef<HTMLDivElement>(null);
   
-  // Estado para rastrear o input focado e seus dígitos brutos (garantindo que rawDigits é string)
   const [focusedInput, setFocusedInput] = useState<{ field: 'preco_diesel' | 'preco_gasolina', rawDigits: string } | null>(null);
-
 
   useEffect(() => {
     if (refLPC) {
@@ -49,7 +47,6 @@ export const RefLPCFormSection = ({ ptrabId, refLPC, onUpdate }: RefLPCFormSecti
         data_fim_consulta: refLPC.data_fim_consulta,
         ambito: refLPC.ambito as 'Nacional' | 'Estadual' | 'Municipal',
         nome_local: refLPC.nome_local || "",
-        // Inicializa como string de dígitos brutos, garantindo que o valor de entrada seja tratado como number
         preco_diesel: numberToRawDigits(Number(refLPC.preco_diesel)),
         preco_gasolina: numberToRawDigits(Number(refLPC.preco_gasolina)),
         source: refLPC.source || 'Manual',
@@ -61,7 +58,6 @@ export const RefLPCFormSection = ({ ptrabId, refLPC, onUpdate }: RefLPCFormSecti
     }
   }, [refLPC]);
 
-  // Handler genérico para campos que não são de preço, garantindo que a fonte seja 'Manual'
   const handleNonPriceChange = (field: keyof RefLPCForm, value: string) => {
     setFormLPC(prev => ({
         ...prev,
@@ -90,8 +86,6 @@ export const RefLPCFormSection = ({ ptrabId, refLPC, onUpdate }: RefLPCFormSecti
       return;
     }
     
-    // Converte os valores de preço (que estão em string de dígitos brutos) para numérico antes de salvar
-    // Garantindo que formLPC.preco_diesel e formLPC.preco_gasolina são strings antes de passar para formatCurrencyInput
     const dieselPrice = formatCurrencyInput(String(formLPC.preco_diesel)).numericValue;
     const gasolinePrice = formatCurrencyInput(String(formLPC.preco_gasolina)).numericValue;
 
@@ -149,16 +143,25 @@ export const RefLPCFormSection = ({ ptrabId, refLPC, onUpdate }: RefLPCFormSecti
   const handleConsultarAPI = async () => {
     setLoading(true);
     try {
-      const { start, end } = getPreviousWeekRange();
+      // --- LÓGICA DE REFERÊNCIA ANP/PETROBRAS ---
+      const now = new Date();
+      const dayOfWeek = now.getDay(); // 0 = Domingo, 1 = Segunda, etc.
       
-      // Formata as datas para yyyy-MM-dd removendo a parte do tempo (T...)
-      const formattedStart = start.includes('T') ? start.split('T')[0] : start;
-      const formattedEnd = end.includes('T') ? end.split('T')[0] : end;
+      // Se for Domingo ou Segunda, a Petrobras mostra a semana retrasada.
+      // A partir de Terça, mostra a semana passada.
+      const daysToSubtractForEnd = dayOfWeek <= 1 ? dayOfWeek + 8 : dayOfWeek + 1;
       
-      const [dieselResult, gasolinaResult] = await Promise.all([
-        fetchFuelPrice('diesel'),
-        fetchFuelPrice('gasolina'),
-      ]);
+      const endDate = new Date(now);
+      endDate.setDate(now.getDate() - daysToSubtractForEnd);
+      
+      const startDate = new Date(endDate);
+      startDate.setDate(endDate.getDate() - 6);
+      
+      const formattedStart = startDate.toISOString().split('T')[0];
+      const formattedEnd = endDate.toISOString().split('T')[0];
+      
+      // 🚀 CHAMADA ÚNICA à nova API
+      const fuelData = await fetchFuelPrices();
       
       setFormLPC(prev => ({
         ...prev,
@@ -166,24 +169,21 @@ export const RefLPCFormSection = ({ ptrabId, refLPC, onUpdate }: RefLPCFormSecti
         data_fim_consulta: formattedEnd,
         ambito: 'Nacional',
         nome_local: 'ANP - Média Nacional',
-        // Salva como string de dígitos brutos
-        preco_diesel: numberToRawDigits(dieselResult.price),
-        preco_gasolina: numberToRawDigits(gasolinaResult.price),
+        preco_diesel: numberToRawDigits(fuelData.diesel.price),
+        preco_gasolina: numberToRawDigits(fuelData.gasolina.price),
         source: 'API',
       }));
       
-      toast.success(`Preços de combustível atualizados via API! Fonte: ${dieselResult.source}`);
+      toast.success(`Preços atualizados! Fonte: ${fuelData.diesel.source}`);
       
     } catch (error) {
-      // O erro já é tratado e exibido dentro de fetchFuelPrice
+      console.warn("Consulta à API de combustíveis falhou.", error);
     } finally {
       setLoading(false);
     }
   };
 
-  // Handlers para inputs de preço usando formatCurrencyInput
   const getPriceInputProps = (field: 'preco_diesel' | 'preco_gasolina') => {
-    // Garantindo que rawDigits é string
     const rawDigits = String(formLPC[field]);
     const isFocused = focusedInput?.field === field;
     
@@ -198,7 +198,7 @@ export const RefLPCFormSection = ({ ptrabId, refLPC, onUpdate }: RefLPCFormSecti
     const handleFocus = () => {
         setFocusedInput({ 
             field: field, 
-            rawDigits: rawDigits // rawDigits é garantido ser string aqui
+            rawDigits: rawDigits 
         });
     };
 
@@ -229,21 +229,17 @@ export const RefLPCFormSection = ({ ptrabId, refLPC, onUpdate }: RefLPCFormSecti
   const dieselProps = getPriceInputProps('preco_diesel');
   const gasolineProps = getPriceInputProps('preco_gasolina');
 
-  // Lógica para exibir a fonte no título
   const displaySource = formLPC.source || 'Manual';
   const sourceText = displaySource === 'API' ? 'API Externa' : 'Manual';
   const sourceColor = displaySource === 'API' ? 'text-green-700' : 'text-blue-700';
   const sourceBg = displaySource === 'API' ? 'bg-green-100' : 'bg-blue-100';
   
-  // Lógica para exibir a data de atualização
   const lastUpdateDate = refLPC?.updated_at ? formatDateDDMMMAA(refLPC.updated_at) : null;
-
 
   return (
     <Card className="mb-6 border-2 border-primary/20" ref={contentRef}>
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
-          {/* Novo container clicável para o título */}
           <div 
             className="flex items-center flex-1 cursor-pointer"
             onClick={() => setIsLPCFormExpanded(!isLPCFormExpanded)}
@@ -258,7 +254,6 @@ export const RefLPCFormSection = ({ ptrabId, refLPC, onUpdate }: RefLPCFormSecti
               )}
             </CardTitle>
           </div>
-          {/* O botão de seta continua ativo */}
           <div className="flex items-center gap-4">
             {lastUpdateDate && (
                 <span className="text-xs text-muted-foreground">
@@ -288,9 +283,6 @@ export const RefLPCFormSection = ({ ptrabId, refLPC, onUpdate }: RefLPCFormSecti
           )}
           
           <form onSubmit={(e) => { e.preventDefault(); handleSalvarRefLPC(); }}>
-            
-            {/* Removido o alerta temporário, pois o toast de sucesso já informa a fonte */}
-
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
               <div className="space-y-2">
                 <Label>Data Início Consulta</Label>
@@ -347,7 +339,6 @@ export const RefLPCFormSection = ({ ptrabId, refLPC, onUpdate }: RefLPCFormSecti
             </div>
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-              {/* Campo Preço Diesel */}
               <div className="flex items-center gap-2">
                 <Label className="w-1/2 min-w-[150px]">Preço Diesel (R$/litro)</Label>
                 <Input
@@ -358,7 +349,6 @@ export const RefLPCFormSection = ({ ptrabId, refLPC, onUpdate }: RefLPCFormSecti
                 />
               </div>
               
-              {/* Campo Preço Gasolina */}
               <div className="flex items-center gap-2">
                 <Label className="w-1/2 min-w-[150px]">Preço Gasolina (R$/litro)</Label>
                 <Input
