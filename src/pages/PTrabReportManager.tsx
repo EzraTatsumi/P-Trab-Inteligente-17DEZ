@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { toast } from "sonner";
 import { formatCurrency, formatNumber, calculateDays, formatCodug } from "@/lib/formatUtils";
 import PTrabLogisticoReport from "@/components/reports/PTrabLogisticoReport";
-import PTrabRacaoReport from "@/components/reports/PTrabRacaoReport";
+import PTrabRacaoOperacionalReport from "@/components/reports/PTrabRacaoOperacionalReport";
 import PTrabHorasVooReport from "@/components/reports/PTrabHorasVooReport";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Tables } from "@/integrations/supabase/types";
@@ -128,10 +128,6 @@ export const generateClasseVIIMemoriaCalculo = (registro: any) => {
     return `Itens de Com/Elt:\n${linhas.join('\n')}\nSoma: ${formatCurrency(registro.valor_total)}`;
 };
 
-/**
- * Memória de Cálculo para Classe VIII (Saúde ou Remonta)
- * Baseada no layout da seção 5 do Formulário Classe VIII
- */
 export const generateClasseVIIIMemoriaCalculo = (registro: any) => {
     if (registro.detalhamento_customizado) return registro.detalhamento_customizado;
     
@@ -401,7 +397,7 @@ const PTrabReportManager = () => {
             </TabsContent>
 
             <TabsContent value="racao">
-                <PTrabRacaoReport 
+                <PTrabRacaoOperacionalReport 
                     ptrabData={ptrabData}
                     registrosClasseI={registrosClasseI}
                     omsOrdenadas={omsOrdenadas}
