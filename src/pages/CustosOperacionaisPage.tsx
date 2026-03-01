@@ -1120,6 +1120,7 @@ const CustosOperacionaisPage = () => {
                                   <PassagemDiretrizRow key={d.id} diretriz={d} onEdit={handleStartEditPassagem} onDelete={handleDeletePassagem} loading={isSaving} />
                               ))}
                           </TableBody>
+                      </Table>
                   </Card>
               ) : (<Card className="p-4 text-center text-muted-foreground">Nenhum contrato de passagens cadastrado para o ano de referência.</Card>)}
               <div className="flex justify-end">
