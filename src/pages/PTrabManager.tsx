@@ -344,8 +344,15 @@ const PTrabManager = () => {
       });
     },
     enabled: !!user?.id,
-    staleTime: 1000 * 60 * 5,
+    staleTime: 0,
+    refetchOnMount: true,
   });
+
+  useEffect(() => {
+    if (user?.id) {
+      loadPTrabs();
+    }
+  }, [user?.id, loadPTrabs]);
 
   useEffect(() => {
     (window as any).openSettings = () => setSettingsOpen(true);
