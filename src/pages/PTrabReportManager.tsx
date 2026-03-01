@@ -79,13 +79,8 @@ import { Tables, Json } from "@/integrations/supabase/types";
 import { ItemAquisicao } from "@/types/diretrizesMaterialConsumo";
 import { useSession } from "@/components/SessionContextProvider";
 
-// Importações para suporte ao treinamento
 import { isGhostMode, GHOST_DATA } from "@/lib/ghostStore";
 import { runMission06 } from "@/tours/missionTours";
-
-// =================================================================
-// TIPOS E FUNÇÕES AUXILIARES (Exportados para uso nos relatórios)
-// =================================================================
 
 export interface PTrabData {
   id: string;
@@ -295,35 +290,10 @@ export interface GrupoOM {
   linhasConcessionaria: LinhaConcessionaria[]; 
 }
 
-export interface PTrabOperacionalReportProps {
-    ptrabData: PTrabData;
-    omsOrdenadas: string[];
-    gruposPorOM: Record<string, GrupoOMOperacional>;
-    registrosDiaria: DiariaRegistro[];
-    registrosVerbaOperacional: VerbaOperacionalRegistro[];
-    registrosSuprimentoFundos: VerbaOperacionalRegistro[];
-    registrosPassagem: PassagemRegistro[];
-    registrosConcessionaria: ConcessionariaRegistro[];
-    registrosMaterialConsumo: MaterialConsumoRegistro[]; 
-    registrosComplementoAlimentacao: ComplementoAlimentacaoRegistro[];
-    registrosServicosTerceiros: ServicoTerceiroRegistro[];
-    diretrizesOperacionais: Tables<'diretrizes_operacionais'> | null;
-    diretrizesPassagens: Tables<'diretrizes_passagens'>[]; 
-    fileSuffix: string;
-    generateDiariaMemoriaCalculo: (registro: DiariaRegistro, diretrizesOp: Tables<'diretrizes_operacionais'> | null) => string;
-    generateVerbaOperacionalMemoriaCalculo: (registro: VerbaOperacionalRegistro) => string;
-    generateSuprimentoFundosMemoriaCalculo: (registro: VerbaOperacionalRegistro) => string;
-    generatePassagemMemoriaCalculo: (registro: PassagemRegistro) => string;
-    generateConcessionariaMemoriaCalculo: (registro: ConcessionariaRegistro) => string;
-    generateMaterialConsumoMemoriaCalculo: (registro: MaterialConsumoRegistro) => string; 
-    generateComplementoMemoriaCalculo: (registro: ComplementoAlimentacaoRegistro, subType?: 'QS' | 'QR') => string;
-    generateServicoMemoriaCalculo: (registro: ServicoTerceiroRegistro) => string;
-}
-
 export const CLASSE_V_CATEGORIES = ["Armt L", "Armt P", "IODCT", "DQBRN"];
 export const CLASSE_VI_CATEGORIES = ["Gerador", "Embarcação", "Equipamento de Engenharia"];
 export const CLASSE_VII_CATEGORIES = ["Comunicações", "Informática"];
-export const CLASSE_VIII_CATEGORIES = ["Saúde", "Remonta/Veteridária"];
+export const CLASSE_VIII_CATEGORIES = ["Saúde", "Remonta/Veterinária"];
 export const CLASSE_IX_CATEGORIES = ["Vtr Administrativa", "Vtr Operacional", "Motocicleta", "Vtr Blindada"];
 
 export const formatDate = (date: string) => {
@@ -536,21 +506,33 @@ export const generateClasseIIMemoriaCalculo = (registro: ClasseIIRegistro, isCla
         );
     }
     if (CLASSE_VIII_CATEGORIES.includes(registro.categoria)) {
-        const itens = registro.categoria === 'Saúde' ? registro.itens_saude : registro.itens_remonta;
-        return generateClasseVIIIUtility(
-            registro.categoria as 'Saúde' | 'Remonta/Veterinária',
-            (itens as any) || [], 
-            registro.dias_operacao,
-            registro.om_detentora || registro.organizacao,
-            registro.ug_detentora || registro.ug,
-            registro.fase_atividade,
-            registro.efetivo || 0,
-            registro.valor_nd_30,
-            registro.valor_nd_39,
-            registro.animal_tipo
-        );
+        return generateClasseVIIIMemoriaCalculo(registro);
     }
     return registro.detalhamento || "Memória de cálculo não disponível.";
+};
+
+export const generateClasseVIIIMemoriaCalculo = (registro: any): string => {
+  if (registro.detalhamento_customizado) return registro.detalhamento_customizado;
+
+  const isRemonta = registro.categoria === 'Remonta/Veterinária';
+  const itens = isRemonta ? (registro.itens_remonta || []) : (registro.itens_saude || []);
+  
+  const animalTipo = registro.animal_tipo || 
+    (itens[0]?.item?.includes('Equino') ? 'Equino' : 
+     itens[0]?.item?.includes('Canino') ? 'Canino' : undefined);
+
+  return generateClasseVIIIUtility(
+    registro.categoria,
+    itens,
+    registro.dias_operacao,
+    registro.organizacao,
+    registro.ug,
+    registro.fase_atividade,
+    registro.efetivo || 0,
+    registro.valor_nd_30 || 0,
+    registro.valor_nd_39 || 0,
+    animalTipo 
+  );
 };
 
 export const generateDiariaMemoriaCalculoUnificada = (registro: DiariaRegistro, diretrizesOp: Tables<'diretrizes_operacionais'> | null): string => {
@@ -608,19 +590,11 @@ export const generateValueMemoryCalculated = (registro: ServicoTerceiroRegistro)
     return generateServicoMemoriaCalculoUtility(registro, context);
 };
 
-// =================================================================
-// FUNÇÕES AUXILIARES DE RÓTULO
-// =================================================================
-
 export const getTipoCombustivelLabel = (tipo: string) => {
     if (tipo === 'DIESEL' || tipo === 'OD' || tipo === 'COMBUSTIVEL_DIESEL') return 'DIESEL';
     else if (tipo === 'GASOLINA' || tipo === 'GAS' || tipo === 'COMBUSTIVEL_GASOLINA') return 'GASOLINA';
     return tipo;
 };
-
-// =================================================================
-// FUNÇÕES DE NORMALIZAÇÃO E IDENTIFICAÇÃO DA RM (AÇÕES 1 e 2)
-// =================================================================
 
 const normalizarNome = (valor?: string) =>
   (valor || '')
@@ -648,10 +622,6 @@ const isRegiaoMilitar = (nomeOM: string, nomeRM: string) => {
   if (numRM && om.startsWith(numRM)) if (om.includes('RM')) return true;
   return false;
 };
-
-// =================================================================
-// DEFINIÇÃO DOS RELATÓRIOS E RÓTULOS
-// =================================================================
 
 type ReportType = 'logistico' | 'racao_operacional' | 'operacional' | 'material_permanente' | 'hora_voo' | 'dor';
 
@@ -713,7 +683,6 @@ const PTrabReportManager = () => {
   const [loading, setLoading] = useState(true);
   const [selectedReport, setSelectedReport] = useState<ReportType>('logistico');
 
-  // A) Estado do Menu (logo abaixo de const [selectedReport...])
   const [isReportMenuOpen, setIsReportMenuOpen] = useState(false);
   useEffect(() => {
     (window as any).openReportMenu = () => setIsReportMenuOpen(true);
@@ -735,11 +704,9 @@ const PTrabReportManager = () => {
       return;
     }
 
-    // INTERCEPTAÇÃO GHOST MODE COM LINHA FIXA E ARRAY DE ITENS ENRIQUECIDO
     if (isGhostMode()) {
         setPtrabData(GHOST_DATA.p_trab_exemplo);
         
-        // LINHA CHUMBADA COM BLINDAGEM MÁXIMA PARA A RENDERIZAÇÃO DA TABELA
         setRegistrosMaterialConsumo([{
             id: 'mock-tour-id',
             p_trab_id: ptrabId || 'ghost-id',
@@ -756,7 +723,6 @@ const PTrabReportManager = () => {
             valor_nd_30: 212.50,
             valor_nd_39: 0,
             detalhamento_customizado: "33.90.30 - Aquisição de Material de Construção para atender 150 militares do 1º BIS, durante 15 dias de execução.\n\nCálculo:\nFórmula: Qtd do item x Valor do item.\n- 5 Cimento Portland 50kg x R$ 42,50/unid. = R$ 212,50.\n\nTotal: R$ 212,50.\n(Pregão 5/2025 - UASG 160.222).",
-            // CHAVES CORRIGIDAS PARA O GERADOR LER CORRETAMENTE:
             itens_aquisicao: [
                 { 
                   id: 'item-cimento-1', 
@@ -915,13 +881,11 @@ const PTrabReportManager = () => {
     loadData();
   }, [loadData]);
 
-  // B) Corrigir o Gatilho do Tour (Substituir o useEffect da Missão 06 atual por este)
   useEffect(() => {
     if (loading || !user?.id) return;
     const startTour = searchParams.get('startTour') === 'true';
     const missionId = localStorage.getItem('active_mission_id');
     
-    // O Tour precisa da aba operacional aberta para encontrar a tabela
     if (startTour && isGhostMode() && (missionId === '6' || !missionId)) {
       setSelectedReport('operacional'); 
       
@@ -1089,7 +1053,7 @@ const PTrabReportManager = () => {
     const reportName = currentReportOption.label;
     if (!hasDataForReport) return <NoDataFallback reportName={reportName} message={`Não há dados de classes ou itens registrados neste P Trab para gerar o relatório de ${reportName}.`} />;
     switch (selectedReport) {
-      case 'logistico': return <PTrabLogisticoReport ptrabData={ptrabData} registrosClasseI={registrosClasseI} registrosClasseII={registrosClasseII} registrosClasseIII={registrosClasseIII} nomeRM={nomeRM} omsOrdenadas={omsOrdenadas} gruposPorOM={gruposPorOM} calcularTotaisPorOM={calcularTotaisPorOM} fileSuffix={fileSuffix} generateClasseIMemoriaCalculo={generateClasseIMemoriaCalculoUnificada} generateClasseIIMemoriaCalculo={generateClasseIIMemoriaCalculo} generateClasseVMemoriaCalculo={(registro) => generateClasseIIMemoriaCalculo(registro, false)} generateClasseVIMemoriaCalculo={(registro) => generateClasseIIMemoriaCalculo(registro, false)} generateClasseVIIMemoriaCalculo={(registro) => generateClasseIIMemoriaCalculo(registro, false)} generateClasseVIIIMemoriaCalculo={(registro) => generateClasseIIMemoriaCalculo(registro, false)} />;
+      case 'logistico': return <PTrabLogisticoReport ptrabData={ptrabData} registrosClasseI={registrosClasseI} registrosClasseII={registrosClasseII} registrosClasseIII={registrosClasseIII} nomeRM={nomeRM} omsOrdenadas={omsOrdenadas} gruposPorOM={gruposPorOM} calcularTotaisPorOM={calcularTotaisPorOM} fileSuffix={fileSuffix} generateClasseIMemoriaCalculo={generateClasseIMemoriaCalculoUnificada} generateClasseIIMemoriaCalculo={generateClasseIIMemoriaCalculo} generateClasseVMemoriaCalculo={(registro) => generateClasseIIMemoriaCalculo(registro, false)} generateClasseVIMemoriaCalculo={(registro) => generateClasseIIMemoriaCalculo(registro, false)} generateClasseVIIMemoriaCalculo={(registro) => generateClasseIIMemoriaCalculo(registro, false)} generateClasseVIIIMemoriaCalculo={generateClasseVIIIMemoriaCalculo} />;
       case 'racao_operacional': return <PTrabRacaoOperacionalReport ptrabData={ptrabData} registrosClasseI={registrosClasseI} fileSuffix={fileSuffix} generateClasseIMemoriaCalculo={generateClasseIMemoriaCalculoUnificada} />;
       case 'operacional': return <PTrabOperacionalReport ptrabData={ptrabData} omsOrdenadas={omsOperacionaisOrdenadas} gruposPorOM={gruposOperacionaisPorOM} registrosDiaria={registrosDiaria} registrosVerbaOperacional={registrosVerbaOperacional} registrosSuprimentoFundos={registrosSuprimentoFundos} registrosPassagem={registrosPassagem} registrosConcessionaria={registrosConcessionaria} registrosMaterialConsumo={registrosMaterialConsumo} registrosComplementoAlimentacao={registrosComplementoAlimentacao} registrosServicosTerceiros={registrosServicosTerceiros} diretrizesOperacionais={diretrizesOperacionais} diretrizesPassagens={diretrizesPassagens} fileSuffix={fileSuffix} generateDiariaMemoriaCalculo={generateDiariaMemoriaCalculoUnificada} generateVerbaOperacionalMemoriaCalculo={generateVerbaOperacionalMemoriaCalculada} generateSuprimentoFundosMemoriaCalculo={generateSuprimentoFundosMemoriaCalculada} generatePassagemMemoriaCalculo={generatePassagemMemoriaCalculada} generateConcessionariaMemoriaCalculo={generateConcessionariaMemoriaCalculada} generateMaterialConsumoMemoriaCalculo={(registro) => generateMaterialConsumoMemoriaCalculada(registro)} generateComplementoMemoriaCalculo={generateComplementoMemoriaCalculada} generateServicoMemoriaCalculo={generateValueMemoryCalculated} />;
       case 'material_permanente': return <PTrabMaterialPermanenteReport ptrabData={ptrabData} registrosMaterialPermanente={registrosMaterialPermanente} fileSuffix={fileSuffix} />;
@@ -1113,7 +1077,6 @@ const PTrabReportManager = () => {
           <Button variant="ghost" onClick={() => navigate('/ptrab')}><ArrowLeft className="mr-2 h-4 w-4" />Voltar para Gerenciamento</Button>
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-2"><FileText className="h-4 w-4 text-primary" /><span className="text-sm font-medium">Relatório:</span></div>
-            {/* C) Vincular a abertura do Menu ao Select (no JSX) */}
             <Select 
               value={selectedReport} 
               onValueChange={(value) => setSelectedReport(value as ReportType)}
