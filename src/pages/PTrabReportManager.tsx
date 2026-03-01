@@ -6,12 +6,17 @@ import { Loader2, ArrowLeft, Printer, FileText, Download, LayoutDashboard, Calcu
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { toast } from "sonner";
-import { formatCurrency, formatNumber, calculateDays, formatCodug } from "@/lib/formatUtils";
+import { formatCurrency, formatNumber, calculateDays, formatCodug, formatDate } from "@/lib/formatUtils";
 import PTrabLogisticoReport from "@/components/reports/PTrabLogisticoReport";
 import PTrabRacaoOperacionalReport from "@/components/reports/PTrabRacaoOperacionalReport";
 import PTrabHorasVooReport from "@/components/reports/PTrabHorasVooReport";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Tables } from "@/integrations/supabase/types";
+
+// =================================================================
+// RE-EXPORTAÇÃO DE UTILIDADES (Para os Relatórios)
+// =================================================================
+export { calculateDays, formatDate };
 
 // =================================================================
 // TIPOS E CONSTANTES
@@ -108,21 +113,21 @@ export const generateClasseIIMemoriaCalculo = (registro: any, isClasseII: boolea
 };
 
 export const generateClasseVMemoriaCalculo = (registro: any) => {
-    if (registro.detalhamento_customizado) return registro.detalhamento_customizado;
+    if (registro.detalhamento_customizada) return registro.detalhamento_customizada;
     const itens = (registro.itens_equipamentos || []) as any[];
     const linhas = itens.map(item => `- ${item.descricao_item}: ${item.quantidade} x ${formatCurrency(item.valor_unitario)} = ${formatCurrency(item.valor_total)}`);
     return `Itens de Armamento/Munição:\n${linhas.join('\n')}\nSoma: ${formatCurrency(registro.valor_total)}`;
 };
 
 export const generateClasseVIMemoriaCalculo = (registro: any) => {
-    if (registro.detalhamento_customizado) return registro.detalhamento_customizado;
+    if (registro.detalhamento_customizada) return registro.detalhamento_customizada;
     const itens = (registro.itens_equipamentos || []) as any[];
     const linhas = itens.map(item => `- ${item.descricao_item}: ${item.quantidade} x ${formatCurrency(item.valor_unitario)} = ${formatCurrency(item.valor_total)}`);
     return `Itens de Engenharia:\n${linhas.join('\n')}\nSoma: ${formatCurrency(registro.valor_total)}`;
 };
 
 export const generateClasseVIIMemoriaCalculo = (registro: any) => {
-    if (registro.detalhamento_customizado) return registro.detalhamento_customizado;
+    if (registro.detalhamento_customizada) return registro.detalhamento_customizada;
     const itens = (registro.itens_equipamentos || []) as any[];
     const linhas = itens.map(item => `- ${item.descricao_item}: ${item.quantidade} x ${formatCurrency(item.valor_unitario)} = ${formatCurrency(item.valor_total)}`);
     return `Itens de Com/Elt:\n${linhas.join('\n')}\nSoma: ${formatCurrency(registro.valor_total)}`;
@@ -147,7 +152,7 @@ export const generateClasseVIIIMemoriaCalculo = (registro: any) => {
 };
 
 export const generateClasseIXMemoriaCalculo = (registro: any) => {
-    if (registro.detalhamento_customizado) return registro.detalhamento_customizado;
+    if (registro.detalhamento_customizada) return registro.detalhamento_customizada;
     const itens = (registro.itens_motomecanizacao || []) as any[];
     const linhas = itens.map(item => `- ${item.descricao_item}: ${item.quantidade} x ${formatCurrency(item.valor_unitario)} = ${formatCurrency(item.valor_total)}`);
     return `Itens de Manutenção:\n${linhas.join('\n')}\nSoma: ${formatCurrency(registro.valor_total)}`;
@@ -329,6 +334,18 @@ const PTrabReportManager = () => {
       totalGasolinaLitros
     };
   };
+
+  const valorTotalSolicitado = useMemo(() => {
+    let total = 0;
+    omsOrdenadas.forEach(nomeOM => {
+        const grupo = gruposPorOM[nomeOM];
+        if (grupo) {
+            const totais = calcularTotaisPorOM(grupo, nomeOM);
+            total += totais.total_gnd3;
+        }
+    });
+    return total;
+  }, [omsOrdenadas, gruposPorOM]);
 
   if (loading) {
     return (
