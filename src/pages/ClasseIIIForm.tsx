@@ -1,3 +1,5 @@
+"use client";
+
 import { useEffect, useState, useMemo, useRef, useCallback } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -1419,7 +1421,7 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(precoLi
       }
       
       // 5. Inserir novos registros
-      const { error: insertError } = await supabase.from("classe_iii_registros").insert(registrosParaSalvar);
+      const { error: insertError = null } = await supabase.from("classe_iii_registros").insert(registrosParaSalvar);
       if (insertError) throw insertError;
       
       toast.success("Registros de Classe III atualizados com sucesso!");
@@ -1939,9 +1941,9 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(precoLi
                         <div className="space-y-4 p-4 bg-muted/50 rounded-lg">
                           
                           {/* NOVO: Exibição da Fórmula */}
-                          <Alert variant="default" className="p-3">
+                          <Alert variant="default" className="p-3 flex items-center gap-2">
                               <AlertCircle className="h-4 w-4" />
-                              <AlertDescription className="text-sm font-medium">
+                              <AlertDescription className="text-sm font-medium m-0">
                                   {formulaPrincipal}
                               </AlertDescription>
                           </Alert>
