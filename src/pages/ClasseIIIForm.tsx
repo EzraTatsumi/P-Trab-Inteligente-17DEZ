@@ -1493,8 +1493,8 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(precoLi
 
   const handleIniciarEdicaoMemoria = (granularItem: GranularDisplayItem) => {
     // O ID de edição agora é o ID granular
-    const granularId = granularItem.id;
-    setEditingGranularId(granularId);
+    const granularId = granularId;
+    setEditingGranularId(granularItem.id);
     
     // 1. Encontrar o item detalhado (ItemClasseIII) que contém a memória customizada
     // O item detalhado é sempre o primeiro do array detailed_items, pois o agrupamento é granular
@@ -1941,11 +1941,13 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(precoLi
                         <div className="space-y-4 p-4 bg-muted/50 rounded-lg">
                           
                           {/* NOVO: Exibição da Fórmula */}
-                          <Alert variant="default" className="p-3 flex items-center gap-2">
-                              <AlertCircle className="h-4 w-4" />
+                          <Alert variant="default" className="p-3">
+                            <div className="flex items-center gap-2">
+                              <AlertCircle className="h-4 w-4 shrink-0" />
                               <AlertDescription className="text-sm font-medium m-0">
-                                  {formulaPrincipal}
+                                {formulaPrincipal}
                               </AlertDescription>
+                            </div>
                           </Alert>
                           
                           <div className="max-h-[400px] overflow-y-auto rounded-md border">
