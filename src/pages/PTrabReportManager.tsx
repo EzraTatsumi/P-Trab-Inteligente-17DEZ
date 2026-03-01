@@ -37,8 +37,7 @@ import { generateClasseIIMemoriaCalculo as generateClasseIIUtility } from "@/lib
 import { generateCategoryMemoriaCalculo as generateClasseVUtility } from "@/lib/classeVUtils";
 import { generateCategoryMemoriaCalculo as generateClasseVIUtility } from "@/lib/classeVIUtils";
 import { generateCategoryMemoriaCalculo as generateClasseVIIUtility } from "@/lib/classeVIIUtils";
-// ALTERADO: Importando a função de detalhamento completo para garantir paridade com o formulário
-import { generateDetalhamento as generateClasseVIIIUtility } from "@/lib/classeVIIIUtils";
+import { generateCategoryMemoriaCalculo as generateClasseVIIIUtility } from "@/lib/classeVIIIUtils";
 import { generateCategoryMemoriaCalculo as generateClasseIXUtility, calculateItemTotalClasseIX as calculateItemTotalClasseIXUtility } from "@/lib/classeIXUtils";
 import { generateGranularMemoriaCalculo as generateClasseIIIGranularUtility, calculateItemTotals } from "@/lib/classeIIIUtils";
 import { 
@@ -324,7 +323,7 @@ export interface PTrabOperacionalReportProps {
 export const CLASSE_V_CATEGORIES = ["Armt L", "Armt P", "IODCT", "DQBRN"];
 export const CLASSE_VI_CATEGORIES = ["Gerador", "Embarcação", "Equipamento de Engenharia"];
 export const CLASSE_VII_CATEGORIES = ["Comunicações", "Informática"];
-export const CLASSE_VIII_CATEGORIES = ["Saúde", "Remonta/Veterinária"];
+export const CLASSE_VIII_CATEGORIES = ["Saúde", "Remonta/Veteridária"];
 export const CLASSE_IX_CATEGORIES = ["Vtr Administrativa", "Vtr Operacional", "Motocicleta", "Vtr Blindada"];
 
 export const formatDate = (date: string) => {
@@ -482,14 +481,7 @@ export const generateClasseIMemoriaCalculoUnificada = (registro: ClasseIRegistro
 
 export const generateClasseIIMemoriaCalculo = (registro: ClasseIIRegistro, isClasseII: boolean): string => {
     if (!registro || !registro.categoria) return "Registro inválido ou categoria ausente.";
-    
-    // 1. PRIORIDADE: Memória customizada pelo usuário
     if (registro.detalhamento_customizado && registro.detalhamento_customizado.trim().length > 0) return registro.detalhamento_customizado;
-    
-    // 2. PRIORIDADE: Detalhamento automático salvo pelo formulário (que já está correto)
-    if ((registro as any).detalhamento && (registro as any).detalhamento.trim().length > 0) return (registro as any).detalhamento;
-
-    // 3. FALLBACK: Re-geração dinâmica se os campos acima estiverem vazios
     if (CLASSE_IX_CATEGORIES.includes(registro.categoria)) return generateClasseIXUtility(registro as any);
     if (isClasseII) {
         return generateClasseIIUtility(
@@ -545,22 +537,20 @@ export const generateClasseIIMemoriaCalculo = (registro: ClasseIIRegistro, isCla
     }
     if (CLASSE_VIII_CATEGORIES.includes(registro.categoria)) {
         const itens = registro.categoria === 'Saúde' ? registro.itens_saude : registro.itens_remonta;
-        // ALTERADO: Passando os parâmetros na ordem correta da função generateDetalhamento (agora generateClasseVIIIUtility)
         return generateClasseVIIIUtility(
+            registro.categoria as 'Saúde' | 'Remonta/Veterinária',
             (itens as any) || [], 
             registro.dias_operacao,
             registro.om_detentora || registro.organizacao,
             registro.ug_detentora || registro.ug,
-            registro.fase_atividade || '',
-            registro.organizacao, // omDestino
-            registro.ug,           // ugDestino
+            registro.fase_atividade,
+            registro.efetivo || 0,
             registro.valor_nd_30,
             registro.valor_nd_39,
-            registro.categoria as any,
-            registro.animal_tipo as any
+            registro.animal_tipo
         );
     }
-    return "Memória de cálculo não disponível.";
+    return registro.detalhamento || "Memória de cálculo não disponível.";
 };
 
 export const generateDiariaMemoriaCalculoUnificada = (registro: DiariaRegistro, diretrizesOp: Tables<'diretrizes_operacionais'> | null): string => {
@@ -918,7 +908,7 @@ const PTrabReportManager = () => {
       toast.error("Não foi possível carregar os dados do relatório.");
     } finally {
       setLoading(false);
-  }
+    }
   }, [ptrabId, selectedReport, fetchedReports, ptrabData, navigate]);
 
   useEffect(() => {
