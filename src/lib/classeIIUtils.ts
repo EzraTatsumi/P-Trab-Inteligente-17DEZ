@@ -1,225 +1,195 @@
-import { formatCurrency, formatCodug } from "./formatUtils";
-import { getCategoryLabel } from "./badgeUtils";
+import { formatCurrency, formatNumber } from "@/lib/formatUtils";
 
-// Tipos necessários (copiados do formulário para evitar dependência de tipos internos)
-interface ItemClasseII {
-  item: string;
-  quantidade: number;
-  valor_mnt_dia: number;
-  categoria: string;
-  memoria_customizada?: string | null;
+export interface ClasseIRegistro {
+  id: string;
+  categoria: 'RACAO_QUENTE' | 'RACAO_OPERACIONAL';
+  organizacao: string;
+  ug: string;
+  diasOperacao: number;
+  efetivo: number | null;
+  faseAtividade: string | null;
+  omQS?: string | null;
+  ugQS?: string | null;
+  nrRefInt: number | null;
+  valorQS: number | null;
+  valorQR: number | null;
+  memoriaQSCustomizada?: string | null;
+  memoriaQRCustomizada?: string | null;
+  memoria_calculo_op_customizada?: string | null;
+  calculos: {
+    totalQS: number;
+    totalQR: number;
+    nrCiclos: number;
+    diasEtapaPaga: number;
+    diasEtapaSolicitada: number;
+    totalEtapas: number;
+    complementoQS: number;
+    etapaQS: number;
+    complementoQR: number;
+    etapaQR: number;
+  };
+  quantidadeR2?: number | null;
+  quantidadeR3?: number | null;
 }
 
-type Categoria = 'Equipamento Individual' | 'Proteção Balística' | 'Material de Estacionamento';
+const getOmPreposition = (omName: string): 'do' | 'da' => {
+  if (!omName) return 'do';
+  const normalizedOm = omName.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+  if (omName.includes('ª') || normalizedOm.match(/\d+\s*a\b/)) return 'da';
+  if (normalizedOm.includes('rm')) return 'da';
+  return 'do';
+};
 
-/**
- * Formats the activity phases from a semicolon-separated string into a readable text format.
- * @param faseCSV The semicolon-separated string of phases.
- * @returns A formatted string (e.g., "Execução, Reconhecimento e Mobilização").
- */
-export const formatFasesParaTexto = (faseCSV: string | null | undefined): string => {
-  if (!faseCSV) return 'operação';
-  
+export const formatFasesParaTexto = (faseCSV: string | undefined | null): string => {
+  if (!faseCSV) return 'execução';
   const fases = faseCSV.split(';').map(f => f.trim()).filter(f => f);
-  
-  if (fases.length === 0) return 'operação';
+  if (fases.length === 0) return 'execução';
   if (fases.length === 1) return fases[0];
   if (fases.length === 2) return `${fases[0]} e ${fases[1]}`;
-  
   const ultimaFase = fases[fases.length - 1];
   const demaisFases = fases.slice(0, -1).join(', ');
   return `${demaisFases} e ${ultimaFase}`;
 };
 
-/**
- * Helper function to determine 'do' or 'da' based on OM name.
- * Assumes 'da' if the OM name contains 'ª' (indicating feminine ordinal number).
- * @param omName The name of the Military Organization (OM).
- * @returns 'do' or 'da'.
- */
-const getOmArticle = (omName: string): string => {
-    // Verifica se a OM contém 'ª' (ex: 23ª Bda Inf Sl)
-    if (omName.includes('ª')) {
-        return 'da';
-    }
-    // Caso contrário, usa o padrão 'do'
-    return 'do';
+export const calculateDiasEtapaSolicitada = (diasOperacao: number): number => {
+  const diasRestantesNoCiclo = diasOperacao % 30;
+  const ciclosCompletos = Math.floor(diasOperacao / 30);
+  if (diasRestantesNoCiclo <= 22 && diasOperacao >= 30) {
+    return ciclosCompletos * 8;
+  } else if (diasRestantesNoCiclo > 22) {
+    return (diasRestantesNoCiclo - 22) + (ciclosCompletos * 8);
+  } else {
+    return 0;
+  }
 };
 
-/**
- * Determina a concordância de gênero para o cabeçalho da categoria.
- * @param categoria A categoria da Classe II.
- * @returns 'do' ou 'da'.
- */
-const getCategoryArticle = (categoria: Categoria): 'do' | 'da' => {
-    switch (categoria) {
-        case 'Proteção Balística':
-            return 'da'; // Manutenção de componentes DA Proteção Balística
-        case 'Equipamento Individual':
-        case 'Material de Estacionamento':
-        default:
-            return 'do'; // Manutenção de componentes DO Equipamento Individual / DO Material de Estacionamento
-    }
-};
+export function calculateClasseICalculations(
+  efetivo: number | null,
+  diasOperacao: number,
+  nrRefInt: number | null,
+  valorQS: number | null,
+  valorQR: number | null
+) {
+  const E = efetivo || 0;
+  const D = diasOperacao || 0;
+  const R = nrRefInt || 0;
+  const VQS = valorQS || 0;
+  const VQR = valorQR || 0;
 
-/**
- * Generates the detailed calculation memory for a specific Classe II category.
- * This is used for the editable memory field.
- */
-export const generateClasseIIMemoriaCalculo = (
-    categoria: Categoria, 
-    itens: ItemClasseII[], 
-    diasOperacao: number, 
-    omDetentora: string, // OM Detentora (Source)
-    ugDetentora: string, // UG Detentora (Source)
-    faseAtividade: string | null | undefined,
-    efetivo: number, // NOVO: Efetivo Empregado
-    valorND30: number, // NOVO: Valor ND 30
-    valorND39: number // NOVO: Valor ND 39
+  const diasEtapaSolicitada = calculateDiasEtapaSolicitada(D);
+  const minR = Math.min(R, 3);
+
+  const complementoQS = E * minR * (VQS / 3) * D;
+  const etapaQS = E * VQS * diasEtapaSolicitada;
+  const totalQS = complementoQS + etapaQS;
+
+  const complementoQR = E * minR * (VQR / 3) * D;
+  const etapaQR = E * VQR * diasEtapaSolicitada;
+  const totalQR = complementoQR + etapaQR;
+
+  return {
+    nrCiclos: Math.ceil(D / 30),
+    diasEtapaPaga: Math.ceil(D / 30) * 22,
+    diasEtapaSolicitada,
+    totalEtapas: diasEtapaSolicitada + (minR * D),
+    complementoQS,
+    etapaQS,
+    totalQS,
+    complementoQR,
+    etapaQR,
+    totalQR,
+  };
+}
+
+export const formatFormula = (
+  efetivo: number,
+  diasOperacao: number,
+  nrRefInt: number,
+  valorEtapa: number,
+  diasEtapaSolicitada: number,
+  tipo: 'complemento' | 'etapa',
+  valorFinal: number
 ): string => {
-    const faseFormatada = formatFasesParaTexto(faseAtividade);
-    const totalValor = itens.reduce((sum, item) => sum + (item.quantidade * item.valor_mnt_dia * diasOperacao), 0);
+  const militarPlural = efetivo === 1 ? 'mil.' : 'mil.';
+  const diaPlural = diasOperacao === 1 ? 'dia' : 'dias';
+  const minR = Math.min(nrRefInt, 3);
 
-    // 1. Determinar o prefixo ND (REMOVIDO 'ND ')
-    let ndPrefix = "";
-    if (valorND30 > 0 && valorND39 > 0) {
-        ndPrefix += "33.90.30 / 33.90.39";
-    } else if (valorND30 > 0) {
-        ndPrefix += "33.90.30";
-    } else if (valorND39 > 0) {
-        ndPrefix += "33.90.39";
-    } else {
-        ndPrefix = "(Não Alocado)";
-    }
-    
-    // 2. Determinar singular/plural do efetivo
-    const militarPlural = efetivo === 1 ? "militar" : "militares";
-    
-    // 3. Determinar o artigo 'do/da' da OM
-    const omArticle = getOmArticle(omDetentora);
-    
-    // 4. Determinar o artigo 'do/da' da Categoria
-    const categoryArticle = getCategoryArticle(categoria);
-    
-    // 5. Determinar singular/plural de 'dia' (para o cabeçalho)
-    const diaPlural = diasOperacao === 1 ? "dia" : "dias";
-
-    // 6. Montar o cabeçalho dinâmico
-    const categoryLabel = getCategoryLabel(categoria);
-    const header = `${ndPrefix} - Manutenção de componentes ${categoryArticle} ${categoryLabel} de ${efetivo} ${militarPlural} ${omArticle} ${omDetentora}, durante ${diasOperacao} ${diaPlural} de ${faseFormatada}.`;
-
-    let detalhamentoItens = "";
-    itens.forEach(item => {
-        const valorItem = item.quantidade * item.valor_mnt_dia * diasOperacao;
-        // NOVO FORMATO: - <Item>: <Qtd Item> Un. x <Mnt/Dia> x <Qtd Dias Atividade> = <Total>
-        // APLICANDO CONCORDÂNCIA AQUI:
-        const diasPluralFormula = diasOperacao === 1 ? "dia" : "dias";
-        detalhamentoItens += `- ${item.item}: ${item.quantidade} Un. x ${formatCurrency(item.valor_mnt_dia)}/dia x ${diasOperacao} ${diasPluralFormula} = ${formatCurrency(valorItem)}\n`;
-    });
-
-    // Montar a memória de cálculo simplificada
-    return `${header}\n\nCálculo:\nFórmula: Nr Itens x Valor Mnt/Dia x Nr Dias:\n${detalhamentoItens.trim()}\n\nTotal: ${formatCurrency(totalValor)}.`;
+  if (tipo === 'complemento') {
+    return `${formatNumber(efetivo)} ${militarPlural} x ${formatNumber(minR)} ref. int. x (${formatCurrency(valorEtapa)} / 3) x ${formatNumber(diasOperacao)} ${diaPlural} = ${formatCurrency(valorFinal)}`;
+  } else {
+    const diasEtapaPlural = diasEtapaSolicitada === 1 ? 'dia' : 'dias';
+    return `${formatNumber(efetivo)} ${militarPlural} x ${formatCurrency(valorEtapa)} x ${formatNumber(diasEtapaSolicitada)} ${diasEtapaPlural} = ${formatCurrency(valorFinal)}`;
+  }
 };
 
-/**
- * Generates the final, consolidated detailing string for the database record.
- * This includes the ND split and the OM of resource destination.
- */
-export const generateDetalhamento = (
-    itens: ItemClasseII[], 
-    diasOperacao: number, 
-    omDetentora: string, // OM Detentora (Source)
-    ugDetentora: string, // UG Detentora (Source)
-    faseAtividade: string, 
-    omDestino: string, // OM de Destino do Recurso
-    ugDestino: string, // UG de Destino do Recurso
-    valorND30: number, 
-    valorND39: number,
-    efetivo: number // NOVO: Efetivo
-): string => {
-    const faseFormatada = formatFasesParaTexto(faseAtividade);
-    const totalItens = itens.reduce((sum, item) => sum + item.quantidade, 0);
-    const valorTotal = valorND30 + valorND39;
-    
-    // 1. Determinar o prefixo ND (REMOVIDO 'ND ')
-    let ndPrefix = "";
-    if (valorND30 > 0 && valorND39 > 0) {
-        ndPrefix += "33.90.30 / 33.90.39";
-    } else if (valorND30 > 0) {
-        ndPrefix += "33.90.30";
-    } else if (valorND39 > 0) {
-        ndPrefix += "33.90.39";
-    } else {
-        ndPrefix = "(Não Alocado)";
-    }
-    
-    // 2. Determinar singular/plural do efetivo
-    const militarPlural = efetivo === 1 ? "militar" : "militares";
-    
-    // 3. Determinar o artigo 'do/da'
-    const omArticle = getOmArticle(omDetentora);
-    
-    // 4. Determinar singular/plural de 'dia'
-    const diaPlural = diasOperacao === 1 ? "dia" : "dias";
+export function generateRacaoQuenteMemoriaCalculo(registro: ClasseIRegistro): { qs: string, qr: string } {
+  const { efetivo, diasOperacao, nrRefInt, valorQS, valorQR, calculos, organizacao, faseAtividade } = registro;
 
-    // 5. Montar o cabeçalho dinâmico (usando OM Detentora)
-    // Nota: Aqui usamos uma descrição genérica 'Material de Intendência (Diversos)'
-    const header = `${ndPrefix} - Manutenção de componente de Material de Intendência (Diversos) de ${efetivo} ${militarPlural} ${omArticle} ${omDetentora}, durante ${diasOperacao} ${diaPlural} de ${faseFormatada}.`;
+  if (!efetivo || valorQS === null || valorQR === null || nrRefInt === null) {
+    return { qs: "Dados incompletos.", qr: "" };
+  }
 
+  const faseFormatada = formatFasesParaTexto(faseAtividade);
+  const preposition = getOmPreposition(organizacao);
+  const militarPlural = efetivo === 1 ? 'militar' : 'militares';
+  const diaPlural = diasOperacao === 1 ? 'dia' : 'dias';
+  const diasEtapaSolicitadaPlural = calculos.diasEtapaSolicitada === 1 ? 'dia' : 'dias';
 
-    // 6. Agrupar itens por categoria que possuem quantidade > 0
-    const gruposPorCategoria = itens.reduce((acc, item) => {
-        const categoria = item.categoria as Categoria;
-        const valorItem = item.quantidade * item.valor_mnt_dia * diasOperacao;
-        
-        if (!acc[categoria]) {
-            acc[categoria] = {
-                totalValor: 0,
-                totalQuantidade: 0,
-                detalhes: [],
-            };
-        }
-        
-        acc[categoria].totalValor += valorItem;
-        acc[categoria].totalQuantidade += item.quantidade;
-        
-        // APLICANDO CONCORDÂNCIA AQUI:
-        const diasPluralFormula = diasOperacao === 1 ? "dia" : "dias";
-        
-        acc[categoria].detalhes.push(
-            // NOVO FORMATO: - <Item>: <Qtd Item> Un. x <Mnt/Dia> x <Qtd Dias Atividade> = <Total> (sem ponto final)
-            `- ${item.item}: ${item.quantidade} Un. x ${formatCurrency(item.valor_mnt_dia)}/dia x ${diasOperacao} ${diasPluralFormula} = ${formatCurrency(valorItem)}`
-        );
-        
-        return acc;
-    }, {} as Record<Categoria, { totalValor: number, totalQuantidade: number, detalhes: string[] }>);
+  const qs = `33.90.30 - Aquisição de Gêneros Alimentícios (QS) destinados à complementação de alimentação de ${efetivo} ${militarPlural} ${preposition} ${organizacao}, durante ${diasOperacao} ${diaPlural} de ${faseFormatada}.
 
-    let detalhamentoItens = "";
-    
-    // 7. Formatar a seção de cálculo agrupada
-    Object.entries(gruposPorCategoria).forEach(([categoria, grupo]) => {
-        detalhamentoItens += `\n--- ${getCategoryLabel(categoria).toUpperCase()} (${grupo.totalQuantidade} ITENS) ---\n`;
-        detalhamentoItens += `Valor Total Categoria: ${formatCurrency(grupo.totalValor)}\n`;
-        detalhamentoItens += `Detalhes:\n`;
-        detalhamentoItens += grupo.detalhes.join('\n');
-        detalhamentoItens += `\n`;
-    });
-    
-    detalhamentoItens = detalhamentoItens.trim();
+Cálculo:
+- Valor da Etapa (QS): ${formatCurrency(valorQS)}.
+- Nr Refeições Intermediárias: ${nrRefInt}.
+- Dias de Etapa Solicitada: ${formatNumber(calculos.diasEtapaSolicitada)} ${diasEtapaSolicitadaPlural}.
+- Dias de Complemento de Etapa: ${formatNumber(diasOperacao)} ${diaPlural}.
 
-    // Cabeçalho padronizado
-    return `${header}
+Fórmula do Complemento: [Efetivo x Nr Ref Int (máx 2) x Valor da Etapa/3 x Dias de Complemento de Etapa]
+Fórmula da Etapa Solicitada: [Efetivo x Valor da etapa x Dias de Etapa Solicitada]
 
-OM Detentora: ${omDetentora} (UG: ${formatCodug(ugDetentora)})
-OM Destino Recurso: ${omDestino} (UG: ${formatCodug(ugDestino)})
-Total de Itens: ${totalItens}
+Complemento de Etapa: ${formatFormula(efetivo, diasOperacao, nrRefInt, valorQS, 0, 'complemento', calculos.complementoQS)}
+Etapa Solicitada: ${formatFormula(efetivo, diasOperacao, nrRefInt, valorQS, calculos.diasEtapaSolicitada, 'etapa', calculos.etapaQS)}
 
-Alocação:
-- ND 33.90.30 (Material): ${formatCurrency(valorND30)}
-- ND 33.90.39 (Serviço): ${formatCurrency(valorND39)}
+Total QS: ${formatCurrency(calculos.totalQS)}.`;
 
-Cálculo Detalhado por Categoria:
-${detalhamentoItens}
+  const qr = `33.90.30 - Aquisição de Gêneros Alimentícios (QR) destinados à complementação de alimentação de ${efetivo} ${militarPlural} ${preposition} ${organizacao}, durante ${diasOperacao} ${diaPlural} de ${faseFormatada}.
 
-Valor Total: ${formatCurrency(valorTotal)}.`;
-};
+Cálculo:
+- Valor da Etapa (QR): ${formatCurrency(valorQR)}.
+- Nr Refeições Intermediárias: ${nrRefInt}.
+- Dias de Etapa Solicitada: ${formatNumber(calculos.diasEtapaSolicitada)} ${diasEtapaSolicitadaPlural}.
+- Dias de Complemento de Etapa: ${formatNumber(diasOperacao)} ${diaPlural}.
+
+Fórmula do Complemento: [Efetivo x Nr Ref Int (máx 2) x Valor da Etapa/3 x Dias de Complemento de Etapa]
+Fórmula da Etapa Solicitada: [Efetivo x Valor da etapa x Dias de Etapa Solicitada]
+
+- Complemento de Etapa: ${formatFormula(efetivo, diasOperacao, nrRefInt, valorQR, 0, 'complemento', calculos.complementoQR)}
+- Etapa Solicitada: ${formatFormula(efetivo, diasOperacao, nrRefInt, valorQR, calculos.diasEtapaSolicitada, 'etapa', calculos.etapaQR)}
+
+Total QR: ${formatCurrency(calculos.totalQR)}.`;
+
+  return { qs, qr };
+}
+
+export function generateRacaoOperacionalMemoriaCalculo(registro: ClasseIRegistro): string {
+  const { efetivo, diasOperacao, organizacao, quantidadeR2, quantidadeR3, faseAtividade } = registro;
+  const E = efetivo || 0;
+  const D = diasOperacao || 0;
+  const R2 = quantidadeR2 || 0;
+  const R3 = quantidadeR3 || 0;
+  const totalRacoes = R2 + R3;
+  const faseFormatada = formatFasesParaTexto(faseAtividade);
+  const militarPlural = E === 1 ? 'militar' : 'militares';
+  const diaPlural = D === 1 ? 'dia' : 'dias';
+  const preposition = getOmPreposition(organizacao);
+
+  const header = `33.90.30 - Fornecimento de Ração Operacional para atender ${formatNumber(E)} ${militarPlural} ${preposition} ${organizacao}, por até ${formatNumber(D)} ${diaPlural} de ${faseFormatada}, em caso de comprometimento do fluxo Cl I (QR/QS) ou de conduções de atividades descentralizadas/afastadas de instalações militares.`;
+  const racaoPlural = totalRacoes === 1 ? 'Ração Operacional' : 'Rações Operacionais';
+  const unidadePlural = totalRacoes === 1 ? 'unidade' : 'unidades';
+
+  return `${header}
+
+Quantitativo R2 (24h): ${formatNumber(R2)} un.
+Quantitativo R3 (12h): ${formatNumber(R3)} un.
+
+Total de ${racaoPlural}: ${formatNumber(totalRacoes)} ${unidadePlural}.`;
+}
