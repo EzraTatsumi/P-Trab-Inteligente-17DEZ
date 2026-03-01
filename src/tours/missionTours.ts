@@ -202,7 +202,6 @@ export const runMission02 = (userId: string, onComplete: () => void) => {
   const d = driver({
     ...commonConfig,
     allowClose: false, 
-    overlayClickAction: 'none',
     steps: [
       {
         element: '.card-diretrizes-operacionais',
@@ -324,10 +323,9 @@ export const runMission02 = (userId: string, onComplete: () => void) => {
           doneBtnText: 'Concluir Missão',
         },
         onHighlighted: (el) => {
-          el.style.zIndex = "1000001";
+          (el as HTMLElement).style.zIndex = "1000001";
           el.scrollIntoView({ behavior: 'smooth', block: 'center' });
           
-          // TRAVA DE SEGURANÇA: Impede que o tour feche ao clicar no elemento iluminado
           el.addEventListener('click', (e) => e.stopPropagation(), { capture: true });
         }
       }
