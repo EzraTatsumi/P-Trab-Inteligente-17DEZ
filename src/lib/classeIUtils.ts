@@ -138,42 +138,30 @@ export function generateRacaoQuenteMemoriaCalculo(registro: ClasseIRegistro): { 
   const qs = `33.90.30 - Aquisição de Gêneros Alimentícios (QS) destinados à complementação de alimentação de ${efetivo} ${militarPlural} ${preposition} ${organizacao}, durante ${diasOperacao} ${diaPlural} de ${faseFormatada}.
 
 Cálculo:
-
-Valor da Etapa (QS): ${formatCurrency(valorQS)}.
-
-Nr Refeições Intermediárias: ${nrRefInt}.
-
-Dias de Etapa Solicitada: ${formatNumber(calculos.diasEtapaSolicitada)} ${diasEtapaSolicitadaPlural}.
-
-Dias de Complemento de Etapa: ${formatNumber(diasOperacao)} ${diaPlural}.
+- Valor da Etapa (QS): ${formatCurrency(valorQS)}.
+- Nr Refeições Intermediárias: ${nrRefInt}.
+- Dias de Etapa Solicitada: ${formatNumber(calculos.diasEtapaSolicitada)} ${diasEtapaSolicitadaPlural}.
+- Dias de Complemento de Etapa: ${formatNumber(diasOperacao)} ${diaPlural}.
 
 Fórmula do Complemento: [Efetivo x Nr Ref Int (máx 3) x Valor da Etapa/3 x Dias de Complemento de Etapa]
 Fórmula da Etapa Solicitada: [Efetivo x Valor da etapa x Dias de Etapa Solicitada]
-
-Complemento de Etapa: ${formatFormula(efetivo, diasOperacao, nrRefInt, valorQS, 0, 'complemento', calculos.complementoQS)}
-
-Etapa Solicitada: ${formatFormula(efetivo, diasOperacao, nrRefInt, valorQS, calculos.diasEtapaSolicitada, 'etapa', calculos.etapaQS)}
+- Complemento de Etapa: ${formatFormula(efetivo, diasOperacao, nrRefInt, valorQS, 0, 'complemento', calculos.complementoQS)}
+- Etapa Solicitada: ${formatFormula(efetivo, diasOperacao, nrRefInt, valorQS, calculos.diasEtapaSolicitada, 'etapa', calculos.etapaQS)}
 
 Total QS: ${formatCurrency(calculos.totalQS)}.`;
 
   const qr = `33.90.30 - Aquisição de Gêneros Alimentícios (QR) destinados à complementação de alimentação de ${efetivo} ${militarPlural} ${preposition} ${organizacao}, durante ${diasOperacao} ${diaPlural} de ${faseFormatada}.
 
 Cálculo:
-
-Valor da Etapa (QR): ${formatCurrency(valorQR)}.
-
-Nr Refeições Intermediárias: ${nrRefInt}.
-
-Dias de Etapa Solicitada: ${formatNumber(calculos.diasEtapaSolicitada)} ${diasEtapaSolicitadaPlural}.
-
-Dias de Complemento de Etapa: ${formatNumber(diasOperacao)} ${diaPlural}.
+- Valor da Etapa (QR): ${formatCurrency(valorQR)}.
+- Nr Refeições Intermediárias: ${nrRefInt}.
+- Dias de Etapa Solicitada: ${formatNumber(calculos.diasEtapaSolicitada)} ${diasEtapaSolicitadaPlural}.
+- Dias de Complemento de Etapa: ${formatNumber(diasOperacao)} ${diaPlural}.
 
 Fórmula do Complemento: [Efetivo x Nr Ref Int (máx 3) x Valor da Etapa/3 x Dias de Complemento de Etapa]
 Fórmula da Etapa Solicitada: [Efetivo x Valor da etapa x Dias de Etapa Solicitada]
-
-Complemento de Etapa: ${formatFormula(efetivo, diasOperacao, nrRefInt, valorQR, 0, 'complemento', calculos.complementoQR)}
-
-Etapa Solicitada: ${formatFormula(efetivo, diasOperacao, nrRefInt, valorQR, calculos.diasEtapaSolicitada, 'etapa', calculos.etapaQR)}
+- Complemento de Etapa: ${formatFormula(efetivo, diasOperacao, nrRefInt, valorQR, 0, 'complemento', calculos.complementoQR)}
+- Etapa Solicitada: ${formatFormula(efetivo, diasOperacao, nrRefInt, valorQR, calculos.diasEtapaSolicitada, 'etapa', calculos.etapaQR)}
 
 Total QR: ${formatCurrency(calculos.totalQR)}.`;
 
