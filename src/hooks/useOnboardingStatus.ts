@@ -36,7 +36,8 @@ export const useOnboardingStatus = () => {
         hasLogistica,
         hasOperacional,
         hasMissions,
-        isReady: hasOMs && hasLogistica && hasOperacional
+        // CORREÇÃO: Agora exige as missões para liberar o sistema
+        isReady: hasOMs && hasLogistica && hasOperacional && hasMissions
       };
     },
     enabled: !!user?.id,
