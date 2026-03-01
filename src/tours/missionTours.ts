@@ -330,6 +330,7 @@ export const runMission02 = (userId: string, onComplete: () => void) => {
           // TRAVA DE SEGURANÇA: Impede que o tour feche ao clicar no elemento iluminado
           el.addEventListener('click', (e) => e.stopPropagation(), { capture: true });
         }
+      }
     ],
     onDestroyed: () => {
       markMissionCompleted(2, userId);

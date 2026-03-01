@@ -327,8 +327,7 @@ export const runMission02 = (userId: string, onComplete: () => void) => {
           el.scrollIntoView({ behavior: 'smooth', block: 'center' });
           
           // TRAVA DE SEGURANÇA: Impede que o tour feche ao clicar no elemento iluminado
-          htmlEl.addEventListener('click', (e) => e.stopPropagation(), { capture: true });
-        };
+          el.addEventListener('click', (e) => e.stopPropagation(), { capture: true });
         }
       }
     ],
