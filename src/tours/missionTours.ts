@@ -98,7 +98,7 @@ export const runMission01 = (userId: string, onComplete: () => void) => {
         element: '.btn-ajuda',
         popover: {
           title: 'Suporte e Manuais',
-          description: 'Dúvidas sobre normas ou uso do sistema? Aqui você accesses os manuais e guias rápidos.',
+          description: 'Dúvidas sobre normas ou uso do sistema? Aqui você acessa os manuais e guias rápidos.',
           side: 'bottom',
           align: 'start'
         }
@@ -159,7 +159,7 @@ export const runMission01 = (userId: string, onComplete: () => void) => {
         element: '.btn-preencher-dor',
         popover: {
           title: 'Preenchimento do DOR',
-          description: 'Finalizado o P Trab, essa ferramenta auxilia na montagem do DOR, expecialmente ao agrupar os custos conforme a sua necessidade.',
+          description: 'Finalizado o P Trab, essa ferramenta auxilia na montagem do DOR, especialmente ao agrupar os custos conforme a sua necessidade.',
           side: 'left',
           align: 'center'
         }
@@ -359,7 +359,7 @@ export const runMission03 = (userId: string, onComplete: () => void) => {
         element: '.tabs-logistica',
         popover: {
           title: 'Classes de Suprimento',
-          description: 'Aqui você detalha itens de Classe I a IX. O sistema já conhece os fatores de consumo baseados suas diretrizes.',
+          description: 'Aqui você detalha itens de Classe I a IX. O sistema já conhece os fatores de consumo baseados em suas diretrizes.',
           side: 'bottom',
           align: 'center'
         }
@@ -654,7 +654,7 @@ export const runMission05 = (userId: string, onComplete: () => void) => {
         element: '.tour-dor-consequencia',
         popover: {
           title: 'Justificativa de Risco',
-          description: 'Aqui descremeos o impacto negativo caso a requisição não seja atendida. Este campo é crucial para a análise do Ordenador de Despesas.',
+          description: 'Aqui descrevemos o impacto negativo caso a requisição não seja atendida. Este campo é crucial para a análise do Ordenador de Despesas.',
           side: 'top',
           align: 'center'
         }
