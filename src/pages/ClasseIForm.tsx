@@ -796,7 +796,7 @@ export default function ClasseIForm() {
         categoria: "RACAO_QUENTE",
         organizacao: registro.organizacao,
         ug: registro.ug,
-        dias_operacao: registro.diasOperacao,
+        dias_operacao: registro.dias_operacao,
         efetivo: registro.efetivo || 0,
         fase_atividade: registro.faseAtividade || "",
         om_qs: registro.omQS,
@@ -822,7 +822,7 @@ export default function ClasseIForm() {
         categoria: "RACAO_OPERACIONAL",
         organizacao: registro.organizacao,
         ug: registro.ug,
-        dias_operacao: registro.diasOperacao,
+        dias_operacao: registro.dias_operacao,
         efetivo: registro.efetivo || 0,
         fase_atividade: registro.faseAtividade || "",
         quantidade_r2: Math.round(registro.quantidadeR2 || 0),
@@ -1133,7 +1133,7 @@ export default function ClasseIForm() {
                     </TabsTrigger>
                   </TabsList>
                   <TabsContent value="RACAO_QUENTE" className="mt-4">
-                    <div className="space-y-2 p-4 bg-white rounded-lg">
+                    <div className="space-y-2 p-4 bg-muted/50 rounded-lg">
                       <h4 className="font-semibold text-base">
                         Configuração de QS/QR
                       </h4>
@@ -1254,7 +1254,7 @@ export default function ClasseIForm() {
                     </div>
                   </TabsContent>
                   <TabsContent value="RACAO_OPERACIONAL" className="mt-4">
-                    <div className="space-y-2 p-4 bg-white rounded-lg">
+                    <div className="space-y-2 p-4 bg-muted/50 rounded-lg">
                       <h4 className="font-semibold text-base mb-2">
                         Quantitativo de Ração Operacional
                       </h4>
