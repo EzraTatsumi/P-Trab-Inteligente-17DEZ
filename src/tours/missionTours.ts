@@ -324,11 +324,12 @@ export const runMission02 = (userId: string, onComplete: () => void) => {
           doneBtnText: 'Concluir Missão',
         },
         onHighlighted: (el) => {
-          el.style.zIndex = "1000001";
-          el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          const htmlEl = el as HTMLElement;
+          htmlEl.style.zIndex = "1000001";
+          htmlEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
           
           // TRAVA DE SEGURANÇA: Impede que o tour feche ao clicar no elemento iluminado
-          el.addEventListener('click', (e) => e.stopPropagation(), { capture: true });
+          htmlEl.addEventListener('click', (e) => e.stopPropagation(), { capture: true });
         }
       }
     ],
