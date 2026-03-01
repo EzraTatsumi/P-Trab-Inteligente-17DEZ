@@ -1,12 +1,9 @@
-import { useState, useEffect } from "react";
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { SessionContextProvider } from "@/components/SessionContextProvider";
 import { HelmetProvider } from "react-helmet-async";
-import { WelcomeModal } from "@/components/WelcomeModal";
-import { useOnboardingStatus } from "@/hooks/useOnboardingStatus";
 import Index from "./pages/Index";
 import Login from "./pages/Login";
 import PTrabManager from "./pages/PTrabManager";
@@ -49,23 +46,8 @@ const queryClient = new QueryClient();
 
 // Componente interno que consome os contextos
 const AppContent = () => {
-  const { data: status } = useOnboardingStatus();
-  const [welcomeOpen, setWelcomeOpen] = useState(false);
-
-  // Abre o modal se o usuário ainda não estiver 'Ready' e não tiver concluído as missões
-  useEffect(() => {
-    if (status && !status.isReady && !status.hasMissions) {
-      setWelcomeOpen(true);
-    }
-  }, [status]);
-
   return (
     <>
-      <WelcomeModal 
-        open={welcomeOpen} 
-        onOpenChange={setWelcomeOpen} 
-        status={status || null} 
-      />
       <GhostModeBanner />
       <Routes>
         <Route path="/" element={<Index />} />
@@ -81,12 +63,12 @@ const AppContent = () => {
         {/* Rotas de Formulários Específicos (Logística) */}
         <Route path="/ptrab/classe-i" element={<ProtectedRoute><ClasseIForm /></ProtectedRoute>} />
         <Route path="/ptrab/classe-ii" element={<ProtectedRoute><ClasseIIForm /></ProtectedRoute>} />
-        <Route path="/ptrab/classe-iii" element={<ProtectedRoute><ClasseIIIForm /></ProtectedRoute>} />
         <Route path="/ptrab/classe-v" element={<ProtectedRoute><ClasseVForm /></ProtectedRoute>} />
         <Route path="/ptrab/classe-vi" element={<ProtectedRoute><ClasseVIForm /></ProtectedRoute>} />
         <Route path="/ptrab/classe-vii" element={<ProtectedRoute><ClasseVIIForm /></ProtectedRoute>} />
         <Route path="/ptrab/classe-viii" element={<ProtectedRoute><ClasseVIIIForm /></ProtectedRoute>} />
         <Route path="/ptrab/classe-ix" element={<ProtectedRoute><ClasseIXForm /></ProtectedRoute>} />
+        <Route path="/ptrab/classe-iii" element={<ProtectedRoute><ClasseIIIForm /></ProtectedRoute>} />
         
         {/* Rotas de Formulários Específicos (Operacional) */}
         <Route path="/ptrab/diaria" element={<ProtectedRoute><DiariaForm /></ProtectedRoute>} />

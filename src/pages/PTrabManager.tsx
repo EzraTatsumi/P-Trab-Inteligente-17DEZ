@@ -258,20 +258,28 @@ const PTrabManager = () => {
   }, [user?.id]);
 
   useEffect(() => {
-    // Se não há missões concluídas, não faz sentido estar 'preso' no ghost mode
-    if (onboardingStatus && !onboardingStatus.hasMissions) {
-      // Permite mostrar o modal mesmo que haja lixo de ghost mode
-      setShowWelcomeModal(true);
-    } else if (isGhostMode()) {
+    // 1. BARREIRA DE SUPRESSÃO: 
+    // Se o modo fantasma estiver ativo (missão) ou se o Centro de Instrução estiver aberto, o modal é estritamente proibido.
+    if (isGhostMode() || showInstructionHub) {
       setShowWelcomeModal(false);
       return;
     }
 
-    if (!isLoadingOnboarding && onboardingStatus && !onboardingStatus.isReady && !hasShownWelcome.current) {
-      setShowWelcomeModal(true);
-      hasShownWelcome.current = true;
+    // 2. LÓGICA DE LEMBRETE (Apenas no Manager):
+    if (!isLoadingOnboarding && onboardingStatus) {
+      const hasPendingTasks = !onboardingStatus.isReady || !onboardingStatus.hasMissions;
+      
+      // Só mostra se houver pendências e se ainda não foi mostrado nesta visita à página
+      if (hasPendingTasks && !hasShownWelcome.current) {
+        // Pequeno delay para a tela respirar antes de exibir o lembrete
+        const timer = setTimeout(() => {
+          setShowWelcomeModal(true);
+          hasShownWelcome.current = true; 
+        }, 300);
+        return () => clearTimeout(timer);
+      }
     }
-  }, [isLoadingOnboarding, onboardingStatus]);
+  }, [isLoadingOnboarding, onboardingStatus, showInstructionHub]); // showInstructionHub é dependência crítica.
 
   const { data: pTrabs = [], isLoading: loading, refetch: loadPTrabs } = useQuery({
     // Adicionamos ghostActive na chave para que o React Query invalide o cache real e use o simulado
@@ -345,7 +353,6 @@ const PTrabManager = () => {
 
   // Os auxiliares restantes do componente permanecem os mesmos...
   // (omitindo para brevidade seguindo as instruções de dyad-write completo)
-  // ... mantendo o resto do código original abaixo do que foi alterado ...
 
   useEffect(() => {
     (window as any).openSettings = () => setSettingsOpen(true);
