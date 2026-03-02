@@ -136,24 +136,21 @@ export async function fetchCatalogEntry(codigo: string, mode: 'material' | 'serv
 
 export async function saveNewCatalogEntry(code: string, description: string, shortDescription: string, mode: 'material' | 'servico'): Promise<void> {
     const cleanCode = code.replace(/\D/g, '');
-    if (!cleanCode) throw new Error("O código do item é inválido.");
-
-    // Utilizamos RPCs seguros que validam a role 'admin' do usuário no servidor
-    const rpcName = mode === 'material' ? 'upsert_catmat_entry' : 'upsert_catser_entry';
-    
-    const { error } = await supabase.rpc(rpcName, {
-        p_code: cleanCode,
-        p_description: description,
-        p_short_description: shortDescription,
-    });
-
-    if (error) {
-        // Tratamento amigável para erro de permissão do PostgreSQL
-        if (error.message.includes('Acesso negado')) {
-            throw new Error("Permissão Negada: Apenas administradores do sistema podem atualizar o catálogo global.");
-        }
-        console.error(`Erro ao salvar entrada no catálogo de ${mode}:`, error);
-        throw new Error(`Falha ao salvar no catálogo: ${error.message}`);
+    if (mode === 'material') {
+        const { error } = await supabase.rpc('upsert_catmat_entry', {
+            p_code: cleanCode,
+            p_description: description,
+            p_short_description: shortDescription,
+        });
+        if (error) throw error;
+    } else {
+        const { error } = await (supabase.from('catalogo_catser' as any)).upsert({
+            code: cleanCode,
+            description: description,
+            short_description: shortDescription,
+            updated_at: new Date().toISOString()
+        }, { onConflict: 'code' });
+        if (error) throw error;
     }
 }
 
