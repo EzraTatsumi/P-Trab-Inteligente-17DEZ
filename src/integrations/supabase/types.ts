@@ -603,7 +603,7 @@ export type Database = {
           valor_total: number
         }
         Insert: {
-          categoria?: string | null
+          categoria?: string
           created_at?: string
           detalhamento?: string | null
           detalhamento_customizado?: string | null
@@ -1115,7 +1115,7 @@ export type Database = {
           om_detentora?: string | null
           ug_detentora?: string | null
           dias_operacao?: number
-          efetivo?: number | null
+          efetivo?: number
           fase_atividade?: string | null
           group_name: string
           group_purpose?: string | null
@@ -1135,7 +1135,7 @@ export type Database = {
           om_detentora?: string | null
           ug_detentora?: string | null
           dias_operacao?: number
-          efetivo?: number | null
+          efetivo?: number
           fase_atividade?: string | null
           group_name?: string
           group_purpose?: string | null
@@ -1895,15 +1895,15 @@ export type Database = {
           fase_atividade?: string | null
           id?: string
           is_ida_volta?: boolean
-          om_detentora: string
-          organizacao: string
-          origem: string
-          p_trab_id: string
+          om_detentora?: string
+          organizacao?: string
+          origem?: string
+          p_trab_id?: string
           quantidade_passagens?: number
-          tipo_transporte: string
-          trecho_id: string
-          ug: string
-          ug_detentora: string
+          tipo_transporte?: string
+          trecho_id?: string
+          ug?: string
+          ug_detentora?: string
           updated_at?: string
           valor_nd_33?: number
           valor_total?: number
@@ -2155,16 +2155,7 @@ export type Database = {
       }
     }
     Views: {
-      public_profiles: {
-        Row: {
-          id: string
-          first_name: string | null
-          last_name: string | null
-          email: string | null
-          posto_graduacao: string | null
-          nome_om: string | null
-        }
-      }
+      [_ in never]: never
     }
     Functions: {
       approve_ptrab_share: {

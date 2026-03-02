@@ -399,8 +399,9 @@ const PTrabManager = () => {
   const existingPTrabNumbers = useMemo(() => pTrabs.map(p => p.numero_ptrab), [pTrabs]);
 
   const fetchUserName = useCallback(async (userId: string, userMetadata: any) => {
-    const { data: profileData, error: profileError } = await (supabase.from('public_profiles' as any) as any)
-        .select('last_name, posto_graduacao, nome_om') 
+    const { data: profileData, error: profileError } = await supabase
+        .from('profiles')
+        .select('last_name, raw_user_meta_data') 
         .eq('id', userId)
         .single();
 
@@ -409,8 +410,9 @@ const PTrabManager = () => {
     }
     
     const nomeGuerra = profileData?.last_name || '';
-    const postoGraduacao = profileData?.posto_graduacao?.trim() || userMetadata?.posto_graduacao?.trim() || '';
-    const nomeOM = profileData?.nome_om?.trim() || '';
+    const profileMetadata = profileData?.raw_user_meta_data as { posto_graduacao?: string, nome_om?: string } | undefined;
+    const postoGraduacao = profileMetadata?.posto_graduacao?.trim() || userMetadata?.posto_graduacao?.trim() || '';
+    const nomeOM = profileMetadata?.nome_om?.trim() || '';
     
     let nameParts: string[] = [];
     if (postoGraduacao) nameParts.push(postoGraduacao);
