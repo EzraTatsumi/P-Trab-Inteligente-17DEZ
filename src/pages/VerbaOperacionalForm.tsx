@@ -491,7 +491,7 @@ const VerbaOperacionalForm = () => {
             om_favorecida: prev.om_favorecida,
             ug_favorecida: prev.ug_favorecida,
             om_detentora: DEFAULT_OM_DETENTORA,
-            ug_detentora: DEFAULT_UG_DETENTORA,
+            ug_detentora: DEFAULT_UG_DETentora,
             dias_operacao: 0,
             quantidade_equipes: 0,
             valor_total_solicitado: 0,
@@ -1154,7 +1154,7 @@ const VerbaOperacionalForm = () => {
                                             const totalND39 = item.valor_nd_39;
                                             const isDifferentOmInView = item.om_detentora !== item.om_favorecida;
                                             const diasText = item.dias_operacao === 1 ? "dia" : "dias";
-                                            const efetivoText = item.quantidade_equipes === 1 ? 'militar' : 'militares'; 
+                                            const efetivoText = item.quantidade_equipes === 1 ? 'equipe' : 'equipes'; 
 
                                             return (
                                                 <Card 
@@ -1297,7 +1297,7 @@ const VerbaOperacionalForm = () => {
                                                         const totalND39 = Number(registro.valor_nd_39 || 0);
                                                         const isDifferentOm = registro.om_detentora !== registro.organizacao;
                                                         const diasText = registro.dias_operacao === 1 ? 'dia' : 'dias';
-                                                        const efetivoText = registro.quantidade_equipes === 1 ? 'militar' : 'militares';
+                                                        const efetivoText = registro.quantidade_equipes === 1 ? 'equipe' : 'equipes';
                                                         
                                                         return (
                                                             <Card 
