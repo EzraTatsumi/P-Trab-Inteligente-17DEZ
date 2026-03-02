@@ -66,21 +66,35 @@ export async function exportDORToWord(ptrabData: any, dorData: any) {
   };
 
   // 1. Carregar a Logo (Imagem) antes de montar a tabela
-  let logoElement: any = new TextRun({ text: "EB", bold: true, size: 24 }); // Fallback caso a imagem falhe
+  let logoElement: any;
+
   try {
+    // No Vite, arquivos na pasta public são servidos na raiz '/'
     const response = await fetch('/logo_md.png');
-    if (response.ok) {
-      const arrayBuffer = await response.arrayBuffer();
-      logoElement = new ImageRun({
-        data: arrayBuffer,
-        transformation: {
-          width: 60, // Ajuste a largura conforme necessário (em pixels)
-          height: 60 // Ajuste a altura conforme a proporção da sua logo
-        }
-      });
+    
+    if (!response.ok) {
+      throw new Error(`Erro HTTP: ${response.status} - Imagem não encontrada.`);
     }
+    
+    const arrayBuffer = await response.arrayBuffer();
+    
+    logoElement = new ImageRun({
+      data: arrayBuffer,
+      transformation: {
+        width: 60, 
+        height: 60 
+      },
+      type: "png" // Especificar o tipo resolve o erro de TypeScript
+    });
+
   } catch (error) {
-    console.warn("Não foi possível carregar a logo_md.png para o Word. Usando texto de fallback.", error);
+    console.warn("Não foi possível carregar a logo_md.png para o Word. Usando fallback de texto.", error);
+    
+    logoElement = new TextRun({ 
+      text: "EB", 
+      bold: true, 
+      size: 24 
+    });
   }
 
   // 2. Cabeçalho Principal (Logo + Texto + Número)
@@ -89,7 +103,7 @@ export async function exportDORToWord(ptrabData: any, dorData: any) {
     rows: [
       new TableRow({
         children: [
-          // Coluna 1: Logo (Imagem carregada)
+          // Coluna 1: Logo (Substituído aqui)
           new TableCell({
             width: { size: 15, type: WidthType.PERCENTAGE },
             children: [new Paragraph({ 
@@ -137,7 +151,7 @@ export async function exportDORToWord(ptrabData: any, dorData: any) {
     ],
   });
 
-  // 2. Dados do Órgão Requisitante
+  // 3. Dados do Órgão Requisitante
   const orgaoTable = new Table({
     width: { size: 100, type: WidthType.PERCENTAGE },
     rows: [
@@ -155,7 +169,7 @@ export async function exportDORToWord(ptrabData: any, dorData: any) {
     ],
   });
 
-  // 3. Itens de Custo
+  // 4. Itens de Custo
   const itemsRows = [
     new TableRow({ children: [createCell("OBJETO DE REQUISIÇÃO", { bold: true, align: AlignmentType.CENTER, bg: "BFBFBF", colSpan: 4 })] }),
     new TableRow({ children: [createCell(`Evento: ${dorData.evento || ""}`, { colSpan: 4 })] }),
@@ -186,7 +200,7 @@ export async function exportDORToWord(ptrabData: any, dorData: any) {
     rows: itemsRows,
   });
 
-  // 4. Seções de Texto (Finalidade, Motivação, etc)
+  // 5. Seções de Texto (Finalidade, Motivação, etc)
   const createSectionTable = (title: string, content: string) => {
     return new Table({
       width: { size: 100, type: WidthType.PERCENTAGE },
@@ -201,7 +215,7 @@ export async function exportDORToWord(ptrabData: any, dorData: any) {
     });
   };
 
-  // 5. Quadro de Assinatura
+  // 6. Quadro de Assinatura
   const signatureTable = new Table({
     width: { size: 100, type: WidthType.PERCENTAGE },
     rows: [
