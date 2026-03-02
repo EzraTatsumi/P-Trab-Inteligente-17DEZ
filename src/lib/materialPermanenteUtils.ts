@@ -1,65 +1,45 @@
-import { formatCurrency, formatPregao } from "./formatUtils";
-
-export const calculateMaterialPermanenteTotals = (items: any[]) => {
-    const totalGeral = items.reduce((acc, item) => acc + ((item.quantidade || 0) * (item.valor_unitario || 0)), 0);
-    return { totalGeral };
-};
+import { formatCurrency, formatCodug } from "./formatUtils";
 
 /**
- * Extrai os dados de justificativa de forma robusta, tratando arrays ou objetos aninhados.
- */
-const extractJustificativaData = (item: any) => {
-    let data = item?.justificativa || {};
-
-    // Se for um array (como visto no JSON do usuário), pega o primeiro elemento
-    if (Array.isArray(data) && data.length > 0) {
-        data = data[0];
-    }
-
-    // Se o objeto resultante tiver uma propriedade 'justificativa' interna (aninhamento detectado)
-    // e não tiver os campos diretos, mergulha mais um nível
-    if (data && typeof data === 'object' && data.justificativa && !data.grupo) {
-        data = data.justificativa;
-    }
-
-    return data;
-};
-
-/**
- * Gera a memória de cálculo para Material Permanente.
+ * Gera o texto formatado para a memória de cálculo de um item de material permanente.
  */
 export const generateMaterialPermanenteMemoriaCalculo = (registro: any, item: any) => {
-    if (!item) return "";
+  if (!registro || !item) return "";
 
-    // Se o registro possui um detalhamento customizado (editado pelo usuário), ele tem prioridade total
-    if (registro?.detalhamento_customizado) {
-        return registro.detalhamento_customizado;
-    }
+  const om = registro.organizacao || "OM não informada";
+  const ug = registro.ug || "000000";
+  const uasg = item.uasg || registro.ug || "000000";
+  const pregao = item.numero_pregao || "000/0000";
+  const subitem = item.subitem_nr || item.nr_subitem || "00";
+  const itemNome = item.descricao_reduzida || item.descricao_item || "Material Permanente";
+  const qtd = item.quantidade || 1;
+  const valorUnit = item.valor_unitario || 0;
+  const valorTotal = qtd * valorUnit;
 
-    // Extração robusta da justificativa (mesma lógica do Form)
-    const justData = extractJustificativaData(item);
-    const { grupo, proposito, destinacao, local, finalidade, motivo } = justData;
-    
-    const diasStr = `${registro.dias_operacao} ${registro.dias_operacao === 1 ? 'dia' : 'dias'}`;
-    const fase = registro.fase_atividade || '[Fase]';
-    
-    const justificativa = `Aquisição de ${grupo || '[Grupo]'} para atender ${proposito || '[Propósito]'} ${destinacao || '[Destinação]'}, ${local || '[Local]'}, a fim de ${finalidade || '[Finalidade]'}, durante ${diasStr} de ${fase}. Justifica-se essa aquisição ${motivo || '[Motivo]'}.`;
+  // Normalização da justificativa (lidando com possíveis aninhamentos)
+  let justData = item.justificativa || {};
+  if (Array.isArray(justData) && justData.length > 0) justData = justData[0];
+  if (justData && justData.justificativa && !justData.grupo) justData = justData.justificativa;
 
-    const valorUnitario = Number(item.valor_unitario || 0);
-    const quantidade = Number(item.quantidade || 0);
-    const valorTotal = valorUnitario * quantidade;
-    const nomeItem = item.descricao_reduzida || item.descricao_item || "Item";
-    const pregao = formatPregao(item.numero_pregao);
-    const uasg = item.codigo_uasg || registro.ug_detentora || registro.ug || "N/A";
+  const { grupo, proposito, destinacao, local, finalidade, motivo } = justData;
 
-    return `44.90.52 - ${justificativa}
+  const linhas = [
+    `OM: ${om} (UG: ${formatCodug(ug)})`,
+    `AQUISIÇÃO DE ${itemNome.toUpperCase()}`,
+    `UASG: ${formatCodug(uasg)} | PREGÃO: ${pregao} | SUBITEM: ${subitem}`,
+    `QUANTIDADE: ${qtd} | VALOR UNITÁRIO: ${formatCurrency(valorUnit)} | VALOR TOTAL: ${formatCurrency(valorTotal)}`,
+    ``,
+    `JUSTIFICATIVA:`,
+    `Aquisição de ${grupo || '[Grupo]'} para atender ${proposito || '[Propósito]'} ${destinacao || '[Destinação]'}, ${local || '[Local]'}, a fim de ${finalidade || '[Finalidade]'}, durante ${registro.dias_operacao} dias de ${registro.fase_atividade}. Justifica-se essa aquisição ${motivo || '[Motivo]'}.`
+  ];
 
-Cálculo: 
-- ${nomeItem}: ${formatCurrency(valorUnitario)}/ unid.
+  return linhas.join('\n');
+};
 
-Fórmula: Qtd do item x Valor do item.
-- ${quantidade} ${nomeItem} x ${formatCurrency(valorUnitario)}/unid = ${formatCurrency(valorTotal)}.
-
-Total: ${formatCurrency(valorTotal)}.
-(Pregão ${pregao} - UASG ${uasg})`;
+/**
+ * Calcula os totais financeiros para uma lista de itens.
+ */
+export const calculateMaterialPermanenteTotals = (items: any[]) => {
+  const totalGeral = items.reduce((acc, item) => acc + (Number(item.valor_unitario || 0) * Number(item.quantidade || 1)), 0);
+  return { totalGeral };
 };
