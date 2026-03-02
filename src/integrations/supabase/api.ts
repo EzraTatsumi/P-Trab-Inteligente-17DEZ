@@ -136,8 +136,9 @@ export async function fetchCatalogEntry(codigo: string, mode: 'material' | 'serv
 
 export async function saveNewCatalogEntry(code: string, description: string, shortDescription: string, mode: 'material' | 'servico'): Promise<void> {
     const cleanCode = code.replace(/\D/g, '');
-    
-    // Usamos RPCs dedicados com verificação de auth.uid() no banco para evitar modificações não autorizadas
+    if (!cleanCode) throw new Error("O código do item é inválido.");
+
+    // Utilizamos RPCs seguros que validam a role 'admin' do usuário no servidor
     const rpcName = mode === 'material' ? 'upsert_catmat_entry' : 'upsert_catser_entry';
     
     const { error } = await supabase.rpc(rpcName, {
@@ -147,8 +148,12 @@ export async function saveNewCatalogEntry(code: string, description: string, sho
     });
 
     if (error) {
+        // Tratamento amigável para erro de permissão do PostgreSQL
+        if (error.message.includes('Acesso negado')) {
+            throw new Error("Permissão Negada: Apenas administradores do sistema podem atualizar o catálogo global.");
+        }
         console.error(`Erro ao salvar entrada no catálogo de ${mode}:`, error);
-        throw error;
+        throw new Error(`Falha ao salvar no catálogo: ${error.message}`);
     }
 }
 
