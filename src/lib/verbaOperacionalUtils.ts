@@ -1,4 +1,4 @@
-import { formatCurrency, formatCodug, formatNumber } from "./formatUtils";
+import { formatCurrency } from "./formatUtils";
 import { formatFasesParaTexto } from "./diariaUtils"; 
 
 // Tolerância para comparação de valores monetários
@@ -9,10 +9,7 @@ interface VerbaOperacionalData {
   dias_operacao: number;
   quantidade_equipes: number;
   valor_total_solicitado: number;
-  organizacao: string; // OM Favorecida (do PTrab)
-  ug: string; // UG Favorecida (do PTrab)
-  om_detentora: string | null; // OM Destino do Recurso
-  ug_detentora: string | null; // UG Destino do Recurso
+  organizacao: string; // OM Favorecida
   fase_atividade: string;
   valor_nd_30: number;
   valor_nd_39: number;
@@ -31,7 +28,6 @@ const getOmPreposition = (omName: string): 'do' | 'da' => {
 
 /**
  * Calcula o custo total da verba operacional.
- * O total geral é a soma das NDs alocadas.
  */
 export const calculateVerbaOperacionalTotals = (
     data: VerbaOperacionalData
@@ -58,7 +54,7 @@ export const generateVerbaOperacionalMemoriaCalculo = (
     const { 
         dias_operacao, 
         quantidade_equipes, 
-        organizacao, // OM Favorecida (para o cabeçalho)
+        organizacao, 
         fase_atividade,
         valor_nd_30,
         valor_nd_39,
@@ -86,21 +82,20 @@ export const generateVerbaOperacionalMemoriaCalculo = (
     } else {
         ndPrefix = "(Não Alocado)";
     }
-    // --- Fim Lógica ND ---
     
     const despesasDescricao = "operando fora da sede (hospedagem, alimentação, combustível, aluguel de viatura, manutenção de viatura e serviços diversos).";
     
-    // CABEÇALHO: Usa OM Favorecida (organizacao)
+    // CABEÇALHO
     const header = `${ndPrefix} - Solicitação de Verba Operacional para ${quantidade_equipes} ${equipeText} ${omPreposition} ${organizacao}, durante ${dias_operacao} ${diaText} de ${faseFormatada}, ${despesasDescricao}`;
 
     const sigilosoLine = "O recurso precisa ser solicitado na Gestão Tesouro 0001, na ação 2866 (ação de caráter sigiloso).";
     
-    // Detalhamento simplificado, contendo apenas a linha sigilosa e o total.
+    // Detalhamento simplificado conforme modelo aprovado
     const detalhamento = `
 
 ${sigilosoLine}
 
-Total: ${formatCurrency(valorTotal)}.`; // ALTERADO AQUI
+Total: ${formatCurrency(valorTotal)}.`;
 
     return header + detalhamento;
 };
