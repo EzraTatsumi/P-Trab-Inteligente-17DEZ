@@ -1,3 +1,5 @@
+"use client";
+
 import React, { useState, useCallback, useRef, useMemo } from "react";
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
@@ -32,7 +34,6 @@ const PTrabMaterialPermanenteReport: React.FC<PTrabMaterialPermanenteReportProps
   // Função auxiliar para concordância de gênero da OM
   const getOmPrefix = (name: string) => {
     const n = name.toUpperCase();
-    // Verifica se contém palavras femininas, mesmo após numerais (ex: 10ª Cia)
     if (
       n.includes('CIA') || 
       n.includes('COMPANHIA') || 
@@ -62,11 +63,18 @@ const PTrabMaterialPermanenteReport: React.FC<PTrabMaterialPermanenteReportProps
       const items = (reg.detalhes_planejamento as any)?.itens_selecionados || [];
       items.forEach((item: any) => {
         const valor = Number(item.valor_unitario || 0) * Number(item.quantidade || 1);
+        
+        // CORREÇÃO: Formata o UASG do item individual antes de gerar a memória de cálculo
+        // Isso garante que o texto final (ex: UASG 160.023) apareça formatado no relatório.
+        const itemComUasgFormatado = {
+          ...item,
+          uasg: formatCodug(item.uasg)
+        };
+
         group!.items.push({
           itemNome: item.descricao_reduzida || item.descricao_item,
           valor,
-          // CORREÇÃO: Passando o item diretamente, sem o wrapper 'itemEspecifico'
-          memoria: generateMaterialPermanenteMemoriaCalculo(reg, item)
+          memoria: generateMaterialPermanenteMemoriaCalculo(reg, itemComUasgFormatado)
         });
         group!.subtotal += valor;
       });
