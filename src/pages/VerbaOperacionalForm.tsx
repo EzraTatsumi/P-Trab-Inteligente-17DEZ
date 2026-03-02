@@ -491,7 +491,7 @@ const VerbaOperacionalForm = () => {
             om_favorecida: prev.om_favorecida,
             ug_favorecida: prev.ug_favorecida,
             om_detentora: DEFAULT_OM_DETENTORA,
-            ug_detentora: DEFAULT_UG_DETentora,
+            ug_detentora: DEFAULT_UG_DETENTORA,
             dias_operacao: 0,
             quantidade_equipes: 0,
             valor_total_solicitado: 0,
