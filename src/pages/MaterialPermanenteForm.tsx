@@ -63,6 +63,31 @@ interface PendingPermanenteItem {
     valor_nd_52: number;
 }
 
+/**
+ * Normaliza o campo justificativa para lidar com o bug de aninhamento
+ */
+const normalizeJustificativa = (item: any) => {
+    let justData = item.justificativa;
+    if (!justData) return {};
+    
+    // Se for um array (bug de novas contas), extrai o objeto correto
+    if (Array.isArray(justData)) {
+        const matchingEntry = justData.find((entry: any) => entry.id === item.id);
+        if (matchingEntry && matchingEntry.justificativa) {
+            justData = matchingEntry.justificativa;
+        } else if (justData.length > 0 && justData[0].justificativa) {
+            justData = justData[0].justificativa;
+        }
+    }
+    
+    // Suporte para estrutura "justificativa: { justificativa: { ... } }"
+    if (justData && typeof justData === 'object' && justData.justificativa && !justData.grupo) {
+        justData = justData.justificativa;
+    }
+    
+    return justData || {};
+};
+
 const MaterialPermanenteForm = () => {
     const navigate = useNavigate();
     const [searchParams] = useSearchParams();
@@ -254,12 +279,9 @@ const MaterialPermanenteForm = () => {
         if (selectedItems.length === 0) { toast.warning("Selecione pelo menos um item."); return; }
         if (diasOperacao <= 0) { toast.warning("Informe o período da operação."); return; }
         
-        // Verificação robusta de justificativa
+        // Verificação robusta de justificativa com normalização
         const itemsWithoutJustification = selectedItems.filter(item => {
-            let justData: any = item.justificativa;
-            if (Array.isArray(justData) && justData.length > 0) justData = justData[0];
-            if (justData && typeof justData === 'object' && justData.justificativa) justData = justData.justificativa;
-            
+            const justData = normalizeJustificativa(item);
             return !justData || !Object.values(justData).some(v => v && v.toString().trim() !== "");
         });
 
@@ -310,10 +332,17 @@ const MaterialPermanenteForm = () => {
         const omDestData = { nome: reg.om_detentora || "", ug: reg.ug_detentora || "", id: omDest?.id || "" };
         setOmDestino(omDestData);
         const details = reg.detalhes_planejamento;
-        const items = details?.item_unico ? [details.item_unico] : (details?.itens_selecionados || []);
-        setSelectedItems(items);
+        const itemsRaw = details?.item_unico ? [details.item_unico] : (details?.itens_selecionados || []);
+        
+        // NORMALIZAÇÃO: Garante que os itens carregados tenham justificativas planas
+        const normalizedItems = itemsRaw.map((i: any) => ({
+            ...i,
+            justificativa: normalizeJustificativa(i)
+        }));
+
+        setSelectedItems(normalizedItems);
         setHasEfetivo(details?.has_efetivo !== false);
-        const { totalGeral } = calculateMaterialPermanenteTotals(items);
+        const { totalGeral } = calculateMaterialPermanenteTotals(normalizedItems);
         const newItem: PendingPermanenteItem = {
             tempId: reg.id,
             dbId: reg.id,
@@ -325,7 +354,7 @@ const MaterialPermanenteForm = () => {
             efetivo: reg.efetivo || 0,
             fase_atividade: reg.fase_atividade,
             categoria: reg.categoria,
-            detalhes_planejamento: details,
+            detalhes_planejamento: { ...details, itens_selecionados: normalizedItems },
             valor_total: totalGeral,
             valor_nd_52: totalGeral,
         };
@@ -337,7 +366,7 @@ const MaterialPermanenteForm = () => {
             hasEfetivo: details?.has_efetivo !== false,
             diasOperacao: reg.dias_operacao,
             omDestinoId: omDestData.id,
-            itemsKey: items.map((i: any) => `${i.id}-${i.quantidade}`).sort().join('|')
+            itemsKey: normalizedItems.map((i: any) => `${i.id}-${i.quantidade}`).sort().join('|')
         });
         window.scrollTo({ top: 0, behavior: 'smooth' });
     };
@@ -369,9 +398,11 @@ const MaterialPermanenteForm = () => {
         toast.success("Justificativa salva para o item.");
     };
 
-    const handleSaveBulkJustificativas = (justificationData: any) => {
-        setSelectedItems(prev => prev.map(i => ({ ...i, justificativa: justificationData })));
-        toast.success("Justificativas atualizadas em massa.");
+    const handleSaveBulkJustificativas = (updatedItems: ItemAquisicaoPermanente[]) => {
+        // CORREÇÃO: O diálogo agora retorna a lista de itens com as justificativas individuais atualizadas.
+        // Apenas substituímos a lista atual pela lista normalizada vinda do diálogo.
+        setSelectedItems(updatedItems);
+        toast.success("Justificativas atualizadas com sucesso.");
     };
 
     const toggleJustification = (id: string) => {
@@ -379,11 +410,7 @@ const MaterialPermanenteForm = () => {
     };
 
     const getJustificativaText = (item: any, dias: number, fase: string) => {
-        // Extração robusta para a pré-visualização
-        let justData: any = item.justificativa || {};
-        if (Array.isArray(justData) && justData.length > 0) justData = justData[0];
-        if (justData && typeof justData === 'object' && justData.justificativa && !justData.grupo) justData = justData.justificativa;
-
+        const justData = normalizeJustificativa(item);
         const { grupo, proposito, destinacao, local, finalidade, motivo } = justData;
         const diasStr = `${dias} ${dias === 1 ? 'dia' : 'dias'}`;
         return `Aquisição de ${grupo || '[Grupo]'} para atender ${proposito || '[Propósito]'} ${destinacao || '[Destinação]'}, ${local || '[Local]'}, a fim de ${finalidade || '[Finalidade]'}, durante ${diasStr} de ${fase || '[Fase]'}. Justifica-se essa aquisição ${motivo || '[Motivo]'}.`;
@@ -476,11 +503,7 @@ const MaterialPermanenteForm = () => {
                                                         </TableHeader>
                                                         <TableBody>
                                                             {selectedItems.map((item) => {
-                                                                // Verificação robusta de justificativa para o ícone de status
-                                                                let justData: any = item.justificativa;
-                                                                if (Array.isArray(justData) && justData.length > 0) justData = justData[0];
-                                                                if (justData && typeof justData === 'object' && justData.justificativa && !justData.grupo) justData = justData.justificativa;
-                                                                
+                                                                const justData = normalizeJustificativa(item);
                                                                 const isJustified = !!(justData && Object.values(justData).some(v => v && v.toString().trim() !== ""));
                                                                 const isExpanded = expandedJustifications[item.id] || false;
                                                                 
@@ -553,8 +576,8 @@ const MaterialPermanenteForm = () => {
                                                 {group.records.map((reg: MaterialPermanenteDBRecord) => {
                                                     const isDifferentOm = reg.om_detentora?.trim() !== reg.organizacao?.trim();
                                                     
-                                                    const items = reg.detalhes_planejamento?.itens_selecionados || (reg.detalhes_planejamento?.item_unico ? [reg.detalhes_planejamento.item_unico] : []);
-                                                    const totalQty = items.reduce((acc: number, i: any) => acc + (i.quantidade || 0), 0);
+                                                    const itemsRaw = reg.detalhes_planejamento?.itens_selecionados || (reg.detalhes_planejamento?.item_unico ? [reg.detalhes_planejamento.item_unico] : []);
+                                                    const totalQty = itemsRaw.reduce((acc: number, i: any) => acc + (i.quantidade || 0), 0);
                                                     
                                                     return (
                                                         <Card key={reg.id} className="p-3 bg-background border">
@@ -604,12 +627,12 @@ const MaterialPermanenteForm = () => {
                                 <section className="space-y-4 mt-8">
                                     <h3 className="text-xl font-bold flex items-center gap-2">📋 Memórias de Cálculos Detalhadas</h3>
                                     {sortedRegistrosForMemoria.flatMap(reg => {
-                                        const items = reg.detalhes_planejamento?.itens_selecionados || (reg.detalhes_planejamento?.item_unico ? [reg.detalhes_planejamento.item_unico] : []);
-                                        return items.map((item: any) => (
+                                        const itemsRaw = reg.detalhes_planejamento?.itens_selecionados || (reg.detalhes_planejamento?.item_unico ? [reg.detalhes_planejamento.item_unico] : []);
+                                        return itemsRaw.map((item: any) => (
                                             <MaterialPermanenteMemoria 
                                                 key={`mem-${reg.id}-${item.id}`}
                                                 registro={reg}
-                                                item={item}
+                                                item={{ ...item, justificativa: normalizeJustificativa(item) }}
                                                 isPTrabEditable={isPTrabEditable}
                                                 editingMemoriaId={editingMemoriaId}
                                                 memoriaEdit={memoriaEdit}
@@ -627,8 +650,8 @@ const MaterialPermanenteForm = () => {
                     </CardContent>
                 </Card>
             </div>
-            <MaterialPermanenteItemSelectorDialog open={isSelectorOpen} onOpenChange={setIsSelectorOpen} selectedYear={selectedYear} initialItems={selectedItems} onSelect={(items) => { setSelectedItems(items.map(item => ({ ...item, quantidade: item.quantidade || 1 }))); }} onAddDiretriz={() => navigate('/config/custos-operacionais')} categoria="Material Permanente" />
-            <MaterialPermanenteJustificativaDialog open={justificativaDialogOpen} onOpenChange={setJustificativaDialogOpen} itemName={itemForJustificativa?.descricao_reduzida || itemForJustificativa?.descricao_item || ""} data={itemForJustificativa?.justificativa || {}} diasOperacao={diasOperacao} faseAtividade={faseAtividade} onSave={handleSaveJustificativa} />
+            <MaterialPermanenteItemSelectorDialog open={isSelectorOpen} onOpenChange={setIsSelectorOpen} selectedYear={selectedYear} initialItems={selectedItems} onSelect={(items) => { setSelectedItems(items.map(item => ({ ...item, quantidade: item.quantidade || 1, justificativa: normalizeJustificativa(item) }))); }} onAddDiretriz={() => navigate('/config/custos-operacionais')} categoria="Material Permanente" />
+            <MaterialPermanenteJustificativaDialog open={justificativaDialogOpen} onOpenChange={setJustificativaDialogOpen} itemName={itemForJustificativa?.descricao_reduzida || itemForJustificativa?.descricao_item || ""} data={normalizeJustificativa(itemForJustificativa || {})} diasOperacao={diasOperacao} faseAtividade={faseAtividade} onSave={handleSaveJustificativa} />
             <MaterialPermanenteBulkJustificativaDialog open={isBulkJustificativaOpen} onOpenChange={setIsBulkJustificativaOpen} items={selectedItems} onSave={(data) => handleSaveBulkJustificativas(data)} />
             <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}><AlertDialogContent><AlertDialogHeader><AlertDialogTitle className="text-destructive">Confirmar Exclusão</AlertDialogTitle><AlertDialogDescription>Deseja excluir o registro de Material Permanente da OM {recordToDelete?.organizacao}?</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogAction onClick={() => recordToDelete && deleteMutation.mutate([recordToDelete.id])} className="bg-destructive">Excluir</AlertDialogAction><AlertDialogCancel>Cancelar</AlertDialogCancel></AlertDialogFooter></AlertDialogContent></AlertDialog>
         </div>

@@ -28,7 +28,7 @@ interface MaterialPermanenteJustificativaDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   itemName: string;
-  data: JustificativaData;
+  data: any; // Aceita qualquer estrutura para normalização
   diasOperacao: number;
   faseAtividade: string;
   onSave: (data: JustificativaData) => void;
@@ -43,11 +43,24 @@ const MaterialPermanenteJustificativaDialog = ({
   faseAtividade,
   onSave
 }: MaterialPermanenteJustificativaDialogProps) => {
-  const [formData, setFormData] = React.useState<JustificativaData>(data);
+  const [formData, setFormData] = React.useState<JustificativaData>({});
 
   React.useEffect(() => {
-    if (open) {
-      setFormData(data);
+    if (open && data) {
+      // NORMALIZAÇÃO: Garante que estamos pegando o objeto plano de justificativa
+      let normalizedData = data;
+      
+      // Se for um array (bug de aninhamento), tenta extrair o primeiro elemento válido
+      if (Array.isArray(normalizedData)) {
+          normalizedData = normalizedData[0]?.justificativa || {};
+      }
+      
+      // Se for um objeto com chave aninhada 'justificativa'
+      if (normalizedData && normalizedData.justificativa && !normalizedData.grupo) {
+          normalizedData = normalizedData.justificativa;
+      }
+      
+      setFormData(normalizedData || {});
     }
   }, [open, data]);
 

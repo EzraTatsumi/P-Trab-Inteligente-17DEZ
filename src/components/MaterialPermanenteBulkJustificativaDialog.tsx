@@ -54,7 +54,19 @@ const MaterialPermanenteBulkJustificativaDialog = ({
 
   useEffect(() => {
     if (open) {
-      setLocalItems(JSON.parse(JSON.stringify(items)));
+      // NORMALIZAÇÃO: Ao abrir, garante que cada item tenha justificativa plana
+      const normalizedItems = JSON.parse(JSON.stringify(items)).map((item: any) => {
+          let justData = item.justificativa;
+          if (Array.isArray(justData)) {
+              justData = justData.find((e: any) => e.id === item.id)?.justificativa || justData[0]?.justificativa || {};
+          }
+          if (justData && justData.justificativa && !justData.grupo) {
+              justData = justData.justificativa;
+          }
+          return { ...item, justificativa: justData || {} };
+      });
+
+      setLocalItems(normalizedItems);
       setActiveCell({ r: 0, c: 0 });
       setSelection({ start: { r: 0, c: 0 }, end: null });
       setIsEditing(false);
