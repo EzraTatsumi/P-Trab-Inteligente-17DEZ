@@ -136,21 +136,19 @@ export async function fetchCatalogEntry(codigo: string, mode: 'material' | 'serv
 
 export async function saveNewCatalogEntry(code: string, description: string, shortDescription: string, mode: 'material' | 'servico'): Promise<void> {
     const cleanCode = code.replace(/\D/g, '');
-    if (mode === 'material') {
-        const { error } = await supabase.rpc('upsert_catmat_entry', {
-            p_code: cleanCode,
-            p_description: description,
-            p_short_description: shortDescription,
-        });
-        if (error) throw error;
-    } else {
-        const { error } = await (supabase.from('catalogo_catser' as any)).upsert({
-            code: cleanCode,
-            description: description,
-            short_description: shortDescription,
-            updated_at: new Date().toISOString()
-        }, { onConflict: 'code' });
-        if (error) throw error;
+    
+    // Usamos RPCs dedicados com verificação de auth.uid() no banco para evitar modificações não autorizadas
+    const rpcName = mode === 'material' ? 'upsert_catmat_entry' : 'upsert_catser_entry';
+    
+    const { error } = await supabase.rpc(rpcName, {
+        p_code: cleanCode,
+        p_description: description,
+        p_short_description: shortDescription,
+    });
+
+    if (error) {
+        console.error(`Erro ao salvar entrada no catálogo de ${mode}:`, error);
+        throw error;
     }
 }
 
