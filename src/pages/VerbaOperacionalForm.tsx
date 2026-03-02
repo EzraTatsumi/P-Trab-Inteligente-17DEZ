@@ -912,13 +912,7 @@ const VerbaOperacionalForm = () => {
 
     const isCalculationReady = isBaseFormReady &&
                               isSolicitationDataReady &&
-                              isAllocationCorrect &&
-                              formData.objeto_aquisicao.length > 0 &&
-                              formData.objeto_contratacao.length > 0 &&
-                              formData.proposito.length > 0 &&
-                              formData.finalidade.length > 0 &&
-                              formData.local.length > 0 &&
-                              formData.tarefa.length > 0;
+                              isAllocationCorrect;
     
     const itemsToDisplay = stagedUpdate ? [stagedUpdate] : pendingVerbas;
     const isStagingUpdate = !!stagedUpdate;
@@ -1013,7 +1007,7 @@ const VerbaOperacionalForm = () => {
                                                             />
                                                         </div>
                                                         <div className="space-y-2 col-span-1">
-                                                            <Label htmlFor="quantidade_equipes">Efetivo *</Label>
+                                                            <Label htmlFor="quantidade_equipes">Nr Equipes</Label>
                                                             <Input
                                                                 id="quantidade_equipes"
                                                                 type="number"
@@ -1037,96 +1031,6 @@ const VerbaOperacionalForm = () => {
                                                                 placeholder="Ex: 1.500,00"
                                                                 disabled={!isPTrabEditable || isSaving}
                                                                 required
-                                                            />
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </CardContent>
-                                        </Card>
-                                        
-                                        <Card className="mt-4 rounded-lg mb-4">
-                                            <CardHeader className="py-3">
-                                                <CardTitle className="text-base font-semibold">Detalhes da Aplicação</CardTitle>
-                                            </CardHeader>
-                                            <CardContent className="pt-2">
-                                                <div className="p-4 bg-background rounded-lg border space-y-4">
-                                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                                        <div className="space-y-2">
-                                                            <Label htmlFor="objeto_aquisicao">Objeto de Aquisição (Material) *</Label>
-                                                            <Input
-                                                                id="objeto_aquisicao"
-                                                                value={formData.objeto_aquisicao}
-                                                                onChange={(e) => setFormData({ ...formData, objeto_aquisicao: e.target.value })}
-                                                                placeholder="Ex: Materiais , alimentação de pessoal"
-                                                                required
-                                                                disabled={!isPTrabEditable || isSaving}
-                                                                onKeyDown={handleEnterToNextField}
-                                                            />
-                                                        </div>
-                                                        <div className="space-y-2">
-                                                            <Label htmlFor="objeto_contratacao">Objeto de Contratação (Serviço) *</Label>
-                                                            <Input
-                                                                id="objeto_contratacao"
-                                                                value={formData.objeto_contratacao}
-                                                                onChange={(e) => setFormData({ ...formData, objeto_contratacao: e.target.value })}
-                                                                placeholder="Ex: Serviços para atender eventuais imprevistos (Pequenos reparos e manutenção)"
-                                                                required
-                                                                disabled={!isPTrabEditable || isSaving}
-                                                                onKeyDown={handleEnterToNextField}
-                                                            />
-                                                        </div>
-                                                    </div>
-                                                    
-                                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                                        <div className="space-y-2">
-                                                            <Label htmlFor="proposito">Propósito *</Label>
-                                                            <Input
-                                                                id="proposito"
-                                                                value={formData.proposito}
-                                                                onChange={(e) => setFormData({ ...formData, proposito: e.target.value })}
-                                                                placeholder="Ex: Garantir a continuidade das atividades"
-                                                                required
-                                                                disabled={!isPTrabEditable || isSaving}
-                                                                onKeyDown={handleEnterToNextField}
-                                                            />
-                                                        </div>
-                                                        <div className="space-y-2">
-                                                            <Label htmlFor="finalidade">Finalidade *</Label>
-                                                            <Input
-                                                                id="finalidade"
-                                                                value={formData.finalidade}
-                                                                onChange={(e) => setFormData({ ...formData, finalidade: e.target.value })}
-                                                                placeholder="Ex: ao manter o fornecimento de suprimentos"
-                                                                required
-                                                                disabled={!isPTrabEditable || isSaving}
-                                                                onKeyDown={handleEnterToNextField}
-                                                            />
-                                                        </div>
-                                                    </div>
-                                                    
-                                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                                        <div className="space-y-2">
-                                                            <Label htmlFor="local">Local *</Label>
-                                                            <Input
-                                                                id="local"
-                                                                value={formData.local}
-                                                                onChange={(e) => setFormData({ ...formData, local: e.target.value })}
-                                                                placeholder="Ex: Base Operacional"
-                                                                required
-                                                                disabled={!isPTrabEditable || isSaving}
-                                                                onKeyDown={handleEnterToNextField}
-                                                            />
-                                                        </div>
-                                                        <div className="space-y-2">
-                                                            <Label htmlFor="tarefa">Tarefa *</Label>
-                                                            <Input
-                                                                id="tarefa"
-                                                                value={formData.tarefa}
-                                                                onChange={(e) => setFormData({ ...formData, tarefa: e.target.value })}
-                                                                placeholder="Ex: Montagem das Estruturas Logísticas"
-                                                                required
-                                                                disabled={!isPTrabEditable || isSaving}
-                                                                onKeyDown={handleEnterToNextField}
                                                             />
                                                         </div>
                                                     </div>
