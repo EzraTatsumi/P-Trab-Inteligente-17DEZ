@@ -22,15 +22,15 @@ import { OMData } from "@/lib/omUtils";
 import { formatCodug } from "@/lib/formatUtils";
 
 interface OmSelectorProps {
-  selectedOmId?: string; // Agora recebe o ID da OM selecionada
-  onChange: (omData: OMData | undefined) => void; // Passa o objeto OMData completo
+  selectedOmId?: string;
+  onChange: (omData: OMData | undefined) => void;
   filterByRM?: string;
   placeholder?: string;
   disabled?: boolean;
-  omsList?: OMData[]; // Novo prop: lista de OMs pré-carregada
-  defaultOmId?: string; // ID da OM padrão a ser sugerida
-  initialOmName?: string; // Nome inicial da OM para exibição imediata (fallback)
-  initialOmUg?: string; // UG inicial da OM (fallback)
+  omsList?: OMData[];
+  defaultOmId?: string;
+  initialOmName?: string;
+  initialOmUg?: string;
 }
 
 export function OmSelector({
@@ -47,9 +47,17 @@ export function OmSelector({
   const [open, setOpen] = useState(false);
   const [oms, setOms] = useState<OMData[]>([]);
   const [loading, setLoading] = useState(true);
-  
-  // Ref para controlar se a OM inicial/padrão foi carregada e notificada ao pai
-  const initialLoadRef = useRef(false); 
+  const [searchTerm, setSearchTerm] = useState("");
+
+  const initialLoadRef = useRef(false);
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  // Efeito para resetar o scroll ao digitar na busca
+  useEffect(() => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollTo(0, 0);
+    }
+  }, [searchTerm]);
 
   const loadOMs = async () => {
     setLoading(true);
@@ -73,7 +81,6 @@ export function OmSelector({
     }
   };
 
-  // 1. Carrega OMs (da prop ou do DB)
   useEffect(() => {
     if (omsList) {
       setOms(omsList);
@@ -83,60 +90,37 @@ export function OmSelector({
     }
   }, [filterByRM, omsList]);
 
-  // 2. Lógica para sugerir a OM padrão automaticamente (só roda se não houver selectedOmId)
   useEffect(() => {
     if (!loading && !selectedOmId && defaultOmId && oms.length > 0 && !initialLoadRef.current) {
       const defaultOM = oms.find(om => om.id === defaultOmId);
       if (defaultOM) {
-        // Chama onChange para definir a OM padrão no estado pai
         onChange(defaultOM);
         initialLoadRef.current = true;
       }
     }
   }, [loading, selectedOmId, defaultOmId, oms, onChange]);
-  
-  // 3. Encontra a OM selecionada na lista de OMs ativas
+
   const selectedOMData = useMemo(() => {
-    // Se o selectedOmId for 'temp', significa que estamos em modo de edição e a OM não está na lista ativa.
-    // Neste caso, usamos os dados iniciais (initialOmName/Ug) para criar um objeto de exibição.
     if (selectedOmId === 'temp' && initialOmName && initialOmUg) {
-        return {
-            id: 'temp',
-            nome_om: initialOmName,
-            codug_om: initialOmUg,
-            rm_vinculacao: '', 
-            codug_rm_vinculacao: '', 
-            cidade: '', 
-            ativo: false, 
-        } as OMData;
+      return {
+        id: 'temp',
+        nome_om: initialOmName,
+        codug_om: initialOmUg,
+        rm_vinculacao: '',
+        codug_rm_vinculacao: '',
+        cidade: '',
+        ativo: false,
+      } as OMData;
     }
-    
-    // Busca na lista de OMs ativas
     return oms.find(om => om.id === selectedOmId);
   }, [selectedOmId, oms, initialOmName, initialOmUg]);
 
-
-  // Lógica de exibição do texto no botão (SIMPLIFICADA)
   const buttonText = useMemo(() => {
-    // 1. Se a OM selecionada foi encontrada na lista (ou é o fallback 'temp')
-    if (selectedOMData) {
-      return selectedOMData.nome_om;
-    }
-    
-    // 2. Se houver um nome inicial (fallback de edição)
-    if (initialOmName) {
-        return initialOmName;
-    }
-    
-    // 3. Se estiver carregando a lista de OMs
-    if (loading) {
-      return "Carregando...";
-    }
-    
-    // 4. Caso contrário, mostre o placeholder.
+    if (selectedOMData) return selectedOMData.nome_om;
+    if (initialOmName) return initialOmName;
+    if (loading) return "Carregando...";
     return placeholder;
   }, [loading, selectedOMData, initialOmName, placeholder]);
-
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -156,8 +140,11 @@ export function OmSelector({
       </PopoverTrigger>
       <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
         <Command>
-          <CommandInput placeholder="Buscar OM..." />
-          <CommandList>
+          <CommandInput 
+            placeholder="Buscar OM..." 
+            onValueChange={setSearchTerm}
+          />
+          <CommandList ref={scrollRef}>
             {loading ? (
               <CommandItem disabled>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
