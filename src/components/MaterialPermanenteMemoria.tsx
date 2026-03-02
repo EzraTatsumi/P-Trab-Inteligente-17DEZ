@@ -40,7 +40,19 @@ const MaterialPermanenteMemoria: React.FC<MaterialPermanenteMemoriaProps> = ({
     const uniqueId = `${registro.id}-${itemId}`;
     const isEditing = editingMemoriaId === uniqueId;
     
-    const memoriaAutomatica = generateMaterialPermanenteMemoriaCalculo(registro, item);
+    // CORREÇÃO: Formata explicitamente os campos de UG antes de passar para a função de geração de texto
+    // Isso garante que o ponto separador (ex: 160.023) apareça no texto gerado automaticamente.
+    const itemFormatado = {
+        ...item,
+        uasg: formatCodug(item.uasg)
+    };
+    const registroFormatado = {
+        ...registro,
+        ug: formatCodug(registro.ug),
+        ug_detentora: formatCodug(registro.ug_detentora)
+    };
+
+    const memoriaAutomatica = generateMaterialPermanenteMemoriaCalculo(registroFormatado, itemFormatado);
     const memoriaDisplay = registro.detalhamento_customizado || memoriaAutomatica;
     const hasCustomMemoria = !!registro.detalhamento_customizado;
 

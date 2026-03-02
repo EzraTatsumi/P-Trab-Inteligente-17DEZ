@@ -31,7 +31,6 @@ const PTrabMaterialPermanenteReport: React.FC<PTrabMaterialPermanenteReportProps
     window.print();
   }, []);
 
-  // Função auxiliar para concordância de gênero da OM
   const getOmPrefix = (name: string) => {
     const n = name.toUpperCase();
     if (
@@ -46,7 +45,6 @@ const PTrabMaterialPermanenteReport: React.FC<PTrabMaterialPermanenteReportProps
     return 'DO';
   };
 
-  // Agrupamento de dados por OM/UG para subtotais
   const groupedData = useMemo(() => {
     const groups: { om: string, ug: string, items: any[], subtotal: number }[] = [];
     
@@ -64,17 +62,22 @@ const PTrabMaterialPermanenteReport: React.FC<PTrabMaterialPermanenteReportProps
       items.forEach((item: any) => {
         const valor = Number(item.valor_unitario || 0) * Number(item.quantidade || 1);
         
-        // CORREÇÃO: Formata o UASG do item individual antes de gerar a memória de cálculo
-        // Isso garante que o texto final (ex: UASG 160.023) apareça formatado no relatório.
-        const itemComUasgFormatado = {
+        // Criamos cópias formatadas para garantir que o gerador de texto use o formato correto (ex: 160.023)
+        const itemFormatado = {
           ...item,
           uasg: formatCodug(item.uasg)
+        };
+        
+        const registroFormatado = {
+          ...reg,
+          ug: formatCodug(reg.ug),
+          ug_detentora: formatCodug(reg.ug_detentora)
         };
 
         group!.items.push({
           itemNome: item.descricao_reduzida || item.descricao_item,
           valor,
-          memoria: generateMaterialPermanenteMemoriaCalculo(reg, itemComUasgFormatado)
+          memoria: generateMaterialPermanenteMemoriaCalculo(registroFormatado, itemFormatado)
         });
         group!.subtotal += valor;
       });
@@ -206,7 +209,6 @@ const PTrabMaterialPermanenteReport: React.FC<PTrabMaterialPermanenteReportProps
         curr++;
       });
 
-      // Linha 1: SOMA POR ND E GP DE DESPESA
       const sRow = worksheet.getRow(curr);
       sRow.getCell('A').value = 'SOMA POR ND E GP DE DESPESA';
       worksheet.mergeCells(`A${curr}:B${curr}`);
@@ -228,7 +230,6 @@ const PTrabMaterialPermanenteReport: React.FC<PTrabMaterialPermanenteReportProps
       });
       curr++;
 
-      // Linha 2: VALOR DO/DA [OM]
       const vRow = worksheet.getRow(curr);
       vRow.getCell('A').value = `VALOR ${getOmPrefix(group.om)} ${group.om}`;
       worksheet.mergeCells(`A${curr}:C${curr}`);
@@ -248,13 +249,12 @@ const PTrabMaterialPermanenteReport: React.FC<PTrabMaterialPermanenteReportProps
       });
       curr++;
 
-      // Linha em branco entre OMs
       if (gIdx < groupedData.length - 1) {
         curr++;
       }
     });
 
-    curr++; // Espaço antes do total final
+    curr++;
 
     const tRow = worksheet.getRow(curr);
     tRow.getCell('A').value = 'VALOR TOTAL';
@@ -299,7 +299,6 @@ const PTrabMaterialPermanenteReport: React.FC<PTrabMaterialPermanenteReportProps
 
   return (
     <div className="space-y-4">
-      {/* Botões de Exportação/Impressão padronizados */}
       <div className="flex justify-end gap-2 print:hidden">
         <Button onClick={exportPDF} variant="outline">
           <Download className="mr-2 h-4 w-4" />
@@ -363,20 +362,17 @@ const PTrabMaterialPermanenteReport: React.FC<PTrabMaterialPermanenteReportProps
                     <td className="border border-black p-1 whitespace-pre-wrap text-[7pt] text-left align-top">{item.memoria}</td>
                   </tr>
                 ))}
-                {/* Linha 1: SOMA POR ND E GP DE DESPESA */}
                 <tr className="font-bold">
                   <td colSpan={2} className="border border-black p-1 text-right bg-[#D9D9D9]">SOMA POR ND E GP DE DESPESA</td>
                   <td className="border border-black p-1 text-center bg-[#6D9EEB]">{formatCurrency(group.subtotal)}</td>
                   <td className="border border-black p-1 text-center bg-[#6D9EEB]">{formatCurrency(group.subtotal)}</td>
                   <td className="border border-black p-1 bg-[#D9D9D9]"></td>
                 </tr>
-                {/* Linha 2: VALOR DO/DA [OM] */}
                 <tr className="font-bold">
                   <td colSpan={3} className="border border-black p-1 text-right bg-[#D9D9D9]">VALOR {getOmPrefix(group.om)} {group.om}</td>
                   <td className="border border-black p-1 text-center bg-white">{formatCurrency(group.subtotal)}</td>
                   <td className="border border-black p-1 bg-[#D9D9D9]"></td>
                 </tr>
-                {/* Linha em branco para separar OMs */}
                 {gIdx < groupedData.length - 1 && (
                   <tr className="h-4">
                     <td colSpan={5} className="border-0"></td>
@@ -385,12 +381,10 @@ const PTrabMaterialPermanenteReport: React.FC<PTrabMaterialPermanenteReportProps
               </React.Fragment>
             ))}
             
-            {/* Espaço antes do total final */}
             <tr className="h-4">
               <td colSpan={5} className="border-0"></td>
             </tr>
 
-            {/* Bloco de Total Geral Final */}
             <tr className="font-bold">
               <td colSpan={3} className="border border-black p-1 text-right bg-[#D9D9D9]">VALOR TOTAL</td>
               <td className="border border-black p-1 text-center bg-white">{formatCurrency(totalGeral)}</td>
