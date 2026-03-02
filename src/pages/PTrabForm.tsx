@@ -41,11 +41,24 @@ const PTrabForm = () => {
   const queryClient = useQueryClient();
   
   const [ptrabData, setPtrabData] = useState<PTrabData | null>(null);
-  const [selectedTab, setSelectedTab] = useState("logistica");
+  
+  // Persistência da aba selecionada
+  const [selectedTab, setSelectedTab] = useState(() => {
+    const savedTab = localStorage.getItem(`activeTab_${ptrabId}`);
+    return savedTab || "logistica";
+  });
+
   const [loadingPTrab, setLoadingPTrab] = useState(true);
   
   const [showCreditDialog, setShowCreditDialog] = useState(false);
   const [hasPromptedForCredit, setHasPromptedForCredit] = useState(false);
+
+  // Hook para salvar a aba automaticamente quando alterada
+  useEffect(() => {
+    if (ptrabId && selectedTab) {
+      localStorage.setItem(`activeTab_${ptrabId}`, selectedTab);
+    }
+  }, [selectedTab, ptrabId]);
 
   useEffect(() => {
     (window as any).setTabOperacional = () => setSelectedTab("operacional");
