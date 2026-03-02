@@ -10,7 +10,8 @@ import {
   BorderStyle, 
   AlignmentType, 
   VerticalAlign,
-  ShadingType
+  ShadingType,
+  ImageRun
 } from "docx";
 import { saveAs } from "file-saver";
 import { formatNumber, formatCodug } from "./formatUtils";
@@ -64,17 +65,35 @@ export async function exportDORToWord(ptrabData: any, dorData: any) {
     }));
   };
 
-  // 1. Cabeçalho Principal (Logo + Texto + Número)
+  // 1. Carregar a Logo (Imagem) antes de montar a tabela
+  let logoElement: any = new TextRun({ text: "EB", bold: true, size: 24 }); // Fallback caso a imagem falhe
+  try {
+    const response = await fetch('/logo_md.png');
+    if (response.ok) {
+      const arrayBuffer = await response.arrayBuffer();
+      logoElement = new ImageRun({
+        data: arrayBuffer,
+        transformation: {
+          width: 60, // Ajuste a largura conforme necessário (em pixels)
+          height: 60 // Ajuste a altura conforme a proporção da sua logo
+        }
+      });
+    }
+  } catch (error) {
+    console.warn("Não foi possível carregar a logo_md.png para o Word. Usando texto de fallback.", error);
+  }
+
+  // 2. Cabeçalho Principal (Logo + Texto + Número)
   const mainHeaderTable = new Table({
     width: { size: 100, type: WidthType.PERCENTAGE },
     rows: [
       new TableRow({
         children: [
-          // Coluna 1: Logo (EB)
+          // Coluna 1: Logo (Imagem carregada)
           new TableCell({
             width: { size: 15, type: WidthType.PERCENTAGE },
             children: [new Paragraph({ 
-              children: [new TextRun({ text: "EB", bold: true, size: 24 })],
+              children: [logoElement],
               alignment: AlignmentType.CENTER,
             })],
             verticalAlign: VerticalAlign.CENTER,
