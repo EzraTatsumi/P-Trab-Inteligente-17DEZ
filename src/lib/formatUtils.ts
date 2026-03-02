@@ -65,3 +65,26 @@ export const calculateDays = (startDate: string, endDate: string): number => {
     return 0;
   }
 };
+
+/**
+ * Converte um valor numérico para uma string de dígitos (centavos)
+ */
+export const numberToRawDigits = (value: number | string | null | undefined): string => {
+  if (value === null || value === undefined) return "";
+  const val = typeof value === "string" ? parseFloat(value) : value;
+  if (isNaN(val)) return "";
+  return Math.round(val * 100).toString();
+};
+
+/**
+ * Formata uma string de dígitos como moeda para exibição em inputs
+ */
+export const formatCurrencyInput = (rawDigits: string): { numericValue: number; digits: string; formatted: string } => {
+  const digits = rawDigits.replace(/\D/g, "");
+  const numericValue = parseInt(digits || "0", 10) / 100;
+  const formatted = new Intl.NumberFormat("pt-BR", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(numericValue);
+  return { numericValue, digits, formatted };
+};
