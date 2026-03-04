@@ -21,12 +21,9 @@ if (typeof window !== 'undefined') {
       }
 
       // 🛡️ LISTA DE BLOQUEIO DE AVANÇO AUTOMÁTICO
-      // Passos que exigem que o usuário clique manualmente em "Próximo" para evitar saltos indesejados.
+      // Mantemos apenas o passo da Missão 2 que realmente precisa de tempo para leitura
       const stepsQueExigemRevisaoManual = [
-        'Item na Grade',          // Missão 2 - Passo 09
-        'Definindo Quantidades',  // Missão 3 - Passo 09
-        'Importação de Dados',    // Missão 5 - Passo 09
-        'Criação do Grupo'        // Missão 3 - Passo 07
+        'Item na Grade'
       ];
 
       const tituloAtual = currentStep.popover?.title || '';
