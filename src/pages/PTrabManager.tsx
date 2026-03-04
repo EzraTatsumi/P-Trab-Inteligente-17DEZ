@@ -251,6 +251,7 @@ const PTrabManager = () => {
 
     // 1. CHECAGEM ATIVA: Dispara se o usuário já tem a flag de vitória salva
     if (shouldShowVictory(user.id)) {
+      setShowInstructionHub(true); // <-- NOVA LINHA: Abre o Centro de Instrução como fundo!
       setShowVictory(true);
       markVictoryAsShown(user.id);
       dispararConfetes();
