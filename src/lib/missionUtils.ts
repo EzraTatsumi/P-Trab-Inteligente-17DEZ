@@ -94,7 +94,6 @@ export const fetchCompletedMissions = async (userId: string): Promise<number[]> 
 export const markMissionCompleted = async (missionId: number, providedUserId?: string) => {
   if (typeof window === 'undefined') return;
   try {
-    // 🛡️ BLINDAGEM: Se a tela esqueceu de mandar o ID, o Árbitro busca sozinho.
     let userId = providedUserId;
     if (!userId) {
       const { data: { user } } = await supabase.auth.getUser();
@@ -126,6 +125,36 @@ export const markMissionCompleted = async (missionId: number, providedUserId?: s
         }
       }
     }
+
+    // 3. O Árbitro sempre avisa que uma missão individual terminou
+    window.dispatchEvent(new CustomEvent('mission:completed', { detail: { missionId, userId } }));
+    
+    // 4. A REGRA UNIVERSAL DE SAÍDA:
+    // Independente de ser a primeira vez, revisão, missão 1 ou missão 6...
+    // Dá 600ms para o usuário ler que acabou, arranca ele do modo fantasma e volta pro Hub!
+    setTimeout(() => {
+      console.log(`[Árbitro] Encerrando missão ${missionId}. Retornando ao Centro de Instrução...`);
+      exitGhostMode(userId, true); // O 'true' avisa para abrir o Hub
+    }, 600);
+
+  } catch (error) {
+    console.error("Erro ao persistir conclusão:", error);
+  }
+};
+
+// ... Mantenha as outras funções (getCompletedMissions, isMissionCompleted, etc) iguais ...
+
+/**
+ * Sai do modo fantasma e limpa a memória de simulação.
+ * Adicionamos o parâmetro 'returnToHub' para forçar a abertura do Centro de Instrução.
+ */
+export const exitGhostMode = (userId?: string, returnToHub: boolean = false) => {
+  localStorage.removeItem(GHOST_MODE_KEY);
+  localStorage.removeItem(ACTIVE_MISSION_KEY);
+  
+  // Se for solicitado, redireciona já com o comando para abrir o Centro de Instrução
+  window.location.href = returnToHub ? '/ptrab?showHub=true' : '/ptrab';
+};
 
     // 3. O Árbitro sempre avisa que uma missão individual terminou
     window.dispatchEvent(new CustomEvent('mission:completed', { detail: { missionId, userId } }));
