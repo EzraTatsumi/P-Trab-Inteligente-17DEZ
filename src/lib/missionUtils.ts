@@ -91,7 +91,7 @@ export const fetchCompletedMissions = async (userId: string): Promise<number[]> 
 /**
  * Marca uma missão como concluída no Supabase e no cache local.
  */
-export const markMissionCompleted = (missionId: number, userId?: string) => {
+export const markMissionCompleted = async (missionId: number, userId?: string) => {
   if (typeof window === 'undefined') return;
   try {
     const key = getBaseKey(userId);
@@ -102,13 +102,28 @@ export const markMissionCompleted = (missionId: number, userId?: string) => {
     let updated = completed;
     if (!completed.includes(missionId)) {
       updated = [...completed, missionId];
+      
+      // 1. Salva no cache local para a interface reagir imediatamente
       localStorage.setItem(key, JSON.stringify(updated));
+
+      // 2. SALVA DEFINITIVAMENTE NO SUPABASE
+      if (userId) {
+        const { error } = await supabase
+          .from('user_missions' as any)
+          .insert({ user_id: userId, mission_id: missionId });
+          
+        if (error) {
+          console.error(`[Árbitro] Erro ao salvar a missão ${missionId} no banco:`, error);
+        } else {
+          console.log(`[Árbitro] Missão ${missionId} salva no Supabase com sucesso!`);
+        }
+      }
     }
 
-    // 1. O Árbitro sempre avisa que uma missão individual terminou (para a UI atualizar barras de progresso, etc)
+    // 3. O Árbitro sempre avisa que uma missão individual terminou (para a UI atualizar barras de progresso, etc)
     window.dispatchEvent(new CustomEvent('mission:completed', { detail: { missionId, userId } }));
     
-    // 2. O Árbitro checa o placar geral: O usuário já completou as 6 missões?
+    // 4. O Árbitro checa o placar geral: O usuário já completou as 6 missões?
     // Note que isso roda SEMPRE, garantindo que a vitória seja disparada independente da ordem.
     if (updated.length >= TOTAL_MISSIONS) {
       console.log(`[Árbitro] Missão ${missionId} concluída. Placar total: ${updated.length}/${TOTAL_MISSIONS}. Disparando Vitória!`);
