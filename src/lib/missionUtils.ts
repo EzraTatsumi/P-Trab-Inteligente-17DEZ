@@ -91,9 +91,16 @@ export const fetchCompletedMissions = async (userId: string): Promise<number[]> 
 /**
  * Marca uma missão como concluída no Supabase e no cache local.
  */
-export const markMissionCompleted = async (missionId: number, userId?: string) => {
+export const markMissionCompleted = async (missionId: number, providedUserId?: string) => {
   if (typeof window === 'undefined') return;
   try {
+    // 🛡️ BLINDAGEM: Se a tela esqueceu de mandar o ID, o Árbitro busca sozinho.
+    let userId = providedUserId;
+    if (!userId) {
+      const { data: { user } } = await supabase.auth.getUser();
+      userId = user?.id;
+    }
+
     const key = getBaseKey(userId);
     const stored = localStorage.getItem(key);
     const completed = stored ? JSON.parse(stored) : [];
@@ -120,10 +127,10 @@ export const markMissionCompleted = async (missionId: number, userId?: string) =
       }
     }
 
-    // 3. O Árbitro sempre avisa que uma missão individual terminou (para a UI atualizar barras de progresso, etc)
+    // 3. O Árbitro sempre avisa que uma missão individual terminou
     window.dispatchEvent(new CustomEvent('mission:completed', { detail: { missionId, userId } }));
     
-    // 4. O Árbitro checa o placar geral e se o troféu já foi entregue
+    // 4. Checagem do placar com garantia da chave correta
     const alreadyShown = localStorage.getItem(VICTORY_SHOWN_KEY(userId)) === 'true';
 
     if (updated.length >= TOTAL_MISSIONS && !alreadyShown) {
@@ -140,8 +147,9 @@ export const markMissionCompleted = async (missionId: number, userId?: string) =
       console.log(`[Árbitro] Revisão da Missão ${missionId} concluída. O usuário já possui o troféu.`);
       
       setTimeout(() => {
-        // Atualiza os status silenciosamente, sem estourar confetes
+        // Atualiza os status silenciosamente e TIRA o usuário do modo fantasma
         window.dispatchEvent(new CustomEvent('welcome-modal:refresh'));
+        exitGhostMode(userId); // <--- DEVOLVE O USUÁRIO PARA A VIDA REAL AUTOMATICAMENTE
       }, 500);
     }
   } catch (error) {
