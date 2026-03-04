@@ -15,7 +15,7 @@ import {
 } from "docx";
 import { saveAs } from "file-saver";
 import { formatNumber, formatCodug } from "./formatUtils";
-import { LOGO_MD_BASE64 } from "./assetsBase64";
+import { LOGO_MD_BASE64 } from "@/lib/assetsBase64";
 
 const standardBorder = { style: BorderStyle.SINGLE, size: 1, color: "000000" };
 
