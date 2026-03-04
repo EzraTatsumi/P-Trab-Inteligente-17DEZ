@@ -19,13 +19,6 @@ if (typeof window !== 'undefined') {
         return; 
       }
       
-      // TRAVA MANUAL: Se estiver no Passo 09 (índice 8), ignore avanços automáticos
-      // Isso força o usuário a clicar em "Próximo" após revisar a tabela
-      if (currentIndex === 8) {
-        console.log("[Tour] Em modo manual no Passo 09. Aguardando clique do usuário.");
-        return;
-      }
-
       const popover = document.querySelector('.driver-popover') as HTMLElement;
       if (popover) {
         popover.style.opacity = '0';
@@ -40,18 +33,25 @@ if (typeof window !== 'undefined') {
           const el = document.querySelector(nextStep.element as string);
           attempts++;
 
-          if (el || attempts > 30) {
+          if (el || attempts > 50) { // Aumentado para 50 tentativas para melhor sincronia
             clearInterval(checkInterval);
             setTimeout(() => {
               if (activeMissionDriver.hasNextStep()) {
                 activeMissionDriver.moveNext();
+                // Garante que o popover volte a ser visível após o movimento
+                const newPopover = document.querySelector('.driver-popover') as HTMLElement;
+                if (newPopover) {
+                    newPopover.style.opacity = '1';
+                }
               }
-            }, 100);
+            }, 150);
           }
         }, 100);
       } else {
         setTimeout(() => {
-          if (activeMissionDriver.hasNextStep()) activeMissionDriver.moveNext();
+          if (activeMissionDriver.hasNextStep()) {
+              activeMissionDriver.moveNext();
+          }
         }, 300);
       }
     }
