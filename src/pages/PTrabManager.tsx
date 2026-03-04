@@ -252,7 +252,7 @@ const PTrabManager = () => {
     const ativarVitoria = () => {
       setShowInstructionHub(true); 
       setShowVictory(true);
-      
+      markVictoryAsShown(user.id);
       setTimeout(() => dispararConfetes(), 200);
     };
 
@@ -1706,7 +1706,6 @@ const PTrabManager = () => {
           <Button 
             className="mt-6 w-full text-lg h-12 bg-green-600 hover:bg-green-700" 
             onClick={() => {
-                markVictoryAsShown(user?.id); // <--- ADICIONE AQUI! Ele só ganha o "visto" se clicar.
                 setShowVictory(false);
                 setShowInstructionHub(false);
                 
