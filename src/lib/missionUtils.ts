@@ -91,9 +91,16 @@ export const fetchCompletedMissions = async (userId: string): Promise<number[]> 
 /**
  * Marca uma missão como concluída no Supabase e no cache local.
  */
-export const markMissionCompleted = async (missionId: number, userId?: string) => {
+export const markMissionCompleted = async (missionId: number, providedUserId?: string) => {
   if (typeof window === 'undefined') return;
   try {
+    // 🛡️ BLINDAGEM: Se a tela esqueceu de mandar o ID, o Árbitro busca sozinho.
+    let userId = providedUserId;
+    if (!userId) {
+      const { data: { user } } = await supabase.auth.getUser();
+      userId = user?.id;
+    }
+
     const key = getBaseKey(userId);
     const stored = localStorage.getItem(key);
     const completed = stored ? JSON.parse(stored) : [];
@@ -120,30 +127,17 @@ export const markMissionCompleted = async (missionId: number, userId?: string) =
       }
     }
 
-    // 3. O Árbitro sempre avisa que uma missão individual terminou (para a UI atualizar barras de progresso, etc)
+    // 3. O Árbitro sempre avisa que uma missão individual terminou
     window.dispatchEvent(new CustomEvent('mission:completed', { detail: { missionId, userId } }));
     
-    // 4. O Árbitro checa o placar geral e se o troféu já foi entregue
-    const alreadyShown = localStorage.getItem(VICTORY_SHOWN_KEY(userId)) === 'true';
+    // 4. A REGRA UNIVERSAL DE SAÍDA:
+    // Independente de ser a primeira vez, revisão, missão 1 ou missão 6...
+    // Dá 600ms para o usuário ler que acabou, arranca ele do modo fantasma e volta pro Hub!
+    setTimeout(() => {
+      console.log(`[Árbitro] Encerrando missão ${missionId}. Retornando ao Centro de Instrução...`);
+      exitGhostMode(userId, true); // O 'true' avisa para abrir o Hub
+    }, 600);
 
-    if (updated.length >= TOTAL_MISSIONS && !alreadyShown) {
-      console.log(`[Árbitro] Missão ${missionId} concluída. Placar total: ${updated.length}/${TOTAL_MISSIONS}. Disparando Vitória!`);
-      
-      setTimeout(() => {
-        // O megafone do Árbitro gritando "VITÓRIA" pela primeira e única vez
-        window.dispatchEvent(new CustomEvent('tour:todas-concluidas', { detail: { userId } }));
-        window.dispatchEvent(new CustomEvent('welcome-modal:refresh'));
-      }, 500);
-      
-    } else if (updated.length >= TOTAL_MISSIONS && alreadyShown) {
-      // O usuário está apenas fazendo uma revisão! 
-      console.log(`[Árbitro] Revisão da Missão ${missionId} concluída. O usuário já possui o troféu.`);
-      
-      setTimeout(() => {
-        // Atualiza os status silenciosamente, sem estourar confetes
-        window.dispatchEvent(new CustomEvent('welcome-modal:refresh'));
-      }, 500);
-    }
   } catch (error) {
     console.error("Erro ao persistir conclusão:", error);
   }
@@ -174,8 +168,14 @@ export const markVictoryAsShown = (userId?: string) => {
   localStorage.setItem(VICTORY_SHOWN_KEY(userId), 'true');
 };
 
-export const exitGhostMode = (userId?: string) => {
+/**
+ * Sai do modo fantasma e limpa a memória de simulação.
+ * Adicionamos o parâmetro 'returnToHub' para forçar a abertura do Centro de Instrução.
+ */
+export const exitGhostMode = (userId?: string, returnToHub: boolean = false) => {
   localStorage.removeItem(GHOST_MODE_KEY);
   localStorage.removeItem(ACTIVE_MISSION_KEY);
-  window.location.href = '/ptrab';
+  
+  // Se for solicitado, redireciona já com o comando para abrir o Centro de Instrução
+  window.location.href = returnToHub ? '/ptrab?showHub=true' : '/ptrab';
 };
