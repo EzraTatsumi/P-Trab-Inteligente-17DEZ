@@ -74,13 +74,40 @@ const ItemAquisicaoPNCPDialog: React.FC<ItemAquisicaoPNCPDialogProps> = ({
     const handleConfirmImport = async () => {
         if (preSelectedItems.length === 0) return;
 
+        const ghostActive = isGhostMode();
+
         // Dispara o avanço do tour para o diálogo de inspeção
-        if (isGhostMode()) {
+        if (ghostActive) {
             window.dispatchEvent(new CustomEvent('tour:avancar'));
         }
         
         setIsCheckingDB(true);
         try {
+            // 🛡️ PROTOCOLO DE MISSÃO: Atalho para Modo Fantasma
+            if (ghostActive) {
+                console.log("[Centro de Instrução] Simulando validação instantânea do item...");
+                
+                // Pequeno delay apenas para feedback visual do loader
+                await new Promise(resolve => setTimeout(resolve, 400));
+                
+                const listToInspect: InspectionItem[] = preSelectedItems.map(item => ({
+                    originalPncpItem: { id: item.id } as any, 
+                    mappedItem: { ...item, descricao_reduzida: item.descricao_item.substring(0, 50) },
+                    fullPncpDescription: item.descricao_item,
+                    userShortDescription: item.descricao_item.substring(0, 50),
+                    status: 'valid', // Força o estado que o Tour espera
+                    messages: [],
+                    isCatmatCataloged: false,
+                    nomePdm: item.descricao_item.substring(0, 30),
+                }));
+                
+                setInspectionList(listToInspect);
+                setIsInspectionOpen(true);
+                setIsCheckingDB(false);
+                return; // Saída antecipada
+            }
+
+            // --- LÓGICA REAL (Fluxo Normal) ---
             const tableName = mode === 'material' ? 'catalogo_catmat' : 'catalogo_catser';
             const itemCodes = preSelectedItems.map(i => i.codigo_catmat);
             
