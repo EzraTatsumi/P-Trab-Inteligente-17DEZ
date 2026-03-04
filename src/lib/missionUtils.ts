@@ -91,45 +91,33 @@ export const fetchCompletedMissions = async (userId: string): Promise<number[]> 
 /**
  * Marca uma missão como concluída no Supabase e no cache local.
  */
-export const markMissionCompleted = async (missionId: number, userId?: string) => {
+export const markMissionCompleted = (missionId: number, userId?: string) => {
   if (typeof window === 'undefined') return;
-  
-  if (!userId) {
-    const key = getBaseKey();
-    const completed = getCompletedMissions();
-    if (!completed.includes(missionId)) {
-      localStorage.setItem(key, JSON.stringify([...completed, missionId]));
-    }
-    return;
-  }
-
   try {
-    const { error } = await supabase
-      .from('user_missions' as any)
-      .upsert(
-        { user_id: userId, mission_id: missionId },
-        { onConflict: 'user_id, mission_id' }
-      );
-
-    if (error) throw error;
-
     const key = getBaseKey(userId);
-    const completed = getCompletedMissions(userId);
+    const stored = localStorage.getItem(key);
+    const completed = stored ? JSON.parse(stored) : [];
     
+    // Adiciona a missão à lista se ela ainda não estiver lá
+    let updated = completed;
     if (!completed.includes(missionId)) {
-      const updated = [...completed, missionId];
+      updated = [...completed, missionId];
       localStorage.setItem(key, JSON.stringify(updated));
+    }
+
+    // 1. O Árbitro sempre avisa que uma missão individual terminou (para a UI atualizar barras de progresso, etc)
+    window.dispatchEvent(new CustomEvent('mission:completed', { detail: { missionId, userId } }));
+    
+    // 2. O Árbitro checa o placar geral: O usuário já completou as 6 missões?
+    // Note que isso roda SEMPRE, garantindo que a vitória seja disparada independente da ordem.
+    if (updated.length >= TOTAL_MISSIONS) {
+      console.log(`[Árbitro] Missão ${missionId} concluída. Placar total: ${updated.length}/${TOTAL_MISSIONS}. Disparando Vitória!`);
       
-      // 📢 SINALIZAÇÃO DE EVENTOS PARA ATUALIZAÇÃO DA UI
-      window.dispatchEvent(new CustomEvent('mission:completed', { detail: { missionId, userId } }));
-      
-      if (updated.length >= TOTAL_MISSIONS) {
-        setTimeout(() => {
-          window.dispatchEvent(new CustomEvent('tour:todas-concluidas', { detail: { userId } }));
-          // Dispara refresh para o checklist do WelcomeModal
-          window.dispatchEvent(new CustomEvent('welcome-modal:refresh'));
-        }, 500);
-      }
+      setTimeout(() => {
+        // O megafone do Árbitro gritando "VITÓRIA" para quem quiser ouvir
+        window.dispatchEvent(new CustomEvent('tour:todas-concluidas', { detail: { userId } }));
+        window.dispatchEvent(new CustomEvent('welcome-modal:refresh'));
+      }, 500);
     }
   } catch (error) {
     console.error("Erro ao persistir conclusão:", error);
