@@ -123,7 +123,10 @@ const PTrabDORReport: React.FC<PTrabDORReportProps> = ({ ptrabData, dorData, sel
               src="/logo_md.png" 
               alt="MD" 
               className="max-h-20 w-auto"
-              onError={(e: any) => e.target.src = "https://upload.wikimedia.org/wikipedia/commons/thumb/b/bf/Coat_of_arms_of_Brazil.svg/100px-Coat_of_arms_of_Brazil.svg.png"}
+              onError={(e: any) => {
+                // Se a imagem não for encontrada, oculta o ícone quebrado para manter a tela limpa
+                e.target.style.display = 'none';
+              }}
             />
           </div>
           <div className={cn(borderRightStyle, "p-1 flex flex-col items-center justify-center text-center font-bold uppercase text-[11pt]")}>
