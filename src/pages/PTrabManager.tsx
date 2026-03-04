@@ -245,23 +245,16 @@ const PTrabManager = () => {
     };
   }, [user?.id, queryClient]);
 
-  // --- INÍCIO DA CORREÇÃO DO BANNER DE MISSÃO CUMPRIDA ---
   useEffect(() => {
     if (!user?.id) return;
 
-    // 1. CHECAGEM ATIVA: Dispara se o usuário já tem a flag de vitória salva
-    if (shouldShowVictory(user.id)) {
-      setShowVictory(true);
-      markVictoryAsShown(user.id);
-      dispararConfetes();
-    }
-
-    // 2. CHECAGEM REATIVA: Escuta o evento em tempo real do tour
     const handleVictory = (e: any) => {
       if (e.detail?.userId === user.id) {
-        setShowVictory(true);
-        markVictoryAsShown(user.id);
-        dispararConfetes();
+        if (shouldShowVictory(user.id)) {
+          setShowVictory(true);
+          markVictoryAsShown(user.id);
+          dispararConfetes();
+        }
       }
     };
 
@@ -278,7 +271,6 @@ const PTrabManager = () => {
         window.removeEventListener('instruction-hub:open', handleOpenHub);
     };
   }, [user?.id]);
-  // --- FIM DA CORREÇÃO ---
 
   useEffect(() => {
     // 1. BARREIRA DE SUPRESSÃO: 
