@@ -218,7 +218,7 @@ export const runMission01 = (userId: string, onComplete: () => void) => {
 export const runMission02 = (userId: string, onComplete: () => void) => {
   const d = driver({
     ...commonConfig,
-    allowClose: false, 
+    allowClose: true, 
     steps: [
       {
         element: '.card-diretrizes-operacionais',
