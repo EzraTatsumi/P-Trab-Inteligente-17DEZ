@@ -1,9 +1,11 @@
 // src/lib/assetsBase64.ts
-import logoUrl from '../assets/logo.png'; 
 
-// Isso vai nos ajudar a debugar:
+/** * Agora que a logo está na pasta /public, o navegador 
+ * a encontrará diretamente na raiz do servidor.
+ */
+export const LOGO_MD_BASE64 = "/logo.png";
+
+// Log para confirmar que o código está rodando
 if (typeof window !== 'undefined') {
-  console.log("DEBUG: O caminho da logo é:", logoUrl);
+  console.log("LOG: Logo configurada para:", LOGO_MD_BASE64);
 }
-
-export const LOGO_MD_BASE64 = logoUrl;
