@@ -192,7 +192,7 @@ const PTrabManager = () => {
   const { data: onboardingStatus, isLoading: isLoadingOnboarding } = useOnboardingStatus();
   const [showWelcomeModal, setShowWelcomeModal] = useState(false);
   const [showRequirementsAlert, setShowRequirementsAlert] = useState(false);
-  hasShownWelcome: useRef(false);
+  const hasShownWelcome = useRef(false);
 
   const dispararConfetes = () => {
     confetti({
@@ -218,6 +218,7 @@ const PTrabManager = () => {
       // Sincroniza o LocalStorage com o Banco de Dados
       fetchCompletedMissions(user.id).then((missionIds) => {
         console.log("Sincronia de Missões concluída:", missionIds.length);
+        // Se o banco retornar vazio, força o refresh para limpar o estado visual
         if (missionIds.length === 0) {
           queryClient.invalidateQueries({ queryKey: ['user-status', user.id] });
         }
@@ -225,10 +226,11 @@ const PTrabManager = () => {
     }
   }, [user?.id, queryClient]);
 
-  // 🔔 Sincronia reativa de status
+  // 🔔 Sincronia reativa de status: Quando uma missão acaba ou evento de refresh dispara
   useEffect(() => {
-    const refreshStatus = (e: any) => {
+    const refreshStatus = () => {
       queryClient.invalidateQueries({ queryKey: ["onboardingStatus"] });
+      // Se tiver ID do usuário, recarrega missões também
       if (user?.id) {
           queryClient.invalidateQueries({ queryKey: ['user-status', user.id] });
       }
@@ -271,15 +273,20 @@ const PTrabManager = () => {
   }, [user?.id]);
 
   useEffect(() => {
+    // 1. BARREIRA DE SUPRESSÃO: 
+    // Se o modo fantasma estiver ativo (missão) ou se o Centro de Instrução estiver aberto, o modal é estritamente proibido.
     if (isGhostMode() || showInstructionHub) {
       setShowWelcomeModal(false);
       return;
     }
 
+    // 2. LÓGICA DE LEMBRETE (Apenas no Manager):
     if (!isLoadingOnboarding && onboardingStatus) {
       const hasPendingTasks = !onboardingStatus.isReady || !onboardingStatus.hasMissions;
       
+      // Só mostra se houver pendências e se ainda não foi mostrado nesta visita à página
       if (hasPendingTasks && !hasShownWelcome.current) {
+        // Pequeno delay para a tela respirar antes de exibir o lembrete
         const timer = setTimeout(() => {
           setShowWelcomeModal(true);
           hasShownWelcome.current = true; 
@@ -287,9 +294,10 @@ const PTrabManager = () => {
         return () => clearTimeout(timer);
       }
     }
-  }, [isLoadingOnboarding, onboardingStatus, showInstructionHub]);
+  }, [isLoadingOnboarding, onboardingStatus, showInstructionHub]); // showInstructionHub é dependência crítica.
 
   const { data: pTrabs = [], isLoading: loading, refetch: loadPTrabs } = useQuery({
+    // Adicionamos ghostActive na chave para que o React Query invalide o cache real e use o simulado
     queryKey: ['pTrabs', user?.id, ghostActive],
     queryFn: async () => {
       if (!user?.id) return [];

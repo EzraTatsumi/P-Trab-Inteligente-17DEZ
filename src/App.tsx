@@ -5,10 +5,8 @@ import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import { SessionContextProvider, useSession } from "@/components/SessionContextProvider";
+import { SessionContextProvider } from "@/components/SessionContextProvider";
 import { HelmetProvider } from "react-helmet-async";
-import { toast } from "sonner";
-import { CheckCircle } from "lucide-react";
 import Index from "./pages/Index";
 import Login from "./pages/Login";
 import PTrabManager from "./pages/PTrabManager";
@@ -53,36 +51,10 @@ const queryClient = new QueryClient();
 
 // Componente interno que consome os contextos
 const AppContent = () => {
-  const { user } = useSession();
-
   useEffect(() => {
     // Executa a inspeção de pré-voo ao montar o App
     runPreflightCheck();
   }, []);
-
-  // Listener Global de Missões
-  useEffect(() => {
-    const handleMissionCompleted = (e: any) => {
-      const missionId = e.detail?.missionId;
-      
-      // Invalida cache para atualizar progresso na UI
-      queryClient.invalidateQueries({ queryKey: ["onboardingStatus"] });
-      if (user?.id) {
-          queryClient.invalidateQueries({ queryKey: ['user-status', user.id] });
-      }
-
-      if (missionId) {
-        toast.success(`Missão 0${missionId} Concluída!`, {
-          description: "Seu progresso foi registrado no Centro de Instrução.",
-          icon: <CheckCircle className="h-5 w-5 text-green-500" />,
-          duration: 4000,
-        });
-      }
-    };
-
-    window.addEventListener('mission:completed', handleMissionCompleted);
-    return () => window.removeEventListener('mission:completed', handleMissionCompleted);
-  }, [user?.id]);
 
   return (
     <>
