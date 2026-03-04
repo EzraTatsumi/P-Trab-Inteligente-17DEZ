@@ -1744,6 +1744,6 @@ const PTrabManager = () => {
       <AIChatDrawer />
     </div>
   );
-};
+}
 
 export default PTrabManager
