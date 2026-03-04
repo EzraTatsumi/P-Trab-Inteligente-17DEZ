@@ -283,8 +283,9 @@ const PTrabManager = () => {
 
   useEffect(() => {
     // 1. BARREIRA DE SUPRESSÃO: 
-    // Se o modo fantasma estiver ativo (missão) ou se o Centro de Instrução estiver aberto, o modal é estritamente proibido.
-    if (isGhostMode() || showInstructionHub) {
+    // Se o modo fantasma estiver ativo, se o Centro de Instrução estiver aberto, 
+    // OU se a tela de Vitória estiver ativa, o modal é estritamente proibido.
+    if (isGhostMode() || showInstructionHub || showVictory) { // <-- Adicionado showVictory
       setShowWelcomeModal(false);
       return;
     }
@@ -295,7 +296,6 @@ const PTrabManager = () => {
       
       // Só mostra se houver pendências e se ainda não foi mostrado nesta visita à página
       if (hasPendingTasks && !hasShownWelcome.current) {
-        // Pequeno delay para a tela respirar antes de exibir o lembrete
         const timer = setTimeout(() => {
           setShowWelcomeModal(true);
           hasShownWelcome.current = true; 
@@ -303,8 +303,8 @@ const PTrabManager = () => {
         return () => clearTimeout(timer);
       }
     }
-  }, [isLoadingOnboarding, onboardingStatus, showInstructionHub]); // showInstructionHub é dependência crítica.
-
+  }, [isLoadingOnboarding, onboardingStatus, showInstructionHub, showVictory]); // <-- Adicionado showVictory nas dependências
+3
   const { data: pTrabs = [], isLoading: loading, refetch: loadPTrabs } = useQuery({
     // Adicionamos ghostActive na chave para que o React Query invalide o cache real e use o simulado
     queryKey: ['pTrabs', user?.id, ghostActive],
