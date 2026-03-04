@@ -66,6 +66,7 @@ const MaterialConsumoDiretrizFormDialog: React.FC<MaterialConsumoDiretrizFormDia
 }) => {
     const { handleEnterToNextField } = useFormNavigation();
     const itemFormRef = useRef<HTMLDivElement>(null);
+    const prevOpenRef = useRef(false);
 
     const getInitialFormState = (editData: DiretrizMaterialConsumo | null): InternalMaterialConsumoForm => {
         if (editData) return { ...editData, itens_aquisicao: editData.itens_aquisicao, ano_referencia: editData.ano_referencia };
@@ -82,9 +83,18 @@ const MaterialConsumoDiretrizFormDialog: React.FC<MaterialConsumoDiretrizFormDia
     const [isPNCPSearchOpen, setIsPNCPSearchOpen] = useState(false);
 
     useEffect(() => {
-        setSubitemForm(getInitialFormState(diretrizToEdit));
-        if (!diretrizToEdit) setItemForm(initialItemForm);
-        setEditingItemId(null);
+        // 🛡️ Blindagem contra re-renderizações acidentais:
+        // Só resetamos o formulário se o diálogo estiver sendo aberto agora ou se o registro a editar mudou.
+        const isOpening = open && !prevOpenRef.current;
+        const isChangingRecord = diretrizToEdit?.id !== subitemForm.id;
+
+        if (isOpening || (open && isChangingRecord)) {
+            setSubitemForm(getInitialFormState(diretrizToEdit));
+            setItemForm(initialItemForm);
+            setEditingItemId(null);
+        }
+        
+        prevOpenRef.current = open;
     }, [diretrizToEdit, open, selectedYear]);
     
     useEffect(() => {

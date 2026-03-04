@@ -53,7 +53,6 @@ export const startMission = (missionId: number, userId?: string) => {
 
 /**
  * Busca as missões concluídas do banco de dados e atualiza o cache local.
- * Se o banco estiver vazio, limpa agressivamente todo o estado local do onboarding.
  * @returns Array de IDs de missões concluídas.
  */
 export const fetchCompletedMissions = async (userId: string): Promise<number[]> => {
@@ -71,7 +70,7 @@ export const fetchCompletedMissions = async (userId: string): Promise<number[]> 
       const key = getBaseKey(userId);
       const victoryKey = VICTORY_SHOWN_KEY(userId);
       
-      // RESET TOTAL LOCAL se o banco estiver zerado (Agressivo)
+      // RESET TOTAL LOCAL se o banco estiver zerado
       if (missionIds.length === 0) {
         localStorage.removeItem(key);
         localStorage.removeItem(victoryKey);
@@ -85,7 +84,6 @@ export const fetchCompletedMissions = async (userId: string): Promise<number[]> 
     return missionIds;
   } catch (error) {
     console.error("Erro ao sincronizar missões:", error);
-    // Em caso de erro, tenta retornar o estado local atual
     return getCompletedMissions(userId);
   }
 };
@@ -96,9 +94,7 @@ export const fetchCompletedMissions = async (userId: string): Promise<number[]> 
 export const markMissionCompleted = async (missionId: number, userId?: string) => {
   if (typeof window === 'undefined') return;
   
-  // Se não houver userId, não podemos salvar no banco devido às políticas de RLS
   if (!userId) {
-    console.warn("markMissionCompleted: userId não fornecido, salvando apenas localmente.");
     const key = getBaseKey();
     const completed = getCompletedMissions();
     if (!completed.includes(missionId)) {
@@ -108,8 +104,6 @@ export const markMissionCompleted = async (missionId: number, userId?: string) =
   }
 
   try {
-    // 1. Salva no Supabase (Fonte da Verdade)
-    // Usamos o upsert para garantir que não haja duplicidade
     const { error } = await supabase
       .from('user_missions' as any)
       .upsert(
@@ -119,7 +113,6 @@ export const markMissionCompleted = async (missionId: number, userId?: string) =
 
     if (error) throw error;
 
-    // 2. Atualiza o cache local e dispara eventos
     const key = getBaseKey(userId);
     const completed = getCompletedMissions(userId);
     
@@ -127,20 +120,19 @@ export const markMissionCompleted = async (missionId: number, userId?: string) =
       const updated = [...completed, missionId];
       localStorage.setItem(key, JSON.stringify(updated));
       
+      // 📢 SINALIZAÇÃO DE EVENTOS PARA ATUALIZAÇÃO DA UI
       window.dispatchEvent(new CustomEvent('mission:completed', { detail: { missionId, userId } }));
       
       if (updated.length >= TOTAL_MISSIONS) {
-        window.dispatchEvent(new CustomEvent('tour:todas-concluidas', { detail: { userId } }));
+        setTimeout(() => {
+          window.dispatchEvent(new CustomEvent('tour:todas-concluidas', { detail: { userId } }));
+          // Dispara refresh para o checklist do WelcomeModal
+          window.dispatchEvent(new CustomEvent('welcome-modal:refresh'));
+        }, 500);
       }
     }
   } catch (error) {
-    console.error("Erro ao persistir conclusão da missão:", error);
-    // Em caso de erro no banco, ainda atualizamos o local para não travar a UI do usuário
-    const key = getBaseKey(userId);
-    const completed = getCompletedMissions(userId);
-    if (!completed.includes(missionId)) {
-      localStorage.setItem(key, JSON.stringify([...completed, missionId]));
-    }
+    console.error("Erro ao persistir conclusão:", error);
   }
 };
 

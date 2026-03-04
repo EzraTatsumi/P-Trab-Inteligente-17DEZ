@@ -226,6 +226,25 @@ const PTrabManager = () => {
     }
   }, [user?.id, queryClient]);
 
+  // 🔔 Sincronia reativa de status: Quando uma missão acaba ou evento de refresh dispara
+  useEffect(() => {
+    const refreshStatus = () => {
+      queryClient.invalidateQueries({ queryKey: ["onboardingStatus"] });
+      // Se tiver ID do usuário, recarrega missões também
+      if (user?.id) {
+          queryClient.invalidateQueries({ queryKey: ['user-status', user.id] });
+      }
+    };
+
+    window.addEventListener('mission:completed', refreshStatus);
+    window.addEventListener('welcome-modal:refresh', refreshStatus);
+
+    return () => {
+      window.removeEventListener('mission:completed', refreshStatus);
+      window.removeEventListener('welcome-modal:refresh', refreshStatus);
+    };
+  }, [user?.id, queryClient]);
+
   useEffect(() => {
     if (!user?.id) return;
 
@@ -1030,7 +1049,7 @@ const PTrabManager = () => {
                     ...((record as any).hasOwnProperty('itens_motomecanizacao') && { itens_motomecanizacao: JSON.parse(JSON.stringify(record.itens_motomecanizacao)) }), 
                     ...((record as any).hasOwnProperty('quantidades_por_posto') && { quantidades_por_posto: JSON.parse(JSON.stringify(record.quantidades_por_posto)) }), 
                     ...((record as any).hasOwnProperty('itens_aquisicao') && { itens_aquisicao: JSON.parse(JSON.stringify(record.itens_aquisicao)) }),
-                    ...((record as any).hasOwnProperty('detalhes_planejamento') && { detalhes_planejamento: JSON.parse(JSON.stringify(record.detalhes_planejamento)) }),
+                    ...((record as any).hasOwnProperty('detalhes_planejamento') && { detalhes_planejamento: JSON.parse(JSON.stringify(record.details_planejamento)) }),
                     ...((record as any).hasOwnProperty('itens_dor') && { itens_dor: JSON.parse(JSON.stringify(record.itens_dor)) }),
                     ...((record as any).hasOwnProperty('groups_dor') && { grupos_dor: JSON.parse(JSON.stringify(record.grupos_dor)) })
                 };

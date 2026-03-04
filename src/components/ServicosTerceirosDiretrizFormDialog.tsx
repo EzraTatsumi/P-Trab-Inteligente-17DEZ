@@ -71,6 +71,7 @@ const ServicosTerceirosDiretrizFormDialog: React.FC<ServicosTerceirosDiretrizFor
 }) => {
     const { handleEnterToNextField } = useFormNavigation();
     const itemFormRef = useRef<HTMLDivElement>(null);
+    const prevOpenRef = useRef(false);
 
     const getInitialFormState = (editData: DiretrizServicosTerceiros | null): InternalServicosForm => {
         if (editData) return { ...editData, itens_aquisicao: editData.itens_aquisicao || [], ano_referencia: editData.ano_referencia };
@@ -89,9 +90,17 @@ const ServicosTerceirosDiretrizFormDialog: React.FC<ServicosTerceirosDiretrizFor
     const [isPNCPSearchOpen, setIsPNCPSearchOpen] = useState(false);
 
     useEffect(() => {
-        setSubitemForm(getInitialFormState(diretrizToEdit));
-        setItemForm(initialItemForm);
-        setEditingItemId(null);
+        // 🛡️ SÓ RESETAMOS SE: O diálogo acabou de ser aberto ou se o registro mudou
+        const isOpening = open && !prevOpenRef.current;
+        const isChangingRecord = diretrizToEdit?.id !== subitemForm.id;
+
+        if (isOpening || (open && isChangingRecord)) {
+            setSubitemForm(getInitialFormState(diretrizToEdit));
+            setItemForm(initialItemForm);
+            setEditingItemId(null);
+        }
+        
+        prevOpenRef.current = open;
     }, [diretrizToEdit, open, selectedYear]);
 
     const handleItemCurrencyChange = (numericValue: number, digits: string) => setItemForm(prev => ({ ...prev, valor_unitario: numericValue, rawValor: digits }));
