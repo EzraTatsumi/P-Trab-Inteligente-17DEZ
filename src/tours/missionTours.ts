@@ -1708,6 +1708,10 @@ const PTrabManager = () => {
             onClick={() => {
                 setShowVictory(false);
                 setShowInstructionHub(false);
+                
+                // ADICIONE ESTA LINHA:
+                hasShownWelcome.current = true;
+                
                 if (isGhostMode()) {
                     exitGhostMode(user?.id);
                 }
