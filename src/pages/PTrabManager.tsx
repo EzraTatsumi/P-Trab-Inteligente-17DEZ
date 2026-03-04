@@ -251,6 +251,7 @@ const PTrabManager = () => {
 
     // 1. CHECAGEM ATIVA: Dispara se o usuário já tem a flag de vitória salva
     if (shouldShowVictory(user.id)) {
+      setShowInstructionHub(true); // <-- NOVA LINHA: Abre o Centro de Instrução como fundo!
       setShowVictory(true);
       markVictoryAsShown(user.id);
       dispararConfetes();
@@ -282,8 +283,9 @@ const PTrabManager = () => {
 
   useEffect(() => {
     // 1. BARREIRA DE SUPRESSÃO: 
-    // Se o modo fantasma estiver ativo (missão) ou se o Centro de Instrução estiver aberto, o modal é estritamente proibido.
-    if (isGhostMode() || showInstructionHub) {
+    // Se o modo fantasma estiver ativo, se o Centro de Instrução estiver aberto, 
+    // OU se a tela de Vitória estiver ativa, o modal é estritamente proibido.
+    if (isGhostMode() || showInstructionHub || showVictory) { // <-- Adicionado showVictory
       setShowWelcomeModal(false);
       return;
     }
@@ -294,7 +296,6 @@ const PTrabManager = () => {
       
       // Só mostra se houver pendências e se ainda não foi mostrado nesta visita à página
       if (hasPendingTasks && !hasShownWelcome.current) {
-        // Pequeno delay para a tela respirar antes de exibir o lembrete
         const timer = setTimeout(() => {
           setShowWelcomeModal(true);
           hasShownWelcome.current = true; 
@@ -302,8 +303,8 @@ const PTrabManager = () => {
         return () => clearTimeout(timer);
       }
     }
-  }, [isLoadingOnboarding, onboardingStatus, showInstructionHub]); // showInstructionHub é dependência crítica.
-
+  }, [isLoadingOnboarding, onboardingStatus, showInstructionHub, showVictory]); // <-- Adicionado showVictory nas dependências
+3
   const { data: pTrabs = [], isLoading: loading, refetch: loadPTrabs } = useQuery({
     // Adicionamos ghostActive na chave para que o React Query invalide o cache real e use o simulado
     queryKey: ['pTrabs', user?.id, ghostActive],
@@ -1708,6 +1709,8 @@ const PTrabManager = () => {
             onClick={() => {
                 setShowVictory(false);
                 setShowInstructionHub(false);
+                // <-- NOVA LINHA: Engana o sistema para ele achar que já mostrou as boas-vindas
+                hasShownWelcome.current = true;
                 if (isGhostMode()) {
                     exitGhostMode(user?.id);
                 }
