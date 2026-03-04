@@ -239,14 +239,14 @@ const PTrabManager = () => {
   useEffect(() => {
     if (!user?.id) return;
 
-    // 1. CHECAGEM ATIVA (Garante a exibição após recarregamento)
+    // 1. CHECAGEM ATIVA
     if (shouldShowVictory(user.id)) {
       setShowVictory(true);
       markVictoryAsShown(user.id);
       dispararConfetes();
     }
 
-    // 2. CHECAGEM REATIVA (Escuta o evento em tempo real)
+    // 2. CHECAGEM REATIVA
     const handleVictory = (e: any) => {
       if (e.detail?.userId === user.id) {
         setShowVictory(true);
@@ -505,26 +505,6 @@ const PTrabManager = () => {
 
   const [selectedOmId, setSelectedOmId] = useState<string | undefined>(undefined);
   const { handleEnterToNextField } = useFormNavigation();
-
-  useEffect(() => {
-    const checkAuth = async () => {
-      const { data: { session } = {} } = await supabase.auth.getSession();
-      if (!session) navigate("/login");
-    };
-    checkAuth();
-    if (user?.id) {
-        fetchUserName(user.id, user.user_metadata).then(name => {
-            setUserName(name || ""); 
-        });
-    }
-  }, [user, fetchUserName, navigate]);
-
-  useEffect(() => {
-    if (ptrabToClone) {
-      let newSuggestedNumber = generateUniqueMinutaNumber(existingPTrabNumbers); 
-      setSuggestedCloneNumber(newSuggestedNumber);
-    }
-  }, [ptrabToClone, existingPTrabNumbers]);
 
   const handleConfirmArchiveStatus = async () => {
     if (!ptrabToArchiveId) return;
@@ -825,6 +805,115 @@ const PTrabManager = () => {
     } catch (e) { toast.error("Erro ao desvincular"); } finally { setIsActionLoading(false); }
   };
 
+  const handleNumeroPTrabChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setFormData((prev) => ({ ...prev, numero_ptrab: e.target.value }));
+  };
+
+  const handleOpenLinkPTrabDialog = () => {
+    setLinkPTrabInput("");
+    setShowLinkPTrabDialog(true);
+  };
+
+  const handleOpenApproveDialog = (ptrab: PTrab) => {
+    const omSigla = ptrab.nome_om;
+    const suggestedNumber = generateApprovalPTrabNumber(existingPTrabNumbers, omSigla);
+    setPtrabToApprove(ptrab);
+    setSuggestedApproveNumber(suggestedNumber);
+    setShowApproveDialog(true);
+  };
+
+  const handleOpenCloneOptions = (ptrab: PTrab) => {
+    setPtrabToClone(ptrab);
+    setCloneType('new');
+    setShowCloneOptionsDialog(true);
+  };
+
+  const handleConfirmCloneOptions = async () => {
+    if (!ptrabToClone) return;
+    if (cloneType === 'new') {
+      setShowCloneOptionsDialog(false);
+      const { id, created_at, updated_at, user_id, share_token, shared_with, totalLogistica, totalOperacional, totalMaterialPermanente, quantidadeRacaoOp, quantidadeHorasVoo, isOwner, isShared, hasPendingRequests, ...restOfPTrab } = ptrabToClone;
+      setFormData({ ...restOfPTrab, numero_ptrab: suggestedCloneNumber, status: "aberto", origem: ptrabToClone.origem, comentario: "", rotulo_versao: ptrabToClone.rotulo_versao, nome_om: "", nome_om_extenso: "", codug_om: "", rm_vinculacao: "", codug_rm_vinculacao: "" });
+      setSelectedOmId(undefined); 
+      setOriginalPTrabIdToClone(ptrabToClone.id);
+      setDialogOpen(true);
+    } else {
+      setShowCloneOptionsDialog(false);
+      setShowCloneVariationDialog(true);
+    }
+  };
+
+  const handleOpenConsolidationNumberDialog = (selectedPTrabs: string[]) => {
+    if (selectedPTrabs.length < 2) {
+        toast.error("Selecione pelo menos dois P Trabs para consolidar.");
+        return;
+    }
+    setSelectedPTrabsToConsolidate(selectedPTrabs);
+    const newMinutaNumber = generateUniqueMinutaNumber(existingPTrabNumbers);
+    setSuggestedConsolidationNumber(newMinutaNumber);
+    setShowConsolidationDialog(false);
+    setShowConsolidationNumberDialog(true);
+  };
+
+  const handleOpenShareDialog = (ptrab: PTrab) => {
+    if (!ptrab.share_token) {
+        toast.error("Token de compartilhamento não encontrado.");
+        return;
+    }
+    const baseUrl = window.location.origin;
+    const link = `${baseUrl}/share-ptrab?ptrabId=${ptrab.id}&token=${ptrab.share_token}`;
+    setPtrabToShare(ptrab);
+    setShareLink(link);
+    setShowShareLinkDialog(true);
+  };
+
+  const handleOpenManageSharingDialog = async (ptrab: PTrab) => {
+    if (!ptrab.isOwner) return;
+    setPtrabToManageSharing(ptrab);
+    setShowManageSharingDialog(true); 
+  };
+
+  const handleApproveRequest = async (requestId: string) => {
+    setIsActionLoading(true);
+    try {
+        const { data, error = null } = await supabase.rpc('approve_ptrab_share', { p_request_id: requestId });
+        if (error) throw error;
+        toast.success("Compartilhamento aprovado!");
+        loadPTrabs();
+    } catch (e) { toast.error("Erro ao aprovar"); } finally { setIsActionLoading(false); }
+  };
+
+  const handleRejectRequest = async (requestId: string) => {
+    setIsActionLoading(true);
+    try {
+        const { data, error = null } = await supabase.rpc('reject_ptrab_share', { p_request_id: requestId });
+        if (error) throw error;
+        toast.info("Solicitação rejeitada.");
+        loadPTrabs();
+    } catch (e) { toast.error("Erro ao rejeitar"); } finally { setIsActionLoading(false); }
+  };
+
+  const handleCancelSharing = async (ptrabId: string, userIdToRemove: string, userName: string) => {
+    if (!confirm(`Remover acesso de ${userName}?`)) return;
+    setIsActionLoading(true);
+    try {
+        const { data: success, error = null } = await supabase.rpc('remove_user_from_shared_with', { p_ptrab_id: ptrabId, p_user_to_remove_id: userIdToRemove });
+        if (error) throw error;
+        toast.success(`Acesso removido.`);
+        loadPTrabs();
+    } catch (e) { toast.error("Erro ao remover"); } finally { setIsActionLoading(false); }
+  };
+
+  const handleOpenUnlinkDialog = (ptrab: PTrab) => {
+    setPtrabToUnlink(ptrab);
+    setShowUnlinkPTrabDialog(true);
+  };
+
+  const needsNumbering = (ptrab: PTrab) => ptrab.numero_ptrab.startsWith("Minuta") && (ptrab.status === 'aberto' || ptrab.status === 'em_andamento');
+  const isFinalStatus = (ptrab: PTrab) => ptrab.status === 'aprovado' || ptrab.status === 'arquivado';
+
+  const simplePTrabsToConsolidate = useMemo(() => pTrabs.filter(p => selectedPTrabsToConsolidate.includes(p.id)).map(p => ({ id: p.id, numero_ptrab: p.numero_ptrab, nome_operacao: p.numero_ptrab })), [pTrabs, selectedPTrabsToConsolidate]);
+
   return (
     <div className="min-h-screen bg-background p-4 md:p-8">
       <PageMetadata title="Gerenciamento de Planos de Trabalho" description="Visualize, crie, edite e gerencie todos os seus Planos de Trabalho (P Trabs) e seus custos associados." canonicalPath="/ptrab" />
@@ -839,7 +928,10 @@ const PTrabManager = () => {
                 <DialogHeader><DialogTitle>{editingId ? "Editar P Trab" : "Novo P Trab"}</DialogTitle></DialogHeader>
                 <form onSubmit={handleSubmit} className="grid gap-4 py-4">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-2"><Label htmlFor="numero_ptrab">Número do P Trab *</Label><Input id="numero_ptrab" value={formData.numero_ptrab} onChange={handleNumeroPTrabChange} placeholder="Minuta" maxLength={50} required onKeyDown={handleEnterToNextField} disabled={formData.numero_ptrab.startsWith("Minuta") && !editingId} className={formData.numero_ptrab.startsWith("Minuta") && !editingId ? "bg-muted/50" : ""} /></div>
+                    <div className="space-y-2">
+                      <Label htmlFor="numero_ptrab">Número do P Trab *</Label>
+                      <Input id="numero_ptrab" value={formData.numero_ptrab} onChange={handleNumeroPTrabChange} placeholder="Minuta" maxLength={50} required onKeyDown={handleEnterToNextField} disabled={formData.numero_ptrab.startsWith("Minuta") && !editingId} className={formData.numero_ptrab.startsWith("Minuta") && !editingId ? "bg-muted/50" : ""} />
+                    </div>
                     <div className="space-y-2"><Label htmlFor="nome_operacao">Nome da Operação *</Label><Input id="nome_operacao" value={formData.nome_operacao} onChange={(e) => setFormData({ ...formData, nome_operacao: e.target.value })} required onKeyDown={handleEnterToNextField} /></div>
                     <div className="space-y-2"><Label htmlFor="comando_militar_area">Comando Militar de Área *</Label><Select value={formData.comando_militar_area} onValueChange={(v) => setFormData({ ...formData, comando_militar_area: v })}><SelectTrigger id="comando_militar_area"><SelectValue placeholder="Selecione o CMA" /></SelectTrigger><SelectContent>{COMANDOS_MILITARES_AREA.map((c) => (<SelectItem key={c} value={c}>{c}</SelectItem>))}</SelectContent></Select></div>
                     <div className="space-y-2"><Label htmlFor="nome_om_extenso">Nome da OM (por extenso) *</Label><Input id="nome_om_extenso" value={formData.nome_om_extenso} onChange={(e) => setFormData({ ...formData, nome_om_extenso: e.target.value })} maxLength={300} required onKeyDown={handleEnterToNextField} /></div>
@@ -866,25 +958,141 @@ const PTrabManager = () => {
           <CardHeader><h2 className="text-xl font-bold">Planos de Trabalho Cadastrados</h2></CardHeader>
           <CardContent>
             {loading ? <PTrabTableSkeleton /> : pTrabs.length === 0 ? <div className="text-center py-12"><FileText className="h-12 w-12 mx-auto text-muted-foreground mb-4" /><h3 className="text-xl font-semibold">Nenhum Registro</h3></div> : (
-              <Table><TableHeader><TableRow><TableHead className="text-center">Número</TableHead><TableHead className="text-center">Operação</TableHead><TableHead className="text-center">Período</TableHead><TableHead className="text-center">Status</TableHead><TableHead className="text-center">Valor</TableHead><TableHead className="text-center w-[50px]"></TableHead><TableHead className="text-center">Ações</TableHead></TableRow></TableHeader><TableBody>{pTrabs.map((ptrab) => {
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="text-center">Número</TableHead>
+                    <TableHead className="text-center">Operação</TableHead>
+                    <TableHead className="text-center">Período</TableHead>
+                    <TableHead className="text-center">Status</TableHead>
+                    <TableHead className="text-center">Valor</TableHead>
+                    <TableHead className="text-center w-[50px]"></TableHead>
+                    <TableHead className="text-center">Ações</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {pTrabs.map((ptrab) => {
                     const originBadge = getOriginBadge(ptrab.origem);
                     const isMinuta = ptrab.numero_ptrab.startsWith("Minuta");
                     const isEditable = (ptrab.isOwner || ptrab.isShared) && ptrab.status !== 'aprovado' && ptrab.status !== 'arquivado'; 
                     const totalGeral = (ptrab.totalLogistica || 0) + (ptrab.totalOperacional || 0) + (ptrab.totalMaterialPermanente || 0);
-                    return (<TableRow key={ptrab.id}><TableCell className="font-medium"><div className="flex flex-col items-center">{ptrab.status === 'arquivado' && isMinuta ? <span className="text-gray-500 font-bold">MINUTA</span> : ptrab.status === 'aprovado' || ptrab.status === 'arquivado' ? <span>{ptrab.numero_ptrab}</span> : <span className="text-red-500 font-bold">{isMinuta ? "MINUTA" : "PENDENTE"}</span>}<Badge variant={originBadge.variant} className="mt-1 text-xs">{originBadge.label}</Badge></div></TableCell><TableCell><div className="flex flex-col items-start"><span>{cleanOperationName(ptrab.nome_operacao, ptrab.origem)}</span>{ptrab.rotulo_versao && <Badge variant="secondary" className="mt-1 text-xs"><GitBranch className="h-3 w-3 mr-1" />{ptrab.rotulo_versao}</Badge>}</div></TableCell><TableCell className="text-center"><div>{new Date(ptrab.periodo_inicio).toLocaleDateString('pt-BR')} - {new Date(ptrab.periodo_fim).toLocaleDateString('pt-BR')}</div><div className="text-xs text-muted-foreground">{calculateDays(ptrab.periodo_inicio, ptrab.periodo_fim)} dias</div></TableCell><TableCell><div className="flex flex-col items-center"><Badge variant={statusConfig[ptrab.status as keyof typeof statusConfig]?.variant || 'default'} className="w-[140px] h-7 text-xs flex justify-center">{statusConfig[ptrab.status as keyof typeof statusConfig]?.label || ptrab.status}</Badge>{ptrab.isOwner && (ptrab.shared_with?.length || 0) > 0 && <Badge variant="ptrab-shared" className="mt-1 text-xs w-[140px] h-7 flex justify-center" onClick={() => handleOpenManageSharingDialog(ptrab)}><Users className="h-3 w-3 mr-1" />Compartilhando</Badge>}</div></TableCell><TableCell className="text-left w-[200px]"><div className="flex flex-col text-xs space-y-1"><div className="flex justify-between"><span>Log:</span><span>{formatCurrency(ptrab.totalLogistica)}</span></div><div className="flex justify-between"><span>Op:</span><span>{formatCurrency(ptrab.totalOperacional)}</span></div><div className="flex justify-between"><span>Mat Perm:</span><span>{formatCurrency(ptrab.totalMaterialPermanente)}</span></div><div className="w-full h-px bg-muted-foreground/30 my-1" /><div className="flex justify-between font-bold text-sm"><span>Total:</span><span>{formatCurrency(totalGeral)}</span></div></div></TableCell><TableCell className="text-center"><TooltipProvider><Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" onClick={() => handleOpenComentario(ptrab)}><MessageSquare className={`h-5 w-5 ${ptrab.comentario ? "text-green-600 fill-green-600" : "text-gray-300"}`} /></Button></TooltipTrigger><TooltipContent><p>Comentário</p></TooltipContent></Tooltip></TooltipProvider></TableCell><TableCell className="text-right"><div className="flex justify-end gap-2 items-start">{(needsNumbering(ptrab) || isFinalStatus(ptrab)) && <Button onClick={() => handleOpenApproveDialog(ptrab)} size="sm" className="bg-green-600 hover:bg-green-700" disabled={isFinalStatus(ptrab) || !ptrab.isOwner}><CheckCircle className="h-4 w-4" />Aprovar</Button>}<div className="flex flex-col gap-1"><Button onClick={() => handleSelectPTrab(ptrab)} size="sm" className="w-full justify-start btn-preencher-ptrab" disabled={!isEditable}><FileText className="h-4 w-4 mr-2" />Preencher</Button><Button onClick={() => navigate(`/ptrab/dor?ptrabId=${ptrab.id}`)} size="sm" variant="outline" className="w-full justify-start btn-preencher-dor" disabled={!isEditable}><ClipboardList className="h-4 w-4 mr-2" />DOR</Button></div><DropdownMenu open={openActionsId === ptrab.id} onOpenChange={(o) => setOpenActionsId(o ? ptrab.id : null)}><DropdownMenuTrigger asChild><Button variant="ghost" size="sm"><MoreVertical className="h-4 w-4" /></Button></DropdownMenuTrigger><DropdownMenuContent align="end" className="w-56"><DropdownMenuLabel>Ações</DropdownMenuLabel><DropdownMenuSeparator /><DropdownMenuItem onClick={() => handleNavigateToPrintOrExport(ptrab.id)}><Printer className="mr-2 h-4 w-4" />Imprimir</DropdownMenuItem><DropdownMenuItem onClick={() => handleEdit(ptrab)} disabled={!isEditable}><Pencil className="mr-2 h-4 w-4" />Editar</DropdownMenuItem>{ptrab.isOwner && <DropdownMenuItem onClick={() => handleOpenShareDialog(ptrab)}><Share2 className="mr-2 h-4 w-4" />Compartilhar</DropdownMenuItem>}<DropdownMenuItem onClick={() => handleOpenCloneOptions(ptrab)}><Copy className="mr-2 h-4 w-4" />Clonar</DropdownMenuItem><DropdownMenuSeparator /><DropdownMenuItem onClick={() => handleDelete(ptrab.id, ptrab.isOwner)} className="text-red-600"><Trash2 className="mr-2 h-4 w-4" />Excluir</DropdownMenuItem></DropdownMenuContent></DropdownMenu></div></TableCell></TableRow>))}</TableBody></Table>)}
+                    
+                    return (
+                      <TableRow key={ptrab.id}>
+                        <TableCell className="font-medium">
+                          <div className="flex flex-col items-center">
+                            {ptrab.status === 'arquivado' && isMinuta ? <span className="text-gray-500 font-bold">MINUTA</span> : ptrab.status === 'aprovado' || ptrab.status === 'arquivado' ? <span>{ptrab.numero_ptrab}</span> : <span className="text-red-500 font-bold">{isMinuta ? "MINUTA" : "PENDENTE"}</span>}
+                            <Badge variant={originBadge.variant} className="mt-1 text-xs">{originBadge.label}</Badge>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex flex-col items-start">
+                            <span>{cleanOperationName(ptrab.nome_operacao, ptrab.origem)}</span>
+                            {ptrab.rotulo_versao && <Badge variant="secondary" className="mt-1 text-xs"><GitBranch className="h-3 w-3 mr-1" />{ptrab.rotulo_versao}</Badge>}
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-center">
+                          <div>{new Date(ptrab.periodo_inicio).toLocaleDateString('pt-BR')} - {new Date(ptrab.periodo_fim).toLocaleDateString('pt-BR')}</div>
+                          <div className="text-xs text-muted-foreground">{calculateDays(ptrab.periodo_inicio, ptrab.periodo_fim)} dias</div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex flex-col items-center">
+                            <Badge variant={statusConfig[ptrab.status as keyof typeof statusConfig]?.variant || 'default'} className="w-[140px] h-7 text-xs flex justify-center">{statusConfig[ptrab.status as keyof typeof statusConfig]?.label || ptrab.status}</Badge>
+                            {ptrab.isOwner && (ptrab.shared_with?.length || 0) > 0 && <Badge variant="ptrab-shared" className="mt-1 text-xs w-[140px] h-7 flex justify-center" onClick={() => handleOpenManageSharingDialog(ptrab)}><Users className="h-3 w-3 mr-1" />Compartilhando</Badge>}
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-left w-[200px]">
+                          <div className="flex flex-col text-xs space-y-1">
+                            <div className="flex justify-between"><span>Log:</span><span>{formatCurrency(ptrab.totalLogistica)}</span></div>
+                            <div className="flex justify-between"><span>Op:</span><span>{formatCurrency(ptrab.totalOperacional)}</span></div>
+                            <div className="flex justify-between"><span>Mat Perm:</span><span>{formatCurrency(ptrab.totalMaterialPermanente)}</span></div>
+                            <div className="w-full h-px bg-muted-foreground/30 my-1" />
+                            <div className="flex justify-between font-bold text-sm"><span>Total:</span><span>{formatCurrency(totalGeral)}</span></div>
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-center">
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button variant="ghost" size="icon" onClick={() => handleOpenComentario(ptrab)}><MessageSquare className={`h-5 w-5 ${ptrab.comentario ? "text-green-600 fill-green-600" : "text-gray-300"}`} /></Button>
+                              </TooltipTrigger>
+                              <TooltipContent><p>Comentário</p></TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex justify-end gap-2 items-start">
+                            {(needsNumbering(ptrab) || isFinalStatus(ptrab)) && <Button onClick={() => handleOpenApproveDialog(ptrab)} size="sm" className="bg-green-600 hover:bg-green-700" disabled={isFinalStatus(ptrab) || !ptrab.isOwner}><CheckCircle className="h-4 w-4" />Aprovar</Button>}
+                            <div className="flex flex-col gap-1">
+                              <Button onClick={() => handleSelectPTrab(ptrab)} size="sm" className="w-full justify-start btn-preencher-ptrab" disabled={!isEditable}><FileText className="h-4 w-4 mr-2" />Preencher</Button>
+                              <Button onClick={() => navigate(`/ptrab/dor?ptrabId=${ptrab.id}`)} size="sm" variant="outline" className="w-full justify-start btn-preencher-dor" disabled={!isEditable}><ClipboardList className="h-4 w-4 mr-2" />DOR</Button>
+                            </div>
+                            <DropdownMenu open={openActionsId === ptrab.id} onOpenChange={(o) => setOpenActionsId(o ? ptrab.id : null)}>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="sm"><MoreVertical className="h-4 w-4" /></Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end" className="w-56">
+                                <DropdownMenuLabel>Ações</DropdownMenuLabel>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem onClick={() => handleNavigateToPrintOrExport(ptrab.id)}><Printer className="mr-2 h-4 w-4" />Imprimir</DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => handleEdit(ptrab)} disabled={!isEditable}><Pencil className="mr-2 h-4 w-4" />Editar</DropdownMenuItem>
+                                {ptrab.isOwner && <DropdownMenuItem onClick={() => handleOpenShareDialog(ptrab)}><Share2 className="mr-2 h-4 w-4" />Compartilhar</DropdownMenuItem>}
+                                <DropdownMenuItem onClick={() => handleOpenCloneOptions(ptrab)}><Copy className="mr-2 h-4 w-4" />Clonar</DropdownMenuItem>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem onClick={() => handleDelete(ptrab.id, ptrab.isOwner)} className="text-red-600"><Trash2 className="mr-2 h-4 w-4" />Excluir</DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            )}
           </CardContent>
         </Card>
       </div>
 
       <WelcomeModal open={showWelcomeModal} onOpenChange={setShowWelcomeModal} status={onboardingStatus || null} />
       <RequirementsAlert open={showRequirementsAlert} onOpenChange={setShowRequirementsAlert} status={onboardingStatus || null} />
-      <AlertDialog open={showReactivateStatusDialog} onOpenChange={setShowReactivateStatusDialog}><AlertDialogContent><AlertDialogHeader><AlertDialogTitle>Reativar P Trab?</AlertDialogTitle><AlertDialogDescription>Tem certeza que deseja reativar o P Trab "{ptrabToReactivateName}"?</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogAction onClick={handleConfirmReactivateStatus} disabled={isActionLoading}>Confirmar</AlertDialogAction><AlertDialogCancel onClick={() => setShowReactivateStatusDialog(false)}>Cancelar</AlertDialogCancel></AlertDialogFooter></AlertDialogContent></AlertDialog>
+      
+      <AlertDialog open={showReactivateStatusDialog} onOpenChange={setShowReactivateStatusDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Reativar P Trab?</AlertDialogTitle>
+            <AlertDialogDescription>Tem certeza que deseja reativar o P Trab "{ptrabToReactivateName}"?</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogAction onClick={handleConfirmReactivateStatus} disabled={isActionLoading}>Confirmar</AlertDialogAction>
+            <AlertDialogCancel onClick={() => setShowReactivateStatusDialog(false)}>Cancelar</AlertDialogCancel>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
-      <Dialog open={showApproveDialog} onOpenChange={setShowApproveDialog}><DialogContent className="sm:max-w-[450px]"><DialogHeader><DialogTitle><CheckCircle className="h-5 w-5 text-green-600" />Aprovar e Numerar P Trab</DialogTitle></DialogHeader><div className="grid gap-4 py-4"><div className="space-y-2"><Label htmlFor="approve-number">Número Oficial *</Label><Input id="approve-number" value={suggestedApproveNumber} onChange={(e) => setSuggestedApproveNumber(e.target.value)} maxLength={50} /></div></div><DialogFooter><Button onClick={handleApproveAndNumber} disabled={isActionLoading}>Aprovar</Button><Button variant="outline" onClick={() => setShowApproveDialog(false)}>Cancelar</Button></DialogFooter></DialogContent></Dialog>
+      <Dialog open={showApproveDialog} onOpenChange={setShowApproveDialog}>
+        <DialogContent className="sm:max-w-[450px]">
+          <DialogHeader><DialogTitle><CheckCircle className="h-5 w-5 text-green-600" />Aprovar e Numerar P Trab</DialogTitle></DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="approve-number">Número Oficial *</Label>
+              <Input id="approve-number" value={suggestedApproveNumber} onChange={(e) => setSuggestedApproveNumber(e.target.value)} maxLength={50} />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button onClick={handleApproveAndNumber} disabled={isActionLoading}>Aprovar</Button>
+            <Button variant="outline" onClick={() => setShowApproveDialog(false)}>Cancelar</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
       
       <Dialog open={showVictory} onOpenChange={setShowVictory}>
         <DialogContent className="text-center sm:max-w-[450px] z-[999999]">
-          <div className="flex justify-center mb-4"><div className="h-20 w-20 bg-yellow-100 rounded-full flex items-center justify-center"><Trophy className="h-10 w-10 text-yellow-600" /></div></div>
+          <div className="flex justify-center mb-4">
+            <div className="h-20 w-20 bg-yellow-100 rounded-full flex items-center justify-center">
+              <Trophy className="h-10 w-10 text-yellow-600" />
+            </div>
+          </div>
           <DialogTitle className="text-2xl font-bold text-center">Aprendizagem Concluída!</DialogTitle>
           <div className="space-y-4 mt-2">
             <p className="text-muted-foreground">Excelente trabalho! Concluiu todas as missões de treinamento. O P Trab Inteligente está agora totalmente liberado para as configurações iniciais.</p>
@@ -896,6 +1104,7 @@ const PTrabManager = () => {
 
       <PTrabConsolidationDialog open={showConsolidationDialog} onOpenChange={setShowConsolidationDialog} pTrabsList={pTrabs.filter(p => p.status !== 'arquivado').map(p => ({ id: p.id, numero_ptrab: p.numero_ptrab, nome_operacao: p.numero_ptrab }))} existingPTrabNumbers={existingPTrabNumbers} onConfirm={handleOpenConsolidationNumberDialog} loading={isActionLoading} />
       <ConsolidationNumberDialog open={showConsolidationNumberDialog} onOpenChange={setShowConsolidationNumberDialog} suggestedNumber={suggestedConsolidationNumber} existingNumbers={existingPTrabNumbers} selectedPTrabs={simplePTrabsToConsolidate} onConfirm={handleConfirmConsolidation} loading={isActionLoading} />
+      
       {ptrabToShare && <ShareLinkDialog open={showShareLinkDialog} onOpenChange={setShowShareLinkDialog} ptrabName={ptrabToShare.numero_ptrab} shareLink={shareLink} />}
       <LinkPTrabDialog open={showLinkPTrabDialog} onOpenChange={setShowLinkPTrabDialog} linkInput={linkPTrabInput} onLinkInputChange={setLinkPTrabInput} onRequestLink={handleRequestLink} loading={isActionLoading} />
       {ptrabToManageSharing && <ManageSharingDialog open={showManageSharingDialog} onOpenChange={setShowManageSharingDialog} ptrabId={ptrabToManageSharing.id} ptrabName={ptrabToManageSharing.numero_ptrab} onApprove={handleApproveRequest} onReject={handleRejectRequest} onCancelSharing={handleCancelSharing} loading={isActionLoading} />}
