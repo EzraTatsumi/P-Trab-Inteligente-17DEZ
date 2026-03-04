@@ -252,7 +252,7 @@ const PTrabManager = () => {
     const ativarVitoria = () => {
       setShowInstructionHub(true); 
       setShowVictory(true);
-      markVictoryAsShown(user.id);
+      
       setTimeout(() => dispararConfetes(), 200);
     };
 
