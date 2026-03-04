@@ -245,39 +245,56 @@ const PTrabManager = () => {
     };
   }, [user?.id, queryClient]);
 
-  // --- INÍCIO DO BLOCO PROTEGIDO: NÃO ALTERE NADA ALÉM DISSO ---
+  // --- INÍCIO DA CORREÇÃO DO BANNER DE MISSÃO CUMPRIDA ---
   useEffect(() => {
     if (!user?.id) return;
-    const ativarVitoria = () => {
-      setShowInstructionHub(true); 
+
+    // 1. CHECAGEM ATIVA: Dispara se o usuário já tem a flag de vitória salva
+    if (shouldShowVictory(user.id)) {
       setShowVictory(true);
       markVictoryAsShown(user.id);
-      setTimeout(() => dispararConfetes(), 200);
-    };
-    if (shouldShowVictory(user.id)) { ativarVitoria(); }
+      dispararConfetes();
+    }
+
+    // 2. CHECAGEM REATIVA: Escuta o evento em tempo real do tour
     const handleVictory = (e: any) => {
-      if (e.detail?.userId === user.id || !e.detail?.userId) { ativarVitoria(); }
+      if (e.detail?.userId === user.id) {
+        setShowVictory(true);
+        markVictoryAsShown(user.id);
+        dispararConfetes();
+      }
     };
+
     const handleOpenHub = () => {
         setShowInstructionHub(true);
         window.scrollTo({ top: 0, behavior: 'smooth' });
     };
+
     window.addEventListener('tour:todas-concluidas', handleVictory);
     window.addEventListener('instruction-hub:open', handleOpenHub);
+    
     return () => {
         window.removeEventListener('tour:todas-concluidas', handleVictory);
         window.removeEventListener('instruction-hub:open', handleOpenHub);
     };
   }, [user?.id]);
+  // --- FIM DA CORREÇÃO ---
 
   useEffect(() => {
-    if (isGhostMode() || showInstructionHub || showVictory) {
+    // 1. BARREIRA DE SUPRESSÃO: 
+    // Se o modo fantasma estiver ativo (missão) ou se o Centro de Instrução estiver aberto, o modal é estritamente proibido.
+    if (isGhostMode() || showInstructionHub) {
       setShowWelcomeModal(false);
       return;
     }
+
+    // 2. LÓGICA DE LEMBRETE (Apenas no Manager):
     if (!isLoadingOnboarding && onboardingStatus) {
       const hasPendingTasks = !onboardingStatus.isReady || !onboardingStatus.hasMissions;
+      
+      // Só mostra se houver pendências e se ainda não foi mostrado nesta visita à página
       if (hasPendingTasks && !hasShownWelcome.current) {
+        // Pequeno delay para a tela respirar antes de exibir o lembrete
         const timer = setTimeout(() => {
           setShowWelcomeModal(true);
           hasShownWelcome.current = true; 
@@ -285,8 +302,7 @@ const PTrabManager = () => {
         return () => clearTimeout(timer);
       }
     }
-  }, [isLoadingOnboarding, onboardingStatus, showInstructionHub, showVictory]);
-  // --- FIM DO BLOCO PROTEGIDO ---
+  }, [isLoadingOnboarding, onboardingStatus, showInstructionHub]); // showInstructionHub é dependência crítica.
 
   const { data: pTrabs = [], isLoading: loading, refetch: loadPTrabs } = useQuery({
     // Adicionamos ghostActive na chave para que o React Query invalide o cache real e use o simulado
@@ -1178,74 +1194,6 @@ const PTrabManager = () => {
     }
   };
 
-  const { data: pTrabsData = [], isLoading: loadingPTrabs, refetch: loadPTrabsQuery } = useQuery({
-    queryKey: ['pTrabs', user?.id, ghostActive],
-    queryFn: async () => {
-      if (!user?.id) return [];
-      
-      if (ghostActive) {
-        return [{
-          ...GHOST_DATA.p_trab_exemplo,
-          isOwner: true,
-          isShared: false,
-          hasPendingRequests: false,
-          totalLogistica: GHOST_DATA.totais_exemplo.totalLogistica,
-          totalOperacional: GHOST_DATA.totais_exemplo.totalOperacional,
-          totalMaterialPermanente: GHOST_DATA.totais_exemplo.totalMaterialPermanente,
-          quantidadeRacaoOp: GHOST_DATA.totais_exemplo.quantidadeRacaoOp,
-          quantidadeHorasVoo: GHOST_DATA.totais_exemplo.quantidadeHorasVoo,
-        }] as PTrab[];
-      }
-
-      const { data: pTrabsData, error: pTrabsError } = await supabase
-        .from("p_trab")
-        .select("*, comentario, origem, rotulo_versao, user_id, shared_with, share_token")
-        .or(`user_id.eq.${user.id},shared_with.cs.{${user.id}}`)
-        .order("created_at", { ascending: false });
-
-      if (pTrabsError) throw pTrabsError;
-
-      const typedPTrabsData = pTrabsData as unknown as PTrabDB[];
-      const ptrabIds = typedPTrabsData.map(p => p.id);
-      
-      const batchTotals = await fetchBatchPTrabTotals(ptrabIds);
-      
-      const ownedPTrabIds = typedPTrabsData.filter(p => p.user_id === user.id).map(p => p.id);
-      let pendingRequests: Tables<'ptrab_share_requests'>[] = [];
-      
-      if (ownedPTrabIds.length > 0) {
-          const { data: requestsData } = await supabase
-              .from('ptrab_share_requests')
-              .select('id, ptrab_id, requester_id, share_token, status, created_at, updated_at')
-              .in('ptrab_id', ownedPTrabIds)
-              .eq('status', 'pending');
-              
-          pendingRequests = requestsData || []; 
-      }
-      
-      const ptrabsWithPendingRequests = new Set(pendingRequests.map(r => r.ptrab_id));
-
-      return typedPTrabsData.map((ptrab) => {
-        const totals = batchTotals[ptrab.id] || {
-          totalLogistica: 0,
-          totalOperacional: 0,
-          totalMaterialPermanente: 0,
-          quantidadeRacaoOp: 0,
-          quantidadeHorasVoo: 0
-        };
-
-        return {
-          ...ptrab,
-          ...totals,
-          isOwner: ptrab.user_id === user.id,
-          isShared: ptrab.user_id !== user.id && (ptrab.shared_with || []).includes(user.id),
-          hasPendingRequests: ptrab.user_id === user.id && ptrabsWithPendingRequests.has(ptrab.id),
-        } as PTrab;
-      });
-    },
-    enabled: !!user?.id,
-  });
-
   return (
     <div className="min-h-screen bg-background p-4 md:p-8">
       <PageMetadata 
@@ -1760,8 +1708,6 @@ const PTrabManager = () => {
             onClick={() => {
                 setShowVictory(false);
                 setShowInstructionHub(false);
-                // <-- NOVA LINHA: Engana o sistema para ele achar que já mostrou as boas-vindas
-                hasShownWelcome.current = true;
                 if (isGhostMode()) {
                     exitGhostMode(user?.id);
                 }
