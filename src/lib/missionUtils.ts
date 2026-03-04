@@ -30,6 +30,14 @@ export const fetchCompletedMissions = async (userId: string): Promise<number[]> 
 };
 
 /**
+ * Retorna as missões concluídas armazenadas localmente.
+ */
+export const getCompletedMissions = (userId: string): number[] => {
+  if (!userId) return [];
+  return JSON.parse(localStorage.getItem(`completed_missions_${userId}`) || '[]');
+};
+
+/**
  * Marca uma missão como concluída, salva no banco e dispara o evento global.
  */
 export const markMissionCompleted = async (missionId: number, userId: string) => {
