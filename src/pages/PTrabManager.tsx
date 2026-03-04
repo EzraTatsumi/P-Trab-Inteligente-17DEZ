@@ -1709,6 +1709,8 @@ const PTrabManager = () => {
             onClick={() => {
                 setShowVictory(false);
                 setShowInstructionHub(false);
+                // <-- NOVA LINHA: Engana o sistema para ele achar que já mostrou as boas-vindas
+                hasShownWelcome.current = true;
                 if (isGhostMode()) {
                     exitGhostMode(user?.id);
                 }
