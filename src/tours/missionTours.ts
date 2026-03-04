@@ -33,7 +33,7 @@ if (typeof window !== 'undefined') {
           const el = document.querySelector(nextStep.element as string);
           attempts++;
 
-          if (el || attempts > 50) { // Aumentado para 50 tentativas para melhor sincronia
+          if (el || attempts > 50) { // Sincronia aprimorada para 50 tentativas
             clearInterval(checkInterval);
             setTimeout(() => {
               if (activeMissionDriver.hasNextStep()) {
@@ -667,7 +667,7 @@ export const runMission05 = (userId: string, onComplete: () => void) => {
         }
       },
       {
-        element: '.tour-dor-descricao-item',
+        element: '.tour-dor-itens-section', // Alterado de .tour-dor-descricao-item para iluminar a seção completa
         popover: {
           title: 'Descrição do Item',
           description: 'Esta seção detalha o que está sendo requisitado, incluindo UGE, GND e valores consolidados.',
