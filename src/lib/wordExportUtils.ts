@@ -68,34 +68,22 @@ export async function exportDORToWord(ptrabData: any, dorData: any) {
 
   // 1. Carregar a Logo (Imagem) antes de montar a tabela
   let logoElement: any;
-
   try {
-    // No Vite, arquivos na pasta public são servidos na raiz '/'
-    const response = await fetch('/logo_md.png');
-    
-    if (!response.ok) {
-      throw new Error(`Erro HTTP: ${response.status} - Imagem não encontrada.`);
+    // Converte a string Base64 de volta para ArrayBuffer para o docx
+    const base64Data = LOGO_MD_BASE64.split(",")[1];
+    const binaryString = window.atob(base64Data);
+    const bytes = new Uint8Array(binaryString.length);
+    for (let i = 0; i < binaryString.length; i++) {
+        bytes[i] = binaryString.charCodeAt(i);
     }
-    
-    const arrayBuffer = await response.arrayBuffer();
-    
-    logoElement = new ImageRun({
-      data: arrayBuffer,
-      transformation: {
-        width: 60, 
-        height: 60 
-      },
-      type: "png" // Especificar o tipo resolve o erro de TypeScript
-    });
 
-  } catch (error) {
-    console.warn("Não foi possível carregar a logo_md.png para o Word. Usando fallback de texto.", error);
-    
-    logoElement = new TextRun({ 
-      text: "EB", 
-      bold: true, 
-      size: 24 
+    logoElement = new ImageRun({
+      data: bytes.buffer,
+      transformation: { width: 60, height: 60 },
+      type: "png"
     });
+  } catch (error) {
+    logoElement = new TextRun({ text: "EB", bold: true, size: 24 });
   }
 
   // 2. Cabeçalho Principal (Logo + Texto + Número)
