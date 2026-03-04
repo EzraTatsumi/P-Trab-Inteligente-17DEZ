@@ -123,14 +123,24 @@ export const markMissionCompleted = async (missionId: number, userId?: string) =
     // 3. O Árbitro sempre avisa que uma missão individual terminou (para a UI atualizar barras de progresso, etc)
     window.dispatchEvent(new CustomEvent('mission:completed', { detail: { missionId, userId } }));
     
-    // 4. O Árbitro checa o placar geral: O usuário já completou as 6 missões?
-    // Note que isso roda SEMPRE, garantindo que a vitória seja disparada independente da ordem.
-    if (updated.length >= TOTAL_MISSIONS) {
+    // 4. O Árbitro checa o placar geral e se o troféu já foi entregue
+    const alreadyShown = localStorage.getItem(VICTORY_SHOWN_KEY(userId)) === 'true';
+
+    if (updated.length >= TOTAL_MISSIONS && !alreadyShown) {
       console.log(`[Árbitro] Missão ${missionId} concluída. Placar total: ${updated.length}/${TOTAL_MISSIONS}. Disparando Vitória!`);
       
       setTimeout(() => {
-        // O megafone do Árbitro gritando "VITÓRIA" para quem quiser ouvir
+        // O megafone do Árbitro gritando "VITÓRIA" pela primeira e única vez
         window.dispatchEvent(new CustomEvent('tour:todas-concluidas', { detail: { userId } }));
+        window.dispatchEvent(new CustomEvent('welcome-modal:refresh'));
+      }, 500);
+      
+    } else if (updated.length >= TOTAL_MISSIONS && alreadyShown) {
+      // O usuário está apenas fazendo uma revisão! 
+      console.log(`[Árbitro] Revisão da Missão ${missionId} concluída. O usuário já possui o troféu.`);
+      
+      setTimeout(() => {
+        // Atualiza os status silenciosamente, sem estourar confetes
         window.dispatchEvent(new CustomEvent('welcome-modal:refresh'));
       }, 500);
     }
