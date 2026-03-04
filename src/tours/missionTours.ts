@@ -667,7 +667,7 @@ export const runMission05 = (userId: string, onComplete: () => void) => {
         }
       },
       {
-        element: '.tour-dor-itens-section', // Alterado de .tour-dor-descricao-item para iluminar a seção completa
+        element: '.tour-dor-items-section', // Alterado de .tour-dor-descricao-item para iluminar a seção completa
         popover: {
           title: 'Descrição do Item',
           description: 'Esta seção detalha o que está sendo requisitado, incluindo UGE, GND e valores consolidados.',
