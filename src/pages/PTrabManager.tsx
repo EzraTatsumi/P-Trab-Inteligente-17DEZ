@@ -245,16 +245,45 @@ const PTrabManager = () => {
     };
   }, [user?.id, queryClient]);
 
+  // --- INÍCIO DA CORREÇÃO DEFINITIVA DO BANNER E HUB ---
   useEffect(() => {
     if (!user?.id) return;
 
+    // Função única que prepara o cenário, mostra o banner e solta os confetes
+    const ativarVitoria = () => {
+      setShowInstructionHub(true); 
+      setShowVictory(true);
+      markVictoryAsShown(user.id);
+      setTimeout(() => dispararConfetes(), 200);
+    };
+
+    // 1. CHECAGEM ATIVA (Ao carregar a página)
+    if (shouldShowVictory(user.id)) {
+      ativarVitoria();
+    }
+
+    // --- INÍCIO DA LÓGICA DO PALCO (VITÓRIA E HUB) ---
+  useEffect(() => {
+    if (!user?.id) return;
+
+    const ativarVitoria = () => {
+      setShowInstructionHub(true); 
+      setShowVictory(true);
+      markVictoryAsShown(user.id); // Registra que o confete já estourou para não repetir num refresh
+      setTimeout(() => dispararConfetes(), 200);
+    };
+
+    // 1. Checagem Ativa: Ao carregar a página (Se o usuário ganhou e ainda não viu a mensagem)
+    if (shouldShowVictory(user.id)) {
+      ativarVitoria();
+    }
+
+    // 2. Checagem Reativa: O Palco fica com os ouvidos abertos aguardando o Árbitro
     const handleVictory = (e: any) => {
-      if (e.detail?.userId === user.id) {
-        if (shouldShowVictory(user.id)) {
-          setShowVictory(true);
-          markVictoryAsShown(user.id);
-          dispararConfetes();
-        }
+      if (e.detail?.userId === user.id || !e.detail?.userId) {
+        // A grande mudança: Retiramos o "if (shouldShowVictory)". 
+        // Se o evento foi disparado agora, mostramos a vitória imediatamente.
+        ativarVitoria(); 
       }
     };
 
@@ -271,22 +300,19 @@ const PTrabManager = () => {
         window.removeEventListener('instruction-hub:open', handleOpenHub);
     };
   }, [user?.id]);
+  // --- FIM DA LÓGICA DO PALCO ---
 
   useEffect(() => {
-    // 1. BARREIRA DE SUPRESSÃO: 
-    // Se o modo fantasma estiver ativo (missão) ou se o Centro de Instrução estiver aberto, o modal é estritamente proibido.
-    if (isGhostMode() || showInstructionHub) {
+    // BARREIRA DE SUPRESSÃO: Adicionado o 'showVictory' para impedir conflitos
+    if (isGhostMode() || showInstructionHub || showVictory) {
       setShowWelcomeModal(false);
       return;
     }
 
-    // 2. LÓGICA DE LEMBRETE (Apenas no Manager):
     if (!isLoadingOnboarding && onboardingStatus) {
       const hasPendingTasks = !onboardingStatus.isReady || !onboardingStatus.hasMissions;
       
-      // Só mostra se houver pendências e se ainda não foi mostrado nesta visita à página
       if (hasPendingTasks && !hasShownWelcome.current) {
-        // Pequeno delay para a tela respirar antes de exibir o lembrete
         const timer = setTimeout(() => {
           setShowWelcomeModal(true);
           hasShownWelcome.current = true; 
@@ -294,7 +320,8 @@ const PTrabManager = () => {
         return () => clearTimeout(timer);
       }
     }
-  }, [isLoadingOnboarding, onboardingStatus, showInstructionHub]); // showInstructionHub é dependência crítica.
+  }, [isLoadingOnboarding, onboardingStatus, showInstructionHub, showVictory]);
+  // --- FIM DA CORREÇÃO DEFINITIVA ---
 
   const { data: pTrabs = [], isLoading: loading, refetch: loadPTrabs } = useQuery({
     // Adicionamos ghostActive na chave para que o React Query invalide o cache real e use o simulado
@@ -1700,6 +1727,10 @@ const PTrabManager = () => {
             onClick={() => {
                 setShowVictory(false);
                 setShowInstructionHub(false);
+                
+                // ADICIONE ESTA LINHA:
+                hasShownWelcome.current = true;
+                
                 if (isGhostMode()) {
                     exitGhostMode(user?.id);
                 }
