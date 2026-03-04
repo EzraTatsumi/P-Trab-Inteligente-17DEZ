@@ -245,7 +245,24 @@ const PTrabManager = () => {
     };
   }, [user?.id, queryClient]);
 
-  // --- INÍCIO DA LÓGICA DO PALCO (VITÓRIA E HUB) ---
+  // --- INÍCIO DA CORREÇÃO DEFINITIVA DO BANNER E HUB ---
+  useEffect(() => {
+    if (!user?.id) return;
+
+    // Função única que prepara o cenário, mostra o banner e solta os confetes
+    const ativarVitoria = () => {
+      setShowInstructionHub(true); 
+      setShowVictory(true);
+      markVictoryAsShown(user.id);
+      setTimeout(() => dispararConfetes(), 200);
+    };
+
+    // 1. CHECAGEM ATIVA (Ao carregar a página)
+    if (shouldShowVictory(user.id)) {
+      ativarVitoria();
+    }
+
+    // --- INÍCIO DA LÓGICA DO PALCO (VITÓRIA E HUB) ---
   useEffect(() => {
     if (!user?.id) return;
 
@@ -264,6 +281,7 @@ const PTrabManager = () => {
     // 2. Checagem Reativa: O Palco fica com os ouvidos abertos aguardando o Árbitro
     const handleVictory = (e: any) => {
       if (e.detail?.userId === user.id || !e.detail?.userId) {
+        // A grande mudança: Retiramos o "if (shouldShowVictory)". 
         // Se o evento foi disparado agora, mostramos a vitória imediatamente.
         ativarVitoria(); 
       }
@@ -1728,4 +1746,4 @@ const PTrabManager = () => {
   );
 }
 
-export default PTrabManager,
+export default PTrabManager;
