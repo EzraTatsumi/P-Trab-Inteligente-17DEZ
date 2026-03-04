@@ -1,65 +1,153 @@
-import { formatCurrency, formatPregao } from "./formatUtils";
+"use client";
 
-export const calculateMaterialPermanenteTotals = (items: any[]) => {
-    const totalGeral = items.reduce((acc, item) => acc + ((item.quantidade || 0) * (item.valor_unitario || 0)), 0);
-    return { totalGeral };
+import { supabase } from "@/integrations/supabase/client";
+
+export const TOTAL_MISSIONS = 6;
+
+const getBaseKey = (userId?: string) => userId ? `completed_missions_${userId}` : 'completed_missions';
+const VICTORY_SHOWN_KEY = (userId?: string) => userId ? `victory_shown_${userId}` : 'victory_shown';
+const GHOST_MODE_KEY = 'is_ghost_mode';
+const ACTIVE_MISSION_KEY = 'active_mission_id';
+
+export const resetMissionCache = (userId: string) => {
+  localStorage.removeItem(`completed_missions_${userId}`);
+  localStorage.removeItem(`victory_shown_${userId}`);
+  window.location.reload(); 
+};
+
+export const startMission = (missionId: number, userId?: string) => {
+  if (typeof window === 'undefined') return;
+
+  localStorage.setItem(GHOST_MODE_KEY, 'true');
+  localStorage.setItem(ACTIVE_MISSION_KEY, String(missionId));
+  
+  window.dispatchEvent(new CustomEvent('ghost-mode:change'));
+  
+  let targetPath = '/ptrab?startTour=true';
+  if (missionId === 2) targetPath = '/config/custos-operacionais?startTour=true';
+  else if (missionId === 3 || missionId === 4) targetPath = '/ptrab/form?ptrabId=ghost-ptrab-123&startTour=true';
+  else if (missionId === 5) targetPath = '/ptrab/dor?ptrabId=ghost-ptrab-123&startTour=true';
+  else if (missionId === 6) targetPath = '/ptrab/print?ptrabId=ghost-ptrab-123&startTour=true';
+
+  window.location.href = targetPath;
+};
+
+export const fetchCompletedMissions = async (userId: string): Promise<number[]> => {
+  try {
+    const { data, error } = await supabase
+      .from('user_missions' as any)
+      .select('mission_id')
+      .eq('user_id', userId);
+
+    if (error) throw error;
+
+    const missionIds = (data as any[] || []).map(m => m.mission_id);
+    
+    if (typeof window !== 'undefined') {
+      const key = getBaseKey(userId);
+      const victoryKey = VICTORY_SHOWN_KEY(userId);
+      
+      if (missionIds.length === 0) {
+        localStorage.removeItem(key);
+        localStorage.removeItem(victoryKey);
+        localStorage.removeItem(GHOST_MODE_KEY);
+        localStorage.removeItem(ACTIVE_MISSION_KEY);
+      } else {
+        localStorage.setItem(key, JSON.stringify(missionIds));
+      }
+    }
+    return missionIds;
+  } catch (error) {
+    console.error("Erro ao sincronizar missões:", error);
+    return getCompletedMissions(userId);
+  }
+};
+
+export const markMissionCompleted = async (missionId: number, providedUserId?: string) => {
+  if (typeof window === 'undefined') return;
+  try {
+    let userId = providedUserId;
+    if (!userId) {
+      const { data: { user } } = await supabase.auth.getUser();
+      userId = user?.id;
+    }
+
+    const key = getBaseKey(userId);
+    const stored = localStorage.getItem(key);
+    const completed = stored ? JSON.parse(stored) : [];
+    
+    let updated = completed;
+    if (!completed.includes(missionId)) {
+      updated = [...completed, missionId];
+      localStorage.setItem(key, JSON.stringify(updated));
+
+      if (userId) {
+        const { error } = await supabase
+          .from('user_missions' as any)
+          .insert({ user_id: userId, mission_id: missionId });
+        if (error) console.error(`[Árbitro] Erro no banco:`, error);
+      }
+    }
+
+    window.dispatchEvent(new CustomEvent('mission:completed', { detail: { missionId, userId } }));
+    
+    const alreadyShown = localStorage.getItem(VICTORY_SHOWN_KEY(userId)) === 'true';
+
+    // A LÓGICA DE OURO DO FLUXO:
+    setTimeout(() => {
+      if (updated.length >= TOTAL_MISSIONS && !alreadyShown) {
+        // 1. PRIMEIRA VEZ VENCENDO: Força ida pra tela principal para estourar o banner (Modo Fantasma continua ligado atrás do banner)
+        if (window.location.pathname !== '/ptrab') {
+            window.location.href = '/ptrab'; 
+        } else {
+            window.dispatchEvent(new CustomEvent('tour:todas-concluidas', { detail: { userId } }));
+        }
+      } else {
+        // 2. MISSÃO COMUM OU REVISÃO: Continua no Modo Fantasma e apenas volta para o Hub
+        if (window.location.pathname !== '/ptrab') {
+            window.location.href = '/ptrab?showHub=true';
+        } else {
+            window.dispatchEvent(new CustomEvent('instruction-hub:open'));
+            window.dispatchEvent(new CustomEvent('welcome-modal:refresh'));
+        }
+      }
+    }, 500);
+
+  } catch (error) {
+    console.error("Erro ao persistir conclusão:", error);
+  }
+};
+
+export const getCompletedMissions = (userId?: string): number[] => {
+  if (typeof window === 'undefined') return [];
+  try {
+    const key = getBaseKey(userId);
+    const stored = localStorage.getItem(key);
+    return stored ? JSON.parse(stored) : [];
+  } catch (e) {
+    return [];
+  }
+};
+
+export const isMissionCompleted = (missionId: number, userId?: string): boolean => {
+  return getCompletedMissions(userId).includes(missionId);
+};
+
+export const shouldShowVictory = (userId?: string): boolean => {
+  const completed = getCompletedMissions(userId);
+  const alreadyShown = localStorage.getItem(VICTORY_SHOWN_KEY(userId)) === 'true';
+  return completed.length >= TOTAL_MISSIONS && !alreadyShown;
+};
+
+export const markVictoryAsShown = (userId?: string) => {
+  localStorage.setItem(VICTORY_SHOWN_KEY(userId), 'true');
 };
 
 /**
- * Extrai os dados de justificativa de forma robusta, tratando arrays ou objetos aninhados.
+ * Sai do modo fantasma. Aceita um caminho de redirecionamento opcional.
  */
-const extractJustificativaData = (item: any) => {
-    let data = item?.justificativa || {};
-
-    // Se for um array (como visto no JSON do usuário), pega o primeiro elemento
-    if (Array.isArray(data) && data.length > 0) {
-        data = data[0];
-    }
-
-    // Se o objeto resultante tiver uma propriedade 'justificativa' interna (aninhamento detectado)
-    // e não tiver os campos diretos, mergulha mais um nível
-    if (data && typeof data === 'object' && data.justificativa && !data.grupo) {
-        data = data.justificativa;
-    }
-
-    return data;
-};
-
-/**
- * Gera a memória de cálculo para Material Permanente.
- */
-export const generateMaterialPermanenteMemoriaCalculo = (registro: any, item: any) => {
-    if (!item) return "";
-
-    // Se o registro possui um detalhamento customizado (editado pelo usuário), ele tem prioridade total
-    if (registro?.detalhamento_customizado) {
-        return registro.detalhamento_customizado;
-    }
-
-    // Extração robusta da justificativa (mesma lógica do Form)
-    const justData = extractJustificativaData(item);
-    const { grupo, proposito, destinacao, local, finalidade, motivo } = justData;
-    
-    const diasStr = `${registro.dias_operacao} ${registro.dias_operacao === 1 ? 'dia' : 'dias'}`;
-    const fase = registro.fase_atividade || '[Fase]';
-    
-    const justificativa = `Aquisição de ${grupo || '[Grupo]'} para atender ${proposito || '[Propósito]'} ${destinacao || '[Destinação]'}, ${local || '[Local]'}, a fim de ${finalidade || '[Finalidade]'}, durante ${diasStr} de ${fase}. Justifica-se essa aquisição ${motivo || '[Motivo]'}.`;
-
-    const valorUnitario = Number(item.valor_unitario || 0);
-    const quantidade = Number(item.quantidade || 0);
-    const valorTotal = valorUnitario * quantidade;
-    const nomeItem = item.descricao_reduzida || item.descricao_item || "Item";
-    const pregao = formatPregao(item.numero_pregao);
-    const uasg = item.codigo_uasg || registro.ug_detentora || registro.ug || "N/A";
-
-    return `44.90.52 - ${justificativa}
-
-Cálculo: 
-- ${nomeItem}: ${formatCurrency(valorUnitario)}/ unid.
-
-Fórmula: Qtd do item x Valor do item.
-- ${quantidade} ${nomeItem} x ${formatCurrency(valorUnitario)}/unid = ${formatCurrency(valorTotal)}.
-
-Total: ${formatCurrency(valorTotal)}.
-(Pregão ${pregao} - UASG ${uasg})`;
+export const exitGhostMode = (userId?: string, redirectPath: string = '/ptrab') => {
+  localStorage.removeItem(GHOST_MODE_KEY);
+  localStorage.removeItem(ACTIVE_MISSION_KEY);
+  window.location.href = redirectPath;
 };
