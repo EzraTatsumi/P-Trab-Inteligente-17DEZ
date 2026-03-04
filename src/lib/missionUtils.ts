@@ -2,10 +2,6 @@
 
 import { supabase } from "@/integrations/supabase/client";
 
-/**
- * Utilitários para gerenciar o progresso das missões de treinamento (Onboarding).
- */
-
 export const TOTAL_MISSIONS = 6;
 
 const getBaseKey = (userId?: string) => userId ? `completed_missions_${userId}` : 'completed_missions';
@@ -13,48 +9,29 @@ const VICTORY_SHOWN_KEY = (userId?: string) => userId ? `victory_shown_${userId}
 const GHOST_MODE_KEY = 'is_ghost_mode';
 const ACTIVE_MISSION_KEY = 'active_mission_id';
 
-/**
- * Reseta o cache local de missões e recarrega a página.
- */
 export const resetMissionCache = (userId: string) => {
   localStorage.removeItem(`completed_missions_${userId}`);
   localStorage.removeItem(`victory_shown_${userId}`);
-  window.location.reload(); // Força o refresh para limpar o estado do React
+  window.location.reload(); 
 };
 
-/**
- * Inicia uma missão específica, ativando o modo fantasma e redirecionando o usuário.
- */
 export const startMission = (missionId: number, userId?: string) => {
   if (typeof window === 'undefined') return;
 
   localStorage.setItem(GHOST_MODE_KEY, 'true');
   localStorage.setItem(ACTIVE_MISSION_KEY, String(missionId));
   
-  // Notifica o sistema para mostrar o banner imediatamente
   window.dispatchEvent(new CustomEvent('ghost-mode:change'));
   
-  // Define o destino inicial com base na missão
   let targetPath = '/ptrab?startTour=true';
-  
-  if (missionId === 2) {
-    targetPath = '/config/custos-operacionais?startTour=true';
-  } else if (missionId === 3 || missionId === 4) {
-    // Para missões de formulário, usamos o ID fantasma definido no ghostStore
-    targetPath = '/ptrab/form?ptrabId=ghost-ptrab-123&startTour=true';
-  } else if (missionId === 5) {
-    targetPath = '/ptrab/dor?ptrabId=ghost-ptrab-123&startTour=true';
-  } else if (missionId === 6) {
-    targetPath = '/ptrab/print?ptrabId=ghost-ptrab-123&startTour=true';
-  }
+  if (missionId === 2) targetPath = '/config/custos-operacionais?startTour=true';
+  else if (missionId === 3 || missionId === 4) targetPath = '/ptrab/form?ptrabId=ghost-ptrab-123&startTour=true';
+  else if (missionId === 5) targetPath = '/ptrab/dor?ptrabId=ghost-ptrab-123&startTour=true';
+  else if (missionId === 6) targetPath = '/ptrab/print?ptrabId=ghost-ptrab-123&startTour=true';
 
   window.location.href = targetPath;
 };
 
-/**
- * Busca as missões concluídas do banco de dados e atualiza o cache local.
- * @returns Array de IDs de missões concluídas.
- */
 export const fetchCompletedMissions = async (userId: string): Promise<number[]> => {
   try {
     const { data, error } = await supabase
@@ -70,7 +47,6 @@ export const fetchCompletedMissions = async (userId: string): Promise<number[]> 
       const key = getBaseKey(userId);
       const victoryKey = VICTORY_SHOWN_KEY(userId);
       
-      // RESET TOTAL LOCAL se o banco estiver zerado
       if (missionIds.length === 0) {
         localStorage.removeItem(key);
         localStorage.removeItem(victoryKey);
@@ -80,7 +56,6 @@ export const fetchCompletedMissions = async (userId: string): Promise<number[]> 
         localStorage.setItem(key, JSON.stringify(missionIds));
       }
     }
-    
     return missionIds;
   } catch (error) {
     console.error("Erro ao sincronizar missões:", error);
@@ -88,13 +63,9 @@ export const fetchCompletedMissions = async (userId: string): Promise<number[]> 
   }
 };
 
-/**
- * Marca uma missão como concluída no Supabase e no cache local.
- */
 export const markMissionCompleted = async (missionId: number, providedUserId?: string) => {
   if (typeof window === 'undefined') return;
   try {
-    // 🛡️ BLINDAGEM: Se a tela esqueceu de mandar o ID, o Árbitro busca sozinho.
     let userId = providedUserId;
     if (!userId) {
       const { data: { user } } = await supabase.auth.getUser();
@@ -105,38 +76,42 @@ export const markMissionCompleted = async (missionId: number, providedUserId?: s
     const stored = localStorage.getItem(key);
     const completed = stored ? JSON.parse(stored) : [];
     
-    // Adiciona a missão à lista se ela ainda não estiver lá
     let updated = completed;
     if (!completed.includes(missionId)) {
       updated = [...completed, missionId];
-      
-      // 1. Salva no cache local para a interface reagir imediatamente
       localStorage.setItem(key, JSON.stringify(updated));
 
-      // 2. SALVA DEFINITIVAMENTE NO SUPABASE
       if (userId) {
         const { error } = await supabase
           .from('user_missions' as any)
           .insert({ user_id: userId, mission_id: missionId });
-          
-        if (error) {
-          console.error(`[Árbitro] Erro ao salvar a missão ${missionId} no banco:`, error);
-        } else {
-          console.log(`[Árbitro] Missão ${missionId} salva no Supabase com sucesso!`);
-        }
+        if (error) console.error(`[Árbitro] Erro no banco:`, error);
       }
     }
 
-    // 3. O Árbitro sempre avisa que uma missão individual terminou
     window.dispatchEvent(new CustomEvent('mission:completed', { detail: { missionId, userId } }));
     
-    // 4. A REGRA UNIVERSAL DE SAÍDA:
-    // Independente de ser a primeira vez, revisão, missão 1 ou missão 6...
-    // Dá 600ms para o usuário ler que acabou, arranca ele do modo fantasma e volta pro Hub!
+    const alreadyShown = localStorage.getItem(VICTORY_SHOWN_KEY(userId)) === 'true';
+
+    // A LÓGICA DE OURO DO FLUXO:
     setTimeout(() => {
-      console.log(`[Árbitro] Encerrando missão ${missionId}. Retornando ao Centro de Instrução...`);
-      exitGhostMode(userId, true); // O 'true' avisa para abrir o Hub
-    }, 600);
+      if (updated.length >= TOTAL_MISSIONS && !alreadyShown) {
+        // 1. PRIMEIRA VEZ VENCENDO: Força ida pra tela principal para estourar o banner (Modo Fantasma continua ligado atrás do banner)
+        if (window.location.pathname !== '/ptrab') {
+            window.location.href = '/ptrab'; 
+        } else {
+            window.dispatchEvent(new CustomEvent('tour:todas-concluidas', { detail: { userId } }));
+        }
+      } else {
+        // 2. MISSÃO COMUM OU REVISÃO: Continua no Modo Fantasma e apenas volta para o Hub
+        if (window.location.pathname !== '/ptrab') {
+            window.location.href = '/ptrab?showHub=true';
+        } else {
+            window.dispatchEvent(new CustomEvent('instruction-hub:open'));
+            window.dispatchEvent(new CustomEvent('welcome-modal:refresh'));
+        }
+      }
+    }, 500);
 
   } catch (error) {
     console.error("Erro ao persistir conclusão:", error);
@@ -169,13 +144,10 @@ export const markVictoryAsShown = (userId?: string) => {
 };
 
 /**
- * Sai do modo fantasma e limpa a memória de simulação.
- * Adicionamos o parâmetro 'returnToHub' para forçar a abertura do Centro de Instrução.
+ * Sai do modo fantasma. Aceita um caminho de redirecionamento opcional.
  */
-export const exitGhostMode = (userId?: string, returnToHub: boolean = false) => {
+export const exitGhostMode = (userId?: string, redirectPath: string = '/ptrab') => {
   localStorage.removeItem(GHOST_MODE_KEY);
   localStorage.removeItem(ACTIVE_MISSION_KEY);
-  
-  // Se for solicitado, redireciona já com o comando para abrir o Centro de Instrução
-  window.location.href = returnToHub ? '/ptrab?showHub=true' : '/ptrab';
+  window.location.href = redirectPath;
 };
