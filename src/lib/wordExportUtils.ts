@@ -15,6 +15,7 @@ import {
 } from "docx";
 import { saveAs } from "file-saver";
 import { formatNumber, formatCodug } from "./formatUtils";
+import { LOGO_MD_BASE64 } from "./assetsBase64";
 
 /**
  * Gera e faz o download de um arquivo Word (.docx) para o DOR com alta fidelidade visual.
