@@ -121,13 +121,9 @@ const PTrabDORReport: React.FC<PTrabDORReportProps> = ({ ptrabData, dorData, sel
         <div className={cn(borderStyle, avoidBreakClass, "grid grid-cols-[180px_1fr_200px] items-stretch mb-4")}>
           <div className={cn(borderRightStyle, "p-1 flex items-center justify-center text-center")}>
             <img 
-              src="/logo_md.png" 
+              src={LOGO_MD_BASE64} 
               alt="MD" 
               className="max-h-20 w-auto"
-              onError={(e: any) => {
-                // Se a imagem não for encontrada, oculta o ícone quebrado para manter a tela limpa
-                e.target.style.display = 'none';
-              }}
             />
           </div>
           <div className={cn(borderRightStyle, "p-1 flex flex-col items-center justify-center text-center font-bold uppercase text-[11pt]")}>
