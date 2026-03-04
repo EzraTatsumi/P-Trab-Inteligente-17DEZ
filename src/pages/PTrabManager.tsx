@@ -1746,4 +1746,4 @@ const PTrabManager = () => {
   );
 }
 
-export default PTrabManager,
+export default PTrabManager;
