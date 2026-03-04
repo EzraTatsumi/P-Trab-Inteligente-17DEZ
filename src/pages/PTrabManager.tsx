@@ -1706,15 +1706,16 @@ const PTrabManager = () => {
           <Button 
             className="mt-6 w-full text-lg h-12 bg-green-600 hover:bg-green-700" 
             onClick={() => {
-                markVictoryAsShown(user?.id); // <--- ADICIONE AQUI! Ele só ganha o "visto" se clicar.
+                markVictoryAsShown(user?.id); // Dá o "visto" no troféu
                 setShowVictory(false);
                 setShowInstructionHub(false);
                 
-                // ADICIONE ESTA LINHA:
-                hasShownWelcome.current = true;
-                
+                // FINALIZA TUDO E VAI PRA VIDA REAL:
                 if (isGhostMode()) {
-                    exitGhostMode(user?.id);
+                    // O exitGhostMode limpa a memória e dá um reload forçado na tela principal.
+                    // Ao recarregar fora do modo simulador, o sistema naturalmente verá que 
+                    // faltam OMs/Diretrizes e abrirá o Checklist automaticamente!
+                    exitGhostMode(user?.id, '/ptrab'); 
                 }
             }}
           >
