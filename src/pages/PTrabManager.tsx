@@ -228,11 +228,21 @@ const PTrabManager = () => {
 
   // 🔔 Sincronia reativa de status: Quando uma missão acaba ou evento de refresh dispara
   useEffect(() => {
-    const refreshStatus = () => {
+    const refreshStatus = (e: any) => {
       queryClient.invalidateQueries({ queryKey: ["onboardingStatus"] });
       // Se tiver ID do usuário, recarrega missões também
       if (user?.id) {
           queryClient.invalidateQueries({ queryKey: ['user-status', user.id] });
+      }
+
+      // Mostra o banner de sucesso individual se o ID da missão estiver presente
+      const missionId = e?.detail?.missionId;
+      if (missionId) {
+        toast.success(`Missão 0${missionId} Concluída!`, {
+          description: "Seu progresso foi registrado no Centro de Instrução.",
+          icon: <CheckCircle className="h-5 w-5 text-green-500" />,
+          duration: 4000,
+        });
       }
     };
 
