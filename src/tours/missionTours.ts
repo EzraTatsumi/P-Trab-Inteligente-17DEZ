@@ -12,10 +12,27 @@ if (typeof window !== 'undefined') {
     if (activeMissionDriver) {
       const currentIndex = activeMissionDriver.getActiveIndex();
       const steps = activeMissionDriver.getConfig().steps;
+      const currentStep = steps[currentIndex];
       const totalSteps = steps.length;
 
       // Proteção de Transbordamento: Se já estivermos no último passo, não avance!
       if (currentIndex >= totalSteps - 1) {
+        return; 
+      }
+
+      // 🛡️ LISTA DE BLOQUEIO DE AVANÇO AUTOMÁTICO
+      // Passos que exigem que o usuário clique manualmente em "Próximo" para evitar saltos indesejados.
+      const stepsQueExigemRevisaoManual = [
+        'Item na Grade',          // Missão 2 - Passo 09
+        'Definindo Quantidades',  // Missão 3 - Passo 09
+        'Importação de Dados',    // Missão 5 - Passo 09
+        'Criação do Grupo'        // Missão 3 - Passo 07
+      ];
+
+      const tituloAtual = currentStep.popover?.title || '';
+
+      if (stepsQueExigemRevisaoManual.includes(tituloAtual)) {
+        console.log(`[Sentinela] Travando avanço automático no passo: ${tituloAtual}. Aguardando clique manual.`);
         return; 
       }
       
@@ -33,7 +50,7 @@ if (typeof window !== 'undefined') {
           const el = document.querySelector(nextStep.element as string);
           attempts++;
 
-          if (el || attempts > 50) { // Sincronia aprimorada para 50 tentativas
+          if (el || attempts > 60) { // Sincronia aprimorada para 60 tentativas
             clearInterval(checkInterval);
             setTimeout(() => {
               if (activeMissionDriver.hasNextStep()) {
@@ -44,7 +61,7 @@ if (typeof window !== 'undefined') {
                     newPopover.style.opacity = '1';
                 }
               }
-            }, 150);
+            }, 200);
           }
         }, 100);
       } else {
@@ -667,7 +684,7 @@ export const runMission05 = (userId: string, onComplete: () => void) => {
         }
       },
       {
-        element: '.tour-dor-items-section', // Alterado de .tour-dor-descricao-item para iluminar a seção completa
+        element: '.tour-dor-items-section', 
         popover: {
           title: 'Descrição do Item',
           description: 'Esta seção detalha o que está sendo requisitado, incluindo UGE, GND e valores consolidados.',
@@ -688,10 +705,11 @@ export const runMission05 = (userId: string, onComplete: () => void) => {
       {
         element: '.tour-dor-importer-content',
         popover: {
-          title: 'Assistente de Agrupamento',
+          title: 'Importação de Dados', // Título ajustado para coincidir com a lista de bloqueio
           description: 'Esta ferramenta permite consolidar diversos itens do P Trab em grupos lógicos para o DOR, facilitando a leitura e o empenho.',
           side: 'top',
-          align: 'center'
+          align: 'center',
+          showButtons: ['next', 'previous']
         }
       },
       {
