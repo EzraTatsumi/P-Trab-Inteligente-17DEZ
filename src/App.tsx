@@ -1,3 +1,6 @@
+"use client";
+
+import { useEffect } from "react";
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -19,6 +22,8 @@ import PTrabExportImportPage from "./pages/PTrabExportImportPage";
 import SharePage from "./pages/SharePage";
 import DOREditor from "./pages/DOREditor";
 import ProtectedRoute from "./components/ProtectedRoute";
+import ErrorBoundary from "./components/ErrorBoundary";
+import { runPreflightCheck } from "./lib/preflight";
 
 // Importação dos formulários específicos
 import ClasseIForm from "./pages/ClasseIForm";
@@ -46,6 +51,11 @@ const queryClient = new QueryClient();
 
 // Componente interno que consome os contextos
 const AppContent = () => {
+  useEffect(() => {
+    // Executa a inspeção de pré-voo ao montar o App
+    runPreflightCheck();
+  }, []);
+
   return (
     <>
       <GhostModeBanner />
@@ -105,8 +115,10 @@ const App = () => {
         <BrowserRouter>
           <SessionContextProvider>
             <TooltipProvider>
-              <Toaster />
-              <AppContent />
+              <ErrorBoundary>
+                <Toaster />
+                <AppContent />
+              </ErrorBoundary>
             </TooltipProvider>
           </SessionContextProvider>
         </BrowserRouter>
