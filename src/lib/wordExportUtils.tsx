@@ -60,12 +60,16 @@ const PTrabDORReport: React.FC<PTrabDORReportProps> = ({ ptrabData, dorData, sel
       <div ref={reportRef} className="bg-white p-10 border shadow-sm mx-auto w-[210mm] text-black font-serif">
         <div className="flex flex-col items-center text-center mb-6">
           {/* A mágica acontece aqui: LOGO_MD_BASE64 agora é "/logo.png" */}
-          <img 
-            src={LOGO_MD_BASE64} 
-            alt="Logo Oficial" 
-            className="h-20 w-auto mb-2 object-contain"
-            onError={(e) => console.error("Erro crítico: A imagem em /public/logo.png não foi encontrada!")}
-          />
+        <img 
+ 		src={LOGO_MD_BASE64} 
+  		alt="Brasão Oficial" 
+  		className="h-24 w-auto mb-2 object-contain"
+  		onError={(e) => {
+    		console.error("A imagem logo.jpg não foi encontrada na raiz!");
+    		// Isso ajuda a não ficar o ícone de 'quebrado' se o servidor falhar
+    		(e.target as HTMLImageElement).style.display = 'none';
+  		}}
+	/>
           <p className="font-bold uppercase text-xs">Ministério da Defesa</p>
           <p className="font-bold uppercase text-xs">{ptrabData.comando_superior || "Exército Brasileiro"}</p>
           <p className="font-bold uppercase text-xs">{ptrabData.om_nome || "Organização Militar"}</p>
