@@ -402,11 +402,22 @@ const PTrabManager = () => {
   useEffect(() => {
     const startTour = searchParams.get('startTour') === 'true';
     const showHub = searchParams.get('showHub') === 'true';
+    const showChecklist = searchParams.get('showChecklist') === 'true'; // 👈 NOVA LINHA
     const missionId = localStorage.getItem('active_mission_id');
     const ghost = isGhostMode();
 
     if (showHub) {
       setShowInstructionHub(true);
+    }
+
+    // 👇 NOVO BLOCO: Força o modal de boas vindas a abrir e limpa a URL
+    if (showChecklist && !ghost) {
+      const timer = setTimeout(() => {
+        setShowWelcomeModal(true);
+        hasShownWelcome.current = true;
+        navigate('/ptrab', { replace: true }); // Limpa o aviso da URL
+      }, 500);
+      return () => clearTimeout(timer);
     }
 
     if (startTour && ghost && missionId === '1' && user?.id) {
