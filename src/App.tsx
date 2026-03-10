@@ -12,6 +12,7 @@ import Login from "./pages/Login";
 import PTrabManager from "./pages/PTrabManager";
 import PTrabForm from "./pages/PTrabForm";
 import PTrabReportManager from "./pages/PTrabReportManager";
+import ImportadorRelatorioPTrab from "./pages/ImportadorRelatorioPTrab";
 import UserProfilePage from "./pages/UserProfilePage";
 import DiretrizesCusteioPage from "./pages/DiretrizesCusteioPage";
 import CustosOperacionaisPage from "./pages/CustosOperacionaisPage";
@@ -68,6 +69,7 @@ const AppContent = () => {
         <Route path="/ptrab" element={<ProtectedRoute><PTrabManager /></ProtectedRoute>} />
         <Route path="/ptrab/form" element={<ProtectedRoute><PTrabForm /></ProtectedRoute>} />
         <Route path="/ptrab/print" element={<ProtectedRoute><PTrabReportManager /></ProtectedRoute>} />
+        <Route path="/ptrab/import" element={<ProtectedRoute><ImportadorRelatorioPTrab /></ProtectedRoute>} />
         <Route path="/ptrab/dor" element={<ProtectedRoute><DOREditor /></ProtectedRoute>} />
         
         {/* Rotas de Formulários Específicos (Logística) */}
