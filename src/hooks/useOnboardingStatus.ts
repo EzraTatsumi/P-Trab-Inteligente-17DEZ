@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useSession } from "@/components/SessionContextProvider";
+import { getCompletedMissions } from "@/lib/missionUtils";
 
 export interface OnboardingStatus {
   hasOMs: boolean;
@@ -18,6 +19,13 @@ export const useOnboardingStatus = () => {
     queryFn: async (): Promise<OnboardingStatus> => {
       if (!user?.id) return { hasOMs: false, hasLogistica: false, hasOperacional: false, hasMissions: false, isReady: false };
 
+      // CORREÇÃO: Verifica localStorage primeiro (missões podem estar só lá)
+      const completedMissions = getCompletedMissions(user.id);
+      const hasMissionsFromLocalStorage = completedMissions.length >= 6;
+      
+      // CORREÇÃO: Verifica victory_shown no localStorage também
+      const victoryShownInLocalStorage = localStorage.getItem(`victory_shown_${user.id}`) === 'true';
+      
       // Mantendo a queryFn original para contagem no banco
       const [oms, log, op, missions] = await Promise.all([
         supabase.from('organizacoes_militares').select('id', { count: 'exact', head: true }).eq('user_id', user.id),
@@ -29,7 +37,10 @@ export const useOnboardingStatus = () => {
       const hasOMs = (oms.count || 0) > 0;
       const hasLogistica = (log.count || 0) > 0;
       const hasOperacional = (op.count || 0) > 0;
-      const hasMissions = (missions.count || 0) === 6; // Verificação exata de 6 missões para liberar o sistema
+      const hasMissionsFromDB = (missions.count || 0) === 6;
+      
+      // PRIORIZA localStorage se tiver mais missões que o banco OU se victory foi visto no localStorage
+      const hasMissions = hasMissionsFromLocalStorage || hasMissionsFromDB || victoryShownInLocalStorage;
 
       return {
         hasOMs,
