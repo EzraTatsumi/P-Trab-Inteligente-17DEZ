@@ -917,22 +917,39 @@ const PTrabManager = () => {
       toast.error("Erro: Dados de clonagem incompletos.");
       return;
     }
+    
     setShowCloneVariationDialog(false);
     setIsActionLoading(true);
+    
+    // 👉 1. INICIA A MENSAGEM ANIMADA (Rodinha girando)
+    const toastId = toast.loading(`Clonando a variação "${versionName}"... Isso pode levar alguns segundos.`);
+
     try {
         const { id, created_at, updated_at, user_id, share_token, shared_with, totalLogistica, totalOperacional, totalMaterialPermanente, quantidadeRacaoOp, quantidadeHorasVoo, isOwner, isShared, hasPendingRequests, ...restOfPTrab } = ptrabToClone;
         const newPTrabData: TablesInsert<'p_trab'> & { origem: PTrabDB['origem'] } = { ...restOfPTrab, numero_ptrab: suggestedCloneNumber, status: "aberto", origem: ptrabToClone.origem, comentario: null, rotulo_versao: versionName, user_id: (await supabase.auth.getUser()).data.user?.id! };
         const { data: newPTrab, error: insertError = null } = await supabase.from("p_trab").insert([newPTrabData as TablesInsert<'p_trab'>]).select().single();
         if (insertError || !newPTrab) throw insertError;
         const newPTrabId = newPTrab.id;
+        
         await cloneRelatedRecords(ptrabToClone.id, newPTrabId);
+        
         const { data: { user } } = await supabase.auth.getUser();
         if (user) await updateUserCredits(user.id, 0, 0);
-        toast.success(`Variação "${versionName}" criada como Minuta ${suggestedCloneNumber} e registros clonados!`);
+        
+        // 👉 2. TRANSFORMA A MENSAGEM ANIMADA EM SUCESSO (Sinal Verde)
+        toast.success(`Variação "${versionName}" criada como Minuta ${suggestedCloneNumber} e registros clonados!`, {
+            id: toastId,
+            duration: 5000
+        });
+        
         await loadPTrabs();
     } catch (error: any) {
         console.error("Erro ao clonar variação:", error);
-        toast.error(sanitizeError(error));
+        
+        // 👉 3. SE DER ERRO, TRANSFORMA A MENSAGEM ANIMADA EM ERRO
+        toast.error(sanitizeError(error), {
+            id: toastId
+        });
     } finally {
         setIsActionLoading(false);
     }
