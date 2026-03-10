@@ -1048,21 +1048,49 @@ const PTrabManager = () => {
             
             const newRecords = records.map((record: any) => {
                 const { id, created_at, updated_at, ...restOfRecord } = record;
-                const newRecord: any = { 
-                    ...restOfRecord, 
-                    p_trab_id: newPTrabId, 
-                    ...((record as any).hasOwnProperty('itens_equipamentos') && { itens_equipamentos: JSON.parse(JSON.stringify(record.itens_equipamentos)) }), 
-                    ...((record as any).hasOwnProperty('itens_saude') && { itens_saude: JSON.parse(JSON.stringify(record.itens_saude)) }), 
-                    ...((record as any).hasOwnProperty('itens_remonta') && { itens_remonta: JSON.parse(JSON.stringify(record.itens_remonta)) }), 
-                    ...((record as any).hasOwnProperty('itens_motomecanizacao') && { itens_motomecanizacao: JSON.parse(JSON.stringify(record.itens_motomecanizacao)) }), 
-                    ...((record as any).hasOwnProperty('quantidades_por_posto') && { quantidades_por_posto: JSON.parse(JSON.stringify(record.quantidades_por_posto)) }), 
-                    ...((record as any).hasOwnProperty('itens_aquisicao') && { itens_aquisicao: JSON.parse(JSON.stringify(record.itens_aquisicao)) }),
-                    ...((record as any).hasOwnProperty('detalhes_planejamento') && { detalhes_planejamento: JSON.parse(JSON.stringify(record.details_planejamento)) }),
-                    ...((record as any).hasOwnProperty('itens_dor') && { itens_dor: JSON.parse(JSON.stringify(record.itens_dor)) }),
-                    ...((record as any).hasOwnProperty('groups_dor') && { grupos_dor: JSON.parse(JSON.stringify(record.grupos_dor)) })
+                
+                const clonedRecord: any = {
+                    ...restOfRecord,
+                    p_trab_id: newPTrabId,
                 };
-                return newRecord;
+
+                // Função interna para clonagem profunda segura
+                const safeClone = (val: any) => {
+                    if (val === null || val === undefined) return null;
+                    try {
+                        return JSON.parse(JSON.stringify(val));
+                    } catch (e) {
+                        return null;
+                    }
+                };
+
+                // Lista de todos os campos JSON que precisam ser clonados
+                const jsonFields = [
+                    'itens_equipamentos', 
+                    'itens_saude', 
+                    'itens_remonta', 
+                    'itens_motomecanizacao', 
+                    'quantidades_por_posto', 
+                    'itens_aquisicao', 
+                    'detalhes_planejamento', // Corrigido (estava details_)
+                    'itens_dor', 
+                    'grupos_dor' // Corrigido (estava groups_)
+                ];
+
+                // Aplica a clonagem apenas se o campo existir no registro original
+                jsonFields.forEach(field => {
+                    if (record.hasOwnProperty(field)) {
+                        clonedRecord[field] = safeClone(record[field]);
+                    }
+                });
+
+                return clonedRecord;
             });
+
+            if (newRecords.length > 0) {
+                const { error: insertError } = await (supabase.from(tableName as any) as any).insert(newRecords);
+                if (insertError) throw insertError;
+            }
             await (supabase.from(tableName as any) as any).insert(newRecords);
         }));
 
