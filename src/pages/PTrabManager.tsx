@@ -929,7 +929,7 @@ const PTrabManager = () => {
         const { data: { user } } = await supabase.auth.getUser();
         if (user) await updateUserCredits(user.id, 0, 0);
         toast.success(`Variação "${versionName}" criada como Minuta ${suggestedCloneNumber} e registros clonados!`);
-        loadPTrabs();
+        await loadPTrabs();
     } catch (error: any) {
         console.error("Erro ao clonar variação:", error);
         toast.error(sanitizeError(error));
