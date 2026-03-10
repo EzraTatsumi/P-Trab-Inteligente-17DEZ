@@ -1095,6 +1095,7 @@ const PTrabManager = () => {
 
         await updateUserCredits(user.id, 0, 0);
         toast.success(`Consolidação concluída! Novo P Trab ${finalMinutaNumber} criado.`);
+        await loadPTrabs();
     } catch (error: any) {
         console.error("Erro na consolidação:", error);
         toast.error(sanitizeError(error));
