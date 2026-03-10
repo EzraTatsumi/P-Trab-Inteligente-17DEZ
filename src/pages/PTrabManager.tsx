@@ -1730,7 +1730,18 @@ const PTrabManager = () => {
       {ptrabToManageSharing && <ManageSharingDialog open={showManageSharingDialog} onOpenChange={setShowManageSharingDialog} ptrabId={ptrabToManageSharing.id} ptrabName={`${ptrabToManageSharing.numero_ptrab} - ${ptrabToManageSharing.nome_operacao}`} onApprove={handleApproveRequest} onReject={handleRejectRequest} onCancelSharing={handleCancelSharing} loading={isActionLoading} />}
       {ptrabToUnlink && <UnlinkPTrabDialog open={showUnlinkPTrabDialog} onOpenChange={setShowUnlinkPTrabDialog} ptrabName={`${ptrabToUnlink.numero_ptrab} - ${ptrabToUnlink.nome_operacao}`} onConfirm={handleConfirmUnlink} loading={isActionLoading} />}
       
-      <Dialog open={showVictory} onOpenChange={setShowVictory}>
+      <Dialog 
+        open={showVictory} 
+        onOpenChange={(aberto) => {
+          if (!aberto) {
+            // Se a janela for fechada (ESC, clique fora, etc), já dá o "visto" no troféu
+            markVictoryAsShown(user?.id);
+            setShowVictory(false);
+          } else {
+            setShowVictory(true);
+          }
+        }}
+      >
         <DialogContent className="text-center sm:max-w-[450px] z-[999999]">
           <div className="flex justify-center mb-4">
             <div className="h-20 w-20 bg-yellow-100 rounded-full flex items-center justify-center">
