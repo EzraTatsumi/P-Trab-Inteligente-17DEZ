@@ -280,7 +280,7 @@ const PTrabManager = () => {
         window.removeEventListener('tour:todas-concluidas', handleVictory);
         window.removeEventListener('instruction-hub:open', handleOpenHub);
     };
-  }, [user?.id]);
+  }, [user?.id, onboardingStatus]);
   // --- FIM DA LÓGICA DO PALCO ---
   
   useEffect(() => {
