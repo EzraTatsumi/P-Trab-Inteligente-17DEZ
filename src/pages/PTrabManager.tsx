@@ -1098,11 +1098,25 @@ const PTrabManager = () => {
         }));
 
         await updateUserCredits(user.id, 0, 0);
-        toast.success(`Consolidação concluída! Novo P Trab ${finalMinutaNumber} criado.`);
+        
+        // 2. Atualiza a mesma notificação (usando o toastId) para mostrar Sucesso
+        toast.success(`Consolidação concluída! Novo P Trab ${finalMinutaNumber} criado.`, {
+            id: toastId,
+            duration: 5000
+        });
+        
         await loadPTrabs();
+        
+        // 3. Agora sim, fecha a janela popup (já que o processo terminou)
+        setShowConsolidationNumberDialog(false);
+
     } catch (error: any) {
         console.error("Erro na consolidação:", error);
-        toast.error(sanitizeError(error));
+        
+        // 4. Se der erro, atualiza a mesma notificação para mostrar o ícone vermelho de Erro
+        toast.error(sanitizeError(error), {
+            id: toastId
+        });
     } finally {
         setSelectedPTrabsToConsolidate([]);
         setIsActionLoading(false);
