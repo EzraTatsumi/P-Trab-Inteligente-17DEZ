@@ -246,22 +246,17 @@ const PTrabManager = () => {
   }, [user?.id, queryClient]);
 
   // --- INÍCIO DA LÓGICA DO PALCO (VITÓRIA E HUB) ---
+  
+  // 1. ESCUTA DE EVENTOS (Fixo: Não perde nenhum disparo ao vivo)
   useEffect(() => {
     if (!user?.id) return;
 
     const ativarVitoria = () => {
       setShowInstructionHub(true); 
       setShowVictory(true);
-      
       setTimeout(() => dispararConfetes(), 200);
     };
 
-    // 1. Checagem Ativa: Ao carregar a página (Se o usuário ganhou e ainda não viu a mensagem)
-    if (shouldShowVictory(user.id)) {
-      ativarVitoria();
-    }
-
-    // 2. Checagem Reativa: O Palco fica com os ouvidos abertos aguardando o Árbitro
     const handleVictory = (e: any) => {
       if (e.detail?.userId === user.id || !e.detail?.userId) {
         ativarVitoria(); 
@@ -280,7 +275,22 @@ const PTrabManager = () => {
         window.removeEventListener('tour:todas-concluidas', handleVictory);
         window.removeEventListener('instruction-hub:open', handleOpenHub);
     };
-  }, [user?.id, onboardingStatus]);
+  }, [user?.id]); // ⬅️ Sem onboardingStatus aqui, para não reiniciar os ouvintes!
+
+  // 2. ESCUTA DO BANCO/STATUS (Fixo: Pega a atualização se o evento falhar ou ao recarregar a tela)
+  useEffect(() => {
+    if (!user?.id || isLoadingOnboarding || !onboardingStatus) return;
+
+    // Se as missões e requisitos acabaram, e ele ainda precisa ver a mensagem de vitória:
+    const hasPendingTasks = !onboardingStatus.isReady || !onboardingStatus.hasMissions;
+    
+    if (!hasPendingTasks && shouldShowVictory(user.id)) {
+      setShowInstructionHub(true); 
+      setShowVictory(true);
+      setTimeout(() => dispararConfetes(), 200);
+    }
+  }, [user?.id, onboardingStatus, isLoadingOnboarding]);
+  
   // --- FIM DA LÓGICA DO PALCO ---
   
   useEffect(() => {
