@@ -247,11 +247,12 @@ const PTrabManager = () => {
 
   // --- INÍCIO DA LÓGICA DO PALCO (VITÓRIA E HUB) ---
   
-  // 1. ESCUTA DE EVENTOS (Fixo: Não perde nenhum disparo ao vivo)
+  // 1. ESCUTA DE EVENTOS (Para disparos via código/CustomEvent)
   useEffect(() => {
     if (!user?.id) return;
 
     const ativarVitoria = () => {
+      if (showVictory) return; // evita duplo disparo
       setShowInstructionHub(true); 
       setShowVictory(true);
       setTimeout(() => dispararConfetes(), 200);
@@ -275,33 +276,34 @@ const PTrabManager = () => {
         window.removeEventListener('tour:todas-concluidas', handleVictory);
         window.removeEventListener('instruction-hub:open', handleOpenHub);
     };
-  }, [user?.id]); // ⬅️ Sem onboardingStatus aqui, para não reiniciar os ouvintes!
+  }, [user?.id, showVictory]);
 
-  // 2. ESCUTA DO BANCO/STATUS (Fixo: Pega a atualização se o evento falhar ou ao recarregar a tela)
+  // 2. ESCUTA DO BANCO/STATUS (Garante que se a missão for a última, a vitória aparece)
   useEffect(() => {
-    if (!user?.id || isLoadingOnboarding || !onboardingStatus) return;
+    if (!user?.id) return;
 
-    // Se as missões e requisitos acabaram, e ele ainda precisa ver a mensagem de vitória:
-    const hasPendingTasks = !onboardingStatus.isReady || !onboardingStatus.hasMissions;
-    
-    if (!hasPendingTasks && shouldShowVictory(user.id)) {
+    // Simplificação extrema: Toda vez que o status de missões atualizar, ele confere.
+    // Se o utilitário shouldShowVictory disser que ganhou, a mensagem sobe imediatamente!
+    if (shouldShowVictory(user.id) && !showVictory) {
       setShowInstructionHub(true); 
       setShowVictory(true);
       setTimeout(() => dispararConfetes(), 200);
     }
-  }, [user?.id, onboardingStatus, isLoadingOnboarding]);
+  }, [user?.id, onboardingStatus, showVictory]);
   
   // --- FIM DA LÓGICA DO PALCO ---
   
   useEffect(() => {
-    // BARREIRA DE SUPRESSÃO: Adicionado o 'showVictory' para impedir conflitos
-    if (isGhostMode() || showInstructionHub || showVictory) {
+    // BARREIRA DE SUPRESSÃO FORTE: Adicionado o shouldShowVictory para impedir o painel
+    // de boas-vindas de atrapalhar a tela de confetes no milissegundo da vitória.
+    if (isGhostMode() || showInstructionHub || showVictory || shouldShowVictory(user?.id)) {
       setShowWelcomeModal(false);
       return;
     }
 
     if (!isLoadingOnboarding && onboardingStatus) {
-      const hasPendingTasks = !onboardingStatus.isReady || !onboardingStatus.hasMissions;
+      // CORREÇÃO LÓGICA: Sem a exclamação antes do hasMissions!
+      const hasPendingTasks = !onboardingStatus.isReady || onboardingStatus.hasMissions;
       
       if (hasPendingTasks && !hasShownWelcome.current) {
         const timer = setTimeout(() => {
@@ -311,7 +313,7 @@ const PTrabManager = () => {
         return () => clearTimeout(timer);
       }
     }
-  }, [isLoadingOnboarding, onboardingStatus, showInstructionHub, showVictory]);
+  }, [isLoadingOnboarding, onboardingStatus, showInstructionHub, showVictory, user?.id]);
   // --- FIM DA CORREÇÃO DEFINITIVA ---
 
   const { data: pTrabs = [], isLoading: loading, refetch: loadPTrabs } = useQuery({
