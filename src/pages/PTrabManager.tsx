@@ -1801,10 +1801,12 @@ const PTrabManager = () => {
                 
                 // FINALIZA TUDO E VAI PRA VIDA REAL:
                 if (isGhostMode()) {
-                    // O exitGhostMode limpa a memória e dá um reload forçado na tela principal.
-                    // Ao recarregar fora do modo simulador, o sistema naturalmente verá que 
-                    // faltam OMs/Diretrizes e abrirá o Checklist automaticamente!
-                    exitGhostMode(user?.id, '/ptrab'); 
+                    // Agora passamos o aviso na URL para forçar o checklist abrir ao recarregar
+                    exitGhostMode(user?.id, '/ptrab?showChecklist=true'); 
+                } else {
+                    // Se por acaso ele completou fora do modo fantasma, apenas abre o modal
+                    hasShownWelcome.current = false;
+                    setShowWelcomeModal(true);
                 }
             }}
           >
