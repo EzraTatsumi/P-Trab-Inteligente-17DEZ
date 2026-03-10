@@ -1029,8 +1029,12 @@ const PTrabManager = () => {
 
   const handleConfirmConsolidation = async (finalMinutaNumber: string) => {
     if (selectedPTrabsToConsolidate.length < 2 || !user?.id) return;
-    setShowConsolidationNumberDialog(false);
+    
     setIsActionLoading(true);
+    
+    // 1. Cria a notificação de carregamento ("rodinha girando") e salva a referência (toastId)
+    const toastId = toast.loading("Consolidando P Trabs... Isso pode levar alguns segundos, por favor aguarde.");
+
     try {
         const { data: selectedPTrabsData, error: fetchError } = await supabase.from('p_trab').select('*').in('id', selectedPTrabsToConsolidate);
         if (fetchError || !selectedPTrabsData || selectedPTrabsData.length === 0) throw new Error("Falha ao carregar dados dos P Trabs selecionados.");
