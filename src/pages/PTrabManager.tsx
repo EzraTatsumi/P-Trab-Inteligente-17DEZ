@@ -776,12 +776,17 @@ const PTrabManager = () => {
         if (insertError || !newPTrab) throw insertError;
         const newPTrabId = newPTrab.id;
         if (originalPTrabIdToClone) {
+            // Adicionando a experiência premium aqui também!
+            const toastId = toast.loading("Copiando registros do P Trab original, por favor aguarde...");
+            
             await cloneRelatedRecords(originalPTrabIdToClone, newPTrabId);
             const { data: originalPTrabData } = await supabase.from("p_trab").select("rotulo_versao").eq("id", originalPTrabIdToClone).single();
             if (originalPTrabData?.rotulo_versao) {
                 await supabase.from("p_trab").update({ rotulo_versao: originalPTrabData.rotulo_versao }).eq("id", newPTrabId);
             }
-            toast.success("P Trab criado e registros clonados!");
+            
+            // Sucesso
+            toast.success("P Trab criado e registros clonados!", { id: toastId, duration: 5000 });
         }
         try {
             await updateUserCredits(user.id, 0, 0);
