@@ -790,13 +790,13 @@ const PTrabManager = () => {
         }
         setDialogOpen(false);
         resetForm();
-        loadPTrabs();
+        await loadPTrabs();
         setIsActionLoading(false);
         return;
       }
       setDialogOpen(false);
       resetForm();
-      loadPTrabs();
+      await loadPTrabs();
     } catch (error: any) {
       toast.error(sanitizeError(error));
     } finally {
