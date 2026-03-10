@@ -1091,12 +1091,10 @@ const PTrabManager = () => {
                 const { error: insertError } = await (supabase.from(tableName as any) as any).insert(newRecords);
                 if (insertError) throw insertError;
             }
-            await (supabase.from(tableName as any) as any).insert(newRecords);
         }));
 
         await updateUserCredits(user.id, 0, 0);
         toast.success(`Consolidação concluída! Novo P Trab ${finalMinutaNumber} criado.`);
-        loadPTrabs();
     } catch (error: any) {
         console.error("Erro na consolidação:", error);
         toast.error(sanitizeError(error));
