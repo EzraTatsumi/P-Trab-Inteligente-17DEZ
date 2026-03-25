@@ -4,7 +4,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { LogIn, Eye, EyeOff, Loader2 } from 'lucide-react';
+import { Shield, LogIn, Eye, EyeOff, Loader2 } from 'lucide-react';
 import {
   Card,
   CardContent,
@@ -117,7 +117,7 @@ const Login: React.FC = () => {
   }
 
   return (
-    <div className="flex items-center justify-center min-h-screen bg-muted/40 p-4">
+    <div className="flex flex-col items-center justify-center min-h-screen bg-muted/40 p-4">
       <Card className="w-full max-w-md shadow-xl">
         <CardHeader className="text-center">
           <CardTitle className="text-2xl flex items-center justify-center gap-2">
