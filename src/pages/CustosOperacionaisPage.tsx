@@ -150,17 +150,30 @@ const CustosOperacionaisPage = () => {
 
   const ghostActive = isGhostMode();
 
+  // 1. Sincroniza a URL com o Estado (Ex: quando o usuário entra via link externo)
   useEffect(() => {
     const yearInUrl = searchParams.get('year');
-    const yearNum = yearInUrl ? parseInt(yearInUrl) : null;
-    if (yearNum && !isNaN(yearNum) && yearNum !== selectedYear) {
-      setSelectedYear(yearNum);
-    } else if (selectedYear && yearInUrl !== selectedYear.toString()) {
-      const newParams = new URLSearchParams(searchParams);
-      newParams.set('year', selectedYear.toString());
-      setSearchParams(newParams, { replace: true });
+    if (yearInUrl) {
+      const yearNum = parseInt(yearInUrl, 10);
+      if (!isNaN(yearNum)) {
+        // Usa uma função de callback para evitar loops
+        setSelectedYear(prev => prev !== yearNum ? yearNum : prev);
+      }
     }
-  }, [searchParams, selectedYear, setSearchParams]);
+  }, [searchParams]);
+
+  // 2. Sincroniza o Estado com a URL (Ex: quando o usuário clica no Select)
+  useEffect(() => {
+    setSearchParams((prev) => {
+      const yearInUrl = prev.get('year');
+      if (selectedYear && yearInUrl !== selectedYear.toString()) {
+        const newParams = new URLSearchParams(prev);
+        newParams.set('year', selectedYear.toString());
+        return newParams;
+      }
+      return prev;
+    }, { replace: true });
+  }, [selectedYear, setSearchParams]);
 
   const { data: pageData, isLoading: isLoadingPageData, isFetching: isFetchingPageData } = useQuery({
     queryKey: ['diretrizesCustosOperacionais', selectedYear, user?.id, ghostActive],
