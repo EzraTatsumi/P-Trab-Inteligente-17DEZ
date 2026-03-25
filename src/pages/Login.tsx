@@ -121,11 +121,11 @@ const Login: React.FC = () => {
       {/* Cabeçalho Estilizado (Logo do App) */}
       <div className="mb-8 text-center animate-in fade-in slide-in-from-top-4 duration-700">
         <div className="flex items-center justify-center gap-2 mb-2">
-          <Shield className="h-8 w-8 text-emerald-600 dark:text-emerald-400" />
+          <Shield className="h-8 w-8 text-amber-500 dark:text-amber-400" />
         </div>
         <h1 className="text-3xl md:text-4xl font-black tracking-tight text-slate-900 dark:text-white whitespace-nowrap">
           P Trab{" "}
-          <span className="font-serif italic font-medium bg-gradient-to-r from-emerald-600 to-teal-500 bg-clip-text text-transparent">
+          <span className="font-serif italic font-medium bg-gradient-to-r from-amber-500 to-yellow-400 bg-clip-text text-transparent">
             Inteligente
           </span>
         </h1>
@@ -133,7 +133,7 @@ const Login: React.FC = () => {
           Sistema de Apoio à Gestão Logística
         </p>
       </div>
-
+ 
       <Card className="w-full max-w-md shadow-xl">
         <CardHeader className="text-center">
           <CardTitle className="text-2xl flex items-center justify-center gap-2">
