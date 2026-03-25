@@ -121,7 +121,7 @@ const Login: React.FC = () => {
       {/* Cabeçalho Estilizado (Logo do App) */}
       <div className="mb-8 text-center animate-in fade-in slide-in-from-top-4 duration-700">
         <div className="flex items-center justify-center gap-2 mb-2">
-          <ShieldIcon className="h-8 w-8 text-emerald-600 dark:text-emerald-400" />
+          <Shield className="h-8 w-8 text-emerald-600 dark:text-emerald-400" />
         </div>
         <h1 className="text-3xl md:text-4xl font-black tracking-tight text-slate-900 dark:text-white whitespace-nowrap">
           P Trab{" "}
