@@ -118,6 +118,22 @@ const Login: React.FC = () => {
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-muted/40 p-4">
+      {/* Cabeçalho Estilizado (Logo do App) */}
+      <div className="mb-8 text-center animate-in fade-in slide-in-from-top-4 duration-700">
+        <div className="flex items-center justify-center gap-2 mb-2">
+          <ShieldIcon className="h-8 w-8 text-emerald-600 dark:text-emerald-400" />
+        </div>
+        <h1 className="text-3xl md:text-4xl font-black tracking-tight text-slate-900 dark:text-white whitespace-nowrap">
+          P Trab{" "}
+          <span className="font-serif italic font-medium bg-gradient-to-r from-emerald-600 to-teal-500 bg-clip-text text-transparent">
+            Inteligente
+          </span>
+        </h1>
+        <p className="mt-4 text-slate-500 dark:text-slate-400 text-sm font-medium uppercase tracking-widest">
+          Sistema de Apoio à Gestão Logística
+        </p>
+      </div>
+
       <Card className="w-full max-w-md shadow-xl">
         <CardHeader className="text-center">
           <CardTitle className="text-2xl flex items-center justify-center gap-2">
