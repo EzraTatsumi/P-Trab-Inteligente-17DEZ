@@ -91,6 +91,10 @@ const OmConfigPage = () => {
 
   const mutation = useMutation({
     mutationFn: async (data: OmMutationData) => {
+      // CORREÇÃO: Pega o usuário logado para garantir autorização
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("Sessão expirada. Faça login novamente.");
+
       if (data.id) {
         const { id, ...updateData } = data;
         const { error } = await supabase
@@ -99,9 +103,12 @@ const OmConfigPage = () => {
           .eq("id", id);
         if (error) throw error;
       } else {
+        // CORREÇÃO: Adicionamos o user_id aqui para passar pela regra de segurança (RLS)
+        const insertData = { ...data, user_id: user.id }; 
+        
         const { error } = await supabase
           .from("organizacoes_militares")
-          .insert(data as TablesInsert<'organizacoes_militares'>[]);
+          .insert([insertData as TablesInsert<'organizacoes_militares'>]); // Envolvido em []
         if (error) throw error;
       }
     },

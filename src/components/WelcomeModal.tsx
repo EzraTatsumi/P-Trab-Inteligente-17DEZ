@@ -5,6 +5,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Button } from "@/components/ui/button";
 import { CheckCircle2, Circle, Rocket, Settings, ArrowRight, GraduationCap } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { useSession } from "@/components/SessionContextProvider";
+import { markWelcomeAsCompletedSync } from "@/lib/missionUtils";
 
 interface WelcomeModalProps {
   open: boolean;
@@ -22,6 +24,7 @@ interface WelcomeModalProps {
 
 export const WelcomeModal = ({ open, onOpenChange, status }: WelcomeModalProps) => {
   const navigate = useNavigate();
+  const { user } = useSession();
 
   if (!status) return null;
 
@@ -40,6 +43,14 @@ export const WelcomeModal = ({ open, onOpenChange, status }: WelcomeModalProps) 
       navigate("/config/custos-operacionais");
     } else {
       navigate("/config/om");
+    }
+    onOpenChange(false);
+  };
+
+  const handleStartOperating = () => {
+    // SÓ marca como completado se for "Começar a Operar" (tudo pronto)
+    if (status.isReady) {
+      markWelcomeAsCompletedSync(user?.id);
     }
     onOpenChange(false);
   };
@@ -83,7 +94,7 @@ export const WelcomeModal = ({ open, onOpenChange, status }: WelcomeModalProps) 
         </div>
 
         <div className="flex flex-col gap-2">
-          <Button onClick={() => onOpenChange(false)} className="w-full">
+          <Button onClick={handleStartOperating} className="w-full">
             {status.isReady ? "Começar a Operar" : "Entendido, vou prosseguir"}
           </Button>
           <Button variant="outline" onClick={handleNavigateToStep} className="w-full gap-2">

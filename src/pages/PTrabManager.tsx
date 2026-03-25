@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -65,7 +65,7 @@ import { RequirementsAlert } from "@/components/RequirementsAlert";
 import { InstructionHub } from "@/components/InstructionHub";
 import { runMission01 } from "@/tours/missionTours";
 import { GHOST_DATA, isGhostMode, getActiveMission } from "@/lib/ghostStore";
-import { shouldShowVictory, markVictoryAsShown, exitGhostMode, fetchCompletedMissions } from "@/lib/missionUtils";
+import { shouldShowVictory, markVictoryAsShownSyncVersion, exitGhostMode, fetchCompletedMissions, getCompletedMissions, shouldShowWelcomeSync, markWelcomeAsShownSync, markWelcomeAsCompletedSync } from "@/lib/missionUtils";
 import confetti from "canvas-confetti";
 
 export type PTrabDB = Tables<'p_trab'> & {
@@ -192,8 +192,7 @@ const PTrabManager = () => {
   const { data: onboardingStatus, isLoading: isLoadingOnboarding } = useOnboardingStatus();
   const [showWelcomeModal, setShowWelcomeModal] = useState(false);
   const [showRequirementsAlert, setShowRequirementsAlert] = useState(false);
-  const hasShownWelcome = useRef(false);
-
+  
   const dispararConfetes = () => {
     confetti({
       particleCount: 150,
@@ -296,21 +295,49 @@ const PTrabManager = () => {
   useEffect(() => {
     // BARREIRA DE SUPRESSÃO FORTE: Adicionado o shouldShowVictory para impedir o painel
     // de boas-vindas de atrapalhar a tela de confetes no milissegundo da vitória.
-    if (isGhostMode() || showInstructionHub || showVictory || shouldShowVictory(user?.id)) {
+    if (isGhostMode() || showInstructionHub || showVictory) {
       setShowWelcomeModal(false);
       return;
     }
 
     if (!isLoadingOnboarding && onboardingStatus) {
-      // CORREÇÃO LÓGICA: Sem a exclamação antes do hasMissions!
-      const hasPendingTasks = !onboardingStatus.isReady || onboardingStatus.hasMissions;
+      // 🎯 CORREÇÃO: Verifica se victory_shown está true no localStorage
+      const victoryShown = localStorage.getItem(`victory_shown_${user?.id}`) === 'true';
+      const welcomeCompleted = localStorage.getItem(`welcome_shown_${user?.id}`) === 'true';
       
-      if (hasPendingTasks && !hasShownWelcome.current) {
+      // 🎯 LÓGICA CORRIGIDA: Se victory foi visto, não tem mais pendências de missões
+      const hasPendingTasks = !onboardingStatus.isReady || (!victoryShown && onboardingStatus.hasMissions);
+      
+      // 🎯 CONDIÇÃO FINAL: Welcome só aparece se não foi completado E ainda tem pendências
+      const isActuallyCompleted = onboardingStatus.isReady && victoryShown && welcomeCompleted;
+      const shouldShow = !isActuallyCompleted && hasPendingTasks;
+      
+      console.log('[DEBUG] Welcome Modal Check:', {
+        hasPendingTasks,
+        isActuallyCompleted,
+        shouldShow,
+        isLoadingOnboarding,
+        onboardingStatus,
+        userId: user?.id,
+        localStorageWelcome: localStorage.getItem(`welcome_shown_${user?.id}`),
+        localStorageVictory: localStorage.getItem(`victory_shown_${user?.id}`),
+        victoryShown,
+        welcomeCompleted
+      });
+      
+      if (shouldShow) {
+        console.log('[DEBUG] Mostrando Welcome Modal!');
         const timer = setTimeout(() => {
           setShowWelcomeModal(true);
-          hasShownWelcome.current = true; 
+          // NÃO marca mais como shown automaticamente - só marca após "Começar a Operar"
         }, 300);
         return () => clearTimeout(timer);
+      } else {
+        console.log('[DEBUG] Welcome Modal NÃO será mostrado. Motivo:', {
+          hasPendingTasks,
+          isActuallyCompleted,
+          shouldShow
+        });
       }
     }
   }, [isLoadingOnboarding, onboardingStatus, showInstructionHub, showVictory, user?.id]);
@@ -414,7 +441,7 @@ const PTrabManager = () => {
   useEffect(() => {
     const startTour = searchParams.get('startTour') === 'true';
     const showHub = searchParams.get('showHub') === 'true';
-    const showChecklist = searchParams.get('showChecklist') === 'true'; // 👈 NOVA LINHA
+    const showChecklist = searchParams.get('showChecklist') === 'true'; 
     const missionId = localStorage.getItem('active_mission_id');
     const ghost = isGhostMode();
 
@@ -422,26 +449,58 @@ const PTrabManager = () => {
       setShowInstructionHub(true);
     }
 
-    // 👇 NOVO BLOCO: Força o modal de boas vindas a abrir e limpa a URL
+    // NOVO BLOCO: Força o modal de boas vindas a abrir e limpa a URL
     if (showChecklist && !ghost) {
       const timer = setTimeout(() => {
         setShowWelcomeModal(true);
-        hasShownWelcome.current = true;
+        markWelcomeAsShownSync(user?.id);
         navigate('/ptrab', { replace: true }); // Limpa o aviso da URL
       }, 500);
       return () => clearTimeout(timer);
     }
 
-    if (startTour && ghost && missionId === '1' && user?.id) {
+    if (startTour && missionId === '1' && user?.id) {
+      // 🎯 CORREÇÃO: Missão 1 deve ATIVAR modo fantasma automaticamente
+      if (!ghost) {
+        // Ativa modo fantasma se não estiver ativo
+        localStorage.setItem('ghost_mode', 'true');
+        localStorage.setItem('active_mission_id', '1');
+        // Recarrega para entrar em modo fantasma com a missão ativa
+        window.location.href = '/ptrab?startTour=true';
+        return;
+      }
+      
       runMission01(user.id, () => {
         const completed = JSON.parse(localStorage.getItem(`completed_missions_${user.id}`) || '[]');
         if (!completed.includes(1)) {
           localStorage.setItem(`completed_missions_${user.id}`, JSON.stringify([...completed, 1]));
         }
-        setShowInstructionHub(true);
       });
     }
   }, [searchParams, user?.id]);
+
+  // FORÇAR ATUALIZAÇÃO DO ONBOARDING STATUS AO VOLTAR PARA /PTRAB
+  useEffect(() => {
+    // ... (rest of the code remains the same)
+    if (user?.id && window.location.pathname === '/ptrab') {
+      // Força refresh do onboarding status ao entrar na página
+      const timer = setTimeout(() => {
+        queryClient.invalidateQueries({ queryKey: ["onboardingStatus"] });
+        console.log('[DEBUG] Forçando atualização do onboarding status');
+        
+        // FORÇA ADICIONAL: Se completou 6 missões, força refresh mais agressivo
+        const completedMissions = getCompletedMissions(user.id);
+        if (completedMissions.length >= 6) {
+          console.log('[DEBUG] Usuário completou todas as missões, forçando refresh duplo');
+          setTimeout(() => {
+            queryClient.invalidateQueries({ queryKey: ["onboardingStatus"] });
+          }, 500);
+        }
+      }, 1000); // 1 segundo para garantir que os dados foram salvos
+      
+      return () => clearTimeout(timer);
+    }
+  }, [user?.id, queryClient]);
   
   const currentYear = new Date().getFullYear();
   const yearSuffix = `/${currentYear}`;
@@ -1780,7 +1839,7 @@ const PTrabManager = () => {
         onOpenChange={(aberto) => {
           if (!aberto) {
             // Se a janela for fechada (ESC, clique fora, etc), já dá o "visto" no troféu
-            markVictoryAsShown(user?.id);
+            markVictoryAsShownSyncVersion(user?.id);
             setShowVictory(false);
           } else {
             setShowVictory(true);
@@ -1807,7 +1866,7 @@ const PTrabManager = () => {
           <Button 
             className="mt-6 w-full text-lg h-12 bg-green-600 hover:bg-green-700" 
             onClick={() => {
-                markVictoryAsShown(user?.id); // Dá o "visto" no troféu
+                markVictoryAsShownSyncVersion(user?.id); // Dá o "visto" no troféu
                 setShowVictory(false);
                 setShowInstructionHub(false);
                 
@@ -1817,7 +1876,6 @@ const PTrabManager = () => {
                     exitGhostMode(user?.id, '/ptrab?showChecklist=true'); 
                 } else {
                     // Se por acaso ele completou fora do modo fantasma, apenas abre o modal
-                    hasShownWelcome.current = false;
                     setShowWelcomeModal(true);
                 }
             }}
