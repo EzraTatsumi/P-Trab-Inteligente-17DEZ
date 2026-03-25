@@ -1154,6 +1154,7 @@ export default function ClasseIForm() {
                             <SelectContent className="bg-background">
                               <SelectItem value="1">1 refeição</SelectItem>
                               <SelectItem value="2">2 refeições</SelectItem>
+                              <SelectItem value="3">3 refeições</SelectItem>
                             </SelectContent>
                           </Select>
                         </div>
